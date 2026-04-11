@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
-import { Loader2, Plus, CalendarDays, LogOut, Wallet, Tag, CheckCircle } from 'lucide-react'
+import { Plus, CalendarDays, LogOut, Wallet, Tag, CheckCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { BottomDrawer } from '@/components/bottom-drawer'
 import { OpenPeriodForm } from './components/open-period-form'
@@ -17,6 +17,7 @@ import type { PayPeriod, Account, Category } from '@/types'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { formatCurrency, formatDate, getDaysBetween } from '@/lib/helpers'
 import { ClosePeriodForm } from './components/close-period-form'
+import { Skeleton } from '@/components/ui/skeleton'
 
 export default function SettingsPage() {
     const { user } = useAuth()
@@ -103,9 +104,15 @@ export default function SettingsPage() {
                         </div>
 
                         {loading ? (
-                            <div className="flex justify-center py-8">
-                                <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
-                            </div>
+                            <section className="space-y-4">
+                                {[...Array(3)].map((_, i) => (
+                                    <div key={i} className="flex w-full flex-col gap-2">
+                                        <Skeleton className="h-4 w-full" />
+                                        <Skeleton className="h-4 w-full" />
+                                        <Skeleton className="h-4 w-3/4" />
+                                    </div>
+                                ))}
+                            </section>
                         ) : (
                             <AccountList
                                 accounts={accounts}
@@ -140,9 +147,15 @@ export default function SettingsPage() {
                         </div>
 
                         {loading ? (
-                            <div className="flex justify-center py-8">
-                                <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
-                            </div>
+                            <section className="space-y-4">
+                                {[...Array(3)].map((_, i) => (
+                                    <div key={i} className="flex w-full flex-col gap-2">
+                                        <Skeleton className="h-4 w-full" />
+                                        <Skeleton className="h-4 w-full" />
+                                        <Skeleton className="h-4 w-3/4" />
+                                    </div>
+                                ))}
+                            </section>
                         ) : (
                             <CategoryList
                                 categories={categories}
@@ -165,9 +178,15 @@ export default function SettingsPage() {
                         </div>
 
                         {loading ? (
-                            <div className="flex justify-center py-8">
-                                <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
-                            </div>
+                            <section className="space-y-4">
+                                {[...Array(3)].map((_, i) => (
+                                    <div key={i} className="flex w-full flex-col gap-2">
+                                        <Skeleton className="h-4 w-full" />
+                                        <Skeleton className="h-4 w-full" />
+                                        <Skeleton className="h-4 w-3/4" />
+                                    </div>
+                                ))}
+                            </section>
                         ) : activePeriod ? (
                             <div className="rounded-xl border bg-card p-4 space-y-4">
                                 <div className="flex items-start justify-between">
