@@ -13,7 +13,6 @@ import DashboardPage from '@/features'
 import TransactionsPage from '@/features/transactions'
 import DebtsPage from '@/features/debts'
 import WishListPage from '@/features/wish-list'
-// import PayPeriodsPage from '@/features/pay-periods'
 
 // Static
 import NotFoundPage from '@/features/static/not-found'
@@ -29,10 +28,8 @@ const router = createBrowserRouter([
         ],
     },
 
-    // Reset password — standalone, tidak butuh auth guard
     { path: '/reset-password', element: <ResetPasswordPage /> },
 
-    // Protected + layout
     {
         element: <ProtectedRoute />,
         children: [
@@ -44,7 +41,6 @@ const router = createBrowserRouter([
                     { path: '/transactions', element: <TransactionsPage /> },
                     { path: '/debts', element: <DebtsPage /> },
                     { path: '/wish-list', element: <WishListPage /> },
-                    // { path: '/pay-periods', element: <PayPeriodsPage /> },
                     { path: '/settings',     element: <SettingsPage /> },
                 ],
             },
