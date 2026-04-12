@@ -27,7 +27,7 @@ export function BuyItemForm({ item, onSuccess }: BuyItemFormProps) {
     )
     const [date, setDate] = useState(toISODate())
     const [accountId, setAccountId] = useState('')
-    const [categoryId, setCategoryId] = useState('none') // ⬅️ fix disini
+    const [categoryId, setCategoryId] = useState('none')
     const [accounts, setAccounts] = useState<Account[]>([])
     const [categories, setCategories] = useState<Category[]>([])
     const [loading, setLoading] = useState(false)
@@ -49,13 +49,22 @@ export function BuyItemForm({ item, onSuccess }: BuyItemFormProps) {
         })
     }, [])
 
+    const handlePriceChange = (raw: string) => {
+        const digitsOnly = raw.replace(/\D/g, '')
+        setPrice(digitsOnly)
+    }
+
+    const displayPrice = price
+        ? Number(price).toLocaleString('id-ID')
+        : ''
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         setError(null)
 
-        const parsed = parseFloat(price.replace(/\./g, '').replace(',', '.'))
+        const parsed = parseInt(price, 10)
 
-        if (isNaN(parsed) || parsed <= 0) {
+        if (!price || isNaN(parsed) || parsed <= 0) {
             const msg = 'Invalid price.'
             setError(msg)
             toast.error(msg)
@@ -73,7 +82,7 @@ export function BuyItemForm({ item, onSuccess }: BuyItemFormProps) {
 
         const { error } = await wishListService.markAsPurchased(item, {
             account_id: accountId,
-            category_id: categoryId === 'none' ? undefined : categoryId, // ⬅️ fix logic
+            category_id: categoryId === 'none' ? undefined : categoryId,
             actual_price: parsed,
             date,
         })
@@ -107,16 +116,20 @@ export function BuyItemForm({ item, onSuccess }: BuyItemFormProps) {
             {/* Price */}
             <div className="space-y-1.5">
                 <Label>Actual price</Label>
-                <Input
-                    type="text"
-                    inputMode="numeric"
-                    value={price}
-                    onChange={(e) =>
-                        setPrice(e.target.value.replace(/[^0-9.,]/g, ''))
-                    }
-                    required
-                    disabled={loading}
-                />
+                <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                        Rp.
+                    </span>
+                    <Input
+                        type="text"
+                        inputMode="numeric"
+                        value={displayPrice}
+                        onChange={(e) => handlePriceChange(e.target.value)}
+                        className="pl-9"
+                        required
+                        disabled={loading}
+                    />
+                </div>
             </div>
 
             {/* Account */}

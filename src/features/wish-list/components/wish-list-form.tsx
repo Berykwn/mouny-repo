@@ -5,7 +5,7 @@ import { Label } from '@/components/ui/label'
 import { Loader2 } from 'lucide-react'
 import { wishListService } from '@/services/wish-list.service'
 import { cn } from '@/lib/utils'
-import { toast } from 'sonner' // ⬅️ tambahkan ini
+import { toast } from 'sonner'
 import type { WishListPriority } from '@/types'
 
 interface WishListFormProps {
@@ -27,19 +27,26 @@ export function WishListForm({ payPeriodId, onSuccess }: WishListFormProps) {
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
 
+    const handlePriceChange = (raw: string) => {
+        const digitsOnly = raw.replace(/\D/g, '')
+        setPrice(digitsOnly)
+    }
+
+    const displayPrice = price
+        ? Number(price).toLocaleString('id-ID')
+        : ''
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         setError(null)
         setLoading(true)
 
-        const parsed = price
-            ? parseFloat(price.replace(/\./g, '').replace(',', '.'))
-            : undefined
+        const parsed = price ? parseInt(price, 10) : undefined
 
         if (price && (isNaN(parsed!) || parsed! <= 0)) {
             const msg = 'Invalid estimated price.'
             setError(msg)
-            toast.error(msg) // 🔥 toast error
+            toast.error(msg)
             setLoading(false)
             return
         }
@@ -56,11 +63,11 @@ export function WishListForm({ payPeriodId, onSuccess }: WishListFormProps) {
 
         if (error) {
             setError(error)
-            toast.error(error) // 🔥 toast error dari API
+            toast.error(error)
             return
         }
 
-        toast.success('Item added to wishlist') // 🔥 sukses
+        toast.success('Item added to wishlist')
         onSuccess()
     }
 
@@ -79,19 +86,24 @@ export function WishListForm({ payPeriodId, onSuccess }: WishListFormProps) {
                 />
             </div>
 
-            {/* Price */}
             <div className="space-y-2">
                 <Label>
                     Estimated price <span className="text-muted-foreground">(optional)</span>
                 </Label>
-                <Input
-                    type="text"
-                    inputMode="numeric"
-                    placeholder="0"
-                    value={price}
-                    onChange={(e) => setPrice(e.target.value.replace(/[^0-9.,]/g, ''))}
-                    disabled={loading}
-                />
+                <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                        Rp.
+                    </span>
+                    <Input
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="0"
+                        value={displayPrice}
+                        onChange={(e) => handlePriceChange(e.target.value)}
+                        className="pl-9"
+                        disabled={loading}
+                    />
+                </div>
             </div>
 
             {/* Priority */}

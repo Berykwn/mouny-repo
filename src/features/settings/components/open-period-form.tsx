@@ -86,9 +86,9 @@ export function OpenPeriodForm({ onSuccess }: OpenPeriodFormProps) {
                 />
             </div>
 
-            <div className="space-y-1.5">
-                <Label>Salary amount</Label>
-                <div className="relative">
+            <div>
+                <Label>Expected Income / Salary</Label>
+                <div className="relative mt-2">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
                         Rp.
                     </span>
@@ -103,11 +103,12 @@ export function OpenPeriodForm({ onSuccess }: OpenPeriodFormProps) {
                         disabled={loading}
                     />
                 </div>
+                <span className='text-xs font-light text-orange-500 -mt-1'>Expected income cannot be edited after the pay period is opened.</span>
             </div>
 
             <div className="space-y-1.5">
                 <Label>
-                    Category <span className="text-muted-foreground">(optional)</span>
+                    Destination account                    
                 </Label>
                 <Select
                     value={accountId}

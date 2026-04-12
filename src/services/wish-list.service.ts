@@ -18,9 +18,9 @@ export interface WishListAnalysis {
 
 /**
  * Generates a human-readable salary context label:
- * - price < salary      → "X% of salary"
- * - price = 100–199%    → "1 salary + shortfall Rp X"
- * - price >= 2x salary  → "Nx salary"
+ * - price < salary      → "X% of income"
+ * - price = 100–199%    → "1 income + shortfall Rp X"
+ * - price >= 2x income  → "Nx income"
  */
 function buildSalaryLabel(price: number, salary: number): string {
     if (salary <= 0) return ''
@@ -28,7 +28,7 @@ function buildSalaryLabel(price: number, salary: number): string {
     const percent = (price / salary) * 100
 
     if (percent <= 100) {
-        return `${Math.round(percent)}% of salary`
+        return `${Math.round(percent)}% of income`
     }
 
     const fullSalaries = Math.floor(price / salary)
@@ -37,12 +37,12 @@ function buildSalaryLabel(price: number, salary: number): string {
     if (fullSalaries === 1) {
         // 100–199% — show exact shortfall from 1 salary
         return remainder > 0
-            ? `1 salary + ${formatShortfall(remainder)} short`
-            : '1 salary'
+            ? `1 income + ${formatShortfall(remainder)} short`
+            : '1 income'
     }
 
     // 2x+ — just show the multiplier
-    return `${Math.ceil(price / salary)}x salary`
+    return `${Math.ceil(price / salary)}x income`
 }
 
 function formatShortfall(amount: number): string {

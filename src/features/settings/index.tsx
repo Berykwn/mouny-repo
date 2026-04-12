@@ -139,7 +139,7 @@ export default function SettingsPage() {
                 <TabsContent value="period">
                     <div className="space-y-4">
                         <div className="flex items-center justify-between">
-                            <p className="text-sm text-muted-foreground">Your salary cycle</p>
+                            <p className="text-sm text-muted-foreground">Your pay periods</p>
                             {!activePeriod && !loading && (
                                 <Button size="sm" variant="outline" onClick={() => setOpenPeriodDrawer(true)}>
                                     <Plus className="w-3.5 h-3.5 mr-1" />
@@ -176,14 +176,13 @@ export default function SettingsPage() {
                                     <span className="text-xs text-muted-foreground">{daysSince} days ago</span>
                                 </div>
 
-                                {/* Detail */}
                                 <div className="space-y-2">
                                     <div className="flex justify-between text-sm">
                                         <span className="text-muted-foreground">Start</span>
                                         <span className="font-medium">{formatDate(activePeriod.start_date)}</span>
                                     </div>
                                     <div className="flex justify-between text-sm">
-                                        <span className="text-muted-foreground">Salary</span>
+                                        <span className="text-muted-foreground">Expected income</span>
                                         <span className="font-medium">{formatCurrency(activePeriod.salary_amount)}</span>
                                     </div>
                                     {activePeriod.notes && (
@@ -194,7 +193,6 @@ export default function SettingsPage() {
                                     )}
                                 </div>
 
-                                {/* Action */}
                                 <Button
                                     variant="outline"
                                     className="w-full bg-red-100 border border-red-200 hover:bg-red-200 text-red-700 hover:text-red-700 shadow-none"
@@ -211,7 +209,7 @@ export default function SettingsPage() {
                             >
                                 <p className="text-sm font-medium">No active period</p>
                                 <p className="text-xs text-muted-foreground">
-                                    Tap to create a new salary period
+                                    Tap to open a new pay period
                                 </p>
                             </div>
                         )}
