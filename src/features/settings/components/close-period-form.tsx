@@ -29,9 +29,7 @@ export function ClosePeriodForm({ period, onSuccess }: ClosePeriodFormProps) {
         setLoading(true)
 
         const { data: accounts } = await accountsService.getAll()
-        console.log('Accounts at close:', accounts)
         const closingBalance = (accounts ?? []).reduce((s, a) => s + a.balance, 0)
-        return;
 
         const { error } = await payPeriodsService.close(period.id, closingBalance, endDate)
 
