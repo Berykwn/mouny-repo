@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { Drum, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { BottomDrawer } from '@/components/bottom-drawer'
+import { ConfirmDrawer } from '@/components/confirmation-drawer'
 import { WishListItems } from './components/wish-list-items'
 import { WishListForm } from './components/wish-list-form'
 import { BuyItemForm } from './components/buy-item-form'
@@ -10,6 +11,7 @@ import { payPeriodsService } from '@/services/pay-periods.service'
 import { formatCurrency } from '@/lib/helpers'
 import type { WishListItem } from '@/types'
 import { Skeleton } from '@/components/ui/skeleton'
+import { toast } from 'sonner'
 
 export default function WishListPage() {
     const [items, setItems] = useState<WishListItem[]>([])
@@ -18,6 +20,8 @@ export default function WishListPage() {
     const [addDrawerOpen, setAddDrawerOpen] = useState(false)
     const [buyingItem, setBuyingItem] = useState<WishListItem | null>(null)
     const [analysis, setAnalysis] = useState<Record<string, any>>({})
+    const [deletingId, setDeletingId] = useState<string | null>(null)
+    const [deleteLoading, setDeleteLoading] = useState(false)
 
     const load = useCallback(async () => {
         setLoading(true)
@@ -44,10 +48,20 @@ export default function WishListPage() {
 
     useEffect(() => { load() }, [load])
 
-    const handleDelete = async (id: string) => {
-        if (!confirm('Remove this item from wishlist?')) return
-        await wishListService.remove(id)
-        setItems((prev) => prev.filter((i) => i.id !== id))
+    const handleDeleteConfirm = async () => {
+        if (!deletingId) return
+        setDeleteLoading(true)
+        const { error } = await wishListService.remove(deletingId)
+        setDeleteLoading(false)
+
+        if (error) {
+            toast.error(error)
+            return
+        }
+
+        setItems((prev) => prev.filter((i) => i.id !== deletingId))
+        setDeletingId(null)
+        toast.success('Item removed from wish list.')
     }
 
     const totalEstimated = items
@@ -56,25 +70,25 @@ export default function WishListPage() {
 
     return (
         <div className="p-4 md:p-6 space-y-5 max-w-2xl mx-auto">
+            <div className="border-b pb-4 mb-4">
+                <div className="flex items-center justify-between px-1">
+                    <div>
+                        <p className="text-sm font-medium">Wish List</p>
+                        <p className="text-xs text-muted-foreground">
+                            Planned purchases (all periods)
+                        </p>
+                    </div>
 
-            {/* Header */}
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text font-semibold">Wish List</h1>
-                    <p className="text-xs text-muted-foreground">
-                        Planned purchases (all periods)
-                    </p>
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setAddDrawerOpen(true)}
+                        disabled={!periodId}
+                    >
+                        <Plus className="w-4 h-4 mr-1" />
+                        Add
+                    </Button>
                 </div>
-
-                <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setAddDrawerOpen(true)}
-                    disabled={!periodId}
-                >
-                    <Plus className="w-4 h-4 mr-1" />
-                    Add
-                </Button>
             </div>
 
             {/* Summary */}
@@ -112,14 +126,14 @@ export default function WishListPage() {
                 <div className="text-center py-16 space-y-1">
                     <p className="text-sm font-medium">No active period</p>
                     <p className="text-xs text-muted-foreground">
-                        Create a new pay period from dashboard.
+                        Create a new pay period from Settings.
                     </p>
                 </div>
             ) : (
                 <WishListItems
                     items={items}
                     analysis={analysis}
-                    onDelete={handleDelete}
+                    onDeleteRequest={setDeletingId}
                     onBuy={setBuyingItem}
                 />
             )}
@@ -134,7 +148,7 @@ export default function WishListPage() {
                     <WishListForm
                         payPeriodId={periodId}
                         onSuccess={() => {
-                            setAddDrawerOpen(false)
+                            setAddDrawerOpen(false);
                             load()
                         }}
                     />
@@ -151,12 +165,22 @@ export default function WishListPage() {
                     <BuyItemForm
                         item={buyingItem}
                         onSuccess={() => {
-                            setBuyingItem(null)
+                            setBuyingItem(null);
                             load()
                         }}
                     />
                 )}
             </BottomDrawer>
+
+            <ConfirmDrawer
+                open={!!deletingId}
+                title="Remove Item"
+                description="Remove this item from your wish list? This cannot be undone."
+                confirmLabel="Remove"
+                loading={deleteLoading}
+                onConfirm={handleDeleteConfirm}
+                onClose={() => setDeletingId(null)}
+            />
         </div>
     )
 }

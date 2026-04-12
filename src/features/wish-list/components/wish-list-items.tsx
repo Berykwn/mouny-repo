@@ -9,8 +9,8 @@ import { Button } from '@/components/ui/button'
 interface WishListItemsProps {
   items: WishListItem[]
   analysis: Record<string, WishListAnalysis>
-  onDelete: (id: string) => void
   onBuy: (item: WishListItem) => void
+  onDeleteRequest: (id: string) => void
 }
 
 type Filter = 'all' | 'high' | 'medium' | 'low'
@@ -27,7 +27,7 @@ const PRIORITY_COLOR: Record<string, string> = {
   low: 'text-muted-foreground bg-muted',
 }
 
-export function WishListItems({ items, analysis, onDelete, onBuy }: WishListItemsProps) {
+export function WishListItems({ items, analysis, onBuy, onDeleteRequest }: WishListItemsProps) {
   const [filter, setFilter] = useState<Filter>('all')
 
   if (items.length === 0) {
@@ -119,7 +119,7 @@ export function WishListItems({ items, analysis, onDelete, onBuy }: WishListItem
                   <Button variant="ghost" size="sm" onClick={() => onBuy(item)}>
                     <ShoppingCart className="w-4 h-4" />
                   </Button>
-                  <Button variant="ghost" size="sm" onClick={() => onDelete(item.id)}>
+                  <Button variant="ghost" size="sm" onClick={() => onDeleteRequest(item.id)}>
                     <Trash2 className="w-4 h-4" />
                   </Button>
                 </div>

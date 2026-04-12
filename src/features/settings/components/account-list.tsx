@@ -1,15 +1,12 @@
 import { formatCurrency } from '@/lib/helpers'
-import { accountsService } from '@/services/accounts-categories.service'
 import type { Account, AccountType } from '@/types'
-import { Building2, Wallet, Trash2, Pencil, AlertTriangleIcon } from 'lucide-react'
+import { Building2, Wallet, Trash2, Pencil } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { toast } from 'sonner'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 
 interface AccountListProps {
     accounts: Account[]
-    onDeleted: (id: string) => void
     onEdit: (account: Account) => void
+    onDeleteRequest: (id: string) => void
 }
 
 const TYPE_ICON = {
@@ -22,37 +19,7 @@ const TYPE_STYLE = {
     cash: 'bg-rose-100 text-rose-600',
 }
 
-export function AccountList({ accounts, onDeleted, onEdit }: AccountListProps) {
-    if (accounts.length === 0) {
-        return (
-            <Alert className="max-w-md border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-50">
-                <AlertTriangleIcon />
-                <AlertTitle>No accounts found</AlertTitle>
-                <AlertDescription>
-                    You don't have any accounts set up yet. Add one to get started.
-                </AlertDescription>
-            </Alert>
-        )
-    }
-
-    const handleDelete = async (id: string) => {
-        if (!confirm('Delete this account? This cannot be undone.')) return
-
-        const { error } = await accountsService.remove(id)
-
-        if (error) {
-            if (error.includes('foreign key') || error.includes('violates')) {
-                toast.error('Cannot delete account. It still has transactions.')
-            } else {
-                toast.error(error)
-            }
-            return
-        }
-
-        toast.success('Account deleted successfully.')
-        onDeleted(id)
-    }
-
+export function AccountList({ accounts, onEdit, onDeleteRequest }: AccountListProps) {
     return (
         <div className="rounded-xl border bg-card overflow-hidden divide-y">
             {accounts.map((acc) => {
@@ -87,7 +54,7 @@ export function AccountList({ accounts, onDeleted, onEdit }: AccountListProps) {
                                 <Pencil className="w-3.5 h-3.5" />
                             </button>
                             <button
-                                onClick={() => handleDelete(acc.id)}
+                                onClick={() => onDeleteRequest(acc.id)}
                                 className="w-7 h-7 rounded flex items-center justify-center text-muted-foreground hover:text-destructive transition-colors"
                             >
                                 <Trash2 className="w-3.5 h-3.5" />

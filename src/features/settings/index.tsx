@@ -2,12 +2,14 @@ import { useEffect, useState, useCallback } from 'react'
 import { Plus, CalendarDays, LogOut, Wallet, Tag, CheckCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { BottomDrawer } from '@/components/bottom-drawer'
+import { ConfirmDrawer } from '@/components/confirmation-drawer'
 import { OpenPeriodForm } from './components/open-period-form'
 import { PeriodHistory } from './components/period-history'
 import { AccountForm } from './components/account-form'
 import { AccountList } from './components/account-list'
 import { CategoryForm } from './components/category-form'
 import { CategoryList } from './components/category-list'
+import { ClosePeriodForm } from './components/close-period-form'
 import { payPeriodsService } from '@/services/pay-periods.service'
 import { accountsService, categoriesService } from '@/services/accounts-categories.service'
 import { useAuth } from '@/hooks/use-auth'
@@ -16,8 +18,8 @@ import { useNavigate } from 'react-router-dom'
 import type { PayPeriod, Account, Category } from '@/types'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { formatCurrency, formatDate, getDaysBetween } from '@/lib/helpers'
-import { ClosePeriodForm } from './components/close-period-form'
 import { Skeleton } from '@/components/ui/skeleton'
+import { toast } from 'sonner'
 
 export default function SettingsPage() {
     const { user } = useAuth()
@@ -34,6 +36,9 @@ export default function SettingsPage() {
     const [addCategoryDrawer, setAddCategoryDrawer] = useState(false)
     const [openPeriodDrawer, setOpenPeriodDrawer] = useState(false)
     const [closePeriodDrawer, setClosePeriodDrawer] = useState(false)
+    const [deletingAccountId, setDeletingAccountId] = useState<string | null>(null)
+    const [deletingCategoryId, setDeletingCategoryId] = useState<string | null>(null)
+    const [deleteLoading, setDeleteLoading] = useState(false)
 
     const daysSince = getDaysBetween(activePeriod?.start_date)
 
@@ -59,6 +64,44 @@ export default function SettingsPage() {
         navigate('/login', { replace: true })
     }
 
+    const handleDeleteAccount = async () => {
+        if (!deletingAccountId) return
+        setDeleteLoading(true)
+        const { error } = await accountsService.remove(deletingAccountId)
+        setDeleteLoading(false)
+
+        if (error) {
+            if (error.includes('foreign key') || error.includes('violates')) {
+                toast.error('Cannot delete account — it still has transactions linked to it.')
+            } else {
+                toast.error(error)
+            }
+            setDeletingAccountId(null)
+            return
+        }
+
+        setAccounts((prev) => prev.filter((a) => a.id !== deletingAccountId))
+        setDeletingAccountId(null)
+        toast.success('Account deleted.')
+    }
+
+    const handleDeleteCategory = async () => {
+        if (!deletingCategoryId) return
+        setDeleteLoading(true)
+        const { error } = await categoriesService.remove(deletingCategoryId)
+        setDeleteLoading(false)
+
+        if (error) {
+            toast.error(error)
+            setDeletingCategoryId(null)
+            return
+        }
+
+        setCategories((prev) => prev.filter((c) => c.id !== deletingCategoryId))
+        setDeletingCategoryId(null)
+        toast.success('Category deleted.')
+    }
+
     return (
         <div className="p-4 md:p-6 space-y-5 max-w-2xl mx-auto">
             <div className="border-b pb-4 mb-4">
@@ -78,8 +121,12 @@ export default function SettingsPage() {
                 </div>
             </div>
 
-            <Tabs defaultValue="account">
+            <Tabs defaultValue="period">
                 <TabsList variant="default" className="w-full">
+                    <TabsTrigger value="period">
+                        <CalendarDays />
+                        Periods
+                    </TabsTrigger>
                     <TabsTrigger value="account">
                         <Wallet />
                         Accounts
@@ -88,83 +135,7 @@ export default function SettingsPage() {
                         <Tag />
                         Categories
                     </TabsTrigger>
-                    <TabsTrigger value="period">
-                        <CalendarDays />
-                        Periods
-                    </TabsTrigger>
                 </TabsList>
-                <TabsContent value="account">
-                    <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                            <p className="text-sm text-muted-foreground">Your accounts & cash</p>
-                            <Button size="sm" variant="outline" onClick={() => setAddAccountDrawer(true)}>
-                                <Plus className="w-3.5 h-3.5 mr-1" />
-                                Add
-                            </Button>
-                        </div>
-
-                        {loading ? (
-                            <section className="space-y-4">
-                                {[...Array(3)].map((_, i) => (
-                                    <div key={i} className="flex w-full flex-col gap-2">
-                                        <Skeleton className="h-4 w-full" />
-                                        <Skeleton className="h-4 w-full" />
-                                        <Skeleton className="h-4 w-3/4" />
-                                    </div>
-                                ))}
-                            </section>
-                        ) : (
-                            <AccountList
-                                accounts={accounts}
-                                onDeleted={(id) => setAccounts((prev) => prev.filter((a) => a.id !== id))}
-                                onEdit={(acc) => setEditAccount(acc)}
-                            />
-                        )}
-                    </div>
-                </TabsContent>
-                <TabsContent value="category">
-                    <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                            <p className="text-sm text-muted-foreground">Labels for your transactions</p>
-                            <div className="flex gap-2">
-                                {categories.length === 0 && (
-                                    <Button
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={async () => {
-                                            await categoriesService.seedDefaults()
-                                            load()
-                                        }}
-                                    >
-                                        Seed defaults
-                                    </Button>
-                                )}
-                                <Button size="sm" variant="outline" onClick={() => setAddCategoryDrawer(true)}>
-                                    <Plus className="w-3.5 h-3.5 mr-1" />
-                                    Add
-                                </Button>
-                            </div>
-                        </div>
-
-                        {loading ? (
-                            <section className="space-y-4">
-                                {[...Array(3)].map((_, i) => (
-                                    <div key={i} className="flex w-full flex-col gap-2">
-                                        <Skeleton className="h-4 w-full" />
-                                        <Skeleton className="h-4 w-full" />
-                                        <Skeleton className="h-4 w-3/4" />
-                                    </div>
-                                ))}
-                            </section>
-                        ) : (
-                            <CategoryList
-                                categories={categories}
-                                onDeleted={(id) => setCategories((prev) => prev.filter((c) => c.id !== id))}
-                                onEdit={(cat) => setEditCategory(cat)}
-                            />
-                        )}
-                    </div>
-                </TabsContent>
                 <TabsContent value="period">
                     <div className="space-y-4">
                         <div className="flex items-center justify-between">
@@ -248,9 +219,82 @@ export default function SettingsPage() {
                         {!loading && <PeriodHistory periods={allPeriods} />}
                     </div>
                 </TabsContent>
+
+                <TabsContent value="account">
+                    <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                            <p className="text-sm text-muted-foreground">Your accounts & cash</p>
+                            {accounts.length > 0 && !loading && (
+                                <Button size="sm" variant="outline" onClick={() => setAddAccountDrawer(true)}>
+                                    <Plus className="w-3.5 h-3.5 mr-1" />Add
+                                </Button>
+                            )}
+                        </div>
+                        {loading ? (
+                            <section className="space-y-4">
+                                {[...Array(3)].map((_, i) => (
+                                    <div key={i} className="flex w-full flex-col gap-2">
+                                        <Skeleton className="h-4 w-full" />
+                                        <Skeleton className="h-4 w-3/4" />
+                                    </div>
+                                ))}
+                            </section>
+                        ) : accounts.length === 0 ? (
+                            <div
+                                onClick={() => setAddAccountDrawer(true)}
+                                className="rounded-xl border border-dashed bg-card p-6 text-center space-y-1 cursor-pointer hover:bg-accent transition-colors"
+                            >
+                                <p className="text-sm font-medium">No accounts yet</p>
+                                <p className="text-xs text-muted-foreground">Tap to add your first account</p>
+                            </div>
+                        ) : (
+                            <AccountList
+                                accounts={accounts}
+                                onEdit={setEditAccount}
+                                onDeleteRequest={setDeletingAccountId}
+                            />
+                        )}
+                    </div>
+                </TabsContent>
+
+                <TabsContent value="category">
+                    <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                            <p className="text-sm text-muted-foreground">Labels for your transactions</p>
+                            <div className="flex gap-2">
+                                {categories.length === 0 && (
+                                    <Button size="sm" variant="outline" onClick={async () => {
+                                        await categoriesService.seedDefaults()
+                                        load()
+                                    }}>
+                                        Seed defaults
+                                    </Button>
+                                )}
+                                <Button size="sm" variant="outline" onClick={() => setAddCategoryDrawer(true)}>
+                                    <Plus className="w-3.5 h-3.5 mr-1" />Add
+                                </Button>
+                            </div>
+                        </div>
+                        {loading ? (
+                            <section className="space-y-4">
+                                {[...Array(3)].map((_, i) => (
+                                    <div key={i} className="flex w-full flex-col gap-2">
+                                        <Skeleton className="h-4 w-full" />
+                                        <Skeleton className="h-4 w-3/4" />
+                                    </div>
+                                ))}
+                            </section>
+                        ) : (
+                            <CategoryList
+                                categories={categories}
+                                onEdit={setEditCategory}
+                                onDeleteRequest={setDeletingCategoryId}
+                            />
+                        )}
+                    </div>
+                </TabsContent>
             </Tabs>
 
-            {/* Drawers */}
             <BottomDrawer
                 open={addAccountDrawer}
                 onClose={() => setAddAccountDrawer(false)}
@@ -310,12 +354,33 @@ export default function SettingsPage() {
                     <ClosePeriodForm
                         period={activePeriod}
                         onSuccess={() => {
-                            setActivePeriod(null)
+                            setClosePeriodDrawer(false);
+                            setActivePeriod(null);
                             load()
                         }}
                     />
                 )}
             </BottomDrawer>
+
+            <ConfirmDrawer
+                open={!!deletingAccountId}
+                title="Delete Account"
+                description="Delete this account? This cannot be undone. Accounts with existing transactions cannot be deleted."
+                confirmLabel="Delete Account"
+                loading={deleteLoading}
+                onConfirm={handleDeleteAccount}
+                onClose={() => setDeletingAccountId(null)}
+            />
+
+            <ConfirmDrawer
+                open={!!deletingCategoryId}
+                title="Delete Category"
+                description="Delete this category? Transactions using this category will become uncategorized."
+                confirmLabel="Delete Category"
+                loading={deleteLoading}
+                onConfirm={handleDeleteCategory}
+                onClose={() => setDeletingCategoryId(null)}
+            />
         </div>
     )
 }
