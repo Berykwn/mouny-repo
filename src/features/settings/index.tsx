@@ -20,6 +20,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { formatCurrency, formatDate, getDaysBetween } from '@/lib/helpers'
 import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from 'sonner'
+import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card'
 
 export default function SettingsPage() {
     const { user } = useAuth()
@@ -159,49 +160,55 @@ export default function SettingsPage() {
                                 ))}
                             </section>
                         ) : activePeriod ? (
-                            <div className="rounded-xl border bg-card p-4 space-y-4">
-                                <div className="flex items-start justify-between">
-                                    <div className="flex items-center gap-2.5">
-                                        <div className="w-8 h-8 rounded-lg bg-green-100 dark:bg-green-900 flex items-center justify-center">
-                                            <CalendarDays className="w-4 h-4 text-green-600 dark:text-green-400" />
-                                        </div>
-                                        <div>
-                                            <p className="text-sm font-medium">Active Period</p>
-                                            <div className="flex items-center gap-1.5 mt-0.5">
-                                                <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-                                                <p className="text-xs text-green-600 dark:text-green-400 font-medium">Ongoing</p>
+                            <Card>
+                                <CardHeader>
+                                    <div className="flex items-start justify-between">
+                                        <div className="flex items-center gap-2.5">
+                                            <div className="w-8 h-8 rounded-lg bg-lime-100 dark:bg-lime-900 flex items-center justify-center">
+                                                <CalendarDays className="w-4 h-4 text-lime-600 dark:text-lime-400" />
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-medium">Active Period</p>
+                                                <div className="flex items-center gap-1.5 mt-0.5">
+                                                    <div className="w-1.5 h-1.5 rounded-full bg-lime-500 animate-pulse" />
+                                                    <p className="text-xs text-lime-600 dark:text-lime-400 font-medium">Ongoing</p>
+                                                </div>
                                             </div>
                                         </div>
+                                        <span className="text-xs text-muted-foreground">{daysSince} days ago</span>
                                     </div>
-                                    <span className="text-xs text-muted-foreground">{daysSince} days ago</span>
-                                </div>
+                                </CardHeader>
 
-                                <div className="space-y-2">
-                                    <div className="flex justify-between text-sm">
-                                        <span className="text-muted-foreground">Start</span>
-                                        <span className="font-medium">{formatDate(activePeriod.start_date)}</span>
-                                    </div>
-                                    <div className="flex justify-between text-sm">
-                                        <span className="text-muted-foreground">Expected income</span>
-                                        <span className="font-medium">{formatCurrency(activePeriod.salary_amount)}</span>
-                                    </div>
-                                    {activePeriod.notes && (
+                                <CardContent>
+                                    <div className="space-y-1.5">
                                         <div className="flex justify-between text-sm">
-                                            <span className="text-muted-foreground">Notes</span>
-                                            <span className="font-medium text-right max-w-[60%] truncate">{activePeriod.notes}</span>
+                                            <span className="text-muted-foreground">Start</span>
+                                            <span className="font-medium">{formatDate(activePeriod.start_date)}</span>
                                         </div>
-                                    )}
-                                </div>
+                                        <div className="flex justify-between text-sm">
+                                            <span className="text-muted-foreground">Expected income</span>
+                                            <span className="font-medium">{formatCurrency(activePeriod.salary_amount)}</span>
+                                        </div>
+                                        {activePeriod.notes && (
+                                            <div className="flex justify-between text-sm">
+                                                <span className="text-muted-foreground">Notes</span>
+                                                <span className="font-medium text-right max-w-[60%] truncate">{activePeriod.notes}</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                </CardContent>
 
-                                <Button
-                                    variant="outline"
-                                    className="w-full bg-red-100 border border-red-200 hover:bg-red-200 text-red-700 hover:text-red-700 shadow-none"
-                                    onClick={() => setClosePeriodDrawer(true)}
-                                >
-                                    <CheckCircle className="w-4 h-4 mr-2" />
-                                    Close Period
-                                </Button>
-                            </div>
+                                <CardFooter>
+                                    <Button
+                                        variant="destructive"
+                                        className='w-full'
+                                        onClick={() => setClosePeriodDrawer(true)}
+                                    >
+                                        <CheckCircle className="w-4 h-4 mr-2" />
+                                        Close Period
+                                    </Button>
+                                </CardFooter>
+                            </Card>
                         ) : (
                             <div
                                 onClick={() => setOpenPeriodDrawer(true)}
