@@ -32,10 +32,12 @@ export function ThemeProvider({
                 : "light"
 
             root.classList.add(systemTheme)
+            root.style.colorScheme = systemTheme
             return
         }
 
         root.classList.add(theme)
+        root.style.colorScheme = theme
     }, [theme])
 
     return (

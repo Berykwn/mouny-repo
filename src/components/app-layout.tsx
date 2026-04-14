@@ -1,21 +1,21 @@
-import { NavLink, Outlet } from 'react-router-dom'
+import { Link, NavLink, Outlet } from 'react-router-dom'
 import {
     LayoutDashboard,
     ArrowLeftRight,
     CreditCard,
     ShoppingBag,
-    Settings,
+    Settings2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { AppLogo } from './app-logo'
-import { ModeToggle } from './mode-toggle'
+// import { HeaderMenu } from './header-menu'
 
 const NAV_ITEMS = [
     { to: '/', label: 'Dashboard', icon: LayoutDashboard },
     { to: '/transactions', label: 'Transactions', icon: ArrowLeftRight },
     { to: '/debts', label: 'Debts', icon: CreditCard },
     { to: '/wish-list', label: 'Wish List', icon: ShoppingBag },
-    { to: '/settings', label: 'Settings', icon: Settings },
+    // { to: '/settings', label: 'Settings', icon: Settings },
 ]
 
 export default function AppLayout() {
@@ -36,8 +36,10 @@ export default function AppLayout() {
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
-                        <ModeToggle />
+                    <div className="flex items-center gap-2 px-1">
+                        <Link to="/settings">
+                            <Settings2 className="h-5 w-5 text-muted-foreground hover:text-foreground transition-colors" />
+                        </Link>
                     </div>
                 </header>
 
