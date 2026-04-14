@@ -5,8 +5,10 @@ import { Label } from '@/components/ui/label'
 import { Loader2 } from 'lucide-react'
 import { debtsService } from '@/services/debts.service'
 import { accountsService } from '@/services/accounts-categories.service'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import type { Account } from '@/types'
-import { cn } from '@/lib/utils'
+import { toast } from 'sonner'
 
 interface DebtFormProps {
     onSuccess: () => void
@@ -23,7 +25,6 @@ export function DebtForm({ onSuccess }: DebtFormProps) {
     const [notes, setNotes] = useState('')
     const [accounts, setAccounts] = useState<Account[]>([])
     const [loading, setLoading] = useState(false)
-    const [error, setError] = useState<string | null>(null)
 
     useEffect(() => {
         accountsService.getAll().then(({ data }) => {
@@ -31,17 +32,29 @@ export function DebtForm({ onSuccess }: DebtFormProps) {
         })
     }, [])
 
+    const handleAmountChange = (raw: string) => {
+        setAmount(raw.replace(/\D/g, ''))
+    }
+
+    const displayAmount = amount ? Number(amount).toLocaleString('id-ID') : ''
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
-        setError(null)
 
-        const parsed = parseFloat(amount.replace(/\./g, '').replace(',', '.'))
-        if (isNaN(parsed) || parsed <= 0) { setError('Nominal tidak valid.'); return }
+        const parsed = parseInt(amount, 10)
+        if (!amount || isNaN(parsed) || parsed <= 0) {
+            toast.error('Invalid amount.')
+            return
+        }
+        if (!counterparty.trim()) {
+            toast.error('Please enter a name.')
+            return
+        }
 
         setLoading(true)
         const { error } = await debtsService.create({
             type,
-            counterparty,
+            counterparty: counterparty.trim(),
             total_amount: parsed,
             remaining_amount: parsed,
             due_date: dueDate || null,
@@ -50,36 +63,33 @@ export function DebtForm({ onSuccess }: DebtFormProps) {
             notes: notes || null,
         })
         setLoading(false)
-        if (error) { setError(error); return }
+
+        if (error) { toast.error(error); return }
         onSuccess()
     }
 
     return (
         <form onSubmit={handleSubmit} className="space-y-4 pb-2">
-            {/* Type toggle */}
-            <div className="flex rounded-lg border overflow-hidden">
-                {(['debt', 'receivable'] as DebtType[]).map((t) => (
-                    <button
-                        key={t}
-                        type="button"
-                        onClick={() => setType(t)}
-                        className={cn(
-                            'flex-1 py-2 text-sm font-medium transition-colors',
-                            type === t
-                                ? 'bg-foreground text-background'
-                                : 'text-muted-foreground hover:text-foreground'
-                        )}
-                    >
-                        {t === 'debt' ? 'Saya berhutang' : 'Saya dihutangi'}
-                    </button>
-                ))}
-            </div>
 
-            {/* Counterparty */}
+            <ToggleGroup
+                variant="outline"
+                type="single"
+                value={type}
+                onValueChange={(val) => val && setType(val as DebtType)}
+                className="w-full"
+            >
+                <ToggleGroupItem value="debt" className="flex-1">
+                    Debt
+                </ToggleGroupItem>
+                <ToggleGroupItem value="receivable" className="flex-1">
+                    Receivable
+                </ToggleGroupItem>
+            </ToggleGroup>
+
             <div className="space-y-1.5">
-                <Label>{type === 'debt' ? 'Nama pemberi hutang' : 'Nama peminjam'}</Label>
+                <Label>{type === 'debt' ? 'Lender name' : 'Borrower name'}</Label>
                 <Input
-                    placeholder="Nama orang / pihak"
+                    placeholder="Person or party"
                     value={counterparty}
                     onChange={(e) => setCounterparty(e.target.value)}
                     required
@@ -87,23 +97,27 @@ export function DebtForm({ onSuccess }: DebtFormProps) {
                 />
             </div>
 
-            {/* Amount */}
             <div className="space-y-1.5">
-                <Label>Nominal</Label>
-                <Input
-                    type="text"
-                    inputMode="numeric"
-                    placeholder="0"
-                    value={amount}
-                    onChange={(e) => setAmount(e.target.value.replace(/[^0-9.,]/g, ''))}
-                    required
-                    disabled={loading}
-                />
+                <Label>Amount</Label>
+                <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                        Rp.
+                    </span>
+                    <Input
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="0"
+                        value={displayAmount}
+                        onChange={(e) => handleAmountChange(e.target.value)}
+                        className="pl-9"
+                        required
+                        disabled={loading}
+                    />
+                </div>
             </div>
 
-            {/* Due date */}
             <div className="space-y-1.5">
-                <Label>Jatuh tempo <span className="text-muted-foreground">(opsional)</span></Label>
+                <Label>Due date <span className="text-muted-foreground">(optional)</span></Label>
                 <Input
                     type="date"
                     value={dueDate}
@@ -112,41 +126,32 @@ export function DebtForm({ onSuccess }: DebtFormProps) {
                 />
             </div>
 
-            {/* Pay from account */}
             <div className="space-y-1.5">
-                <Label>Rencana bayar dari <span className="text-muted-foreground">(opsional)</span></Label>
-                <select
-                    value={accountId}
-                    onChange={(e) => setAccountId(e.target.value)}
-                    disabled={loading}
-                    className="w-full h-9 rounded-md border bg-background px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-                >
-                    <option value="">— Belum ditentukan —</option>
-                    {accounts.map((a) => (
-                        <option key={a.id} value={a.id}>{a.name}</option>
-                    ))}
-                </select>
+                <Label>Pay from account <span className="text-muted-foreground">(optional)</span></Label>
+                <Select value={accountId} onValueChange={setAccountId} disabled={loading}>
+                    <SelectTrigger className="h-10">
+                        <SelectValue placeholder="Not specified" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {accounts.map((a) => (
+                            <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
             </div>
 
-            {/* Notes */}
             <div className="space-y-1.5">
-                <Label>Catatan <span className="text-muted-foreground">(opsional)</span></Label>
+                <Label>Note <span className="text-muted-foreground">(optional)</span></Label>
                 <Input
-                    placeholder="Detail hutang"
+                    placeholder="Details..."
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
                     disabled={loading}
                 />
             </div>
 
-            {error && (
-                <p className="text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-md px-3 py-2">
-                    {error}
-                </p>
-            )}
-
             <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Simpan'}
+                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save'}
             </Button>
         </form>
     )

@@ -1,7 +1,8 @@
 import { useEffect, useState, useCallback } from 'react'
-import { Plus, Loader2 } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { BottomDrawer } from '@/components/bottom-drawer'
+import { ConfirmDrawer } from '@/components/confirmation-drawer'
 import { DebtList } from './components/debt-list'
 import { DebtForm } from './components/debt-form'
 import { PayDebtForm } from './components/pay-debt-form'
@@ -9,13 +10,22 @@ import { debtsService } from '@/services/debts.service'
 import { payPeriodsService } from '@/services/pay-periods.service'
 import { formatCurrency } from '@/lib/helpers'
 import type { DebtWithAccount } from '@/types'
+import { cn } from '@/lib/utils'
+import { toast } from 'sonner'
+import { Skeleton } from '@/components/ui/skeleton'
+
+type FilterType = 'all' | 'debt' | 'receivable'
 
 export default function DebtsPage() {
     const [debts, setDebts] = useState<DebtWithAccount[]>([])
     const [periodId, setPeriodId] = useState<string | null>(null)
+    const [periodStartDate, setPeriodStartDate] = useState<string | null>(null)
     const [loading, setLoading] = useState(true)
     const [addDrawerOpen, setAddDrawerOpen] = useState(false)
     const [payingDebt, setPayingDebt] = useState<DebtWithAccount | null>(null)
+    const [filter, setFilter] = useState<FilterType>('all')
+    const [deletingDebt, setDeletingDebt] = useState<DebtWithAccount | null>(null)
+    const [deleteLoading, setDeleteLoading] = useState(false)
 
     const load = useCallback(async () => {
         setLoading(true)
@@ -24,88 +34,174 @@ export default function DebtsPage() {
             debtsService.getActive(),
         ])
         setPeriodId(period?.id ?? null)
+        setPeriodStartDate(period?.start_date ?? null)
         setDebts(debtData ?? [])
         setLoading(false)
     }, [])
 
     useEffect(() => { load() }, [load])
 
-    const handleDelete = async (id: string) => {
-        if (!confirm('Hapus catatan hutang ini?')) return
-        await debtsService.remove(id)
-        setDebts((prev) => prev.filter((d) => d.id !== id))
+    const handleDeleteConfirm = async () => {
+        if (!deletingDebt) return
+        setDeleteLoading(true)
+        const { error } = await debtsService.remove(deletingDebt.id)
+        setDeleteLoading(false)
+        if (error) { toast.error(error); return }
+        setDebts((prev) => prev.filter((d) => d.id !== deletingDebt.id))
+        setDeletingDebt(null)
+        toast.success('Debt record deleted.')
     }
+
+    const deleteDescription = (() => {
+        if (!deletingDebt) return ''
+        const paidAmount = deletingDebt.total_amount - deletingDebt.remaining_amount
+        const isFullyPaid = deletingDebt.remaining_amount === 0
+        const isUnpaid = paidAmount === 0
+
+        if (isFullyPaid) {
+            return 'This debt is fully paid. Deleting will remove the record only — past transactions are unaffected.'
+        }
+        if (isUnpaid) {
+            return 'This debt has no payments recorded yet. The record will be permanently removed.'
+        }
+        return `${formatCurrency(paidAmount)} of this debt has already been recorded as paid. Deleting will remove the debt record, but those transactions will remain in your history.`
+    })()
 
     const myDebts = debts.filter(d => d.type === 'debt')
     const receivables = debts.filter(d => d.type === 'receivable')
     const totalOwed = myDebts.reduce((s, d) => s + d.remaining_amount, 0)
     const totalReceivable = receivables.reduce((s, d) => s + d.remaining_amount, 0)
+    const net = totalReceivable - totalOwed
+
+    const filterCounts: Record<FilterType, number> = {
+        all: debts.length,
+        debt: myDebts.length,
+        receivable: receivables.length,
+    }
+
+    const filteredDebts = filter === 'all' ? debts : debts.filter(d => d.type === filter)
+
+    const filterLabels: Record<FilterType, string> = {
+        all: `All (${filterCounts.all})`,
+        debt: `Debt (${filterCounts.debt})`,
+        receivable: `Receivable (${filterCounts.receivable})`,
+    }
 
     return (
         <div className="p-4 md:p-6 space-y-5 max-w-2xl mx-auto">
-
-            {/* Header */}
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-xl font-semibold">Hutang</h1>
-                    <p className="text-xs text-muted-foreground">Hutang & piutang aktif</p>
-                </div>
-                <Button size="sm" onClick={() => setAddDrawerOpen(true)}>
-                    <Plus className="w-4 h-4 mr-1" />
-                    Tambah
-                </Button>
-            </div>
-
-            {/* Summary */}
-            {!loading && debts.length > 0 && (
-                <div className="grid grid-cols-2 gap-3">
-                    <div className="rounded-xl border bg-card p-3 space-y-0.5">
-                        <p className="text-xs text-muted-foreground">Kamu berhutang</p>
-                        <p className="text-base font-semibold text-destructive">{formatCurrency(totalOwed)}</p>
+            <header className="border-b pb-4">
+                <div className="flex items-center justify-between px-1">
+                    <div>
+                        <p className="text-sm font-medium">Debts</p>
+                        <p className="text-xs text-muted-foreground">Active debts &amp; receivables</p>
                     </div>
-                    <div className="rounded-xl border bg-card p-3 space-y-0.5">
-                        <p className="text-xs text-muted-foreground">Kamu dihutangi</p>
-                        <p className="text-base font-semibold text-blue-600">{formatCurrency(totalReceivable)}</p>
-                    </div>
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setAddDrawerOpen(true)}
+                        disabled={!periodId}
+                    >
+                        <Plus className="w-4 h-4 mr-1" />
+                        Add
+                    </Button>
                 </div>
-            )}
+            </header>
 
-            {/* List */}
             {loading ? (
-                <div className="flex items-center justify-center py-16">
-                    <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
-                </div>
+                <section className="space-y-4">
+                    {[...Array(3)].map((_, i) => (
+                        <div key={i} className="flex w-full flex-col gap-2">
+                            <Skeleton className="h-4 w-full" />
+                            <Skeleton className="h-4 w-full" />
+                            <Skeleton className="h-4 w-3/4" />
+                        </div>
+                    ))}
+                </section>
             ) : (
-                <DebtList
-                    debts={debts}
-                    onDelete={handleDelete}
-                    onPay={setPayingDebt}
-                />
+                <>
+                    {debts.length > 0 && (
+                        <div className="rounded-xl border bg-card p-4 space-y-3">
+                            <div>
+                                <p className="text-xs text-muted-foreground">Net position</p>
+                                <p className={cn(
+                                    'text-2xl font-semibold mt-0.5',
+                                    net > 0 ? 'text-green-600' : net < 0 ? 'text-destructive' : 'text-foreground'
+                                )}>
+                                    {net >= 0 ? '+' : ''}{formatCurrency(net)}
+                                </p>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3 pt-2 border-t">
+                                <div>
+                                    <p className="text-[11px] text-muted-foreground">Debt</p>
+                                    <p className="text-sm font-medium text-destructive">{formatCurrency(totalOwed)}</p>
+                                </div>
+                                <div>
+                                    <p className="text-[11px] text-muted-foreground">Receivable</p>
+                                    <p className="text-sm font-medium text-green-600">{formatCurrency(totalReceivable)}</p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {debts.length > 0 && (
+                        <div className="flex gap-2 flex-wrap">
+                            {(Object.keys(filterLabels) as FilterType[]).map((f) => (
+                                <button
+                                    key={f}
+                                    onClick={() => setFilter(f)}
+                                    className={cn(
+                                        'px-3 py-1.5 rounded-full text-xs font-medium border transition-colors',
+                                        filter === f
+                                            ? 'bg-neutral-200 text-neutral-600 border-neutral-200'
+                                            : 'bg-background text-muted-foreground border-border hover:text-foreground hover:border-foreground/40'
+                                    )}
+                                >
+                                    {filterLabels[f]}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+
+                    <DebtList
+                        debts={filteredDebts}
+                        onDelete={setDeletingDebt}
+                        onPay={setPayingDebt}
+                    />
+                </>
             )}
 
-            {/* Add drawer */}
             <BottomDrawer
                 open={addDrawerOpen}
                 onClose={() => setAddDrawerOpen(false)}
-                title="Tambah Hutang"
+                title="Add Debt"
             >
                 <DebtForm onSuccess={() => { setAddDrawerOpen(false); load() }} />
             </BottomDrawer>
 
-            {/* Pay drawer */}
             <BottomDrawer
                 open={!!payingDebt}
                 onClose={() => setPayingDebt(null)}
-                title="Catat Pembayaran"
+                title="Record Payment"
             >
-                {payingDebt && periodId && (
+                {payingDebt && periodId && periodStartDate && (
                     <PayDebtForm
                         debt={payingDebt}
                         payPeriodId={periodId}
+                        periodStartDate={periodStartDate}
                         onSuccess={() => { setPayingDebt(null); load() }}
                     />
                 )}
             </BottomDrawer>
+
+            <ConfirmDrawer
+                open={!!deletingDebt}
+                title="Delete Debt"
+                description={deleteDescription}
+                confirmLabel="Delete"
+                loading={deleteLoading}
+                onConfirm={handleDeleteConfirm}
+                onClose={() => setDeletingDebt(null)}
+            />
         </div>
     )
 }
