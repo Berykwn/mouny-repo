@@ -11,16 +11,12 @@ export default function AuthLayout({ children }: AuthLayoutProps) {
             <div className="w-full max-w-sm space-y-8">
 
                 <div className="flex items-center gap-x-2">
-                    <div className="w-12 h-12 flex items-center justify-center">
+                    <div className="w-10 h-10 flex items-center justify-center">
                         <AppLogo />
                     </div>
-                    <div className='flex flex-col'>
-                        <h1 className="font-semibold tracking-tight">
-                            Mouny.
-                        </h1>
-                        <span className="text-xs text-muted-foreground">
-                            by raremind studio
-                        </span>
+                    <div className="flex flex-col">
+                        <h1 className="text-sm font-semibold tracking-tight">Mouny.</h1>
+                        <span className="text-xs text-muted-foreground">mindful money</span>
                     </div>
                 </div>
 
