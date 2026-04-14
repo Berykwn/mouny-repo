@@ -16,6 +16,7 @@ import { toast } from 'sonner'
 export default function WishListPage() {
     const [items, setItems] = useState<WishListItem[]>([])
     const [periodId, setPeriodId] = useState<string | null>(null)
+    const [periodStart, setPeriodStart] = useState<string | null>(null)  // for BuyItemForm validation
     const [loading, setLoading] = useState(true)
     const [addDrawerOpen, setAddDrawerOpen] = useState(false)
     const [buyingItem, setBuyingItem] = useState<WishListItem | null>(null)
@@ -29,15 +30,16 @@ export default function WishListPage() {
         const { data: period } = await payPeriodsService.getActive()
         if (!period) {
             setPeriodId(null)
+            setPeriodStart(null)
             setLoading(false)
             return
         }
 
         setPeriodId(period.id)
+        setPeriodStart(period.start_date)
 
         const { data: itemsData } = await wishListService.getAll()
         const list = itemsData ?? []
-
         setItems(list)
 
         const { data: analysisData } = await wishListService.analyze(list)
@@ -54,10 +56,7 @@ export default function WishListPage() {
         const { error } = await wishListService.remove(deletingId)
         setDeleteLoading(false)
 
-        if (error) {
-            toast.error(error)
-            return
-        }
+        if (error) { toast.error(error); return }
 
         setItems((prev) => prev.filter((i) => i.id !== deletingId))
         setDeletingId(null)
@@ -74,11 +73,8 @@ export default function WishListPage() {
                 <div className="flex items-center justify-between px-1">
                     <div>
                         <p className="text-sm font-medium">Wish List</p>
-                        <p className="text-xs text-muted-foreground">
-                            Planned purchases (all periods)
-                        </p>
+                        <p className="text-xs text-muted-foreground">Planned purchases (all periods)</p>
                     </div>
-
                     <Button
                         size="sm"
                         variant="outline"
@@ -98,14 +94,11 @@ export default function WishListPage() {
                         <div className="w-9 h-9 rounded-lg bg-lime-100 dark:bg-lime-900 flex items-center justify-center">
                             <Drum className="w-4 h-4 text-lime-600 dark:text-lime-400" />
                         </div>
-
                         <div>
                             <p className="text-xs text-muted-foreground">
                                 {items.filter(i => !i.is_purchased).length} pending items · total estimate
                             </p>
-                            <p className="text-lg font-semibold">
-                                {formatCurrency(totalEstimated)}
-                            </p>
+                            <p className="text-lg font-semibold">{formatCurrency(totalEstimated)}</p>
                         </div>
                     </div>
                 </div>
@@ -125,9 +118,7 @@ export default function WishListPage() {
             ) : !periodId ? (
                 <div className="text-center py-16 space-y-1">
                     <p className="text-sm font-medium">No active period</p>
-                    <p className="text-xs text-muted-foreground">
-                        Create a new pay period from Settings.
-                    </p>
+                    <p className="text-xs text-muted-foreground">Create a new pay period from Settings.</p>
                 </div>
             ) : (
                 <WishListItems
@@ -147,27 +138,22 @@ export default function WishListPage() {
                 >
                     <WishListForm
                         payPeriodId={periodId}
-                        onSuccess={() => {
-                            setAddDrawerOpen(false);
-                            load()
-                        }}
+                        onSuccess={() => { setAddDrawerOpen(false); load() }}
                     />
                 </BottomDrawer>
             )}
 
-            {/* Buy drawer */}
+            {/* Buy drawer — pass periodStart for date validation */}
             <BottomDrawer
                 open={!!buyingItem}
                 onClose={() => setBuyingItem(null)}
                 title="Record Purchase"
             >
-                {buyingItem && (
+                {buyingItem && periodStart && (
                     <BuyItemForm
                         item={buyingItem}
-                        onSuccess={() => {
-                            setBuyingItem(null);
-                            load()
-                        }}
+                        periodStart={periodStart}
+                        onSuccess={() => { setBuyingItem(null); load() }}
                     />
                 )}
             </BottomDrawer>
