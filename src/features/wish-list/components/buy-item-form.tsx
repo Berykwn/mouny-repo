@@ -18,14 +18,18 @@ import type { WishListItem, Account, Category } from '@/types'
 
 interface BuyItemFormProps {
     item: WishListItem
+    periodStart: string     // start date active period — min date
     onSuccess: () => void
 }
 
-export function BuyItemForm({ item, onSuccess }: BuyItemFormProps) {
-    const [price, setPrice] = useState(
-        item.estimated_price ? String(item.estimated_price) : ''
-    )
-    const [date, setDate] = useState(toISODate())
+export function BuyItemForm({ item, periodStart, onSuccess }: BuyItemFormProps) {
+    const today = toISODate()
+    // const maxDate = today
+
+    const defaultDate = today < periodStart ? periodStart : today
+
+    const [price, setPrice] = useState(item.estimated_price ? String(item.estimated_price) : '')
+    const [date, setDate] = useState(defaultDate)
     const [accountId, setAccountId] = useState('')
     const [categoryId, setCategoryId] = useState('none')
     const [accounts, setAccounts] = useState<Account[]>([])
@@ -38,62 +42,52 @@ export function BuyItemForm({ item, onSuccess }: BuyItemFormProps) {
             accountsService.getAll(),
             categoriesService.getByType('expense'),
         ]).then(([{ data: accs }, { data: cats }]) => {
-            if (accs) {
-                setAccounts(accs)
-                setAccountId(accs[0]?.id ?? '')
-            }
-            if (cats) {
-                setCategories(cats)
-                setCategoryId(cats[0]?.id ?? 'none')
-            }
+            if (accs) { setAccounts(accs); setAccountId(accs[0]?.id ?? '') }
+            if (cats && cats.length > 0) { setCategories(cats); setCategoryId(cats[0].id) }
         })
     }, [])
 
-    const handlePriceChange = (raw: string) => {
-        const digitsOnly = raw.replace(/\D/g, '')
-        setPrice(digitsOnly)
-    }
-
-    const displayPrice = price
-        ? Number(price).toLocaleString('id-ID')
-        : ''
+    const handlePriceChange = (raw: string) => setPrice(raw.replace(/\D/g, ''))
+    const displayPrice = price ? Number(price).toLocaleString('id-ID') : ''
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         setError(null)
 
         const parsed = parseInt(price, 10)
-
         if (!price || isNaN(parsed) || parsed <= 0) {
-            const msg = 'Invalid price.'
-            setError(msg)
-            toast.error(msg)
+            setError('Invalid price.')
+            return
+        }
+        if (!categoryId) {
+            setError('Please select a category.')
             return
         }
 
         if (!accountId) {
-            const msg = 'Please select an account.'
-            setError(msg)
-            toast.error(msg)
+            setError('Please select an account.')
+            return
+        }
+
+        if (date < periodStart) {
+            setError(`Purchase date cannot be before period start (${periodStart}).`)
+            return
+        }
+        if (date > today) {
+            setError("Purchase date cannot be in the future.")
             return
         }
 
         setLoading(true)
-
         const { error } = await wishListService.markAsPurchased(item, {
             account_id: accountId,
-            category_id: categoryId === 'none' ? undefined : categoryId,
+            category_id: categoryId,
             actual_price: parsed,
             date,
         })
-
         setLoading(false)
 
-        if (error) {
-            setError(error)
-            toast.error(error)
-            return
-        }
+        if (error) { setError(error); toast.error(error); return }
 
         toast.success('Purchase recorded successfully')
         onSuccess()
@@ -135,19 +129,13 @@ export function BuyItemForm({ item, onSuccess }: BuyItemFormProps) {
             {/* Account */}
             <div className="space-y-1.5">
                 <Label>Paid from</Label>
-                <Select
-                    value={accountId}
-                    onValueChange={setAccountId}
-                    disabled={loading}
-                >
+                <Select value={accountId} onValueChange={setAccountId} disabled={loading}>
                     <SelectTrigger className="h-10">
                         <SelectValue placeholder="Select account" />
                     </SelectTrigger>
                     <SelectContent>
                         {accounts.map((a) => (
-                            <SelectItem key={a.id} value={a.id}>
-                                {a.name}
-                            </SelectItem>
+                            <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
                         ))}
                     </SelectContent>
                 </Select>
@@ -155,54 +143,44 @@ export function BuyItemForm({ item, onSuccess }: BuyItemFormProps) {
 
             {/* Category */}
             <div className="space-y-1.5">
-                <Label>
-                    Category <span className="text-muted-foreground">(optional)</span>
-                </Label>
-                <Select
-                    value={categoryId}
-                    onValueChange={setCategoryId}
-                    disabled={loading}
-                >
+                <Label>Category <span className="text-muted-foreground">*</span></Label>
+                <Select value={categoryId} onValueChange={setCategoryId} disabled={loading}>
                     <SelectTrigger className="h-10">
-                        <SelectValue placeholder="No category" />
+                        <SelectValue placeholder="Select category" />
                     </SelectTrigger>
                     <SelectContent>
-                        <SelectItem value="none">No category</SelectItem>
                         {categories.map((c) => (
-                            <SelectItem key={c.id} value={c.id}>
-                                {c.name}
-                            </SelectItem>
+                            <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                         ))}
                     </SelectContent>
                 </Select>
             </div>
 
-            {/* Date */}
+            {/* Date — constrained to active period range */}
             <div className="space-y-1.5">
                 <Label>Purchase date</Label>
                 <Input
                     type="date"
                     value={date}
                     onChange={(e) => setDate(e.target.value)}
+                    min={periodStart}
+                    max={today}
                     required
                     disabled={loading}
                 />
+                <p className="text-xs text-muted-foreground">
+                    Must be within active period ({periodStart} — {today})
+                </p>
             </div>
 
-            {/* Error */}
             {error && (
                 <p className="text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-md px-3 py-2">
                     {error}
                 </p>
             )}
 
-            {/* Submit */}
             <Button type="submit" className="w-full h-10" disabled={loading}>
-                {loading ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                    'Mark as Purchased'
-                )}
+                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Mark as Purchased'}
             </Button>
         </form>
     )
