@@ -9,7 +9,7 @@ export const ThemeContext = createContext<ThemeType | null>(null)
 
 export function ThemeProvider({
     children,
-    defaultTheme = "system",
+    defaultTheme = "light",
     storageKey = "shadcn-ui-theme",
 }: {
     children: ReactNode
@@ -32,12 +32,12 @@ export function ThemeProvider({
                 : "light"
 
             root.classList.add(systemTheme)
-            root.style.colorScheme = systemTheme
+            root.style.colorScheme = "light"
             return
         }
 
         root.classList.add(theme)
-        root.style.colorScheme = theme
+        root.style.colorScheme = "light"
     }, [theme])
 
     return (
