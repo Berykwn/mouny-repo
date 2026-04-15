@@ -4,27 +4,31 @@ import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Loader2, ArrowLeft } from 'lucide-react'
+import { ArrowLeft } from 'lucide-react'
+import { toast } from 'sonner'
 
 export function ForgotPasswordForm() {
     const [email, setEmail] = useState('')
     const [loading, setLoading] = useState(false)
-    const [error, setError] = useState<string | null>(null)
     const [sent, setSent] = useState(false)
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
-        setError(null)
         setLoading(true)
 
         try {
             const { error } = await supabase.auth.resetPasswordForEmail(email, {
                 redirectTo: `${window.location.origin}/reset-password`,
             })
+
             if (error) throw error
+
+            toast.success('Reset link sent! Check your email.')
             setSent(true)
         } catch (err: unknown) {
-            if (err instanceof Error) setError(err.message)
+            if (err instanceof Error) {
+                toast.error(err.message)
+            }
         } finally {
             setLoading(false)
         }
@@ -56,7 +60,7 @@ export function ForgotPasswordForm() {
                 <Input
                     id="email"
                     type="email"
-                    placeholder="your@email.com"
+                    placeholder="people@mouny.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
@@ -65,14 +69,8 @@ export function ForgotPasswordForm() {
                 />
             </div>
 
-            {error && (
-                <div className="text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-md px-3 py-2">
-                    {error}
-                </div>
-            )}
-
             <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Send reset link'}
+                {loading ? 'Sending...' : 'Send reset link'}
             </Button>
 
             <div className="text-center">
