@@ -19,9 +19,9 @@ const NAV_ITEMS = [
 
 export default function AppLayout() {
     return (
-        <div className="min-h-screen bg-background flex justify-center">
-            <div className="w-full max-w-md min-h-screen bg-background flex flex-col border-x">
-                <header className="sticky top-0 z-20 h-16 border-b bg-background/80 dark:border-neutral-700 backdrop-blur flex items-center justify-between px-4">
+        <div className="min-h-screen bg-white flex justify-center">
+            <div className="w-full max-w-md min-h-screen bg-white flex flex-col border-x">
+                <header className="sticky top-0 z-20 h-16 border-b bg-white/80 dark:border-neutral-700 backdrop-blur flex items-center justify-between px-4">
                     <div className="flex items-center gap-x-2">
                         <div className="w-10 h-10 flex items-center justify-center">
                             <AppLogo />
@@ -50,7 +50,7 @@ export default function AppLayout() {
                     <Outlet />
                 </main>
 
-                <nav className="sticky bottom-0 border-t bg-background/80 dark:border-neutral-700 backdrop-blur h-20 flex items-center">
+                <nav className="sticky bottom-0 border-t bg-white/80 dark:border-neutral-700 backdrop-blur h-20 flex items-center">
                     {NAV_ITEMS.map(({ to, label, icon: Icon }) => (
                         <NavLink
                             key={to}
