@@ -21,7 +21,7 @@ const NAV_ITEMS = [
 
 export default function AppLayout() {
     return (
-        <div className="min-h-screen bg-background flex justify-center">
+        <div className="min-h-screen flex justify-center">
             {/* Mobile Container */}
             <div className="w-full max-w-md min-h-screen bg-red-50 flex flex-col border-x">
 

@@ -1,4 +1,4 @@
-import { createContext, ReactNode, use, useEffect, useState } from "react"
+import { createContext, ReactNode, useContext } from "react"
 
 type ThemeType = {
     theme: string
@@ -7,59 +7,16 @@ type ThemeType = {
 
 export const ThemeContext = createContext<ThemeType | null>(null)
 
-export function ThemeProvider({
-    children,
-    defaultTheme = "light",
-    storageKey = "shadcn-ui-theme",
-}: {
-    children: ReactNode
-    defaultTheme?: string
-    storageKey?: string
-}) {
-    const [theme, setTheme] = useState(
-        () => localStorage.getItem(storageKey) ?? defaultTheme
-    )
-
-    useEffect(() => {
-        const root = window.document.documentElement
-
-        root.classList.remove("light", "dark")
-
-        if (theme === "system") {
-            const systemTheme = window.matchMedia("(prefers-color-scheme: dark)")
-                .matches
-                ? "dark"
-                : "light"
-
-            root.classList.add(systemTheme)
-            root.style.colorScheme = "light"
-            return
-        }
-
-        root.classList.add(theme)
-        root.style.colorScheme = "light"
-    }, [theme])
-
+export function ThemeProvider({ children }: { children: ReactNode }) {
     return (
-        <ThemeContext
-            value={{
-                theme,
-                setTheme: (theme: string) => {
-                    localStorage.setItem(storageKey, theme)
-                    setTheme(theme)
-                },
-            }}>
+        <ThemeContext value={{ theme: "light", setTheme: () => { } }}>
             {children}
         </ThemeContext>
     )
 }
 
 export function useTheme(): ThemeType {
-    const context = use(ThemeContext)
-
-    if (context === null) {
-        throw new Error("useTheme must be used within a ThemeProvider")
-    }
-
+    const context = useContext(ThemeContext)
+    if (!context) throw new Error("useTheme must be used within ThemeProvider")
     return context
 }
