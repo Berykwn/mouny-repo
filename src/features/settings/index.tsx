@@ -21,6 +21,8 @@ import { formatCurrency, formatDate, getDaysBetween } from '@/lib/helpers'
 import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from 'sonner'
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card'
+import { Separator } from '@/components/ui/separator'
+import { LoadingContent } from '@/components/loading-content'
 
 export default function SettingsPage() {
     const { user } = useAuth()
@@ -40,6 +42,7 @@ export default function SettingsPage() {
     const [deletingAccountId, setDeletingAccountId] = useState<string | null>(null)
     const [deletingCategoryId, setDeletingCategoryId] = useState<string | null>(null)
     const [deleteLoading, setDeleteLoading] = useState(false)
+    const [logoutConfirm, setLogoutConfirm] = useState(false)
 
     const daysSince = getDaysBetween(activePeriod?.start_date)
 
@@ -61,10 +64,10 @@ export default function SettingsPage() {
     useEffect(() => { load() }, [load])
 
     const handleLogout = async () => {
+        setLogoutConfirm(false)
         await supabase.auth.signOut()
         navigate('/login', { replace: true })
     }
-
     const handleDeleteAccount = async () => {
         if (!deletingAccountId) return
         setDeleteLoading(true)
@@ -105,7 +108,7 @@ export default function SettingsPage() {
 
     return (
         <div className="p-4 md:p-6 space-y-5 max-w-2xl mx-auto">
-            <div className="border-b pb-4 mb-4">
+            <header className="border-b dark:border-neutral-700 pb-4 mb-4">
                 <div className="flex items-center justify-between px-1">
                     <div>
                         <p className="text-xs text-muted-foreground">Signed in as</p>
@@ -115,12 +118,12 @@ export default function SettingsPage() {
                     <Button
                         variant="ghost"
                         size="icon"
-                        onClick={handleLogout}
+                        onClick={() => setLogoutConfirm(true)}
                     >
                         <LogOut className="w-4 h-4" />
                     </Button>
                 </div>
-            </div>
+            </header>
 
             <Tabs defaultValue="period">
                 <TabsList variant="default" className="w-full">
@@ -140,7 +143,7 @@ export default function SettingsPage() {
                 <TabsContent value="period">
                     <div className="space-y-4">
                         <div className="flex items-center justify-between">
-                            <p className="text-sm text-muted-foreground">Your pay periods</p>
+                            <h2 className="text-sm text-muted-foreground">Pay Period</h2>
                             {!activePeriod && !loading && (
                                 <Button size="sm" variant="outline" onClick={() => setOpenPeriodDrawer(true)}>
                                     <Plus className="w-3.5 h-3.5 mr-1" />
@@ -150,28 +153,20 @@ export default function SettingsPage() {
                         </div>
 
                         {loading ? (
-                            <section className="space-y-4">
-                                {[...Array(3)].map((_, i) => (
-                                    <div key={i} className="flex w-full flex-col gap-2">
-                                        <Skeleton className="h-4 w-full" />
-                                        <Skeleton className="h-4 w-full" />
-                                        <Skeleton className="h-4 w-3/4" />
-                                    </div>
-                                ))}
-                            </section>
+                            <LoadingContent length={4} />
                         ) : activePeriod ? (
                             <Card>
                                 <CardHeader>
                                     <div className="flex items-start justify-between">
                                         <div className="flex items-center gap-2.5">
-                                            <div className="w-8 h-8 rounded-lg bg-lime-100 dark:bg-lime-900 flex items-center justify-center">
-                                                <CalendarDays className="w-4 h-4 text-lime-600 dark:text-lime-400" />
+                                            <div className="w-8 h-8 rounded-lg bg-teal-100 dark:bg-teal-900 flex items-center justify-center">
+                                                <CalendarDays className="w-4 h-4 text-teal-600 dark:text-teal-400" />
                                             </div>
                                             <div>
                                                 <p className="text-sm font-medium">Active Period</p>
-                                                <div className="flex items-center gap-1.5 mt-0.5">
-                                                    <div className="w-1.5 h-1.5 rounded-full bg-lime-500 animate-pulse" />
-                                                    <p className="text-xs text-lime-600 dark:text-lime-400 font-medium">Ongoing</p>
+                                                <div className="flex items-center gap-1.5">
+                                                    <div className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-pulse" />
+                                                    <p className="text-xs text-teal-600 dark:text-teal-400 font-medium">Ongoing</p>
                                                 </div>
                                             </div>
                                         </div>
@@ -180,7 +175,7 @@ export default function SettingsPage() {
                                 </CardHeader>
 
                                 <CardContent>
-                                    <div className="space-y-1.5">
+                                    <div className="space-y-1">
                                         <div className="flex justify-between text-sm">
                                             <span className="text-muted-foreground">Start</span>
                                             <span className="font-medium">{formatDate(activePeriod.start_date)}</span>
@@ -203,8 +198,9 @@ export default function SettingsPage() {
                                         variant="destructive"
                                         className='w-full'
                                         onClick={() => setClosePeriodDrawer(true)}
+                                        size="sm"
                                     >
-                                        <CheckCircle className="w-4 h-4 mr-2" />
+                                        <CheckCircle className="w-3 h-3 mr-2" />
                                         Close Period
                                     </Button>
                                 </CardFooter>
@@ -221,6 +217,8 @@ export default function SettingsPage() {
                             </div>
                         )}
 
+                        <Separator className='border-b border-neutral-700' />
+
                         {!loading && <PeriodHistory periods={allPeriods} />}
                     </div>
                 </TabsContent>
@@ -228,22 +226,16 @@ export default function SettingsPage() {
                 <TabsContent value="account">
                     <div className="space-y-4">
                         <div className="flex items-center justify-between">
-                            <p className="text-sm text-muted-foreground">Your accounts & cash</p>
-                            {accounts.length > 0 && !loading && (
-                                <Button size="sm" variant="outline" onClick={() => setAddAccountDrawer(true)}>
-                                    <Plus className="w-3.5 h-3.5 mr-1" />Add
-                                </Button>
-                            )}
+                            <h2 className="text-sm text-muted-foreground">Account & Cash</h2>
+                            {/* {accounts.length > 0 && !loading && ( */}
+                            <Button size="sm" variant="outline" className='bg-neutral-700' onClick={() => setAddAccountDrawer(true)}>
+                                <Plus className="w-3.5 h-3.5 mr-1" />Add
+                            </Button>
+                            {/* )} */}
                         </div>
+
                         {loading ? (
-                            <section className="space-y-4">
-                                {[...Array(3)].map((_, i) => (
-                                    <div key={i} className="flex w-full flex-col gap-2">
-                                        <Skeleton className="h-4 w-full" />
-                                        <Skeleton className="h-4 w-3/4" />
-                                    </div>
-                                ))}
-                            </section>
+                            <LoadingContent length={4} />
                         ) : accounts.length === 0 ? (
                             <div
                                 onClick={() => setAddAccountDrawer(true)}
@@ -385,6 +377,16 @@ export default function SettingsPage() {
                 loading={deleteLoading}
                 onConfirm={handleDeleteCategory}
                 onClose={() => setDeletingCategoryId(null)}
+            />
+
+            <ConfirmDrawer
+                open={logoutConfirm}
+                title="Logout"
+                description="Are you sure you want to logout?"
+                confirmLabel="Logout"
+                loading={false}
+                onConfirm={handleLogout}
+                onClose={() => setLogoutConfirm(false)}
             />
         </div>
     )

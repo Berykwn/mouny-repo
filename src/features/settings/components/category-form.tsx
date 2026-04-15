@@ -49,8 +49,6 @@ export function CategoryForm({ onSuccess, initial }: CategoryFormProps) {
 
     return (
         <form onSubmit={handleSubmit} className="space-y-4 pb-2">
-
-            {/* TYPE SWITCH */}
             <div className="flex rounded-lg border overflow-hidden">
                 {(['expense', 'income'] as CategoryType[]).map((t) => (
                     <button
@@ -69,7 +67,6 @@ export function CategoryForm({ onSuccess, initial }: CategoryFormProps) {
                 ))}
             </div>
 
-            {/* NAME */}
             <div className="space-y-2">
                 <Label>Category name</Label>
                 <Input
@@ -80,7 +77,6 @@ export function CategoryForm({ onSuccess, initial }: CategoryFormProps) {
                 />
             </div>
 
-            {/* COLOR PICKER */}
             <div className="space-y-4">
                 <Label>Color</Label>
                 <div className="flex gap-4 flex-wrap">
@@ -101,7 +97,6 @@ export function CategoryForm({ onSuccess, initial }: CategoryFormProps) {
                 </div>
             </div>
 
-            {/* SUBMIT */}
             <Button type="submit" className="w-full" disabled={loading}>
                 {loading
                     ? <Loader2 className="w-4 h-4 animate-spin" />

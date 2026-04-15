@@ -88,8 +88,6 @@ export function AccountForm({ onSuccess, initial }: AccountFormProps) {
 
     return (
         <form onSubmit={handleSubmit} className="space-y-4 pb-2">
-
-            {/* ACCOUNT TYPE */}
             <div className="space-y-2">
                 <Label>Account type</Label>
                 <div className="grid grid-cols-2 gap-2">
@@ -101,14 +99,14 @@ export function AccountForm({ onSuccess, initial }: AccountFormProps) {
                             className={cn(
                                 'flex flex-col items-start p-3 rounded-lg border text-left transition-colors',
                                 type === t.value
-                                    ? 'bg-yellow-100 text-yellow-600 border-yellow-200'
+                                    ? 'bg-neutral-300 text-neutral-700 border-neutral-400'
                                     : 'text-muted-foreground hover:text-foreground border-border'
                             )}
                         >
                             <span className="text-sm font-medium">{t.label}</span>
                             <span className={cn(
                                 'text-xs mt-0.5',
-                                type === t.value ? 'text-yellow-600/70' : 'text-muted-foreground'
+                                type === t.value ? 'text-neutral-600/70' : 'text-muted-foreground'
                             )}>
                                 {t.desc}
                             </span>
@@ -117,7 +115,6 @@ export function AccountForm({ onSuccess, initial }: AccountFormProps) {
                 </div>
             </div>
 
-            {/* NAME */}
             <div className="space-y-2">
                 <Label>Account name</Label>
                 <Input
@@ -129,7 +126,6 @@ export function AccountForm({ onSuccess, initial }: AccountFormProps) {
                 />
             </div>
 
-            {/* INITIAL BALANCE */}
             {!isEdit && (
                 <div className="space-y-2">
                     <Label>Current balance</Label>

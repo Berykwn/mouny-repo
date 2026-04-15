@@ -26,9 +26,11 @@ export function ConfirmDrawer({
     return (
         <BottomDrawer open={open} onClose={onClose} title={title}>
             <div className="space-y-4 pb-2">
-                <div className="flex items-start gap-3 rounded-lg bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 px-4 py-3">
-                    <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                    <p className="text-sm text-amber-800 dark:text-amber-200">{description}</p>
+                <div className="flex gap-x-4 items-center py-3">
+                    <AlertTriangle className="text-yellow-500 mt-0.5" />
+                    <p className="text-yellow-500 text-sm">
+                        {description}
+                    </p>
                 </div>
 
                 <Button
