@@ -5,6 +5,7 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
+  --color-scheme: light;
   --radius: 0.625rem;
   --background: oklch(100% 0.00011 271.152);
   --foreground: oklch(0.145 0 0);
@@ -116,7 +117,12 @@
     @apply border-border outline-ring/50;
   }
 
-  body {
+  /* body {
     @apply bg-background text-foreground;
+  } */
+
+  html {
+    forced-color-adjust: none;
+    -webkit-forced-color-adjust: none;
   }
 }

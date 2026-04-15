@@ -8,6 +8,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { AppLogo } from './app-logo'
+import { ModeToggle } from './mode-toggle'
 // import { HeaderMenu } from './header-menu'
 
 const NAV_ITEMS = [
@@ -22,7 +23,7 @@ export default function AppLayout() {
     return (
         <div className="min-h-screen bg-background flex justify-center">
             {/* Mobile Container */}
-            <div className="w-full max-w-md min-h-screen bg-background flex flex-col border-x">
+            <div className="w-full max-w-md min-h-screen bg-white flex flex-col border-x">
 
                 {/* Header */}
                 <header className="sticky top-0 z-20 h-14 border-b bg-background/80 backdrop-blur flex items-center justify-between px-4">
@@ -37,6 +38,7 @@ export default function AppLayout() {
                     </div>
 
                     <div className="flex items-center gap-2 px-1">
+                        <ModeToggle />
                         <Link to="/settings">
                             <Settings2 className="h-5 w-5 text-muted-foreground hover:text-foreground transition-colors" />
                         </Link>
