@@ -23,7 +23,7 @@ export default function AppLayout() {
     return (
         <div className="min-h-screen bg-background flex justify-center">
             {/* Mobile Container */}
-            <div className="w-full max-w-md min-h-screen bg-white flex flex-col border-x">
+            <div className="w-full max-w-md min-h-screen bg-red-50 flex flex-col border-x">
 
                 {/* Header */}
                 <header className="sticky top-0 z-20 h-14 border-b bg-background/80 backdrop-blur flex items-center justify-between px-4">
