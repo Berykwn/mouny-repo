@@ -9,16 +9,17 @@ export const ThemeContext = createContext<ThemeType | null>(null)
 
 export function ThemeProvider({
     children,
-    defaultTheme = "system",
+    // defaultTheme = "system",
     storageKey = "shadcn-ui-theme",
 }: {
     children: ReactNode
     defaultTheme?: string
     storageKey?: string
 }) {
-    const [theme, setTheme] = useState(
-        () => localStorage.getItem(storageKey) ?? defaultTheme
-    )
+    // const [theme, setTheme] = useState(
+    //     () => localStorage.getItem(storageKey) ?? defaultTheme
+    // )
+    const [theme, setTheme] = useState("dark")
 
     useEffect(() => {
         const root = window.document.documentElement
