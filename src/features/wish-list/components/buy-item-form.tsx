@@ -18,13 +18,12 @@ import type { WishListItem, Account, Category } from '@/types'
 
 interface BuyItemFormProps {
     item: WishListItem
-    periodStart: string     // start date active period — min date
+    periodStart: string
     onSuccess: () => void
 }
 
 export function BuyItemForm({ item, periodStart, onSuccess }: BuyItemFormProps) {
     const today = toISODate()
-    // const maxDate = today
 
     const defaultDate = today < periodStart ? periodStart : today
 
@@ -95,8 +94,6 @@ export function BuyItemForm({ item, periodStart, onSuccess }: BuyItemFormProps) 
 
     return (
         <form onSubmit={handleSubmit} className="space-y-4 pb-2">
-
-            {/* Header */}
             <div className="rounded-xl bg-muted px-4 py-3">
                 <p className="text-xs text-muted-foreground">Mark as purchased</p>
                 <p className="font-semibold">{item.name}</p>
@@ -107,7 +104,6 @@ export function BuyItemForm({ item, periodStart, onSuccess }: BuyItemFormProps) 
                 )}
             </div>
 
-            {/* Price */}
             <div className="space-y-1.5">
                 <Label>Actual price</Label>
                 <div className="relative">
@@ -126,7 +122,6 @@ export function BuyItemForm({ item, periodStart, onSuccess }: BuyItemFormProps) 
                 </div>
             </div>
 
-            {/* Account */}
             <div className="space-y-1.5">
                 <Label>Paid from</Label>
                 <Select value={accountId} onValueChange={setAccountId} disabled={loading}>
@@ -141,7 +136,6 @@ export function BuyItemForm({ item, periodStart, onSuccess }: BuyItemFormProps) 
                 </Select>
             </div>
 
-            {/* Category */}
             <div className="space-y-1.5">
                 <Label>Category <span className="text-muted-foreground">*</span></Label>
                 <Select value={categoryId} onValueChange={setCategoryId} disabled={loading}>
@@ -156,7 +150,6 @@ export function BuyItemForm({ item, periodStart, onSuccess }: BuyItemFormProps) 
                 </Select>
             </div>
 
-            {/* Date — constrained to active period range */}
             <div className="space-y-1.5">
                 <Label>Purchase date</Label>
                 <Input

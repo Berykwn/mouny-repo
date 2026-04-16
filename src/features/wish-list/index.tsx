@@ -87,7 +87,6 @@ export default function WishListPage() {
                 </div>
             </div>
 
-            {/* Summary */}
             {!loading && items.length > 0 && (
                 <div className="rounded-2xl border bg-card p-4 flex items-center justify-between shadow-sm">
                     <div className="flex items-center gap-3">
@@ -104,7 +103,6 @@ export default function WishListPage() {
                 </div>
             )}
 
-            {/* List */}
             {loading ? (
                 <LoadingContent />
             ) : !periodId ? (
@@ -121,7 +119,6 @@ export default function WishListPage() {
                 />
             )}
 
-            {/* Add drawer */}
             {periodId && (
                 <BottomDrawer
                     open={addDrawerOpen}
@@ -135,7 +132,6 @@ export default function WishListPage() {
                 </BottomDrawer>
             )}
 
-            {/* Buy drawer — pass periodStart for date validation */}
             <BottomDrawer
                 open={!!buyingItem}
                 onClose={() => setBuyingItem(null)}

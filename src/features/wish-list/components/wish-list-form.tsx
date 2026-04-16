@@ -73,8 +73,6 @@ export function WishListForm({ payPeriodId, onSuccess }: WishListFormProps) {
 
     return (
         <form onSubmit={handleSubmit} className="space-y-4 pb-3">
-
-            {/* Name */}
             <div className="space-y-2">
                 <Label>Item name</Label>
                 <Input
@@ -106,7 +104,6 @@ export function WishListForm({ payPeriodId, onSuccess }: WishListFormProps) {
                 </div>
             </div>
 
-            {/* Priority */}
             <div className="space-y-2">
                 <Label>Priority</Label>
                 <div className="flex gap-2">
@@ -128,7 +125,6 @@ export function WishListForm({ payPeriodId, onSuccess }: WishListFormProps) {
                 </div>
             </div>
 
-            {/* Notes */}
             <div className="space-y-2">
                 <Label>
                     Notes <span className="text-muted-foreground">(optional)</span>
@@ -141,14 +137,12 @@ export function WishListForm({ payPeriodId, onSuccess }: WishListFormProps) {
                 />
             </div>
 
-            {/* Error fallback */}
             {error && (
                 <p className="text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-md px-3 py-2">
                     {error}
                 </p>
             )}
 
-            {/* Submit */}
             <Button type="submit" className="w-full h-10 mt-2" disabled={loading}>
                 {loading ? (
                     <Loader2 className="w-4 h-4 animate-spin" />

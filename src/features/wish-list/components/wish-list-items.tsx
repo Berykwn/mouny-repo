@@ -59,8 +59,6 @@ export function WishListItems({ items, analysis, onBuy, onDeleteRequest }: WishL
 
   return (
     <div className="space-y-4">
-
-      {/* Filter chips */}
       <div className="flex gap-2 flex-wrap">
         {FILTERS.map(({ id, label }) => (
           <button
@@ -78,15 +76,12 @@ export function WishListItems({ items, analysis, onBuy, onDeleteRequest }: WishL
         ))}
       </div>
 
-      {/* Items */}
       <div className="space-y-2">
         {filtered.map((item) => {
           const a = analysis[item.id]
 
           return (
             <div key={item.id} className="p-3 rounded-xl bg-card border space-y-2">
-
-              {/* Name + badge + actions */}
               <div className="flex items-start gap-2">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
@@ -125,7 +120,6 @@ export function WishListItems({ items, analysis, onBuy, onDeleteRequest }: WishL
                 </div>
               </div>
 
-              {/* Analysis */}
               {a && a.price > 0 && (
                 <div className="flex items-center gap-3 border-t pt-2">
                   <div className="text-[11px]">

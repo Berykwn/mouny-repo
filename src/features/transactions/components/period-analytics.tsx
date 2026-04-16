@@ -42,7 +42,6 @@ export function PeriodAnalytics({ transactions, period }: PeriodAnalyticsProps) 
     const net = totalIncome - totalExpense
     const closingBalance = period.closing_balance ?? 0
 
-    // Days in period
     const start = new Date(period.start_date)
     const end = period.end_date ? new Date(period.end_date) : new Date()
     const days = Math.max(1, Math.round((end.getTime() - start.getTime()) / 86400000))
@@ -53,7 +52,6 @@ export function PeriodAnalytics({ transactions, period }: PeriodAnalyticsProps) 
         ? Math.round((totalExpense / expectedIncome) * 100)
         : 0
 
-    // Top categories
     const categoryMap = new Map<string, { name: string; amount: number; color: string | null }>()
     for (const tx of expenses) {
         if (!tx.category) continue
@@ -87,7 +85,6 @@ export function PeriodAnalytics({ transactions, period }: PeriodAnalyticsProps) 
 
     return (
         <div className="space-y-4">
-            {/* Summary */}
             <div className="rounded-2xl border bg-card p-4 space-y-3">
                 <div>
                     <p className="text-xs text-muted-foreground mb-0.5">Net this period</p>
@@ -99,7 +96,6 @@ export function PeriodAnalytics({ transactions, period }: PeriodAnalyticsProps) 
                     </p>
                 </div>
 
-                {/* Progress bar */}
                 <div className="space-y-1">
                     <div className="h-1.5 bg-muted rounded-full overflow-hidden">
                         <div
@@ -132,7 +128,6 @@ export function PeriodAnalytics({ transactions, period }: PeriodAnalyticsProps) 
                 </div>
             </div>
 
-            {/* Stat cards grid */}
             <div className="grid grid-cols-2 gap-2.5">
                 <StatCard
                     icon={BarChart2}
@@ -167,7 +162,6 @@ export function PeriodAnalytics({ transactions, period }: PeriodAnalyticsProps) 
                 />
             </div>
 
-            {/* Top categories */}
             {topCategories.length > 0 && (
                 <div className="rounded-xl border bg-card p-4 space-y-3">
                     <div className="flex items-center gap-2">

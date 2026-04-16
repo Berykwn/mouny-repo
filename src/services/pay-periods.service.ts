@@ -3,7 +3,6 @@ import { handleError, type ServiceResult } from './_base'
 import type { PayPeriod } from '@/types/'
 
 export const payPeriodsService = {
-    // Ambil periode yang sedang aktif
     async getActive(): Promise<ServiceResult<PayPeriod>> {
         try {
             const { data, error } = await supabase
@@ -19,7 +18,6 @@ export const payPeriodsService = {
         }
     },
 
-    // Ambil semua periode (untuk riwayat)
     async getAll(): Promise<ServiceResult<PayPeriod[]>> {
         try {
             const { data, error } = await supabase
@@ -34,7 +32,6 @@ export const payPeriodsService = {
         }
     },
 
-    // Buka periode baru (saat gajian)
     async openNew(input: {
         start_date: string
         salary_amount: number
@@ -75,7 +72,6 @@ export const payPeriodsService = {
         }
     },
 
-    // Summary dari view yang sudah dibuat di DB
     async getActiveSummary() {
         try {
             const { data, error } = await supabase

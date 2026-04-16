@@ -88,8 +88,6 @@ export function AccountForm({ onSuccess, initial }: AccountFormProps) {
 
     return (
         <form onSubmit={handleSubmit} className="space-y-4 pb-2">
-
-            {/* ACCOUNT TYPE */}
             <div className="space-y-2">
                 <Label>Account type</Label>
                 <div className="grid grid-cols-2 gap-2">
@@ -117,7 +115,6 @@ export function AccountForm({ onSuccess, initial }: AccountFormProps) {
                 </div>
             </div>
 
-            {/* NAME */}
             <div className="space-y-2">
                 <Label>Account name</Label>
                 <Input
@@ -129,7 +126,6 @@ export function AccountForm({ onSuccess, initial }: AccountFormProps) {
                 />
             </div>
 
-            {/* INITIAL BALANCE */}
             {!isEdit && (
                 <div className="space-y-2">
                     <Label>Current balance</Label>

@@ -23,7 +23,6 @@ export type WishListItem = Database['public']['Tables']['wish_list']['Row']
 export type WishListInsert = Database['public']['Tables']['wish_list']['Insert']
 export type WishListUpdate = Database['public']['Tables']['wish_list']['Update']
 
-// Enum-like types
 export type AccountType = 'bank' | 'cash'
 export type CategoryType = 'income' | 'expense'
 export type TransactionType = 'income' | 'expense'
@@ -32,7 +31,6 @@ export type DebtType = 'debt' | 'receivable'
 export type DebtStatus = 'active' | 'paid'
 export type WishListPriority = 'low' | 'medium' | 'high'
 
-// Join types untuk UI
 export type TransactionWithDetails = Transaction & {
     account: Pick<Account, 'id' | 'name' | 'type'>
     category: Pick<Category, 'id' | 'name' | 'color' | 'icon'> | null

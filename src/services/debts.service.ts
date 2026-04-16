@@ -53,11 +53,8 @@ export const debtsService = {
         }
     },
 
-    // Catat pembayaran hutang: kurangi remaining_amount
-    // Transaksi pengeluarannya dibuat terpisah di transactionsService
     async recordPayment(id: string, amountPaid: number): Promise<ServiceResult<Debt>> {
         try {
-            // Ambil data hutang dulu
             const { data: debt, error: fetchError } = await supabase
                 .from('debts')
                 .select('remaining_amount, total_amount')

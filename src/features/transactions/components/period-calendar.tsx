@@ -18,7 +18,7 @@ interface PeriodCalendarProps {
     canGoNext: boolean
     onPrevPeriod: () => void
     onNextPeriod: () => void
-    onOpenPicker: () => void     // ← buka period picker drawer
+    onOpenPicker: () => void
 }
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -135,21 +135,18 @@ export function PeriodCalendar({
         ? clampDefault()
         : selectedDate
 
-    // Group by date
     const txByDate = new Map<string, TransactionWithDetails[]>()
     for (const tx of transactions) {
         if (!txByDate.has(tx.date)) txByDate.set(tx.date, [])
         txByDate.get(tx.date)!.push(tx)
     }
 
-    // Daily expense for heatmap
     const dailyExpense = new Map<string, number>()
     for (const [date, txs] of txByDate) {
         dailyExpense.set(date, txs.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0))
     }
     const maxExpense = Math.max(0, ...dailyExpense.values())
 
-    // Calendar grid
     const dates = getDatesInRange(periodStart, periodEnd)
     const firstDayOfWeek = new Date(periodStart + 'T00:00:00').getDay()
     const paddedDates: (string | null)[] = [...Array(firstDayOfWeek).fill(null), ...dates]
@@ -163,8 +160,6 @@ export function PeriodCalendar({
     return (
         <div className="space-y-3">
             <div className="rounded-xl border bg-card p-4 space-y-4">
-
-                {/* Period navigator */}
                 <div className="flex items-center gap-2">
                     <button
                         onClick={onPrevPeriod}
@@ -174,7 +169,6 @@ export function PeriodCalendar({
                         <ChevronLeft className="w-4 h-4" />
                     </button>
 
-                    {/* Center — tappable to open picker */}
                     <button
                         onClick={onOpenPicker}
                         className="flex-1 flex flex-col items-center gap-1 py-1 rounded-lg hover:bg-accent transition-colors"
@@ -199,7 +193,6 @@ export function PeriodCalendar({
                     </button>
                 </div>
 
-                {/* Heatmap legend */}
                 <div className="flex items-center justify-between">
                     <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                         Spending calendar
@@ -215,7 +208,6 @@ export function PeriodCalendar({
                     </div>
                 </div>
 
-                {/* Day headers */}
                 <div className="grid grid-cols-7 gap-1">
                     {DAY_LABELS.map(d => (
                         <div key={d} className="text-[10px] text-center text-muted-foreground font-medium py-1">
@@ -224,7 +216,6 @@ export function PeriodCalendar({
                     ))}
                 </div>
 
-                {/* Calendar grid */}
                 <div className="grid grid-cols-7 gap-1">
                     {paddedDates.map((date, i) => {
                         if (!date) return <div key={`pad-${i}`} className="aspect-square" />
@@ -261,7 +252,6 @@ export function PeriodCalendar({
                 </div>
             </div>
 
-            {/* Selected day detail */}
             <div className="rounded-xl border bg-card p-4">
                 <div className="flex items-center justify-between mb-3">
                     <p className="text-sm font-semibold">

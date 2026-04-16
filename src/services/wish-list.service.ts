@@ -6,22 +6,14 @@ import { payPeriodsService } from './pay-periods.service'
 
 export interface WishListAnalysis {
     price: number
-    // Affordability
     totalBalance: number
     canAfford: boolean
-    shortfall: number               // 0 if affordable, positive if not
-    // Salary context
+    shortfall: number
     salaryAmount: number
-    percentOfSalary: number         // price / salary * 100
-    salaryLabel: string             // human-readable salary context
+    percentOfSalary: number
+    salaryLabel: string
 }
 
-/**
- * Generates a human-readable salary context label:
- * - price < salary      → "X% of income"
- * - price = 100–199%    → "1 income + shortfall Rp X"
- * - price >= 2x income  → "Nx income"
- */
 function buildSalaryLabel(price: number, salary: number): string {
     if (salary <= 0) return ''
 

@@ -10,7 +10,6 @@ interface BottomDrawerProps {
 }
 
 export function BottomDrawer({ open, onClose, title, children }: BottomDrawerProps) {
-    // Lock body scroll when open
     React.useEffect(() => {
         if (open) document.body.style.overflow = 'hidden'
         else document.body.style.overflow = ''
@@ -21,7 +20,6 @@ export function BottomDrawer({ open, onClose, title, children }: BottomDrawerPro
 
     return (
         <>
-            {/* Backdrop */}
             <div
                 className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
                 onClick={onClose}
@@ -40,7 +38,6 @@ export function BottomDrawer({ open, onClose, title, children }: BottomDrawerPro
                     <div className="w-10 h-1 rounded-full bg-muted-foreground/30" />
                 </div>
 
-                {/* Header */}
                 <div className="flex items-center justify-between px-5 py-3 border-b shrink-0">
                     <h2 className="font-semibold text-base">{title}</h2>
                     <button
@@ -51,7 +48,6 @@ export function BottomDrawer({ open, onClose, title, children }: BottomDrawerPro
                     </button>
                 </div>
 
-                {/* Content — scrollable */}
                 <div className="overflow-y-auto flex-1 px-5 py-4">
                     {children}
                 </div>

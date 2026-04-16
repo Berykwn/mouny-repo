@@ -57,8 +57,6 @@ export function PeriodHistory({ periods }: PeriodHistoryProps) {
 
                     return (
                         <div key={p.id} className="rounded-xl border bg-card p-4 space-y-3">
-
-                            {/* Header */}
                             <div className="flex items-center justify-between">
                                 <p className="text-sm font-medium">
                                     {formatDate(p.start_date)}
@@ -70,7 +68,6 @@ export function PeriodHistory({ periods }: PeriodHistoryProps) {
                                 </span>
                             </div>
 
-                            {/* Salary + Closing */}
                             <div className="flex justify-between gap-2 text-xs">
                                 <div>
                                     <p className="text-muted-foreground">Salary</p>
@@ -96,7 +93,6 @@ export function PeriodHistory({ periods }: PeriodHistoryProps) {
                                 )}
                             </div>
 
-                            {/* Summary Income / Expense / Net */}
                             <div className="grid grid-cols-3 gap-2 text-xs pt-2 border-t">
                                 <div>
                                     <p className="text-muted-foreground">Income</p>
@@ -127,7 +123,6 @@ export function PeriodHistory({ periods }: PeriodHistoryProps) {
                                 </div>
                             </div>
 
-                            {/* Notes */}
                             {p.notes && (
                                 <p className="text-xs text-muted-foreground pt-1">
                                     {p.notes}

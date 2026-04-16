@@ -100,8 +100,6 @@ export function PayDebtForm({ debt, payPeriodId, periodStartDate, onSuccess }: P
 
     return (
         <form onSubmit={handleSubmit} className="space-y-4 pb-2">
-
-            {/* Debt summary */}
             <div className="rounded-xl border bg-card p-4 space-y-3">
                 <div className="flex items-start justify-between">
                     <div>
@@ -121,7 +119,6 @@ export function PayDebtForm({ debt, payPeriodId, periodStartDate, onSuccess }: P
                 </div>
             </div>
 
-            {/* Amount */}
             <div className="space-y-1.5">
                 <Label>Payment amount</Label>
                 <div className="relative">
@@ -140,7 +137,6 @@ export function PayDebtForm({ debt, payPeriodId, periodStartDate, onSuccess }: P
                 </div>
             </div>
 
-            {/* Account */}
             <div className="space-y-1.5">
                 <Label>Pay from</Label>
                 {needsAccountPick ? (
@@ -161,7 +157,6 @@ export function PayDebtForm({ debt, payPeriodId, periodStartDate, onSuccess }: P
                 )}
             </div>
 
-            {/* Date */}
             <div className="space-y-1.5">
                 <Label>Payment date</Label>
                 <Input
