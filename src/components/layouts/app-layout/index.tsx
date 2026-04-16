@@ -71,7 +71,7 @@ export default function AppLayout() {
                                     <div
                                         className={cn(
                                             'w-8 h-8 rounded-lg flex items-center justify-center transition-colors',
-                                            isActive ? 'bg-neutral-200' : 'bg-transparent'
+                                            isActive ? 'bg-neutral-200 dark:bg-neutral-700' : 'bg-transparent'
                                         )}
                                     >
                                         <Icon
