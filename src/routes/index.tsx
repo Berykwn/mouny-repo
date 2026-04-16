@@ -9,7 +9,7 @@ import ForgotPasswordPage from '@/features/auth/forgot-password'
 import ResetPasswordPage from '@/features/auth/reset-password'
 
 // Features
-import DashboardPage from '@/features'
+import DashboardPage from '@/features/dashboard'
 import TransactionsPage from '@/features/transactions'
 import DebtsPage from '@/features/debts'
 import WishListPage from '@/features/wish-list'
