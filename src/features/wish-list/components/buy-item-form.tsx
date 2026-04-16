@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
+import { format } from 'date-fns'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Loader2 } from 'lucide-react'
+import { Loader2, CalendarIcon } from 'lucide-react'
 import { wishListService } from '@/services/wish-list.service'
 import { accountsService, categoriesService } from '@/services/accounts-categories.service'
 import { formatCurrency, toISODate } from '@/lib/helpers'
@@ -14,6 +15,13 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select'
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from '@/components/ui/popover'
+import { Calendar } from '@/components/ui/calendar'
+import { cn } from '@/lib/utils'
 import type { WishListItem, Account, Category } from '@/types'
 
 interface BuyItemFormProps {
@@ -24,7 +32,6 @@ interface BuyItemFormProps {
 
 export function BuyItemForm({ item, periodStart, onSuccess }: BuyItemFormProps) {
     const today = toISODate()
-
     const defaultDate = today < periodStart ? periodStart : today
 
     const [price, setPrice] = useState(item.estimated_price ? String(item.estimated_price) : '')
@@ -34,7 +41,6 @@ export function BuyItemForm({ item, periodStart, onSuccess }: BuyItemFormProps) 
     const [accounts, setAccounts] = useState<Account[]>([])
     const [categories, setCategories] = useState<Category[]>([])
     const [loading, setLoading] = useState(false)
-    const [error, setError] = useState<string | null>(null)
 
     useEffect(() => {
         Promise.all([
@@ -51,42 +57,48 @@ export function BuyItemForm({ item, periodStart, onSuccess }: BuyItemFormProps) 
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
-        setError(null)
 
         const parsed = parseInt(price, 10)
         if (!price || isNaN(parsed) || parsed <= 0) {
-            setError('Invalid price.')
+            toast.error('Invalid price.')
             return
         }
+
         if (!categoryId) {
-            setError('Please select a category.')
+            toast.error('Please select a category.')
             return
         }
 
         if (!accountId) {
-            setError('Please select an account.')
+            toast.error('Please select an account.')
             return
         }
 
         if (date < periodStart) {
-            setError(`Purchase date cannot be before period start (${periodStart}).`)
+            toast.error(`Purchase date cannot be before period start (${periodStart}).`)
             return
         }
+
         if (date > today) {
-            setError("Purchase date cannot be in the future.")
+            toast.error("Purchase date cannot be in the future.")
             return
         }
 
         setLoading(true)
+
         const { error } = await wishListService.markAsPurchased(item, {
             account_id: accountId,
             category_id: categoryId,
             actual_price: parsed,
             date,
         })
+
         setLoading(false)
 
-        if (error) { setError(error); toast.error(error); return }
+        if (error) {
+            toast.error(error)
+            return
+        }
 
         toast.success('Purchase recorded successfully')
         onSuccess()
@@ -152,25 +164,42 @@ export function BuyItemForm({ item, periodStart, onSuccess }: BuyItemFormProps) 
 
             <div className="space-y-1.5">
                 <Label>Purchase date</Label>
-                <Input
-                    type="date"
-                    value={date}
-                    onChange={(e) => setDate(e.target.value)}
-                    min={periodStart}
-                    max={today}
-                    required
-                    disabled={loading}
-                />
+
+                <Popover>
+                    <PopoverTrigger asChild>
+                        <Button
+                            variant="outline"
+                            className={cn(
+                                'w-full justify-start text-left font-normal',
+                                !date && 'text-muted-foreground'
+                            )}
+                        >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {date
+                                ? format(new Date(date), 'yyyy-MM-dd')
+                                : 'Pick a date'}
+                        </Button>
+                    </PopoverTrigger>
+
+                    <PopoverContent className="w-auto p-0">
+                        <Calendar
+                            mode="single"
+                            selected={date ? new Date(date) : undefined}
+                            onSelect={(d) => {
+                                if (!d) return
+                                setDate(format(d, 'yyyy-MM-dd'))
+                            }}
+                            disabled={(d) =>
+                                d < new Date(periodStart) || d > new Date(today)
+                            }
+                        />
+                    </PopoverContent>
+                </Popover>
+
                 <p className="text-xs text-muted-foreground">
                     Must be within active period ({periodStart} — {today})
                 </p>
             </div>
-
-            {error && (
-                <p className="text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-md px-3 py-2">
-                    {error}
-                </p>
-            )}
 
             <Button type="submit" className="w-full h-10" disabled={loading}>
                 {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Mark as Purchased'}

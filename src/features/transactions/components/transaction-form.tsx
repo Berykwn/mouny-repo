@@ -1,15 +1,23 @@
 import { useEffect, useState } from 'react'
+import { format } from 'date-fns'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Loader2 } from 'lucide-react'
+import { Loader2, CalendarIcon } from 'lucide-react'
 import { transactionsService, type CreateTransactionInput } from '@/services/transactions.service'
 import { accountsService, categoriesService } from '@/services/accounts-categories.service'
 import { toISODate } from '@/lib/helpers'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, } from '@/components/ui/select'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import type { Account, Category } from '@/types'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { toast } from 'sonner'
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from '@/components/ui/popover'
+import { Calendar } from '@/components/ui/calendar'
+import { cn } from '@/lib/utils'
 
 interface TransactionFormProps {
     payPeriodId: string
@@ -24,7 +32,6 @@ export function TransactionForm({ payPeriodId, periodStart, periodEnd, onSuccess
     const today = toISODate()
     const maxDate = periodEnd ?? today
 
-    // Default date: clamp today into period range
     const defaultDate = today > maxDate ? maxDate : today < periodStart ? periodStart : today
 
     const [type, setType] = useState<TxType>('expense')
@@ -90,6 +97,7 @@ export function TransactionForm({ payPeriodId, periodStart, periodEnd, onSuccess
         }
 
         setLoading(true)
+
         const input: CreateTransactionInput = {
             pay_period_id: payPeriodId,
             account_id: accountId,
@@ -180,15 +188,38 @@ export function TransactionForm({ payPeriodId, periodStart, periodEnd, onSuccess
 
             <div className="space-y-1.5">
                 <Label>Date</Label>
-                <Input
-                    type="date"
-                    value={date}
-                    onChange={(e) => setDate(e.target.value)}
-                    min={periodStart}
-                    max={maxDate}
-                    required
-                    disabled={loading}
-                />
+
+                <Popover>
+                    <PopoverTrigger asChild>
+                        <Button
+                            variant="outline"
+                            className={cn(
+                                'w-full justify-start text-left font-normal',
+                                !date && 'text-muted-foreground'
+                            )}
+                        >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {date
+                                ? format(new Date(date), 'yyyy-MM-dd')
+                                : 'Pick a date'}
+                        </Button>
+                    </PopoverTrigger>
+
+                    <PopoverContent className="w-auto p-0">
+                        <Calendar
+                            mode="single"
+                            selected={date ? new Date(date) : undefined}
+                            onSelect={(d) => {
+                                if (!d) return
+                                setDate(format(d, 'yyyy-MM-dd'))
+                            }}
+                            disabled={(d) =>
+                                d < new Date(periodStart) || d > new Date(maxDate)
+                            }
+                        />
+                    </PopoverContent>
+                </Popover>
+
                 <p className="text-xs text-muted-foreground">
                     Must be within {periodStart} — {maxDate}
                 </p>

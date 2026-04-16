@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
+import { format } from 'date-fns'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Loader2 } from 'lucide-react'
+import { Loader2, CalendarIcon } from 'lucide-react'
 import { debtsService } from '@/services/debts.service'
 import { transactionsService } from '@/services/transactions.service'
 import { accountsService } from '@/services/accounts-categories.service'
@@ -11,6 +12,13 @@ import { formatCurrency, toISODate } from '@/lib/helpers'
 import type { Account } from '@/types'
 import type { DebtWithAccount } from '@/types'
 import { toast } from 'sonner'
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from '@/components/ui/popover'
+import { Calendar } from '@/components/ui/calendar'
+import { cn } from '@/lib/utils'
 
 interface PayDebtFormProps {
     debt: DebtWithAccount
@@ -26,7 +34,6 @@ export function PayDebtForm({ debt, payPeriodId, periodStartDate, onSuccess }: P
     const [date, setDate] = useState(today)
     const [loading, setLoading] = useState(false)
 
-    // Account — pre-fill from debt if available, otherwise user picks
     const [accounts, setAccounts] = useState<Account[]>([])
     const [selectedAccountId, setSelectedAccountId] = useState<string>(
         debt.pay_from_account_id ?? ''
@@ -159,15 +166,38 @@ export function PayDebtForm({ debt, payPeriodId, periodStartDate, onSuccess }: P
 
             <div className="space-y-1.5">
                 <Label>Payment date</Label>
-                <Input
-                    type="date"
-                    value={date}
-                    min={periodStartDate}
-                    max={today}
-                    onChange={(e) => setDate(e.target.value)}
-                    required
-                    disabled={loading}
-                />
+
+                <Popover>
+                    <PopoverTrigger asChild>
+                        <Button
+                            variant="outline"
+                            className={cn(
+                                'w-full justify-start text-left font-normal',
+                                !date && 'text-muted-foreground'
+                            )}
+                        >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {date
+                                ? format(new Date(date), 'yyyy-MM-dd')
+                                : 'Pick a date'}
+                        </Button>
+                    </PopoverTrigger>
+
+                    <PopoverContent className="w-auto p-0">
+                        <Calendar
+                            mode="single"
+                            selected={date ? new Date(date) : undefined}
+                            onSelect={(d) => {
+                                if (!d) return
+                                setDate(format(d, 'yyyy-MM-dd'))
+                            }}
+                            disabled={(d) =>
+                                d < new Date(periodStartDate) || d > new Date(today)
+                            }
+                        />
+                    </PopoverContent>
+                </Popover>
+
                 <p className="text-xs text-muted-foreground">
                     Must be within {periodStartDate} — {today}
                 </p>

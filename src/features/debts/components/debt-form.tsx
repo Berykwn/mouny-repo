@@ -1,14 +1,22 @@
 import { useEffect, useState } from 'react'
+import { format } from 'date-fns'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Loader2 } from 'lucide-react'
+import { Loader2, CalendarIcon } from 'lucide-react'
 import { debtsService } from '@/services/debts.service'
 import { accountsService } from '@/services/accounts-categories.service'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import type { Account } from '@/types'
 import { toast } from 'sonner'
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from '@/components/ui/popover'
+import { Calendar } from '@/components/ui/calendar'
+import { cn } from '@/lib/utils'
 
 interface DebtFormProps {
     onSuccess: () => void
@@ -116,14 +124,37 @@ export function DebtForm({ onSuccess }: DebtFormProps) {
                 </div>
             </div>
 
+            {/* 🔥 INI YANG DIUBAH */}
             <div className="space-y-1.5">
                 <Label>Due date <span className="text-muted-foreground">(optional)</span></Label>
-                <Input
-                    type="date"
-                    value={dueDate}
-                    onChange={(e) => setDueDate(e.target.value)}
-                    disabled={loading}
-                />
+
+                <Popover>
+                    <PopoverTrigger asChild>
+                        <Button
+                            variant="outline"
+                            className={cn(
+                                'w-full justify-start text-left font-normal',
+                                !dueDate && 'text-muted-foreground'
+                            )}
+                        >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {dueDate
+                                ? format(new Date(dueDate), 'yyyy-MM-dd')
+                                : 'Pick a date'}
+                        </Button>
+                    </PopoverTrigger>
+
+                    <PopoverContent className="w-auto p-0">
+                        <Calendar
+                            mode="single"
+                            selected={dueDate ? new Date(dueDate) : undefined}
+                            onSelect={(d) => {
+                                if (!d) return
+                                setDueDate(format(d, 'yyyy-MM-dd'))
+                            }}
+                        />
+                    </PopoverContent>
+                </Popover>
             </div>
 
             <div className="space-y-1.5">
