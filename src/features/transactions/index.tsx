@@ -14,6 +14,7 @@ import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { LoadingContent } from '@/components/loading-content'
+import NoPeriod from '@/components/no-period'
 
 export default function TransactionsPage() {
     const [allPeriods, setAllPeriods] = useState<PayPeriod[]>([])
@@ -120,10 +121,7 @@ export default function TransactionsPage() {
             {loading ? (
                 <LoadingContent />
             ) : !selectedPeriod ? (
-                <section className="text-center py-16 space-y-1">
-                    <p className="text-sm font-medium">No pay periods found</p>
-                    <p className="text-xs text-muted-foreground">Open a pay period from Settings first.</p>
-                </section>
+                <NoPeriod />
             ) : (
                 <Tabs defaultValue="calendar" className="w-full">
                     <TabsList variant="default" className="w-full">

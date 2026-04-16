@@ -1,4 +1,4 @@
-import { Link, NavLink, Outlet } from 'react-router-dom'
+import { NavLink, Outlet } from 'react-router-dom'
 import {
     LayoutDashboard,
     ArrowLeftRight,
@@ -9,7 +9,6 @@ import {
 
 import { cn } from '@/lib/utils'
 import { AppLogo } from '@/components/app-logo'
-import { Button } from '@/components/ui/button'
 import { ModeToggle } from '@/components/mode-toggle'
 
 const NAV_ITEMS = [
@@ -17,13 +16,14 @@ const NAV_ITEMS = [
     { to: '/transactions', label: 'Transactions', icon: ArrowLeftRight },
     { to: '/debts', label: 'Debts', icon: CreditCard },
     { to: '/wish-list', label: 'Wish List', icon: ShoppingBag },
+    { to: '/settings', label: 'Settings', icon: Settings2 },
 ]
 
 export default function AppLayout() {
     return (
         <div className="min-h-screen bg-background flex justify-center">
             <div className="w-full max-w-md min-h-screen bg-background flex flex-col border-x">
-                <header className="sticky top-0 z-20 h-16 border-b bg-background/80 dark:border-neutral-700 backdrop-blur flex items-center justify-between px-4">
+                <header className="sticky top-0 z-20 h-[4.5rem] border-b bg-background/80 dark:border-neutral-700 backdrop-blur flex items-center justify-between px-4">
                     <div className="flex items-center gap-x-2">
                         <div className="w-10 h-10 flex items-center justify-center">
                             <AppLogo />
@@ -36,15 +36,6 @@ export default function AppLayout() {
 
                     <div className="flex items-center gap-1 px-1">
                         <ModeToggle />
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            type='button'
-                        >
-                            <Link to="/settings">
-                                <Settings2 className="w-5 h-5" />
-                            </Link>
-                        </Button>
                     </div>
                 </header>
 

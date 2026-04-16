@@ -8,12 +8,12 @@ import { formatCurrency, daysUntil } from '@/lib/helpers'
 import type { Database } from '@/types/database.types'
 import type { TransactionWithDetails, DebtWithAccount, WishListItem } from '@/types'
 import type { WishListAnalysis } from '@/services/wish-list.service'
-import { ArrowRight, CalendarDays, CreditCard, ShoppingBag, } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { CreditCard, ShoppingBag, } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { SpendingBreakdown } from './components/spending-breakdown'
 import { PeriodComparison } from './components/period-comparison'
 import { LoadingContent } from '@/components/loading-content'
+import NoPeriod from '@/components/no-period'
 
 type ActiveSummary = Database['public']['Views']['active_period_summary']['Row']
 
@@ -85,22 +85,9 @@ export default function DashboardPage() {
 
     if (!data) {
         return (
-            <div className="p-4 md:p-6 max-w-2xl mx-auto">
-                <div className="mt-16 flex flex-col items-center text-center gap-4">
-                    <div className="w-12 h-12 rounded-2xl bg-muted flex items-center justify-center">
-                        <CalendarDays className="w-6 h-6 text-muted-foreground" />
-                    </div>
-                    <div className="space-y-1">
-                        <p className="font-semibold">No active pay period</p>
-                        <p className="text-sm text-muted-foreground max-w-xs">
-                            Open a pay period to start tracking your income and expenses.
-                        </p>
-                    </div>
-                    <Button onClick={() => navigate('/settings')}>
-                        Go to Settings <ArrowRight className="w-4 h-4 ml-1" />
-                    </Button>
-                </div>
-            </div>
+            <section className="px-4">
+                <NoPeriod />
+            </section>
         )
     }
 

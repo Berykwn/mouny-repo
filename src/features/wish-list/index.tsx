@@ -12,6 +12,7 @@ import { formatCurrency } from '@/lib/helpers'
 import type { WishListItem } from '@/types'
 import { toast } from 'sonner'
 import { LoadingContent } from '@/components/loading-content'
+import NoPeriod from '@/components/no-period'
 
 export default function WishListPage() {
     const [items, setItems] = useState<WishListItem[]>([])
@@ -106,10 +107,7 @@ export default function WishListPage() {
             {loading ? (
                 <LoadingContent />
             ) : !periodId ? (
-                <div className="text-center py-16 space-y-1">
-                    <p className="text-sm font-medium">No active period</p>
-                    <p className="text-xs text-muted-foreground">Create a new pay period from Settings.</p>
-                </div>
+                <NoPeriod />
             ) : (
                 <WishListItems
                     items={items}
