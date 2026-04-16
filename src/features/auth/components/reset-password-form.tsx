@@ -4,21 +4,19 @@ import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Loader2, ArrowRight } from 'lucide-react'
+import { toast } from 'sonner'
 
 export function ResetPasswordForm() {
     const navigate = useNavigate()
     const [password, setPassword] = useState('')
     const [confirm, setConfirm] = useState('')
     const [loading, setLoading] = useState(false)
-    const [error, setError] = useState<string | null>(null)
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
-        setError(null)
 
         if (password !== confirm) {
-            setError('Passwords do not match.')
+            toast.error('Passwords do not match.')
             return
         }
 
@@ -27,12 +25,18 @@ export function ResetPasswordForm() {
         try {
             const { error } = await supabase.auth.updateUser({ password })
             if (error) throw error
+
+            toast.success('Password updated successfully!')
             navigate('/dashboard', { replace: true })
         } catch (err: unknown) {
             if (err instanceof Error) {
                 const msg = err.message
-                if (msg.includes('Password should be')) setError('Password must be at least 6 characters.')
-                else setError(msg)
+
+                if (msg.includes('Password should be')) {
+                    toast.error('Password must be at least 6 characters.')
+                } else {
+                    toast.error(msg)
+                }
             }
         } finally {
             setLoading(false)
@@ -71,21 +75,8 @@ export function ResetPasswordForm() {
                 />
             </div>
 
-            {error && (
-                <div className="text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-md px-3 py-2">
-                    {error}
-                </div>
-            )}
-
             <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                    <>
-                        Save new password
-                        <ArrowRight className="w-4 h-4 ml-1" />
-                    </>
-                )}
+                {loading ? 'Saving...' : 'Save new password'}
             </Button>
         </form>
     )
