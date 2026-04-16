@@ -1,7 +1,7 @@
 import { createBrowserRouter, RouterProvider } from 'react-router-dom'
 import { ProtectedRoute } from './protected-route'
 import { PublicRoute } from './public-route'
-import AppLayout from '@/components/app-layout'
+import AppLayout from '@/components/layouts/app-layout'
 
 // Auth
 import LoginPage from '@/features/auth/login'
