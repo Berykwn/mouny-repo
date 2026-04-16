@@ -40,6 +40,7 @@ export default function SettingsPage() {
     const [deletingAccountId, setDeletingAccountId] = useState<string | null>(null)
     const [deletingCategoryId, setDeletingCategoryId] = useState<string | null>(null)
     const [deleteLoading, setDeleteLoading] = useState(false)
+    const [logoutConfirm, setLogoutConfirm] = useState(false)
 
     const daysSince = getDaysBetween(activePeriod?.start_date)
 
@@ -61,6 +62,7 @@ export default function SettingsPage() {
     useEffect(() => { load() }, [load])
 
     const handleLogout = async () => {
+        setLogoutConfirm(false)
         await supabase.auth.signOut()
         navigate('/login', { replace: true })
     }
@@ -115,7 +117,7 @@ export default function SettingsPage() {
                     <Button
                         variant="ghost"
                         size="icon"
-                        onClick={handleLogout}
+                        onClick={() => setLogoutConfirm(true)}
                     >
                         <LogOut className="w-4 h-4" />
                     </Button>
@@ -140,7 +142,7 @@ export default function SettingsPage() {
                 <TabsContent value="period">
                     <div className="space-y-4">
                         <div className="flex items-center justify-between">
-                            <p className="text-sm text-muted-foreground">Your pay periods</p>
+                            <p className="text-sm text-muted-foreground">Pay periods</p>
                             {!activePeriod && !loading && (
                                 <Button size="sm" variant="outline" onClick={() => setOpenPeriodDrawer(true)}>
                                     <Plus className="w-3.5 h-3.5 mr-1" />
@@ -220,7 +222,7 @@ export default function SettingsPage() {
                 <TabsContent value="account">
                     <div className="space-y-4">
                         <div className="flex items-center justify-between">
-                            <p className="text-sm text-muted-foreground">Your accounts & cash</p>
+                            <p className="text-sm text-muted-foreground">Accounts & Wallet</p>
                             {accounts.length > 0 && !loading && (
                                 <Button size="sm" variant="outline" onClick={() => setAddAccountDrawer(true)}>
                                     <Plus className="w-3.5 h-3.5 mr-1" />Add
@@ -250,7 +252,7 @@ export default function SettingsPage() {
                 <TabsContent value="category">
                     <div className="space-y-4">
                         <div className="flex items-center justify-between">
-                            <p className="text-sm text-muted-foreground">Labels for your transactions</p>
+                            <p className="text-sm text-muted-foreground">Categories</p>
                             <div className="flex gap-2">
                                 {categories.length === 0 && (
                                     <Button size="sm" variant="outline" onClick={async () => {
@@ -363,6 +365,16 @@ export default function SettingsPage() {
                 loading={deleteLoading}
                 onConfirm={handleDeleteCategory}
                 onClose={() => setDeletingCategoryId(null)}
+            />
+
+            <ConfirmDrawer
+                open={logoutConfirm}
+                title="Logout"
+                description="Are you sure you want to logout?"
+                confirmLabel="Logout"
+                loading={false}
+                onConfirm={handleLogout}
+                onClose={() => setLogoutConfirm(false)}
             />
         </div>
     )
