@@ -12,7 +12,7 @@ import { formatCurrency } from '@/lib/helpers'
 import type { DebtWithAccount } from '@/types'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
-import { Skeleton } from '@/components/ui/skeleton'
+import { LoadingContent } from '@/components/loading-content'
 
 type FilterType = 'all' | 'debt' | 'receivable'
 
@@ -108,15 +108,7 @@ export default function DebtsPage() {
             </header>
 
             {loading ? (
-                <section className="space-y-4">
-                    {[...Array(3)].map((_, i) => (
-                        <div key={i} className="flex w-full flex-col gap-2">
-                            <Skeleton className="h-4 w-full" />
-                            <Skeleton className="h-4 w-full" />
-                            <Skeleton className="h-4 w-3/4" />
-                        </div>
-                    ))}
-                </section>
+                <LoadingContent />
             ) : (
                 <>
                     {debts.length > 0 && (

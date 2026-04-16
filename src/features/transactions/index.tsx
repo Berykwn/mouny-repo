@@ -10,10 +10,10 @@ import { transactionsService } from '@/services/transactions.service'
 import { payPeriodsService } from '@/services/pay-periods.service'
 import { formatDate, toISODate } from '@/lib/helpers'
 import type { TransactionWithDetails, PayPeriod } from '@/types'
-import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { LoadingContent } from '@/components/loading-content'
 
 export default function TransactionsPage() {
     const [allPeriods, setAllPeriods] = useState<PayPeriod[]>([])
@@ -118,15 +118,7 @@ export default function TransactionsPage() {
             </header>
 
             {loading ? (
-                <section className="space-y-4">
-                    {[...Array(3)].map((_, i) => (
-                        <div key={i} className="flex w-full flex-col gap-2">
-                            <Skeleton className="h-4 w-full" />
-                            <Skeleton className="h-4 w-full" />
-                            <Skeleton className="h-4 w-3/4" />
-                        </div>
-                    ))}
-                </section>
+                <LoadingContent />
             ) : !selectedPeriod ? (
                 <section className="text-center py-16 space-y-1">
                     <p className="text-sm font-medium">No pay periods found</p>
@@ -146,15 +138,7 @@ export default function TransactionsPage() {
                     </TabsList>
 
                     {txLoading ? (
-                        <section className="space-y-4 mt-1">
-                            {[...Array(3)].map((_, i) => (
-                                <div key={i} className="flex w-full flex-col gap-2">
-                                    <Skeleton className="h-4 w-full" />
-                                    <Skeleton className="h-4 w-full" />
-                                    <Skeleton className="h-4 w-3/4" />
-                                </div>
-                            ))}
-                        </section>
+                        <LoadingContent />
                     ) : (
                         <section>
                             <TabsContent value="calendar">

@@ -18,9 +18,9 @@ import { useNavigate } from 'react-router-dom'
 import type { PayPeriod, Account, Category } from '@/types'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { formatCurrency, formatDate, getDaysBetween } from '@/lib/helpers'
-import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from 'sonner'
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card'
+import { LoadingContent } from '@/components/loading-content'
 
 export default function SettingsPage() {
     const { user } = useAuth()
@@ -150,15 +150,7 @@ export default function SettingsPage() {
                         </div>
 
                         {loading ? (
-                            <section className="space-y-4">
-                                {[...Array(3)].map((_, i) => (
-                                    <div key={i} className="flex w-full flex-col gap-2">
-                                        <Skeleton className="h-4 w-full" />
-                                        <Skeleton className="h-4 w-full" />
-                                        <Skeleton className="h-4 w-3/4" />
-                                    </div>
-                                ))}
-                            </section>
+                            <LoadingContent />
                         ) : activePeriod ? (
                             <Card>
                                 <CardHeader>
@@ -236,14 +228,7 @@ export default function SettingsPage() {
                             )}
                         </div>
                         {loading ? (
-                            <section className="space-y-4">
-                                {[...Array(3)].map((_, i) => (
-                                    <div key={i} className="flex w-full flex-col gap-2">
-                                        <Skeleton className="h-4 w-full" />
-                                        <Skeleton className="h-4 w-3/4" />
-                                    </div>
-                                ))}
-                            </section>
+                            <LoadingContent />
                         ) : accounts.length === 0 ? (
                             <div
                                 onClick={() => setAddAccountDrawer(true)}
@@ -281,14 +266,7 @@ export default function SettingsPage() {
                             </div>
                         </div>
                         {loading ? (
-                            <section className="space-y-4">
-                                {[...Array(3)].map((_, i) => (
-                                    <div key={i} className="flex w-full flex-col gap-2">
-                                        <Skeleton className="h-4 w-full" />
-                                        <Skeleton className="h-4 w-3/4" />
-                                    </div>
-                                ))}
-                            </section>
+                            <LoadingContent />
                         ) : (
                             <CategoryList
                                 categories={categories}

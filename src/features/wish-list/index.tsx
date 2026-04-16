@@ -10,8 +10,8 @@ import { wishListService } from '@/services/wish-list.service'
 import { payPeriodsService } from '@/services/pay-periods.service'
 import { formatCurrency } from '@/lib/helpers'
 import type { WishListItem } from '@/types'
-import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from 'sonner'
+import { LoadingContent } from '@/components/loading-content'
 
 export default function WishListPage() {
     const [items, setItems] = useState<WishListItem[]>([])
@@ -106,15 +106,7 @@ export default function WishListPage() {
 
             {/* List */}
             {loading ? (
-                <section className="space-y-4">
-                    {[...Array(3)].map((_, i) => (
-                        <div key={i} className="flex w-full flex-col gap-2">
-                            <Skeleton className="h-4 w-full" />
-                            <Skeleton className="h-4 w-full" />
-                            <Skeleton className="h-4 w-3/4" />
-                        </div>
-                    ))}
-                </section>
+                <LoadingContent />
             ) : !periodId ? (
                 <div className="text-center py-16 space-y-1">
                     <p className="text-sm font-medium">No active period</p>

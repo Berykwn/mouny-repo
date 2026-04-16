@@ -14,6 +14,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
+import { LoadingContent } from '@/components/loading-content'
 
 type ActiveSummary = Database['public']['Views']['active_period_summary']['Row']
 
@@ -34,16 +35,9 @@ export default function DashboardPage() {
 
     if (loading) {
         return (
-            <div className="p-4 md:p-6 space-y-6 max-w-2xl mx-auto">
-                <div className="space-y-1.5">
-                    <Skeleton className="h-4 w-32" />
-                    <Skeleton className="h-6 w-48" />
-                </div>
-                <Skeleton className="h-36 w-full rounded-2xl" />
-                <div className="grid grid-cols-3 gap-3">
-                    {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-20 rounded-xl" />)}
-                </div>
-            </div>
+            <section className='p-4'>
+                <LoadingContent />
+            </section>
         )
     }
 
