@@ -97,7 +97,7 @@ export default function DashboardPage() {
     const expectedIncome = summary.salary_amount ?? 0
     const totalIncome = summary.total_income ?? 0
     const totalExpense = summary.total_expense ?? 0
-    const remaining = expectedIncome + totalIncome - totalExpense
+    const remaining = totalIncome - totalExpense
 
     const spentPercent = expectedIncome > 0
         ? Math.min(Math.round((totalExpense / expectedIncome) * 100), 100)
@@ -122,7 +122,7 @@ export default function DashboardPage() {
     const remainingIsNegative = remaining < 0
 
     return (
-        <div className="p-4 md:p-6 space-y-3 max-w-2xl mx-auto">
+        <div className="p-4 md:p-6 space-y-5 max-w-2xl mx-auto">
             <div className={cn(
                 'rounded-2xl border p-4 space-y-4',
                 remainingIsNegative
@@ -151,7 +151,7 @@ export default function DashboardPage() {
                         />
                     </div>
                     <p className="text-xs text-muted-foreground">
-                        {spentPercent}% of expected income spent
+                        {spentPercent}% of income spent
                     </p>
                 </div>
             </div>
@@ -185,17 +185,18 @@ export default function DashboardPage() {
                             See all →
                         </button>
                     </div>
-                    <div className="space-y-2">
+
+                    <div className="rounded-xl border bg-card overflow-hidden divide-y">
                         {upcomingDebts.map(debt => {
                             const days = daysUntil(debt.due_date!)
                             const isOverdue = days < 0
                             const isUrgent = days >= 0 && days <= 7
                             return (
-                                <div key={debt.id} className="flex items-center justify-between rounded-xl border bg-card px-4 py-3">
+                                <div key={debt.id} className="flex justify-between items-center gap-3 px-4 py-2.5 group">
                                     <div className="min-w-0">
-                                        <p className="text-sm font-medium truncate">{debt.counterparty}</p>
+                                        <p className="text-xs font-medium truncate">{debt.counterparty}</p>
                                         <p className={cn(
-                                            'text-xs font-medium',
+                                            'text-[10px]',
                                             isOverdue ? 'text-destructive' :
                                                 isUrgent ? 'text-amber-500' : 'text-muted-foreground'
                                         )}>
@@ -205,7 +206,7 @@ export default function DashboardPage() {
                                                     : `${days} days left`}
                                         </p>
                                     </div>
-                                    <p className="text-sm font-semibold shrink-0 ml-4">
+                                    <p className="text-xs font-semibold shrink-0 ml-4">
                                         {formatCurrency(debt.remaining_amount)}
                                     </p>
                                 </div>
@@ -231,19 +232,20 @@ export default function DashboardPage() {
                             See all →
                         </button>
                     </div>
-                    <div className="space-y-2">
+
+                    <div className="rounded-xl border bg-card overflow-hidden divide-y">
                         {affordableWishes.map(item => {
                             const a = wishAnalysis[item.id]
                             return (
-                                <div key={item.id} className="flex items-center justify-between rounded-xl border bg-card px-4 py-3">
+                                <div key={item.id} className="flex justify-between items-center gap-3 px-4 py-2.5 group">
                                     <div className="min-w-0">
-                                        <p className="text-sm font-medium truncate">{item.name}</p>
+                                        <p className="text-xs font-medium truncate">{item.name}</p>
                                         {a?.salaryLabel && (
-                                            <p className="text-xs text-muted-foreground">{a.salaryLabel}</p>
+                                            <p className="text-[10px] text-muted-foreground">{a.salaryLabel}</p>
                                         )}
                                     </div>
                                     {item.estimated_price && (
-                                        <p className="text-sm font-semibold text-green-600 shrink-0 ml-4">
+                                        <p className="text-xs font-semibold text-green-600 shrink-0 ml-4">
                                             {formatCurrency(item.estimated_price)}
                                         </p>
                                     )}
