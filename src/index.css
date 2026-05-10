@@ -1,6 +1,7 @@
 @import "tailwindcss";
 
 @plugin "tailwindcss-animate";
+@import "@fontsource/dm-sans";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -74,6 +75,7 @@
 }
 
 @theme inline {
+  --font-sans: "DM Sans", sans-serif;
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
