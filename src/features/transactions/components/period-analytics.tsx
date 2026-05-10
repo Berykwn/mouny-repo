@@ -1,35 +1,10 @@
 import { formatCurrency } from '@/lib/helpers'
-import type { TransactionWithDetails } from '@/types'
-import type { PayPeriod } from '@/types'
-import { Wallet, Calendar, Tag, Zap, BarChart2 } from 'lucide-react'
+import type { TransactionWithDetails, PayPeriod } from '@/types'
 import { cn } from '@/lib/utils'
 
 interface PeriodAnalyticsProps {
     transactions: TransactionWithDetails[]
     period: PayPeriod
-}
-
-interface StatCardProps {
-    icon: React.ElementType
-    iconClass: string
-    label: string
-    value: string
-    sub?: string
-}
-
-function StatCard({ icon: Icon, iconClass, label, value, sub }: StatCardProps) {
-    return (
-        <div className="rounded-xl border bg-card p-3 space-y-2">
-            <div className={cn('w-7 h-7 rounded-lg flex items-center justify-center', iconClass)}>
-                <Icon className="w-3.5 h-3.5" />
-            </div>
-            <div>
-                <p className="text-xs text-muted-foreground">{label}</p>
-                <p className="text-sm font-semibold leading-tight">{value}</p>
-                {sub && <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>}
-            </div>
-        </div>
-    )
 }
 
 export function PeriodAnalytics({ transactions, period }: PeriodAnalyticsProps) {
@@ -40,14 +15,12 @@ export function PeriodAnalytics({ transactions, period }: PeriodAnalyticsProps) 
     const totalIncome = incomes.reduce((s, t) => s + t.amount, 0)
     const expectedIncome = period.salary_amount
     const net = totalIncome - totalExpense
-    const closingBalance = period.closing_balance ?? 0
 
     const start = new Date(period.start_date)
     const end = period.end_date ? new Date(period.end_date) : new Date()
     const days = Math.max(1, Math.round((end.getTime() - start.getTime()) / 86400000))
     const dailyAvg = totalExpense / days
 
-    // % of expected income
     const spentPercent = expectedIncome > 0
         ? Math.round((totalExpense / expectedIncome) * 100)
         : 0
@@ -56,36 +29,30 @@ export function PeriodAnalytics({ transactions, period }: PeriodAnalyticsProps) 
     for (const tx of expenses) {
         if (!tx.category) continue
         const existing = categoryMap.get(tx.category.id)
-        if (existing) {
-            existing.amount += tx.amount
-        } else {
-            categoryMap.set(tx.category.id, {
-                name: tx.category.name,
-                amount: tx.amount,
-                color: tx.category.color,
-            })
-        }
+        if (existing) existing.amount += tx.amount
+        else categoryMap.set(tx.category.id, {
+            name: tx.category.name,
+            amount: tx.amount,
+            color: tx.category.color,
+        })
     }
     const topCategories = Array.from(categoryMap.values())
         .sort((a, b) => b.amount - a.amount)
-        .slice(0, 4)
+        .slice(0, 5)
 
-    // Biggest single expense
     const biggestExpense = expenses.reduce<TransactionWithDetails | null>(
         (max, tx) => (!max || tx.amount > max.amount ? tx : max), null
     )
 
-    // Biggest spending day
     const dailyMap = new Map<string, number>()
     for (const tx of expenses) {
         dailyMap.set(tx.date, (dailyMap.get(tx.date) ?? 0) + tx.amount)
     }
-    const biggestDay = Array.from(dailyMap.entries())
-        .sort((a, b) => b[1] - a[1])[0]
+    const biggestDay = Array.from(dailyMap.entries()).sort((a, b) => b[1] - a[1])[0]
 
     return (
-        <div className="space-y-4">
-            <div className="rounded-2xl border bg-card p-4 space-y-3">
+        <div className="space-y-3 pt-3">
+            <div className="rounded-2xl border border-neutral-200 bg-card p-4 space-y-3">
                 <div>
                     <p className="text-xs text-muted-foreground mb-0.5">Net this period</p>
                     <p className={cn(
@@ -100,110 +67,149 @@ export function PeriodAnalytics({ transactions, period }: PeriodAnalyticsProps) 
                     <div className="h-1.5 bg-muted rounded-full overflow-hidden">
                         <div
                             className={cn(
-                                'h-full rounded-full',
+                                'h-full rounded-full transition-all',
                                 spentPercent >= 100 ? 'bg-destructive' :
                                     spentPercent >= 80 ? 'bg-amber-500' : 'bg-foreground'
                             )}
                             style={{ width: `${Math.min(spentPercent, 100)}%` }}
                         />
                     </div>
-                    <p className="text-xs text-muted-foreground">
-                        {spentPercent}% of expected income spent
+                    <p className={cn(
+                        'text-xs',
+                        spentPercent >= 100 ? 'text-destructive font-medium' : 'text-muted-foreground'
+                    )}>
+                        {spentPercent}% of income spent
                     </p>
                 </div>
 
-                <div className="border-t pt-3 grid grid-cols-3 gap-2 text-center">
+                <div className="border-t pt-3 grid grid-cols-2 gap-3">
                     <div>
-                        <p className="text-xs text-muted-foreground">Expected</p>
-                        <p className="text-xs font-semibold">{formatCurrency(expectedIncome)}</p>
+                        <p className="text-xs text-muted-foreground">Income</p>
+                        <p className="text-sm font-semibold text-green-600">{formatCurrency(totalIncome)}</p>
                     </div>
                     <div>
                         <p className="text-xs text-muted-foreground">Spent</p>
-                        <p className="text-xs font-semibold text-destructive">{formatCurrency(totalExpense)}</p>
-                    </div>
-                    <div>
-                        <p className="text-xs text-muted-foreground">Closing</p>
-                        <p className="text-xs font-semibold">{formatCurrency(closingBalance)}</p>
+                        <p className="text-sm font-semibold">{formatCurrency(totalExpense)}</p>
                     </div>
                 </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-2.5">
-                <StatCard
-                    icon={BarChart2}
-                    iconClass="bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-400"
-                    label="Daily average"
-                    value={formatCurrency(dailyAvg)}
-                    sub={`over ${days} days`}
-                />
-                <StatCard
-                    icon={Zap}
-                    iconClass="bg-amber-100 text-amber-600 dark:bg-amber-900 dark:text-amber-400"
-                    label="Biggest day"
-                    value={biggestDay ? formatCurrency(biggestDay[1]) : '—'}
-                    sub={biggestDay
-                        ? new Date(biggestDay[0]).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
-                        : undefined
-                    }
-                />
-                <StatCard
-                    icon={Wallet}
-                    iconClass="bg-purple-100 text-purple-600 dark:bg-purple-900 dark:text-purple-400"
-                    label="Biggest expense"
-                    value={biggestExpense ? formatCurrency(biggestExpense.amount) : '—'}
-                    sub={biggestExpense?.note || biggestExpense?.category?.name}
-                />
-                <StatCard
-                    icon={Calendar}
-                    iconClass="bg-teal-100 text-teal-600 dark:bg-teal-900 dark:text-teal-400"
-                    label="Transactions"
-                    value={String(transactions.length)}
-                    sub={`${expenses.length} out · ${incomes.length} in`}
-                />
+            <div className="rounded-xl border border-neutral-200 bg-card">
+                <div className="px-4 pt-3 pb-2">
+                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">
+                        Stats
+                    </p>
+                </div>
+
+                {[
+                    {
+                        label: 'Daily average',
+                        value: formatCurrency(dailyAvg),
+                        sub: `over ${days} days`,
+                    },
+                    {
+                        label: 'Biggest day',
+                        value: biggestDay ? formatCurrency(biggestDay[1]) : '—',
+                        sub: biggestDay
+                            ? new Date(biggestDay[0]).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+                            : undefined,
+                    },
+                    {
+                        label: 'Biggest expense',
+                        value: biggestExpense ? formatCurrency(biggestExpense.amount) : '—',
+                        sub: biggestExpense?.note || biggestExpense?.category?.name,
+                    },
+                    {
+                        label: 'Transactions',
+                        value: String(transactions.length),
+                        sub: `${expenses.length} out · ${incomes.length} in`,
+                    },
+                ].map((item, i, arr) => (
+                    <div
+                        key={item.label}
+                        className={cn(
+                            'flex items-center justify-between px-4 py-2.5',
+                            i < arr.length - 1 && 'border-b'
+                        )}
+                    >
+                        <p className="text-sm text-muted-foreground">{item.label}</p>
+                        <div className="text-right">
+                            <p className="text-sm font-semibold">{item.value}</p>
+                            {item.sub && (
+                                <p className="text-[10px] text-muted-foreground">{item.sub}</p>
+                            )}
+                        </div>
+                    </div>
+                ))}
             </div>
 
             {topCategories.length > 0 && (
-                <div className="rounded-xl border bg-card p-4 space-y-3">
-                    <div className="flex items-center gap-2">
-                        <Tag className="w-3.5 h-3.5 text-muted-foreground" />
-                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                            Top spending categories
+                <div className="rounded-xl border border-neutral-200 bg-card">
+                    <div className="px-4 pt-3 pb-2">
+                        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">
+                            Breakdown
                         </p>
                     </div>
-                    <div className="space-y-2.5">
-                        {topCategories.map((cat, i) => {
-                            const pct = totalExpense > 0
-                                ? Math.round((cat.amount / totalExpense) * 100)
-                                : 0
-                            return (
-                                <div key={i} className="space-y-1">
-                                    <div className="flex items-center justify-between text-xs">
-                                        <div className="flex items-center gap-2">
-                                            <div
-                                                className="w-2.5 h-2.5 rounded-full shrink-0"
-                                                style={{ backgroundColor: cat.color ?? '#94a3b8' }}
-                                            />
-                                            <span className="font-medium">{cat.name}</span>
-                                        </div>
-                                        <div className="flex items-center gap-2 text-muted-foreground">
-                                            <span>{pct}%</span>
-                                            <span className="font-medium text-foreground">
-                                                {formatCurrency(cat.amount)}
-                                            </span>
-                                        </div>
-                                    </div>
-                                    <div className="h-1 bg-muted rounded-full overflow-hidden">
-                                        <div
-                                            className="h-full rounded-full"
-                                            style={{
-                                                width: `${pct}%`,
-                                                backgroundColor: cat.color ?? '#94a3b8',
-                                            }}
-                                        />
-                                    </div>
+
+                    <div className="px-4 pb-3">
+                        <div className="h-2 rounded-full overflow-hidden flex gap-0.5">
+                            {topCategories.map((cat, i) => {
+                                const pct = totalExpense > 0
+                                    ? (cat.amount / totalExpense) * 100
+                                    : 0
+                                return (
+                                    <div
+                                        key={i}
+                                        style={{
+                                            width: `${pct}%`,
+                                            backgroundColor: cat.color ?? '#94a3b8',
+                                        }}
+                                    />
+                                )
+                            })}
+
+                            {(() => {
+                                const covered = topCategories.reduce((s, c) =>
+                                    s + (totalExpense > 0 ? (c.amount / totalExpense) * 100 : 0), 0)
+                                return covered < 99 ? (
+                                    <div
+                                        className="flex-1 bg-muted-foreground/20"
+                                    />
+                                ) : null
+                            })()}
+                        </div>
+                    </div>
+
+                    {topCategories.map((cat, i, arr) => {
+                        const pct = totalExpense > 0
+                            ? Math.round((cat.amount / totalExpense) * 100)
+                            : 0
+                        return (
+                            <div
+                                key={i}
+                                className={cn(
+                                    'flex items-center justify-between px-4 py-2.5',
+                                    i < arr.length - 1 && 'border-b'
+                                )}
+                            >
+                                <div className="flex items-center gap-2.5">
+                                    <div
+                                        className="w-2 h-2 rounded-full shrink-0"
+                                        style={{ backgroundColor: cat.color ?? '#94a3b8' }}
+                                    />
+                                    <p className="text-sm">{cat.name}</p>
                                 </div>
-                            )
-                        })}
+                                <div className="flex items-center gap-3 text-sm">
+                                    <span className="text-muted-foreground">{pct}%</span>
+                                    <span className="font-semibold">{formatCurrency(cat.amount)}</span>
+                                </div>
+                            </div>
+                        )
+                    })}
+
+                    <div className="flex items-center justify-between px-4 py-2.5 border-t">
+                        <p className="text-xs text-muted-foreground">Total spent</p>
+                        <p className="text-sm font-semibold">{formatCurrency(totalExpense)}</p>
                     </div>
                 </div>
             )}

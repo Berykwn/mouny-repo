@@ -13,15 +13,6 @@ interface DebtListProps {
 }
 
 export function DebtList({ debts, onDelete, onPay }: DebtListProps) {
-    if (debts.length === 0) {
-        return (
-            <div className="flex flex-col items-center justify-center py-16 text-center gap-2">
-                <p className="text-sm font-medium">No active debts</p>
-                <p className="text-xs text-muted-foreground">Tap + to add a debt record</p>
-            </div>
-        )
-    }
-
     return (
         <div className="space-y-3">
             {debts.map((debt) => {
@@ -34,8 +25,7 @@ export function DebtList({ debts, onDelete, onPay }: DebtListProps) {
                 const variant = isOverdue ? 'destructive' : isUrgent ? 'secondary' : 'outline'
 
                 return (
-                    <div key={debt.id} className="rounded-xl border bg-card p-4 space-y-3">
-
+                    <div key={debt.id} className="rounded-2xl border border-neutral-200 bg-card p-4 space-y-3">
                         <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0">
                                 <div className="flex items-center gap-2 flex-wrap">

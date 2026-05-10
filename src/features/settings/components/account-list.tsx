@@ -15,31 +15,37 @@ const TYPE_ICON = {
 }
 
 const TYPE_STYLE = {
-    bank: 'bg-indigo-100 text-indigo-600',
-    cash: 'bg-rose-100 text-rose-600',
+    bank: 'bg-indigo-50 text-indigo-500 dark:bg-indigo-950 dark:text-indigo-400',
+    cash: 'bg-rose-50 text-rose-500 dark:bg-rose-950 dark:text-rose-400',
+}
+
+const TYPE_LABEL = {
+    bank: 'Bank account',
+    cash: 'Cash',
 }
 
 export function AccountList({ accounts, onEdit, onDeleteRequest }: AccountListProps) {
     return (
-        <div className="rounded-xl border bg-card overflow-hidden divide-y">
+        <div className="rounded-2xl border border-neutral-200 bg-card overflow-hidden divide-y divide-neutral-100">
             {accounts.map((acc) => {
                 const Icon = TYPE_ICON[acc.type as AccountType]
                 const style = TYPE_STYLE[acc.type as AccountType]
+                const label = TYPE_LABEL[acc.type as AccountType]
 
                 return (
-                    <div key={acc.id} className="flex items-center gap-3 px-4 py-3 group">
+                    <div key={acc.id} className="flex items-center gap-3 px-4 py-3">
                         <div className={cn(
-                            "w-8 h-8 rounded-lg flex items-center justify-center shrink-0",
+                            'w-9 h-9 rounded-xl flex items-center justify-center shrink-0',
                             style
                         )}>
                             <Icon className="w-4 h-4" />
                         </div>
+
                         <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium">{acc.name}</p>
-                            <p className="text-xs text-muted-foreground">
-                                {acc.type === 'bank' ? 'Bank account' : 'Cash'}
-                            </p>
+                            <p className="text-xs text-muted-foreground">{label}</p>
                         </div>
+
                         <div className="flex items-center gap-1 shrink-0">
                             <p className={cn(
                                 'text-sm font-semibold mr-1',
@@ -49,13 +55,13 @@ export function AccountList({ accounts, onEdit, onDeleteRequest }: AccountListPr
                             </p>
                             <button
                                 onClick={() => onEdit(acc)}
-                                className="w-7 h-7 rounded flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+                                className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
                             >
                                 <Pencil className="w-3.5 h-3.5" />
                             </button>
                             <button
                                 onClick={() => onDeleteRequest(acc.id)}
-                                className="w-7 h-7 rounded flex items-center justify-center text-muted-foreground hover:text-destructive transition-colors"
+                                className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:text-destructive transition-colors"
                             >
                                 <Trash2 className="w-3.5 h-3.5" />
                             </button>

@@ -2,9 +2,8 @@ import { useState } from 'react'
 import { formatCurrency } from '@/lib/helpers'
 import type { WishListItem } from '@/types'
 import type { WishListAnalysis } from '@/services/wish-list.service'
-import { Trash2, ShoppingCart } from 'lucide-react'
+import { Trash2, ShoppingBag } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { Button } from '@/components/ui/button'
 
 interface WishListItemsProps {
   items: WishListItem[]
@@ -16,15 +15,15 @@ interface WishListItemsProps {
 type Filter = 'all' | 'high' | 'medium' | 'low'
 
 const PRIORITY_LABEL: Record<string, string> = {
-  high: 'High',
+  high: 'Urgent',
   medium: 'Medium',
-  low: 'Low',
+  low: 'Casual',
 }
 
 const PRIORITY_COLOR: Record<string, string> = {
-  high: 'text-red-600 bg-red-100 dark:bg-red-900/40',
-  medium: 'text-amber-600 bg-amber-100 dark:bg-amber-900/40',
-  low: 'text-muted-foreground bg-muted',
+  high: 'bg-red-50 text-red-500 dark:bg-red-950 dark:text-red-400',
+  medium: 'bg-amber-50 text-amber-500 dark:bg-amber-950 dark:text-amber-400',
+  low: 'bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-400',
 }
 
 export function WishListItems({ items, analysis, onBuy, onDeleteRequest }: WishListItemsProps) {
@@ -33,8 +32,9 @@ export function WishListItems({ items, analysis, onBuy, onDeleteRequest }: WishL
   if (items.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center gap-2">
+        <ShoppingBag className="w-10 h-10 text-muted-foreground/40" />
         <p className="text-sm font-medium">Your wish list is empty</p>
-        <p className="text-xs text-muted-foreground">Tap + to add something you want to buy</p>
+        <p className="text-xs text-muted-foreground">Add items you want to buy later</p>
       </div>
     )
   }
@@ -46,26 +46,25 @@ export function WishListItems({ items, analysis, onBuy, onDeleteRequest }: WishL
     low: items.filter(i => i.priority === 'low').length,
   }
 
-  const filtered = filter === 'all'
-    ? items
-    : items.filter(i => i.priority === filter)
-
   const FILTERS = [
     { id: 'all' as Filter, label: `All (${counts.all})` },
-    { id: 'high' as Filter, label: `High (${counts.high})` },
+    { id: 'high' as Filter, label: `Urgent (${counts.high})` },
     { id: 'medium' as Filter, label: `Medium (${counts.medium})` },
-    { id: 'low' as Filter, label: `Low (${counts.low})` },
+    { id: 'low' as Filter, label: `Casual (${counts.low})` },
   ].filter(f => f.id === 'all' || counts[f.id] > 0)
+
+  const filtered = filter === 'all' ? items : items.filter(i => i.priority === filter)
 
   return (
     <div className="space-y-4">
+      {/* Filter pills */}
       <div className="flex gap-2 flex-wrap">
         {FILTERS.map(({ id, label }) => (
           <button
             key={id}
             onClick={() => setFilter(id)}
             className={cn(
-              'px-3 py-1.5 rounded-full text-xs font-medium transition-colors border',
+              'px-3 py-1.5 rounded-full text-xs font-medium border transition-colors',
               filter === id
                 ? 'bg-neutral-200 text-neutral-600 border-neutral-200'
                 : 'bg-background text-muted-foreground border-border hover:text-foreground hover:border-foreground/40'
@@ -76,75 +75,69 @@ export function WishListItems({ items, analysis, onBuy, onDeleteRequest }: WishL
         ))}
       </div>
 
-      <div className="space-y-2">
+      {/* Item list */}
+      <div className="space-y-2.5">
         {filtered.map((item) => {
           const a = analysis[item.id]
 
           return (
-            <div key={item.id} className="p-3 rounded-xl bg-card border space-y-2">
-              <div className="flex items-start gap-2">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <p className="text-sm font-medium truncate">{item.name}</p>
+            <div
+              key={item.id}
+              className="bg-card rounded-2xl border border-neutral-200 px-4 py-3.5 space-y-2.5"
+            >
+              {/* Header: title + badges */}
+              <div className="flex items-center gap-2 min-w-0">
+                <p className="text-sm font-semibold truncate flex-1">{item.name}</p>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <span className={cn(
+                    'text-[10px] font-semibold px-2 py-0.5 rounded-full',
+                    PRIORITY_COLOR[item.priority ?? 'low']
+                  )}>
+                    {PRIORITY_LABEL[item.priority ?? 'low']}
+                  </span>
+                  {a && a.price > 0 && (
                     <span className={cn(
-                      'text-[10px] font-medium px-1.5 py-0.5 rounded-full shrink-0',
-                      PRIORITY_COLOR[item.priority ?? 'low']
+                      'text-[10px] font-semibold px-2 py-0.5 rounded-full',
+                      a.canAfford
+                        ? 'bg-green-50 text-green-600 dark:bg-green-950 dark:text-green-400'
+                        : 'bg-orange-50 text-orange-500 dark:bg-orange-950 dark:text-orange-400'
                     )}>
-                      {PRIORITY_LABEL[item.priority ?? 'low']}
+                      {a.canAfford ? 'Can afford' : `-${formatCurrency(a.shortfall)}`}
                     </span>
-                  </div>
-
-                  {(item.estimated_price || item.notes) && (
-                    <div className="flex items-center gap-2 mt-0.5">
-                      {item.estimated_price && (
-                        <p className="text-xs text-muted-foreground">
-                          ~{formatCurrency(item.estimated_price)}
-                        </p>
-                      )}
-                      {item.notes && (
-                        <p className="text-xs text-muted-foreground truncate">
-                          · {item.notes}
-                        </p>
-                      )}
-                    </div>
                   )}
-                </div>
-
-                <div className="flex items-center gap-1 shrink-0">
-                  <Button variant="ghost" size="sm" onClick={() => onBuy(item)}>
-                    <ShoppingCart className="w-4 h-4" />
-                  </Button>
-                  <Button variant="ghost" size="sm" onClick={() => onDeleteRequest(item.id)}>
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
                 </div>
               </div>
 
-              {a && a.price > 0 && (
-                <div className="flex items-center gap-3 border-t pt-2">
-                  <div className="text-[11px]">
-                    <span className="text-muted-foreground">Balance: </span>
-                    <span className={cn(
-                      'font-medium',
-                      a.canAfford ? 'text-green-600' : 'text-destructive'
-                    )}>
-                      {a.canAfford
-                        ? 'Affordable'
-                        : `Short ${formatCurrency(a.shortfall)}`
-                      }
-                    </span>
-                  </div>
+              {/* Body: notes — only if exists */}
+              {item.notes && (
+                <p className="text-xs text-muted-foreground line-clamp-2">{item.notes}</p>
+              )}
 
-                  {a.salaryLabel && (
-                    <>
-                      <div className="w-px h-3 bg-border" />
-                      <p className="text-[11px] text-muted-foreground">
-                        {a.salaryLabel}
-                      </p>
-                    </>
+              {/* Footer: price + salary label | Buy + Delete */}
+              <div className="flex items-center justify-between gap-3 pt-0.5">
+                <div className="flex items-baseline gap-1.5 min-w-0">
+                  <p className="text-sm font-semibold shrink-0">
+                    {item.estimated_price ? formatCurrency(item.estimated_price) : '—'}
+                  </p>
+                  {a?.salaryLabel && (
+                    <span className="text-[10px] text-muted-foreground truncate">· {a.salaryLabel}</span>
                   )}
                 </div>
-              )}
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    onClick={() => onBuy(item)}
+                    className="text-[11px] font-semibold px-3 py-1 rounded-full bg-secondary text-secondary-foreground"
+                  >
+                    Buy
+                  </button>
+                  <button
+                    onClick={() => onDeleteRequest(item.id)}
+                    className="w-7 h-7 rounded-lg bg-red-50 dark:bg-red-950 flex items-center justify-center"
+                  >
+                    <Trash2 className="w-3.5 h-3.5 text-red-400" />
+                  </button>
+                </div>
+              </div>
             </div>
           )
         })}

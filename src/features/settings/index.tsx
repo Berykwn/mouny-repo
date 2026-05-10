@@ -1,6 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
-import { Plus, CalendarDays, LogOut, Wallet, Tag, CheckCircle } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { Plus, CalendarDays, LogOut, Wallet, Tag, CheckCircle, Sparkles } from 'lucide-react'
 import { BottomDrawer } from '@/components/bottom-drawer'
 import { ConfirmDrawer } from '@/components/confirmation-drawer'
 import { OpenPeriodForm } from './components/open-period-form'
@@ -19,8 +18,9 @@ import type { PayPeriod, Account, Category } from '@/types'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { formatCurrency, formatDate, getDaysBetween } from '@/lib/helpers'
 import { toast } from 'sonner'
-import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card'
 import { LoadingContent } from '@/components/loading-content'
+import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
 
 export default function SettingsPage() {
     const { user } = useAuth()
@@ -72,18 +72,14 @@ export default function SettingsPage() {
         setDeleteLoading(true)
         const { error } = await accountsService.remove(deletingAccountId)
         setDeleteLoading(false)
-
         if (error) {
-            if (error.includes('foreign key') || error.includes('violates')) {
-                toast.error('Cannot delete account — it still has transactions linked to it.')
-            } else {
-                toast.error(error)
-            }
+            toast.error(error.includes('foreign key') || error.includes('violates')
+                ? 'Cannot delete — account has linked transactions.'
+                : error)
             setDeletingAccountId(null)
             return
         }
-
-        setAccounts((prev) => prev.filter((a) => a.id !== deletingAccountId))
+        setAccounts(prev => prev.filter(a => a.id !== deletingAccountId))
         setDeletingAccountId(null)
         toast.success('Account deleted.')
     }
@@ -93,151 +89,163 @@ export default function SettingsPage() {
         setDeleteLoading(true)
         const { error } = await categoriesService.remove(deletingCategoryId)
         setDeleteLoading(false)
-
-        if (error) {
-            toast.error(error)
-            setDeletingCategoryId(null)
-            return
-        }
-
-        setCategories((prev) => prev.filter((c) => c.id !== deletingCategoryId))
+        if (error) { toast.error(error); setDeletingCategoryId(null); return }
+        setCategories(prev => prev.filter(c => c.id !== deletingCategoryId))
         setDeletingCategoryId(null)
         toast.success('Category deleted.')
     }
 
-    return (
-        <div className="p-4 md:p-6 space-y-5 max-w-2xl mx-auto">
-            <div className="border-b pb-4 mb-4">
-                <div className="flex items-center justify-between px-1">
-                    <div>
-                        <p className="text-xs text-muted-foreground">Signed in as</p>
-                        <p className="text-sm font-medium">{user?.email}</p>
-                    </div>
+    const totalBalance = accounts.reduce((s, a) => s + a.balance, 0)
+    const expenseCount = categories.filter(c => c.type === 'expense').length
+    const incomeCount = categories.filter(c => c.type === 'income').length
+    const closedPeriods = allPeriods.filter(p => p.status === 'closed')
 
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setLogoutConfirm(true)}
-                    >
-                        <LogOut className="w-4 h-4" />
-                    </Button>
+    return (
+        <div className="p-4 md:p-6 space-y-4 max-w-2xl mx-auto">
+
+            {/* User card */}
+            <div className="rounded-2xl border border-neutral-200 bg-card px-4 py-3 flex items-center justify-between">
+                <div>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium">Signed in as</p>
+                    <p className="text-sm font-medium mt-0.5">{user?.email}</p>
                 </div>
+                <button
+                    onClick={() => setLogoutConfirm(true)}
+                    className="w-8 h-8 rounded-xl bg-muted flex items-center justify-center text-muted-foreground hover:text-destructive transition-colors"
+                >
+                    <LogOut className="w-3.5 h-3.5" />
+                </button>
             </div>
 
             <Tabs defaultValue="period">
                 <TabsList variant="default" className="w-full">
-                    <TabsTrigger value="period">
-                        <CalendarDays />
-                        Periods
-                    </TabsTrigger>
-                    <TabsTrigger value="account">
-                        <Wallet />
-                        Accounts
-                    </TabsTrigger>
-                    <TabsTrigger value="category">
-                        <Tag />
-                        Categories
-                    </TabsTrigger>
+                    <TabsTrigger value="period"><CalendarDays />Periods</TabsTrigger>
+                    <TabsTrigger value="account"><Wallet />Accounts</TabsTrigger>
+                    <TabsTrigger value="category"><Tag />Categories</TabsTrigger>
                 </TabsList>
-                <TabsContent value="period">
-                    <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                            <p className="text-sm text-muted-foreground">Pay periods</p>
-                            {!activePeriod && !loading && (
-                                <Button size="sm" variant="outline" onClick={() => setOpenPeriodDrawer(true)}>
-                                    <Plus className="w-3.5 h-3.5 mr-1" />
-                                    Open Period
-                                </Button>
-                            )}
-                        </div>
 
-                        {loading ? (
-                            <LoadingContent />
-                        ) : activePeriod ? (
-                            <Card>
-                                <CardHeader>
-                                    <div className="flex items-start justify-between">
-                                        <div className="flex items-center gap-2.5">
-                                            <div className="w-8 h-8 rounded-lg bg-lime-100 dark:bg-lime-900 flex items-center justify-center">
-                                                <CalendarDays className="w-4 h-4 text-lime-600 dark:text-lime-400" />
-                                            </div>
-                                            <div>
-                                                <p className="text-sm font-medium">Active Period</p>
-                                                <div className="flex items-center gap-1.5 mt-0.5">
-                                                    <div className="w-1.5 h-1.5 rounded-full bg-lime-500 animate-pulse" />
-                                                    <p className="text-xs text-lime-600 dark:text-lime-400 font-medium">Ongoing</p>
+                {/* ── PERIODS ── */}
+                <TabsContent value="period">
+                    <div className="space-y-3 pt-3">
+                        {loading ? <LoadingContent /> : (
+                            <>
+                                {activePeriod ? (
+                                    /* Active period card */
+                                    <div className="rounded-2xl border border-neutral-200 bg-card p-4 space-y-4">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-2.5">
+                                                <div className="w-9 h-9 rounded-xl bg-lime-100 dark:bg-lime-900 flex items-center justify-center shrink-0">
+                                                    <CalendarDays className="w-4 h-4 text-lime-600 dark:text-lime-400" />
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm font-semibold">Active Period</p>
+                                                    <div className="flex items-center gap-1.5 mt-0.5">
+                                                        <div className="w-1.5 h-1.5 rounded-full bg-lime-500 animate-pulse" />
+                                                        <p className="text-[10px] text-lime-600 dark:text-lime-400 font-medium">Ongoing</p>
+                                                    </div>
                                                 </div>
                                             </div>
+                                            <span className="text-[10px] text-muted-foreground">{daysSince} days ago</span>
                                         </div>
-                                        <span className="text-xs text-muted-foreground">{daysSince} days ago</span>
-                                    </div>
-                                </CardHeader>
 
-                                <CardContent>
-                                    <div className="space-y-1.5">
-                                        <div className="flex justify-between text-sm">
-                                            <span className="text-muted-foreground">Start</span>
-                                            <span className="font-medium">{formatDate(activePeriod.start_date)}</span>
-                                        </div>
-                                        <div className="flex justify-between text-sm">
-                                            <span className="text-muted-foreground">Expected income</span>
-                                            <span className="font-medium">{formatCurrency(activePeriod.salary_amount)}</span>
-                                        </div>
-                                        {activePeriod.notes && (
+                                        <div className="space-y-2 pt-1 border-t border-neutral-100">
                                             <div className="flex justify-between text-sm">
-                                                <span className="text-muted-foreground">Notes</span>
-                                                <span className="font-medium text-right max-w-[60%] truncate">{activePeriod.notes}</span>
+                                                <span className="text-muted-foreground">Start</span>
+                                                <span className="font-medium">{formatDate(activePeriod.start_date)}</span>
                                             </div>
-                                        )}
+                                            <div className="flex justify-between text-sm">
+                                                <span className="text-muted-foreground">Expected income</span>
+                                                <span className="font-medium">{formatCurrency(activePeriod.salary_amount)}</span>
+                                            </div>
+                                            {activePeriod.notes && (
+                                                <div className="flex justify-between text-sm">
+                                                    <span className="text-muted-foreground">Notes</span>
+                                                    <span className="font-medium text-right max-w-[60%] truncate">{activePeriod.notes}</span>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <button
+                                            onClick={() => setClosePeriodDrawer(true)}
+                                            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-destructive text-destructive-foreground text-sm font-semibold hover:opacity-90 transition-opacity"
+                                        >
+                                            <CheckCircle className="w-4 h-4" />
+                                            Close Period
+                                        </button>
                                     </div>
-                                </CardContent>
+                                ) : (
+                                    /* No active period — CTA card */
+                                    <div className="rounded-2xl border border-neutral-200 bg-card p-4 flex items-center gap-3">
+                                        {/* <div className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-950 flex items-center justify-center shrink-0">
+                                            <CalendarDays className="w-4 h-4 text-amber-500" />
+                                        </div> */}
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-sm font-semibold">No active period</p>
+                                            <p className="text-xs text-muted-foreground mt-0.5">
+                                                {closedPeriods.length > 0
+                                                    ? `${closedPeriods.length} closed period${closedPeriods.length > 1 ? 's' : ''} in history`
+                                                    : 'Start tracking your spending'}
+                                            </p>
+                                        </div>
+                                        <Button
+                                            onClick={() => setOpenPeriodDrawer(true)}
+                                            variant='outline'
+                                            className='font-bold'
+                                        >
+                                            <Plus className="w-4 h-4" /> Period
+                                        </Button>
+                                    </div>
+                                )}
 
-                                <CardFooter>
-                                    <Button
-                                        variant="destructive"
-                                        className='w-full'
-                                        onClick={() => setClosePeriodDrawer(true)}
-                                    >
-                                        <CheckCircle className="w-4 h-4 mr-2" />
-                                        Close Period
-                                    </Button>
-                                </CardFooter>
-                            </Card>
-                        ) : (
-                            <div
-                                onClick={() => setOpenPeriodDrawer(true)}
-                                className="rounded-xl border border-dashed bg-card p-6 text-center space-y-1 cursor-pointer hover:bg-accent transition-colors"
-                            >
-                                <p className="text-sm font-medium">No active period</p>
-                                <p className="text-xs text-muted-foreground">
-                                    Tap to open a new pay period
-                                </p>
-                            </div>
+                                {/* Period history — always shown if has data */}
+                                <PeriodHistory periods={allPeriods} />
+                            </>
                         )}
-
-                        {!loading && <PeriodHistory periods={allPeriods} />}
                     </div>
                 </TabsContent>
 
+                {/* ── ACCOUNTS ── */}
                 <TabsContent value="account">
-                    <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                            <p className="text-sm text-muted-foreground">Accounts & Wallet</p>
-                            {accounts.length > 0 && !loading && (
-                                <Button size="sm" variant="outline" onClick={() => setAddAccountDrawer(true)}>
-                                    <Plus className="w-3.5 h-3.5 mr-1" />Add
-                                </Button>
-                            )}
+                    <div className="space-y-3 pt-3">
+                        {/* Header summary card */}
+                        <div className="rounded-2xl border border-neutral-200 bg-card p-4 flex items-center gap-3">
+                            <div className="flex-1 min-w-0">
+                                <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium">Total balance</p>
+                                {accounts.length > 0 ? (
+                                    <>
+                                        <p className={cn('text-xl font-bold mt-0.5', totalBalance < 0 ? 'text-destructive' : 'text-primary')}>
+                                            {formatCurrency(totalBalance)}
+                                        </p>
+                                        <p className="text-[10px] text-muted-foreground mt-0.5">
+                                            across {accounts.length} account{accounts.length > 1 ? 's' : ''}
+                                        </p>
+                                    </>
+                                ) : (
+                                    <p className="text-sm text-muted-foreground mt-0.5">Add your first account</p>
+                                )}
+                            </div>
+                            <Button
+                                onClick={() => setAddAccountDrawer(true)}
+                                variant='outline'
+                                className='font-bold'
+                            >
+                                <Plus className="w-4 h-4" />
+                                Accounts
+                            </Button>
                         </div>
-                        {loading ? (
-                            <LoadingContent />
-                        ) : accounts.length === 0 ? (
+
+                        {loading ? <LoadingContent /> : accounts.length === 0 ? (
                             <div
                                 onClick={() => setAddAccountDrawer(true)}
-                                className="rounded-xl border border-dashed bg-card p-6 text-center space-y-1 cursor-pointer hover:bg-accent transition-colors"
+                                className="rounded-2xl border border-dashed border-neutral-300 bg-card p-8 text-center space-y-2 cursor-pointer hover:bg-accent transition-colors"
                             >
-                                <p className="text-sm font-medium">No accounts yet</p>
-                                <p className="text-xs text-muted-foreground">Tap to add your first account</p>
+                                <div className="w-10 h-10 rounded-2xl bg-indigo-50 dark:bg-indigo-950 flex items-center justify-center mx-auto">
+                                    <Wallet className="w-5 h-5 text-indigo-400" />
+                                </div>
+                                <div>
+                                    <p className="text-sm font-medium">No accounts yet</p>
+                                    <p className="text-xs text-muted-foreground mt-0.5">Tap to add a bank account or cash wallet</p>
+                                </div>
                             </div>
                         ) : (
                             <AccountList
@@ -249,26 +257,66 @@ export default function SettingsPage() {
                     </div>
                 </TabsContent>
 
+                {/* ── CATEGORIES ── */}
                 <TabsContent value="category">
-                    <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                            <p className="text-sm text-muted-foreground">Categories</p>
-                            <div className="flex gap-2">
+                    <div className="space-y-3 pt-3">
+                        {/* Header summary card */}
+                        <div className="rounded-2xl border border-neutral-200 bg-card p-4 flex items-center gap-3">
+                            {/* <div className="w-9 h-9 rounded-xl bg-rose-50 dark:bg-rose-950 flex items-center justify-center shrink-0">
+                                <Tag className="w-4 h-4 text-rose-500" />
+                            </div> */}
+                            <div className="flex-1 min-w-0">
+                                <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium">Categories</p>
+                                {categories.length > 0 ? (
+                                    <>
+                                        <p className="text-xl font-bold mt-0.5">{categories.length}</p>
+                                        <p className="text-[10px] text-muted-foreground mt-0.5">
+                                            {expenseCount} expense · {incomeCount} income
+                                        </p>
+                                    </>
+                                ) : (
+                                    <p className="text-sm text-muted-foreground mt-0.5">No categories yet</p>
+                                )}
+                            </div>
+                            <div className="flex items-center gap-2">
                                 {categories.length === 0 && (
-                                    <Button size="sm" variant="outline" onClick={async () => {
-                                        await categoriesService.seedDefaults()
-                                        load()
-                                    }}>
-                                        Seed defaults
+                                    <Button
+                                        onClick={async () => { await categoriesService.seedDefaults(); load() }}
+                                        variant='secondary'
+                                    >
+                                        <Sparkles className="w-3 h-3" />
+                                        Seed
                                     </Button>
                                 )}
-                                <Button size="sm" variant="outline" onClick={() => setAddCategoryDrawer(true)}>
-                                    <Plus className="w-3.5 h-3.5 mr-1" />Add
+                                <Button
+                                    onClick={() => setAddCategoryDrawer(true)}
+                                    variant='outline'
+                                    className='font-bold'
+                                >
+                                    <Plus className="w-4 h-4" /> Category
                                 </Button>
                             </div>
                         </div>
-                        {loading ? (
-                            <LoadingContent />
+
+                        {loading ? <LoadingContent /> : categories.length === 0 ? (
+                            <div className="rounded-2xl border border-neutral-200 bg-card p-8 text-center space-y-3">
+                                {/* <div className="w-10 h-10 rounded-2xl bg-violet-50 dark:bg-violet-950 flex items-center justify-center mx-auto">
+                                    <Tag className="w-5 h-5 text-violet-400" />
+                                </div> */}
+                                <div>
+                                    <p className="text-sm font-medium">No categories yet</p>
+                                    <p className="text-xs text-muted-foreground mt-0.5">
+                                        Add manually or seed with common defaults
+                                    </p>
+                                </div>
+                                <button
+                                    onClick={async () => { await categoriesService.seedDefaults(); load() }}
+                                    className="inline-flex items-center gap-1.5 text-xs font-medium px-4 py-2 rounded-xl bg-muted hover:bg-accent transition-colors"
+                                >
+                                    <Sparkles className="w-3.5 h-3.5" />
+                                    Seed defaults
+                                </button>
+                            </div>
                         ) : (
                             <CategoryList
                                 categories={categories}
@@ -280,69 +328,27 @@ export default function SettingsPage() {
                 </TabsContent>
             </Tabs>
 
-            <BottomDrawer
-                open={addAccountDrawer}
-                onClose={() => setAddAccountDrawer(false)}
-                title="Add Account"
-            >
+            {/* Drawers */}
+            <BottomDrawer open={addAccountDrawer} onClose={() => setAddAccountDrawer(false)} title="Add Account">
                 <AccountForm onSuccess={() => { setAddAccountDrawer(false); load() }} />
             </BottomDrawer>
-
-            <BottomDrawer
-                open={addCategoryDrawer}
-                onClose={() => setAddCategoryDrawer(false)}
-                title="Add Category"
-            >
+            <BottomDrawer open={addCategoryDrawer} onClose={() => setAddCategoryDrawer(false)} title="Add Category">
                 <CategoryForm onSuccess={() => { setAddCategoryDrawer(false); load() }} />
             </BottomDrawer>
-
-            <BottomDrawer
-                open={openPeriodDrawer}
-                onClose={() => setOpenPeriodDrawer(false)}
-                title="Open New Period"
-            >
+            <BottomDrawer open={openPeriodDrawer} onClose={() => setOpenPeriodDrawer(false)} title="Open New Period">
                 <OpenPeriodForm onSuccess={() => { setOpenPeriodDrawer(false); load() }} />
             </BottomDrawer>
-
-            <BottomDrawer
-                open={!!editAccount}
-                onClose={() => setEditAccount(null)}
-                title="Edit Account"
-            >
-                {editAccount && (
-                    <AccountForm
-                        initial={editAccount}
-                        onSuccess={() => { setEditAccount(null); load() }}
-                    />
-                )}
+            <BottomDrawer open={!!editAccount} onClose={() => setEditAccount(null)} title="Edit Account">
+                {editAccount && <AccountForm initial={editAccount} onSuccess={() => { setEditAccount(null); load() }} />}
             </BottomDrawer>
-
-            <BottomDrawer
-                open={!!editCategory}
-                onClose={() => setEditCategory(null)}
-                title="Edit Category"
-            >
-                {editCategory && (
-                    <CategoryForm
-                        initial={editCategory}
-                        onSuccess={() => { setEditCategory(null); load() }}
-                    />
-                )}
+            <BottomDrawer open={!!editCategory} onClose={() => setEditCategory(null)} title="Edit Category">
+                {editCategory && <CategoryForm initial={editCategory} onSuccess={() => { setEditCategory(null); load() }} />}
             </BottomDrawer>
-
-            <BottomDrawer
-                open={closePeriodDrawer}
-                onClose={() => setClosePeriodDrawer(false)}
-                title="Close Period"
-            >
+            <BottomDrawer open={closePeriodDrawer} onClose={() => setClosePeriodDrawer(false)} title="Close Period">
                 {activePeriod && (
                     <ClosePeriodForm
                         period={activePeriod}
-                        onSuccess={() => {
-                            setClosePeriodDrawer(false);
-                            setActivePeriod(null);
-                            load()
-                        }}
+                        onSuccess={() => { setClosePeriodDrawer(false); setActivePeriod(null); load() }}
                     />
                 )}
             </BottomDrawer>
@@ -356,7 +362,6 @@ export default function SettingsPage() {
                 onConfirm={handleDeleteAccount}
                 onClose={() => setDeletingAccountId(null)}
             />
-
             <ConfirmDrawer
                 open={!!deletingCategoryId}
                 title="Delete Category"
@@ -366,7 +371,6 @@ export default function SettingsPage() {
                 onConfirm={handleDeleteCategory}
                 onClose={() => setDeletingCategoryId(null)}
             />
-
             <ConfirmDrawer
                 open={logoutConfirm}
                 title="Logout"

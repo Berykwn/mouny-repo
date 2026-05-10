@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { formatCurrency } from '@/lib/helpers'
 import type { TransactionWithDetails } from '@/types'
-import { TrendingUp, TrendingDown, Trash2, ChevronLeft, ChevronRight, ChevronsUpDown } from 'lucide-react'
+import { TrendingUp, TrendingDown, Trash2, ChevronLeft, ChevronRight, ChevronsUpDown, Plus } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 
 interface PeriodCalendarProps {
     transactions: TransactionWithDetails[]
@@ -19,6 +19,8 @@ interface PeriodCalendarProps {
     onPrevPeriod: () => void
     onNextPeriod: () => void
     onOpenPicker: () => void
+    onDateSelect?: (date: string) => void
+    onAddTransaction?: () => void
 }
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -121,19 +123,18 @@ export function PeriodCalendar({
     onPrevPeriod,
     onNextPeriod,
     onOpenPicker,
+    onDateSelect,
+    onAddTransaction,
 }: PeriodCalendarProps) {
-    const clampDefault = () => {
-        const d = defaultDate ?? periodStart
+    const clamp = (d: string) => {
         if (d < periodStart) return periodStart
         if (d > periodEnd) return periodEnd
         return d
     }
 
-    const [selectedDate, setSelectedDate] = useState<string>(clampDefault())
+    const [selectedDate, setSelectedDate] = useState<string>(clamp(defaultDate ?? periodStart))
 
-    const validSelected = selectedDate < periodStart || selectedDate > periodEnd
-        ? clampDefault()
-        : selectedDate
+    const validSelected = clamp(selectedDate)
 
     const txByDate = new Map<string, TransactionWithDetails[]>()
     for (const tx of transactions) {
@@ -157,9 +158,14 @@ export function PeriodCalendar({
     const dailyTotal = selectedTxs.reduce((sum, tx) =>
         tx.type === 'income' ? sum + tx.amount : sum - tx.amount, 0)
 
+    const handleSelectDate = (date: string) => {
+        setSelectedDate(date)
+        onDateSelect?.(date)
+    }
+
     return (
-        <div className="space-y-3">
-            <div className="rounded-xl border bg-card p-4 space-y-4">
+        <div className="space-y-3 pt-3">
+            <div className="rounded-2xl border border-neutral-200 bg-card p-4 space-y-4">
                 <div className="flex items-center gap-2">
                     <button
                         onClick={onPrevPeriod}
@@ -171,16 +177,16 @@ export function PeriodCalendar({
 
                     <button
                         onClick={onOpenPicker}
-                        className="flex-1 flex flex-col items-center gap-1 py-1 rounded-lg hover:bg-accent transition-colors"
+                        className="flex-1 flex flex-col items-center gap-0.5 py-1 rounded-lg hover:bg-accent transition-colors"
                     >
                         <div className="flex items-center gap-1.5">
                             <p className="text-xs font-semibold">{periodLabel}</p>
                             <ChevronsUpDown className="w-3 h-3 text-muted-foreground" />
                         </div>
                         {isCurrentPeriod && (
-                            <Badge variant="secondary" className="text-[9px] px-1.5 py-0 h-4">
+                            <span className="text-[9px] text-muted-foreground uppercase tracking-widest font-medium">
                                 Active
-                            </Badge>
+                            </span>
                         )}
                     </button>
 
@@ -194,7 +200,7 @@ export function PeriodCalendar({
                 </div>
 
                 <div className="flex items-center justify-between">
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">
                         Spending calendar
                     </p>
                     <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
@@ -225,7 +231,6 @@ export function PeriodCalendar({
                         const hasTx = txByDate.has(date)
                         const isSelected = validSelected === date
                         const ratio = maxExpense > 0 ? expense / maxExpense : 0
-
                         const d = new Date(date + 'T00:00:00')
                         const showMonth = dayNum === 1 && date !== periodStart
 
@@ -237,7 +242,7 @@ export function PeriodCalendar({
                                     </div>
                                 )}
                                 <button
-                                    onClick={() => setSelectedDate(date)}
+                                    onClick={() => handleSelectDate(date)}
                                     className={cn(
                                         'w-full aspect-square rounded-lg flex items-center justify-center text-[11px] font-medium transition-all',
                                         isSelected ? 'ring-2 ring-foreground ring-offset-1 scale-105 z-10 relative' : 'hover:opacity-80',
@@ -250,11 +255,25 @@ export function PeriodCalendar({
                         )
                     })}
                 </div>
+
+                {onAddTransaction && (
+                    <>
+                        <div className="border-t border-neutral-200" />
+                        <Button
+                            variant="outline"
+                            className="w-full font-bold"
+                            onClick={onAddTransaction}
+                        >
+                            <Plus className="w-4 h-4 mr-2" />
+                            Add Transaction
+                        </Button>
+                    </>
+                )}
             </div>
 
-            <div className="rounded-xl border bg-card p-4">
+            <div className="rounded-2xl border border-neutral-200 bg-card p-4">
                 <div className="flex items-center justify-between mb-3">
-                    <p className="text-sm font-semibold">
+                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">
                         {new Date(validSelected + 'T00:00:00').toLocaleDateString('en-GB', {
                             weekday: 'long', day: 'numeric', month: 'long'
                         })}
@@ -268,6 +287,7 @@ export function PeriodCalendar({
                         </p>
                     )}
                 </div>
+
                 {selectedTxs.length === 0 ? (
                     <p className="text-xs text-muted-foreground">No transactions this day.</p>
                 ) : (

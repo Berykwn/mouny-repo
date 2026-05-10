@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
-import { Drum, Plus } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { BottomDrawer } from '@/components/bottom-drawer'
 import { ConfirmDrawer } from '@/components/confirmation-drawer'
@@ -12,12 +12,11 @@ import { formatCurrency } from '@/lib/helpers'
 import type { WishListItem } from '@/types'
 import { toast } from 'sonner'
 import { LoadingContent } from '@/components/loading-content'
-import NoPeriod from '@/components/no-period'
 
 export default function WishListPage() {
     const [items, setItems] = useState<WishListItem[]>([])
     const [periodId, setPeriodId] = useState<string | null>(null)
-    const [periodStart, setPeriodStart] = useState<string | null>(null)  // for BuyItemForm validation
+    const [periodStart, setPeriodStart] = useState<string | null>(null)
     const [loading, setLoading] = useState(true)
     const [addDrawerOpen, setAddDrawerOpen] = useState(false)
     const [buyingItem, setBuyingItem] = useState<WishListItem | null>(null)
@@ -27,7 +26,6 @@ export default function WishListPage() {
 
     const load = useCallback(async () => {
         setLoading(true)
-
         const { data: period } = await payPeriodsService.getActive()
         if (!period) {
             setPeriodId(null)
@@ -35,7 +33,6 @@ export default function WishListPage() {
             setLoading(false)
             return
         }
-
         setPeriodId(period.id)
         setPeriodStart(period.start_date)
 
@@ -56,67 +53,56 @@ export default function WishListPage() {
         setDeleteLoading(true)
         const { error } = await wishListService.remove(deletingId)
         setDeleteLoading(false)
-
         if (error) { toast.error(error); return }
-
-        setItems((prev) => prev.filter((i) => i.id !== deletingId))
+        setItems(prev => prev.filter(i => i.id !== deletingId))
         setDeletingId(null)
         toast.success('Item removed from wish list.')
     }
 
-    const totalEstimated = items
-        .filter(i => !i.is_purchased)
-        .reduce((s, i) => s + (i.estimated_price ?? 0), 0)
+    const totalEstimated = items.reduce((s, i) => s + (i.estimated_price ?? 0), 0)
+    const affordableCount = items.filter(i => analysis[i.id]?.canAfford).length
 
     return (
         <div className="p-4 md:p-6 space-y-5 max-w-2xl mx-auto">
-            <div className="border-b pb-4 mb-4">
-                <div className="flex items-center justify-between px-1">
-                    <div>
-                        <p className="text-sm font-medium">Wish List</p>
-                        <p className="text-xs text-muted-foreground">Planned purchases (all periods)</p>
-                    </div>
-                    <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setAddDrawerOpen(true)}
-                        disabled={!periodId}
-                    >
-                        <Plus className="w-4 h-4 mr-1" />
-                        Add
-                    </Button>
-                </div>
-            </div>
-
-            {!loading && items.length > 0 && (
-                <div className="rounded-2xl border bg-card p-4 flex items-center justify-between shadow-sm">
-                    <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-lg bg-lime-100 dark:bg-lime-900 flex items-center justify-center">
-                            <Drum className="w-4 h-4 text-lime-600 dark:text-lime-400" />
-                        </div>
-                        <div>
-                            <p className="text-xs text-muted-foreground">
-                                {items.filter(i => !i.is_purchased).length} pending items · total estimate
-                            </p>
-                            <p className="text-lg font-semibold">{formatCurrency(totalEstimated)}</p>
-                        </div>
-                    </div>
-                </div>
-            )}
-
             {loading ? (
                 <LoadingContent />
-            ) : !periodId ? (
-                <NoPeriod />
             ) : (
-                <WishListItems
-                    items={items}
-                    analysis={analysis}
-                    onDeleteRequest={setDeletingId}
-                    onBuy={setBuyingItem}
-                />
+                <div className="space-y-5">
+                    {/* Summary card */}
+                    <div className="rounded-2xl border border-neutral-200 bg-card p-4 flex items-center gap-3">
+                        {/* <div className="w-10 h-10 rounded-xl bg-lime-100 dark:bg-lime-900 flex items-center justify-center flex-shrink-0">
+                            <ShoppingBag className="w-4 h-4 text-lime-600 dark:text-lime-400" />
+                        </div> */}
+                        <div className="flex-1">
+                            <p className="text-xs text-muted-foreground">
+                                {items.length} item · {affordableCount} affordable now
+                            </p>
+                            <p className="text-xl font-bold mt-0.5">{formatCurrency(totalEstimated)}</p>
+                        </div>
+                        <Button
+                            variant='outline'
+                            onClick={() => setAddDrawerOpen(true)}
+                            className="font-bold"
+                            disabled={!periodId}
+                        >
+                            <Plus className="w-4 h-4" />
+                            Wish
+                        </Button>
+                    </div>
+
+                    {/* Item list */}
+                    {periodId && (
+                        <WishListItems
+                            items={items}
+                            analysis={analysis}
+                            onDeleteRequest={setDeletingId}
+                            onBuy={setBuyingItem}
+                        />
+                    )}
+                </div>
             )}
 
+            {/* Add drawer */}
             {periodId && (
                 <BottomDrawer
                     open={addDrawerOpen}
@@ -130,6 +116,7 @@ export default function WishListPage() {
                 </BottomDrawer>
             )}
 
+            {/* Buy drawer */}
             <BottomDrawer
                 open={!!buyingItem}
                 onClose={() => setBuyingItem(null)}
@@ -144,10 +131,11 @@ export default function WishListPage() {
                 )}
             </BottomDrawer>
 
+            {/* Delete confirm */}
             <ConfirmDrawer
                 open={!!deletingId}
                 title="Remove Item"
-                description="Remove this item from your wish list? This cannot be undone."
+                description="Remove this item from your wish list? This action cannot be undone."
                 confirmLabel="Remove"
                 loading={deleteLoading}
                 onConfirm={handleDeleteConfirm}

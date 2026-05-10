@@ -11,11 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import type { Account, Category } from '@/types'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { toast } from 'sonner'
-import {
-    Popover,
-    PopoverContent,
-    PopoverTrigger,
-} from '@/components/ui/popover'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Calendar } from '@/components/ui/calendar'
 import { cn } from '@/lib/utils'
 
@@ -23,26 +19,37 @@ interface TransactionFormProps {
     payPeriodId: string
     periodStart: string
     periodEnd?: string
+    defaultDate?: string
     onSuccess: () => void
 }
 
 type TxType = 'income' | 'expense'
 
-export function TransactionForm({ payPeriodId, periodStart, periodEnd, onSuccess }: TransactionFormProps) {
+export function TransactionForm({ payPeriodId, periodStart, periodEnd, defaultDate, onSuccess }: TransactionFormProps) {
     const today = toISODate()
     const maxDate = periodEnd ?? today
 
-    const defaultDate = today > maxDate ? maxDate : today < periodStart ? periodStart : today
+    const resolveDate = (d?: string) => {
+        const target = d ?? today
+        if (target < periodStart) return periodStart
+        if (target > maxDate) return maxDate
+        return target
+    }
 
     const [type, setType] = useState<TxType>('expense')
     const [amount, setAmount] = useState('')
     const [note, setNote] = useState('')
-    const [date, setDate] = useState(defaultDate)
+    const [date, setDate] = useState(resolveDate(defaultDate))
     const [accountId, setAccountId] = useState('')
     const [categoryId, setCategoryId] = useState('')
     const [accounts, setAccounts] = useState<Account[]>([])
     const [categories, setCategories] = useState<Category[]>([])
     const [loading, setLoading] = useState(false)
+
+    // Sync date ketika defaultDate berubah (user klik tanggal lain di kalender)
+    useEffect(() => {
+        setDate(resolveDate(defaultDate))
+    }, [defaultDate])
 
     useEffect(() => {
         accountsService.getAll().then(({ data }) => {
@@ -109,7 +116,6 @@ export function TransactionForm({ payPeriodId, periodStart, periodEnd, onSuccess
         }
 
         const { error } = await transactionsService.create(input)
-
         setLoading(false)
 
         if (error) {
@@ -130,12 +136,8 @@ export function TransactionForm({ payPeriodId, periodStart, periodEnd, onSuccess
                 onValueChange={(val) => val && setType(val as TxType)}
                 className="w-full"
             >
-                <ToggleGroupItem value="expense" className="flex-1">
-                    Expense
-                </ToggleGroupItem>
-                <ToggleGroupItem value="income" className="flex-1">
-                    Income
-                </ToggleGroupItem>
+                <ToggleGroupItem value="expense" className="flex-1">Expense</ToggleGroupItem>
+                <ToggleGroupItem value="income" className="flex-1">Income</ToggleGroupItem>
             </ToggleGroup>
 
             <div className="space-y-1.5">
@@ -178,9 +180,7 @@ export function TransactionForm({ payPeriodId, periodStart, periodEnd, onSuccess
                     </SelectTrigger>
                     <SelectContent>
                         {categories.map((c) => (
-                            <SelectItem key={c.id} value={c.id}>
-                                {c.name}
-                            </SelectItem>
+                            <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                         ))}
                     </SelectContent>
                 </Select>
@@ -188,7 +188,6 @@ export function TransactionForm({ payPeriodId, periodStart, periodEnd, onSuccess
 
             <div className="space-y-1.5">
                 <Label>Date</Label>
-
                 <Popover>
                     <PopoverTrigger asChild>
                         <Button
@@ -199,27 +198,24 @@ export function TransactionForm({ payPeriodId, periodStart, periodEnd, onSuccess
                             )}
                         >
                             <CalendarIcon className="mr-2 h-4 w-4" />
-                            {date
-                                ? format(new Date(date), 'yyyy-MM-dd')
-                                : 'Pick a date'}
+                            {date ? format(new Date(date + 'T00:00:00'), 'dd MMM yyyy') : 'Pick a date'}
                         </Button>
                     </PopoverTrigger>
-
                     <PopoverContent className="w-auto p-0">
                         <Calendar
                             mode="single"
-                            selected={date ? new Date(date) : undefined}
+                            selected={date ? new Date(date + 'T00:00:00') : undefined}
                             onSelect={(d) => {
                                 if (!d) return
                                 setDate(format(d, 'yyyy-MM-dd'))
                             }}
                             disabled={(d) =>
-                                d < new Date(periodStart) || d > new Date(maxDate)
+                                d < new Date(periodStart + 'T00:00:00') ||
+                                d > new Date(maxDate + 'T00:00:00')
                             }
                         />
                     </PopoverContent>
                 </Popover>
-
                 <p className="text-xs text-muted-foreground">
                     Must be within {periodStart} — {maxDate}
                 </p>

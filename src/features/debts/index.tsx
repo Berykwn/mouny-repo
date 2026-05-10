@@ -57,13 +57,8 @@ export default function DebtsPage() {
         const paidAmount = deletingDebt.total_amount - deletingDebt.remaining_amount
         const isFullyPaid = deletingDebt.remaining_amount === 0
         const isUnpaid = paidAmount === 0
-
-        if (isFullyPaid) {
-            return 'This debt is fully paid. Deleting will remove the record only — past transactions are unaffected.'
-        }
-        if (isUnpaid) {
-            return 'This debt has no payments recorded yet. The record will be permanently removed.'
-        }
+        if (isFullyPaid) return 'This debt is fully paid. Deleting will remove the record only — past transactions are unaffected.'
+        if (isUnpaid) return 'This debt has no payments recorded yet. The record will be permanently removed.'
         return `${formatCurrency(paidAmount)} of this debt has already been recorded as paid. Deleting will remove the debt record, but those transactions will remain in your history.`
     })()
 
@@ -78,9 +73,7 @@ export default function DebtsPage() {
         debt: myDebts.length,
         receivable: receivables.length,
     }
-
     const filteredDebts = filter === 'all' ? debts : debts.filter(d => d.type === filter)
-
     const filterLabels: Record<FilterType, string> = {
         all: `All (${filterCounts.all})`,
         debt: `Debt (${filterCounts.debt})`,
@@ -89,30 +82,11 @@ export default function DebtsPage() {
 
     return (
         <div className="p-4 md:p-6 space-y-5 max-w-2xl mx-auto">
-            <header className="border-b pb-4">
-                <div className="flex items-center justify-between px-1">
-                    <div>
-                        <p className="text-sm font-medium">Debts</p>
-                        <p className="text-xs text-muted-foreground">Active debts &amp; receivables</p>
-                    </div>
-                    <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setAddDrawerOpen(true)}
-                        disabled={!periodId}
-                    >
-                        <Plus className="w-4 h-4 mr-1" />
-                        Add
-                    </Button>
-                </div>
-            </header>
-
-            {loading ? (
-                <LoadingContent />
-            ) : (
+            {loading ? <LoadingContent /> : (
                 <>
-                    {debts.length > 0 && (
-                        <div className="rounded-xl border bg-card p-4 space-y-3">
+                    {/* Summary card — always visible */}
+                    <div className="rounded-2xl border border-neutral-200 bg-card p-4 space-y-3">
+                        <div className="flex justify-between items-start">
                             <div>
                                 <p className="text-xs text-muted-foreground">Net position</p>
                                 <p className={cn(
@@ -122,19 +96,30 @@ export default function DebtsPage() {
                                     {net >= 0 ? '+' : ''}{formatCurrency(net)}
                                 </p>
                             </div>
-                            <div className="grid grid-cols-2 gap-3 pt-2 border-t">
-                                <div>
-                                    <p className="text-[11px] text-muted-foreground">Debt</p>
-                                    <p className="text-sm font-medium text-destructive">{formatCurrency(totalOwed)}</p>
-                                </div>
-                                <div>
-                                    <p className="text-[11px] text-muted-foreground">Receivable</p>
-                                    <p className="text-sm font-medium text-green-600">{formatCurrency(totalReceivable)}</p>
-                                </div>
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => setAddDrawerOpen(true)}
+                                disabled={!periodId}
+                            >
+                                <Plus className="w-4 h-4 mr-1" />
+                                Debt
+                            </Button>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3 pt-2 border-t border-neutral-100">
+                            <div>
+                                <p className="text-[11px] text-muted-foreground">Debt</p>
+                                <p className="text-sm font-medium text-destructive">{formatCurrency(totalOwed)}</p>
+                            </div>
+                            <div>
+                                <p className="text-[11px] text-muted-foreground">Receivable</p>
+                                <p className="text-sm font-medium text-green-600">{formatCurrency(totalReceivable)}</p>
                             </div>
                         </div>
-                    )}
+                    </div>
 
+                    {/* Filter pills — only if has data */}
                     {debts.length > 0 && (
                         <div className="flex gap-2 flex-wrap">
                             {(Object.keys(filterLabels) as FilterType[]).map((f) => (
@@ -162,19 +147,11 @@ export default function DebtsPage() {
                 </>
             )}
 
-            <BottomDrawer
-                open={addDrawerOpen}
-                onClose={() => setAddDrawerOpen(false)}
-                title="Add Debt"
-            >
+            <BottomDrawer open={addDrawerOpen} onClose={() => setAddDrawerOpen(false)} title="Add Debt">
                 <DebtForm onSuccess={() => { setAddDrawerOpen(false); load() }} />
             </BottomDrawer>
 
-            <BottomDrawer
-                open={!!payingDebt}
-                onClose={() => setPayingDebt(null)}
-                title="Record Payment"
-            >
+            <BottomDrawer open={!!payingDebt} onClose={() => setPayingDebt(null)} title="Record Payment">
                 {payingDebt && periodId && periodStartDate && (
                     <PayDebtForm
                         debt={payingDebt}

@@ -1,6 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
-import { Plus, BarChart2, CalendarDays } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { BarChart2, CalendarDays } from 'lucide-react'
 import { BottomDrawer } from '@/components/bottom-drawer'
 import { ConfirmDrawer } from '@/components/confirmation-drawer'
 import { TransactionForm } from './components/transaction-form'
@@ -27,6 +26,7 @@ export default function TransactionsPage() {
     const [periodPickerOpen, setPeriodPickerOpen] = useState(false)
     const [deletingId, setDeletingId] = useState<string | null>(null)
     const [deleteLoading, setDeleteLoading] = useState(false)
+    const [selectedDate, setSelectedDate] = useState<string>(toISODate()) // <-- tambah ini
 
     const today = toISODate()
 
@@ -102,22 +102,15 @@ export default function TransactionsPage() {
 
     return (
         <div className="p-4 md:p-6 space-y-5 max-w-2xl mx-auto">
-            <header className="border-b pb-4">
-                <div className="flex items-center justify-between px-1">
-                    <div>
-                        <p className="text-sm font-medium">Transactions</p>
-                        <p className="text-xs text-muted-foreground">
-                            {selectedPeriod ? periodLabel(selectedPeriod) : 'No periods found.'}
-                        </p>
-                    </div>
-                    {isCurrentPeriod && selectedPeriod && (
-                        <Button size="sm" variant="outline" onClick={() => setDrawerOpen(true)}>
-                            <Plus className="w-4 h-4 mr-1" />Add
-                        </Button>
-                    )}
-                </div>
-            </header>
-
+            {/* {isCurrentPeriod && selectedPeriod && (
+                <Button
+                    onClick={() => setDrawerOpen(true)}
+                    size='icon'
+                    className="fixed bottom-16 right-6 z-50 rounded-full h-11 w-11"
+                >
+                    <Plus />
+                </Button>
+            )} */}
             {loading ? (
                 <LoadingContent />
             ) : !selectedPeriod ? (
@@ -154,6 +147,8 @@ export default function TransactionsPage() {
                                     onPrevPeriod={handlePrevPeriod}
                                     onNextPeriod={handleNextPeriod}
                                     onOpenPicker={() => setPeriodPickerOpen(true)}
+                                    onDateSelect={setSelectedDate}
+                                    onAddTransaction={isCurrentPeriod ? () => setDrawerOpen(true) : undefined}
                                 />
                             </TabsContent>
                             <TabsContent value="analytics">
@@ -226,6 +221,7 @@ export default function TransactionsPage() {
                         payPeriodId={activePeriod.id}
                         periodStart={activePeriod.start_date}
                         periodEnd={undefined}
+                        defaultDate={selectedDate} // <-- tambah ini
                         onSuccess={() => {
                             setDrawerOpen(false)
                             loadTransactions(activePeriod)
