@@ -84,6 +84,15 @@ export function PayDebtForm({ debt, payPeriodId, periodStartDate, onSuccess }: P
 
         setLoading(true)
 
+        const { data: debtCategory, error: catError } =
+            await transactionsService.findOrCreateDebtPaymentCategory()
+
+        if (catError || !debtCategory) {
+            toast.error('Failed to resolve debt payment category.')
+            setLoading(false)
+            return
+        }
+
         const { error: txError } = await transactionsService.create({
             pay_period_id: payPeriodId,
             account_id: selectedAccountId,
@@ -91,6 +100,7 @@ export function PayDebtForm({ debt, payPeriodId, periodStartDate, onSuccess }: P
             amount: parsed,
             note: `Debt payment — ${debt.counterparty}`,
             date,
+            category_id: debtCategory.id,
         })
 
         if (txError) { toast.error(txError); setLoading(false); return }
