@@ -64,7 +64,7 @@ export function SpendingBreakdown({ transactions }: SpendingBreakdownProps) {
                             />
                             <span className="text-[12px] text-foreground flex-1">{cat.name}</span>
                             <span className="text-[11px] text-muted-foreground w-7 text-right">{pct}%</span>
-                            <span className="font-serif text-[13px] w-24 text-right">
+                            <span className="text-[13px] w-24 text-right">
                                 {formatCurrency(cat.amount)}
                             </span>
                         </div>
@@ -74,7 +74,7 @@ export function SpendingBreakdown({ transactions }: SpendingBreakdownProps) {
 
             <div className="flex justify-between mx-5 mt-3 pt-3 pb-4 border-t">
                 <span className="text-[11px] text-muted-foreground">Total spent</span>
-                <span className="font-serif text-[13px]">{formatCurrency(totalExpense)}</span>
+                <span className="text-[13px]">{formatCurrency(totalExpense)}</span>
             </div>
         </div>
     )
