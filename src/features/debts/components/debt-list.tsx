@@ -1,6 +1,6 @@
 import { formatCurrency, formatDate, daysUntil } from '@/lib/helpers'
 import type { DebtWithAccount } from '@/types'
-import { DollarSign, Trash2 } from 'lucide-react'
+import { DollarSign, Trash2, HandCoins } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -10,9 +10,10 @@ interface DebtListProps {
     debts: DebtWithAccount[]
     onDelete: (debt: DebtWithAccount) => void
     onPay: (debt: DebtWithAccount) => void
+    onCollect: (debt: DebtWithAccount) => void
 }
 
-export function DebtList({ debts, onDelete, onPay }: DebtListProps) {
+export function DebtList({ debts, onDelete, onPay, onCollect }: DebtListProps) {
     return (
         <div className="space-y-3">
             {debts.map((debt) => {
@@ -65,7 +66,10 @@ export function DebtList({ debts, onDelete, onPay }: DebtListProps) {
                                     )}
                                 />
                             </div>
-                            <p className="text-[11px] text-muted-foreground">{paidPercent}% paid</p>
+                            <p className="text-[11px] text-muted-foreground">{paidPercent}% {isDebt ? 'paid' : 'collected'}</p>
+                            <div className='pt-2.5 pb-1.5'>
+                                <p className='text-xs text-muted-foreground font-medium'>{debt.notes}</p>
+                            </div>
                         </div>
 
                         <div className="flex items-center justify-between gap-2">
@@ -82,10 +86,15 @@ export function DebtList({ debts, onDelete, onPay }: DebtListProps) {
                             </div>
 
                             <div className="flex items-center gap-1">
-                                {isDebt && (
+                                {isDebt ? (
                                     <Button variant="outline" size="sm" onClick={() => onPay(debt)}>
                                         <DollarSign className="w-3.5 h-3.5 mr-1 mt-0.5" />
                                         Pay
+                                    </Button>
+                                ) : (
+                                    <Button variant="outline" size="sm" onClick={() => onCollect(debt)}>
+                                        <HandCoins className="w-3.5 h-3.5 mr-1 mt-0.5" />
+                                        Collect
                                     </Button>
                                 )}
                                 <Button variant="ghost" size="sm" onClick={() => onDelete(debt)}>

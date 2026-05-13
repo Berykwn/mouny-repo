@@ -6,6 +6,7 @@ import { ConfirmDrawer } from '@/components/confirmation-drawer'
 import { DebtList } from './components/debt-list'
 import { DebtForm } from './components/debt-form'
 import { PayDebtForm } from './components/pay-debt-form'
+import { PayReceivableForm } from './components/pay-receivable-form'
 import { debtsService } from '@/services/debts.service'
 import { payPeriodsService } from '@/services/pay-periods.service'
 import { formatCurrency } from '@/lib/helpers'
@@ -23,6 +24,7 @@ export default function DebtsPage() {
     const [loading, setLoading] = useState(true)
     const [addDrawerOpen, setAddDrawerOpen] = useState(false)
     const [payingDebt, setPayingDebt] = useState<DebtWithAccount | null>(null)
+    const [collectingDebt, setCollectingDebt] = useState<DebtWithAccount | null>(null)
     const [filter, setFilter] = useState<FilterType>('all')
     const [deletingDebt, setDeletingDebt] = useState<DebtWithAccount | null>(null)
     const [deleteLoading, setDeleteLoading] = useState(false)
@@ -84,7 +86,6 @@ export default function DebtsPage() {
         <div className="p-4 md:p-6 space-y-5 max-w-2xl mx-auto">
             {loading ? <LoadingContent /> : (
                 <>
-                    {/* Summary card — always visible */}
                     <div className="rounded-2xl border border-neutral-200 bg-card p-4 space-y-3">
                         <div className="flex justify-between items-start">
                             <div>
@@ -119,7 +120,6 @@ export default function DebtsPage() {
                         </div>
                     </div>
 
-                    {/* Filter pills — only if has data */}
                     {debts.length > 0 && (
                         <div className="flex gap-2 flex-wrap">
                             {(Object.keys(filterLabels) as FilterType[]).map((f) => (
@@ -143,21 +143,51 @@ export default function DebtsPage() {
                         debts={filteredDebts}
                         onDelete={setDeletingDebt}
                         onPay={setPayingDebt}
+                        onCollect={setCollectingDebt}
                     />
                 </>
             )}
 
-            <BottomDrawer open={addDrawerOpen} onClose={() => setAddDrawerOpen(false)} title="Add Debt">
-                <DebtForm onSuccess={() => { setAddDrawerOpen(false); load() }} />
+            <BottomDrawer
+                open={addDrawerOpen}
+                onClose={() => setAddDrawerOpen(false)}
+                title="Add Debt"
+            >
+                {periodId && periodStartDate && (
+                    <DebtForm
+                        payPeriodId={periodId}
+                        periodStartDate={periodStartDate}
+                        onSuccess={() => { setAddDrawerOpen(false); load() }}
+                    />
+                )}
             </BottomDrawer>
 
-            <BottomDrawer open={!!payingDebt} onClose={() => setPayingDebt(null)} title="Record Payment">
+            <BottomDrawer
+                open={!!payingDebt}
+                onClose={() => setPayingDebt(null)}
+                title="Record Payment"
+            >
                 {payingDebt && periodId && periodStartDate && (
                     <PayDebtForm
                         debt={payingDebt}
                         payPeriodId={periodId}
                         periodStartDate={periodStartDate}
                         onSuccess={() => { setPayingDebt(null); load() }}
+                    />
+                )}
+            </BottomDrawer>
+
+            <BottomDrawer
+                open={!!collectingDebt}
+                onClose={() => setCollectingDebt(null)}
+                title="Record Collection"
+            >
+                {collectingDebt && periodId && periodStartDate && (
+                    <PayReceivableForm
+                        debt={collectingDebt}
+                        payPeriodId={periodId}
+                        periodStartDate={periodStartDate}
+                        onSuccess={() => { setCollectingDebt(null); load() }}
                     />
                 )}
             </BottomDrawer>

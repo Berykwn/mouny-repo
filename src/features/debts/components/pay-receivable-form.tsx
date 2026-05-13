@@ -9,8 +9,7 @@ import { transactionsService } from '@/services/transactions.service'
 import { accountsService } from '@/services/accounts-categories.service'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { formatCurrency, toISODate } from '@/lib/helpers'
-import type { Account } from '@/types'
-import type { DebtWithAccount } from '@/types'
+import type { Account, DebtWithAccount } from '@/types'
 import { toast } from 'sonner'
 import {
     Popover,
@@ -20,14 +19,14 @@ import {
 import { Calendar } from '@/components/ui/calendar'
 import { cn } from '@/lib/utils'
 
-interface PayDebtFormProps {
+interface PayReceivableFormProps {
     debt: DebtWithAccount
     payPeriodId: string
     periodStartDate: string
     onSuccess: () => void
 }
 
-export function PayDebtForm({ debt, payPeriodId, periodStartDate, onSuccess }: PayDebtFormProps) {
+export function PayReceivableForm({ debt, payPeriodId, periodStartDate, onSuccess }: PayReceivableFormProps) {
     const today = toISODate()
 
     const [amount, setAmount] = useState(String(debt.remaining_amount))
@@ -66,11 +65,11 @@ export function PayDebtForm({ debt, payPeriodId, periodStartDate, onSuccess }: P
             return
         }
         if (parsed > debt.remaining_amount) {
-            toast.error(`Maximum payable: ${formatCurrency(debt.remaining_amount)}`)
+            toast.error(`Maximum collectible: ${formatCurrency(debt.remaining_amount)}`)
             return
         }
         if (!selectedAccountId) {
-            toast.error('Please select a payment account.')
+            toast.error('Please select an account.')
             return
         }
         if (date < periodStartDate) {
@@ -84,7 +83,7 @@ export function PayDebtForm({ debt, payPeriodId, periodStartDate, onSuccess }: P
 
         setLoading(true)
 
-        const { data: category, error: catError } = await debtsService.findOrCreateCategory('Debt Payment')
+        const { data: category, error: catError } = await debtsService.findOrCreateCategory('Receivable')
 
         if (catError || !category) {
             toast.error('Failed to resolve category.')
@@ -95,9 +94,9 @@ export function PayDebtForm({ debt, payPeriodId, periodStartDate, onSuccess }: P
         const { error: txError } = await transactionsService.create({
             pay_period_id: payPeriodId,
             account_id: selectedAccountId,
-            type: 'expense',
+            type: 'income',
             amount: parsed,
-            note: `Debt payment — ${debt.counterparty}`,
+            note: `Receivable collected — ${debt.counterparty}`,
             date,
             category_id: category.id,
         })
@@ -111,15 +110,15 @@ export function PayDebtForm({ debt, payPeriodId, periodStartDate, onSuccess }: P
         onSuccess()
     }
 
-    const paidAmount = debt.total_amount - debt.remaining_amount
-    const paidPercent = Math.round((paidAmount / debt.total_amount) * 100)
+    const collectedAmount = debt.total_amount - debt.remaining_amount
+    const collectedPercent = Math.round((collectedAmount / debt.total_amount) * 100)
 
     return (
         <form onSubmit={handleSubmit} className="space-y-4 pb-2">
             <div className="rounded-xl border bg-card p-4 space-y-3">
                 <div className="flex items-start justify-between">
                     <div>
-                        <p className="text-xs text-muted-foreground">Owed to {debt.counterparty}</p>
+                        <p className="text-xs text-muted-foreground">Owed by {debt.counterparty}</p>
                         <p className="text-xl font-semibold mt-0.5">{formatCurrency(debt.remaining_amount)}</p>
                     </div>
                     <p className="text-xs text-muted-foreground">of {formatCurrency(debt.total_amount)}</p>
@@ -127,16 +126,16 @@ export function PayDebtForm({ debt, payPeriodId, periodStartDate, onSuccess }: P
                 <div className="space-y-1">
                     <div className="h-1 bg-muted rounded-full overflow-hidden">
                         <div
-                            className="h-full bg-foreground rounded-full transition-all"
-                            style={{ width: `${paidPercent}%` }}
+                            className="h-full bg-green-500 rounded-full transition-all"
+                            style={{ width: `${collectedPercent}%` }}
                         />
                     </div>
-                    <p className="text-[11px] text-muted-foreground">{paidPercent}% paid</p>
+                    <p className="text-[11px] text-muted-foreground">{collectedPercent}% collected</p>
                 </div>
             </div>
 
             <div className="space-y-1.5">
-                <Label>Payment amount</Label>
+                <Label>Collection amount</Label>
                 <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
                         Rp.
@@ -154,7 +153,7 @@ export function PayDebtForm({ debt, payPeriodId, periodStartDate, onSuccess }: P
             </div>
 
             <div className="space-y-1.5">
-                <Label>Pay from</Label>
+                <Label>Receive to</Label>
                 {needsAccountPick ? (
                     <Select value={selectedAccountId} onValueChange={setSelectedAccountId} disabled={loading}>
                         <SelectTrigger className="h-10">
@@ -174,7 +173,7 @@ export function PayDebtForm({ debt, payPeriodId, periodStartDate, onSuccess }: P
             </div>
 
             <div className="space-y-1.5">
-                <Label>Payment date</Label>
+                <Label>Collection date</Label>
                 <Popover>
                     <PopoverTrigger asChild>
                         <Button
@@ -208,7 +207,7 @@ export function PayDebtForm({ debt, payPeriodId, periodStartDate, onSuccess }: P
             </div>
 
             <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Record Payment'}
+                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Record Collection'}
             </Button>
         </form>
     )
