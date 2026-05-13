@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { BarChart2, CalendarDays } from 'lucide-react'
+import { useSwipeable } from 'react-swipeable'
 import { BottomDrawer } from '@/components/bottom-drawer'
 import { ConfirmDrawer } from '@/components/confirmation-drawer'
 import { TransactionForm } from './components/transaction-form'
@@ -15,7 +16,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { LoadingContent } from '@/components/loading-content'
 import NoPeriod from '@/components/no-period'
 
+const TABS = ['calendar', 'analytics'] as const
+type Tab = typeof TABS[number]
+
 export default function TransactionsPage() {
+    const [activeTab, setActiveTab] = useState<Tab>('calendar')
     const [allPeriods, setAllPeriods] = useState<PayPeriod[]>([])
     const [activePeriod, setActivePeriod] = useState<PayPeriod | null>(null)
     const [selectedPeriodIndex, setSelectedPeriodIndex] = useState<number>(0)
@@ -26,7 +31,7 @@ export default function TransactionsPage() {
     const [periodPickerOpen, setPeriodPickerOpen] = useState(false)
     const [deletingId, setDeletingId] = useState<string | null>(null)
     const [deleteLoading, setDeleteLoading] = useState(false)
-    const [selectedDate, setSelectedDate] = useState<string>(toISODate()) // <-- tambah ini
+    const [selectedDate, setSelectedDate] = useState<string>(toISODate())
 
     const today = toISODate()
 
@@ -34,6 +39,20 @@ export default function TransactionsPage() {
     const isCurrentPeriod = selectedPeriod?.id === activePeriod?.id
     const canGoPrev = selectedPeriodIndex < allPeriods.length - 1
     const canGoNext = selectedPeriodIndex > 0
+
+    const swipeHandlers = useSwipeable({
+        onSwipedLeft: () => {
+            const i = TABS.indexOf(activeTab)
+            if (i < TABS.length - 1) setActiveTab(TABS[i + 1])
+        },
+        onSwipedRight: () => {
+            const i = TABS.indexOf(activeTab)
+            if (i > 0) setActiveTab(TABS[i - 1])
+        },
+        preventScrollOnSwipe: true,
+        trackMouse: false,
+        delta: 50,
+    })
 
     const init = useCallback(async () => {
         setLoading(true)
@@ -102,21 +121,12 @@ export default function TransactionsPage() {
 
     return (
         <div className="p-4 md:p-6 space-y-5 max-w-2xl mx-auto">
-            {/* {isCurrentPeriod && selectedPeriod && (
-                <Button
-                    onClick={() => setDrawerOpen(true)}
-                    size='icon'
-                    className="fixed bottom-16 right-6 z-50 rounded-full h-11 w-11"
-                >
-                    <Plus />
-                </Button>
-            )} */}
             {loading ? (
                 <LoadingContent />
             ) : !selectedPeriod ? (
                 <NoPeriod />
             ) : (
-                <Tabs defaultValue="calendar" className="w-full">
+                <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as Tab)} className="w-full">
                     <TabsList variant="default" className="w-full">
                         <TabsTrigger value="calendar">
                             <CalendarDays />
@@ -131,7 +141,7 @@ export default function TransactionsPage() {
                     {txLoading ? (
                         <LoadingContent />
                     ) : (
-                        <section>
+                        <section {...swipeHandlers}>
                             <TabsContent value="calendar">
                                 <PeriodCalendar
                                     transactions={transactions}
@@ -221,7 +231,7 @@ export default function TransactionsPage() {
                         payPeriodId={activePeriod.id}
                         periodStart={activePeriod.start_date}
                         periodEnd={undefined}
-                        defaultDate={selectedDate} // <-- tambah ini
+                        defaultDate={selectedDate}
                         onSuccess={() => {
                             setDrawerOpen(false)
                             loadTransactions(activePeriod)
