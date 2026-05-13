@@ -27,7 +27,7 @@ export function ResetPasswordForm() {
             if (error) throw error
 
             toast.success('Password updated successfully!')
-            navigate('/dashboard', { replace: true })
+            navigate('/', { replace: true })
         } catch (err: unknown) {
             if (err instanceof Error) {
                 const msg = err.message
