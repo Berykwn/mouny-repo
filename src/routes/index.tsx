@@ -16,7 +16,7 @@ import WishListPage from '@/features/wish-list'
 
 // Static
 import NotFoundPage from '@/features/static/not-found'
-import SettingsPage from '@/features/settings'
+// import SettingsPage from '@/features/settings'
 
 const router = createBrowserRouter([
     // Public
@@ -37,11 +37,10 @@ const router = createBrowserRouter([
                 element: <AppLayout />,
                 children: [
                     { path: '/', element: <DashboardPage /> },
-                    { path: '/dashboard', element: <DashboardPage /> },
                     { path: '/transactions', element: <TransactionsPage /> },
                     { path: '/debts', element: <DebtsPage /> },
                     { path: '/wish-list', element: <WishListPage /> },
-                    { path: '/settings',     element: <SettingsPage /> },
+                    // { path: '/settings',     element: <SettingsPage /> },
                 ],
             },
         ],

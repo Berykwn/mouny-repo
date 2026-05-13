@@ -1,4 +1,3 @@
-// pages/dashboard/components/spending-breakdown.tsx
 import { formatCurrency } from '@/lib/helpers'
 import type { TransactionWithDetails } from '@/types'
 

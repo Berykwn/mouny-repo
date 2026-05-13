@@ -1,10 +1,13 @@
-import { Outlet, NavLink, useLocation } from 'react-router-dom'
-import { ChartPie, ArrowLeftRight, CreditCard, ShoppingBag, Settings } from 'lucide-react'
+import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom'
+import { ChartPie, ArrowLeftRight, CreditCard, ShoppingBag, LogOut } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useState, useEffect } from 'react'
 import { AppLogo } from '@/components/app-logo'
 import { payPeriodsService } from '@/services/pay-periods.service'
 import type { PayPeriod } from '@/types/'
+import { supabase } from '@/lib/supabase'
+import { ConfirmDrawer } from '@/components/confirmation-drawer'
+import { Button } from '@/components/ui/button'
 
 const NAV_ITEMS = [
     { to: '/', label: 'Dashboard', icon: ChartPie },
@@ -18,9 +21,18 @@ const EXTRA_PAGES = [
 ]
 
 export default function AppLayout() {
+    const navigate = useNavigate()
+
     const [scrolled, setScrolled] = useState(false)
     const [activePeriod, setActivePeriod] = useState<PayPeriod | null>(null)
     const location = useLocation()
+    const [logoutConfirm, setLogoutConfirm] = useState(false)
+
+    const handleLogout = async () => {
+        setLogoutConfirm(false)
+        await supabase.auth.signOut()
+        navigate('/login', { replace: true })
+    }
 
     useEffect(() => {
         payPeriodsService.getActive().then(({ data }) => {
@@ -71,7 +83,7 @@ export default function AppLayout() {
                     </div>
 
                     <div className="flex items-center gap-0.5">
-                        <NavLink
+                        {/* <NavLink
                             to="/settings"
                             className={({ isActive }) => cn(
                                 'flex h-8 w-8 items-center justify-center rounded-lg transition-colors',
@@ -81,9 +93,15 @@ export default function AppLayout() {
                             )}
                         >
                             <Settings className="h-[18px] w-[18px]" />
-                        </NavLink>
-                    </div>
+                        </NavLink> */}
 
+                        <Button
+                            onClick={() => setLogoutConfirm(true)}
+                            variant='ghost'
+                        >
+                            <LogOut className="w-3.5 h-3.5" />
+                        </Button>
+                    </div>
                 </div>
             </header>
 
@@ -92,6 +110,16 @@ export default function AppLayout() {
                 className="flex-1 overflow-y-auto pb-[calc(68px+env(safe-area-inset-bottom))]"
             >
                 <Outlet />
+
+                <ConfirmDrawer
+                    open={logoutConfirm}
+                    title="Logout"
+                    description="Are you sure you want to logout?"
+                    confirmLabel="Logout"
+                    loading={false}
+                    onConfirm={handleLogout}
+                    onClose={() => setLogoutConfirm(false)}
+                />
             </main>
 
             <nav className={cn(
