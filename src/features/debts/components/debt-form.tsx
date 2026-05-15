@@ -9,6 +9,7 @@ import { transactionsService } from '@/services/transactions.service'
 import { accountsService } from '@/services/accounts-categories.service'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { Switch } from '@/components/ui/switch'
 import { toISODate } from '@/lib/helpers'
 import type { Account } from '@/types'
 import { toast } from 'sonner'
@@ -40,6 +41,8 @@ export function DebtForm({ onSuccess, payPeriodId, periodStartDate }: DebtFormPr
     const [notes, setNotes] = useState('')
     const [accounts, setAccounts] = useState<Account[]>([])
     const [loading, setLoading] = useState(false)
+    // Whether this debt/receivable actually moved money in/out of the account
+    const [affectsBalance, setAffectsBalance] = useState(false)
 
     useEffect(() => {
         accountsService.getAll().then(({ data }) => {
@@ -47,11 +50,23 @@ export function DebtForm({ onSuccess, payPeriodId, periodStartDate }: DebtFormPr
         })
     }, [])
 
+    // Reset affectsBalance when type changes so user consciously opts in
+    const handleTypeChange = (val: string) => {
+        if (!val) return
+        setType(val as DebtType)
+        setAffectsBalance(false)
+    }
+
     const handleAmountChange = (raw: string) => {
         setAmount(raw.replace(/\D/g, ''))
     }
 
     const displayAmount = amount ? Number(amount).toLocaleString('id-ID') : ''
+
+    // Label helpers based on type
+    const affectsBalanceLabel = type === 'debt'
+        ? 'Money received into account (e.g. borrowed cash)'
+        : 'Money sent out of account (e.g. lent cash)'
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -65,30 +80,22 @@ export function DebtForm({ onSuccess, payPeriodId, periodStartDate }: DebtFormPr
             toast.error('Please enter a name.')
             return
         }
-        if (!accountId) {
+        if (affectsBalance && !accountId) {
             toast.error('Please select an account.')
             return
         }
-        if (date < periodStartDate) {
-            toast.error(`Date cannot be before period start (${periodStartDate}).`)
-            return
-        }
-        if (date > today) {
-            toast.error('Date cannot be in the future.')
-            return
+        if (affectsBalance) {
+            if (date < periodStartDate) {
+                toast.error(`Date cannot be before period start (${periodStartDate}).`)
+                return
+            }
+            if (date > today) {
+                toast.error('Date cannot be in the future.')
+                return
+            }
         }
 
         setLoading(true)
-
-        // Resolve category: debt → income (received), receivable → expense (lent out)
-        const categoryName = type === 'debt' ? 'Debt Payment' : 'Receivable'
-        const { data: category, error: catError } = await debtsService.findOrCreateCategory(categoryName)
-
-        if (catError || !category) {
-            toast.error('Failed to resolve category.')
-            setLoading(false)
-            return
-        }
 
         // Create debt record
         const { data: debt, error: debtError } = await debtsService.create({
@@ -108,24 +115,35 @@ export function DebtForm({ onSuccess, payPeriodId, periodStartDate }: DebtFormPr
             return
         }
 
-        // Create transaction:
-        // debt → income (you received money from lender)
-        // receivable → expense (you lent money out)
-        const { error: txError } = await transactionsService.create({
-            pay_period_id: payPeriodId,
-            account_id: accountId,
-            type: type === 'debt' ? 'income' : 'expense',
-            amount: parsed,
-            note: type === 'debt'
-                ? `Debt received — ${counterparty.trim()}`
-                : `Lent to — ${counterparty.trim()}`,
-            date,
-            category_id: category.id,
-        })
+        // Only create a transaction if this debt actually moved money
+        if (affectsBalance && accountId) {
+            const categoryName = type === 'debt' ? 'Debt Payment' : 'Receivable'
+            const { data: category, error: catError } = await debtsService.findOrCreateCategory(categoryName)
+
+            if (catError || !category) {
+                toast.error('Failed to resolve category.')
+                setLoading(false)
+                return
+            }
+
+            // debt → income (received cash from lender)
+            // receivable → expense (lent cash out)
+            const { error: txError } = await transactionsService.create({
+                pay_period_id: payPeriodId,
+                account_id: accountId,
+                type: type === 'debt' ? 'income' : 'expense',
+                amount: parsed,
+                note: type === 'debt'
+                    ? `Debt received — ${counterparty.trim()}`
+                    : `Lent to — ${counterparty.trim()}`,
+                date,
+                category_id: category.id,
+            })
+
+            if (txError) { toast.error(txError); setLoading(false); return }
+        }
 
         setLoading(false)
-
-        if (txError) { toast.error(txError); return }
         onSuccess()
     }
 
@@ -136,7 +154,7 @@ export function DebtForm({ onSuccess, payPeriodId, periodStartDate }: DebtFormPr
                 variant="outline"
                 type="single"
                 value={type}
-                onValueChange={(val) => val && setType(val as DebtType)}
+                onValueChange={handleTypeChange}
                 className="w-full"
             >
                 <ToggleGroupItem value="debt" className="flex-1">
@@ -177,53 +195,71 @@ export function DebtForm({ onSuccess, payPeriodId, periodStartDate }: DebtFormPr
                 </div>
             </div>
 
-            <div className="space-y-1.5">
-                <Label>Account</Label>
-                <Select value={accountId} onValueChange={setAccountId} disabled={loading}>
-                    <SelectTrigger className="h-10">
-                        <SelectValue placeholder="Select account" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {accounts.map((a) => (
-                            <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
+            {/* Affects balance toggle */}
+            <div className="flex items-center justify-between rounded-xl border p-3 gap-3">
+                <div className="space-y-0.5">
+                    <p className="text-sm font-medium">Record to balance</p>
+                    <p className="text-xs text-muted-foreground">{affectsBalanceLabel}</p>
+                </div>
+                <Switch
+                    checked={affectsBalance}
+                    onCheckedChange={setAffectsBalance}
+                    disabled={loading}
+                />
             </div>
 
-            <div className="space-y-1.5">
-                <Label>Transaction date</Label>
-                <Popover>
-                    <PopoverTrigger asChild>
-                        <Button
-                            variant="outline"
-                            className={cn(
-                                'w-full justify-start text-left font-normal',
-                                !date && 'text-muted-foreground'
-                            )}
-                        >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {date ? format(new Date(date), 'yyyy-MM-dd') : 'Pick a date'}
-                        </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
-                        <Calendar
-                            mode="single"
-                            selected={date ? new Date(date) : undefined}
-                            onSelect={(d) => {
-                                if (!d) return
-                                setDate(format(d, 'yyyy-MM-dd'))
-                            }}
-                            disabled={(d) =>
-                                d < new Date(periodStartDate) || d > new Date(today)
-                            }
-                        />
-                    </PopoverContent>
-                </Popover>
-                <p className="text-xs text-muted-foreground">
-                    Must be within {periodStartDate} — {today}
-                </p>
-            </div>
+            {/* Account & date only shown if affects balance */}
+            {affectsBalance && (
+                <>
+                    <div className="space-y-1.5">
+                        <Label>Account</Label>
+                        <Select value={accountId} onValueChange={setAccountId} disabled={loading}>
+                            <SelectTrigger className="h-10">
+                                <SelectValue placeholder="Select account" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {accounts.map((a) => (
+                                    <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                        <Label>Transaction date</Label>
+                        <Popover>
+                            <PopoverTrigger asChild>
+                                <Button
+                                    variant="outline"
+                                    className={cn(
+                                        'w-full justify-start text-left font-normal',
+                                        !date && 'text-muted-foreground'
+                                    )}
+                                >
+                                    <CalendarIcon className="mr-2 h-4 w-4" />
+                                    {date ? format(new Date(date), 'yyyy-MM-dd') : 'Pick a date'}
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0">
+                                <Calendar
+                                    mode="single"
+                                    selected={date ? new Date(date) : undefined}
+                                    onSelect={(d) => {
+                                        if (!d) return
+                                        setDate(format(d, 'yyyy-MM-dd'))
+                                    }}
+                                    disabled={(d) =>
+                                        d < new Date(periodStartDate) || d > new Date(today)
+                                    }
+                                />
+                            </PopoverContent>
+                        </Popover>
+                        <p className="text-xs text-muted-foreground">
+                            Must be within {periodStartDate} — {today}
+                        </p>
+                    </div>
+                </>
+            )}
 
             <div className="space-y-1.5">
                 <Label>Due date <span className="text-muted-foreground">(optional)</span></Label>
