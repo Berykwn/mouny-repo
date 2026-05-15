@@ -8,16 +8,21 @@ import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import type { Category, CategoryType } from '@/types'
 import { COLORS } from '@/lib/static-colors'
+import { ICON_MAP } from '@/lib/icon-map'
+import { CategoryIcon } from './category-icon'
 
 interface CategoryFormProps {
     onSuccess: () => void
     initial?: Category
 }
 
+const ICON_KEYS = Object.keys(ICON_MAP)
+
 export function CategoryForm({ onSuccess, initial }: CategoryFormProps) {
     const [type, setType] = useState<CategoryType>((initial?.type as CategoryType) ?? 'expense')
     const [name, setName] = useState(initial?.name ?? '')
-    const [color, setColor] = useState(initial?.color ?? COLORS[0])
+    const [color, setColor] = useState<string>(initial?.color ?? COLORS[0])
+    const [icon, setIcon] = useState<string>(initial?.icon ?? ICON_KEYS[0])
     const [loading, setLoading] = useState(false)
 
     const isEdit = !!initial
@@ -32,9 +37,11 @@ export function CategoryForm({ onSuccess, initial }: CategoryFormProps) {
 
         setLoading(true)
 
+        const payload = { name: name.trim(), type, color, icon }
+
         const { error } = isEdit
-            ? await categoriesService.update(initial.id, { name, type, color })
-            : await categoriesService.create({ name, type, color, icon: null })
+            ? await categoriesService.update(initial.id, payload)
+            : await categoriesService.create(payload)
 
         setLoading(false)
 
@@ -48,17 +55,19 @@ export function CategoryForm({ onSuccess, initial }: CategoryFormProps) {
     }
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-4 pb-2">
-            <div className="flex rounded-lg border overflow-hidden">
+        <form onSubmit={handleSubmit} className="space-y-5 pb-2">
+
+            {/* Type toggle */}
+            <div className="grid grid-cols-2 gap-1 p-1 bg-muted rounded-xl">
                 {(['expense', 'income'] as CategoryType[]).map((t) => (
                     <button
                         key={t}
                         type="button"
                         onClick={() => setType(t)}
                         className={cn(
-                            'flex-1 py-2 text-sm font-medium transition-colors',
+                            'py-2 rounded-lg text-sm font-medium transition-all duration-150',
                             type === t
-                                ? 'bg-neutral-200 text-neutral-600 font-semibold border border-neutral-300'
+                                ? 'bg-background shadow-sm text-foreground'
                                 : 'text-muted-foreground hover:text-foreground'
                         )}
                     >
@@ -67,7 +76,8 @@ export function CategoryForm({ onSuccess, initial }: CategoryFormProps) {
                 ))}
             </div>
 
-            <div className="space-y-2">
+            {/* Name */}
+            <div className="space-y-1.5">
                 <Label>Category name</Label>
                 <Input
                     placeholder="Food, Transport, Salary..."
@@ -77,16 +87,46 @@ export function CategoryForm({ onSuccess, initial }: CategoryFormProps) {
                 />
             </div>
 
-            <div className="space-y-4">
+            {/* Icon picker */}
+            <div className="space-y-2">
+                <Label>Icon</Label>
+                <div className="grid grid-cols-8 gap-1">
+                    {ICON_KEYS.map((key) => {
+                        const selected = icon === key
+                        return (
+                            <button
+                                key={key}
+                                type="button"
+                                title={key}
+                                onClick={() => setIcon(key)}
+                                className={cn(
+                                    'aspect-square rounded-xl flex items-center justify-center transition-all duration-150',
+                                    selected ? 'scale-105' : 'hover:bg-muted'
+                                )}
+                                style={selected ? { backgroundColor: color + '25' } : undefined}
+                            >
+                                <CategoryIcon
+                                    name={key}
+                                    className="w-[18px] h-[18px]"
+                                    style={{ color: selected ? color : undefined }}
+                                />
+                            </button>
+                        )
+                    })}
+                </div>
+            </div>
+
+            {/* Color picker */}
+            <div className="space-y-2">
                 <Label>Color</Label>
-                <div className="flex gap-4 flex-wrap">
+                <div className="grid grid-cols-10 gap-2">
                     {COLORS.map((c) => (
                         <button
                             key={c}
                             type="button"
                             onClick={() => setColor(c)}
                             className={cn(
-                                'w-8 h-8 rounded-full transition-all',
+                                'aspect-square rounded-full transition-all duration-150',
                                 color === c
                                     ? 'ring-2 ring-offset-2 ring-foreground scale-110'
                                     : 'hover:scale-105'
@@ -97,10 +137,31 @@ export function CategoryForm({ onSuccess, initial }: CategoryFormProps) {
                 </div>
             </div>
 
+            {/* Preview */}
+            <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/50">
+                <div
+                    className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                    style={{ backgroundColor: color + '25' }}
+                >
+                    <CategoryIcon
+                        name={icon}
+                        className="w-[18px] h-[18px]"
+                        style={{ color }}
+                    />
+                </div>
+                <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium truncate leading-tight">
+                        {name.trim() || <span className="text-muted-foreground italic font-normal">Category name</span>}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground capitalize mt-0.5">{type}</p>
+                </div>
+            </div>
+
             <Button type="submit" className="w-full" disabled={loading}>
                 {loading
                     ? <Loader2 className="w-4 h-4 animate-spin" />
-                    : isEdit ? 'Save Changes' : 'Submit'}
+                    : isEdit ? 'Save Changes' : 'Create Category'
+                }
             </Button>
         </form>
     )

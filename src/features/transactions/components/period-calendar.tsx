@@ -4,6 +4,7 @@ import type { TransactionWithDetails } from '@/types'
 import { TrendingUp, TrendingDown, Trash2, ChevronLeft, ChevronRight, ChevronsUpDown, Plus } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import { CategoryIcon } from '@/features/dashboard/components/categories/category-icon'
 
 interface PeriodCalendarProps {
     transactions: TransactionWithDetails[]
@@ -60,7 +61,6 @@ function DayTransactions({
     onDeleteRequest?: (id: string) => void
     readOnly?: boolean
 }) {
-    console.log(txs, "txs")
     return (
         <div className="border-t border-neutral-200">
             {txs.map(tx => {
@@ -72,14 +72,25 @@ function DayTransactions({
 
                 return (
                     <div key={tx.id} className="flex items-center gap-3 px-4 py-2.5 border-b border-neutral-200 last:border-b-0">
-                        <div className={cn(
-                            'w-8 h-8 rounded-lg flex items-center justify-center shrink-0',
-                            tx.type === 'income' ? 'bg-green-100 dark:bg-green-900' : 'bg-red-100 dark:bg-red-900'
-                        )}>
-                            {tx.type === 'income'
-                                ? <TrendingUp className="w-3.5 h-3.5 text-green-600 dark:text-green-400" />
-                                : <TrendingDown className="w-3.5 h-3.5 text-red-500 dark:text-red-400" />
-                            }
+                        <div
+                            className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                            style={{
+                                backgroundColor: `${tx.category?.color ?? '#e5e7eb'}25`,
+                            }}
+                        >
+                            {tx.category?.icon ? (
+                                <CategoryIcon
+                                    name={tx.category.icon}
+                                    className="w-[15px] h-[15px]"
+                                    style={{
+                                        color: tx.category.color ?? '#6b7280',
+                                    }}
+                                />
+                            ) : tx.type === 'income' ? (
+                                <TrendingUp className="w-3.5 h-3.5 text-green-600 dark:text-green-400" />
+                            ) : (
+                                <TrendingDown className="w-3.5 h-3.5 text-red-500 dark:text-red-400" />
+                            )}
                         </div>
                         <div className="flex-1 min-w-0">
                             <p className="text-xs font-medium truncate">{title}</p>

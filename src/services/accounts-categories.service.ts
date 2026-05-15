@@ -127,7 +127,7 @@ export const categoriesService = {
         }
     },
 
-    async update(id: string, input: { name: string; type: Category['type']; color: string }): Promise<ServiceResult<Category>> {
+    async update(id: string, input: { name: string; type: Category['type']; color: string; icon?: string | null }): Promise<ServiceResult<Category>> {
         try {
             const { data, error } = await supabase
                 .from('categories')

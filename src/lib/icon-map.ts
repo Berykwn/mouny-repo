@@ -1,0 +1,35 @@
+import {
+    Wallet, Briefcase, Building, TrendingUp, Gift, PlusCircle,
+    MoreHorizontal, Home, Zap, Wifi, Shield, CreditCard,
+    UtensilsCrossed, ShoppingCart, Car, Truck, ShoppingBag,
+    Film, Plane, Repeat, Heart, Book, ArrowDownCircle,
+    PiggyBank, type LucideProps
+} from 'lucide-react'
+import type { ElementType } from 'react'
+
+export const ICON_MAP: Record<string, ElementType<LucideProps>> = {
+    'wallet': Wallet,
+    'briefcase': Briefcase,
+    'building': Building,
+    'trending-up': TrendingUp,
+    'gift': Gift,
+    'plus-circle': PlusCircle,
+    'more-horizontal': MoreHorizontal,
+    'home': Home,
+    'zap': Zap,
+    'wifi': Wifi,
+    'shield': Shield,
+    'credit-card': CreditCard,
+    'utensils': UtensilsCrossed,
+    'shopping-cart': ShoppingCart,
+    'car': Car,
+    'truck': Truck,
+    'shopping-bag': ShoppingBag,
+    'film': Film,
+    'plane': Plane,
+    'repeat': Repeat,
+    'heart': Heart,
+    'book': Book,
+    'arrow-down-circle': ArrowDownCircle,
+    'piggy-bank': PiggyBank,
+}
