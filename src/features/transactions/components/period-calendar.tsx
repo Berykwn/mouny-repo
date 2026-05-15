@@ -60,8 +60,9 @@ function DayTransactions({
     onDeleteRequest?: (id: string) => void
     readOnly?: boolean
 }) {
+    console.log(txs, "txs")
     return (
-        <div className="space-y-1.5">
+        <div className="border-t border-neutral-200">
             {txs.map(tx => {
                 const title = tx.note || tx.category?.name || (tx.type === 'income' ? 'Income' : 'Expense')
                 const subtitle = [
@@ -70,7 +71,7 @@ function DayTransactions({
                 ].filter(Boolean).join(' · ')
 
                 return (
-                    <div key={tx.id} className="flex items-center gap-3 p-2.5 rounded-lg bg-muted/30">
+                    <div key={tx.id} className="flex items-center gap-3 px-4 py-2.5 border-b border-neutral-200 last:border-b-0">
                         <div className={cn(
                             'w-8 h-8 rounded-lg flex items-center justify-center shrink-0',
                             tx.type === 'income' ? 'bg-green-100 dark:bg-green-900' : 'bg-red-100 dark:bg-red-900'
@@ -154,9 +155,17 @@ export function PeriodCalendar({
     const remainder = paddedDates.length % 7
     if (remainder !== 0) paddedDates.push(...Array(7 - remainder).fill(null))
 
-    const selectedTxs = txByDate.get(validSelected) ?? []
-    const dailyTotal = selectedTxs.reduce((sum, tx) =>
-        tx.type === 'income' ? sum + tx.amount : sum - tx.amount, 0)
+    const selectedTxs = (txByDate.get(validSelected) ?? [])
+        .slice()
+        .sort((a, b) => {
+            const aTime = a.created_at ? new Date(a.created_at).getTime() : 0
+            const bTime = b.created_at ? new Date(b.created_at).getTime() : 0
+            return aTime - bTime
+        })
+
+    const dailyIncomeSummary = selectedTxs.filter(tx => tx.type === 'income').reduce((sum, tx) => sum + tx.amount, 0)
+    const dailyExpenseSummary = dailyExpense.get(validSelected) ?? 0
+    // const dailyTotal = dailyIncomeSummary - dailyExpenseSummary
 
     const handleSelectDate = (date: string) => {
         setSelectedDate(date)
@@ -271,25 +280,31 @@ export function PeriodCalendar({
                 )}
             </div>
 
-            <div className="rounded-2xl border border-neutral-200 bg-card p-4">
-                <div className="flex items-center justify-between mb-3">
+            <div className="rounded-2xl border border-neutral-200 bg-card">
+                <div className="flex items-center justify-between p-4">
                     <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">
                         {new Date(validSelected + 'T00:00:00').toLocaleDateString('en-GB', {
                             weekday: 'long', day: 'numeric', month: 'long'
                         })}
                     </p>
+
                     {selectedTxs.length > 0 && (
-                        <p className={cn(
-                            'text-xs font-semibold',
-                            dailyTotal >= 0 ? 'text-green-600' : 'text-destructive'
-                        )}>
-                            {dailyTotal >= 0 ? '+' : ''}{formatCurrency(dailyTotal)}
-                        </p>
+                        // <p className={cn(
+                        //     'text-xs font-semibold',
+                        //     dailyTotal >= 0 ? 'text-green-600' : 'text-destructive'
+                        // )}>
+                        //     {dailyTotal >= 0 ? '+' : ''}{formatCurrency(dailyTotal)}
+                        // </p>
+                        <div className='flex gap-x-1.5'>
+                            <p className='text-xs font-semibold text-green-600'>+ {formatCurrency(dailyIncomeSummary)}</p>
+                            <p className='text-xs font-semibold text-destructive'>- {formatCurrency(dailyExpenseSummary)}</p>
+                            {/* <p className='text-xs font-semibold'> {formatCurrency(dailyTotal)}</p> */}
+                        </div>
                     )}
                 </div>
 
                 {selectedTxs.length === 0 ? (
-                    <p className="text-xs text-muted-foreground">No transactions this day.</p>
+                    <p className="text-xs text-muted-foreground px-4 pb-4">No transactions this day.</p>
                 ) : (
                     <DayTransactions
                         txs={selectedTxs}
