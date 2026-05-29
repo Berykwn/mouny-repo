@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { Plus, CalendarDays, CheckCircle } from 'lucide-react'
 import { BottomDrawer } from '@/components/bottom-drawer'
 import { OpenPeriodForm } from './open-period-form'
-import { PeriodHistory } from './period-history'
+// import { PeriodHistory } from './period-history'
 import { ClosePeriodForm } from './close-period-form'
 import { payPeriodsService } from '@/services/pay-periods.service'
 import type { PayPeriod } from '@/types'
@@ -105,7 +105,7 @@ export function PeriodTab() {
                     )}
 
                     {/* Period history — always shown if has data */}
-                    <PeriodHistory periods={allPeriods} />
+                    {/* <PeriodHistory periods={allPeriods} /> */}
                 </>
             )}
 

@@ -15,8 +15,8 @@ const TYPE_ICON = {
 }
 
 const TYPE_STYLE = {
-    bank: 'bg-indigo-50 text-indigo-500 dark:bg-indigo-950 dark:text-indigo-400',
-    cash: 'bg-rose-50 text-rose-500 dark:bg-rose-950 dark:text-rose-400',
+    bank: 'bg-pink-50 text-pink-500 dark:bg-pink-950 dark:text-pink-400',
+    cash: 'bg-indigo-50 text-indigo-500 dark:bg-indigo-950 dark:text-indigo-400',
 }
 
 const TYPE_LABEL = {
@@ -26,7 +26,7 @@ const TYPE_LABEL = {
 
 export function AccountList({ accounts, onEdit, onDeleteRequest }: AccountListProps) {
     return (
-        <div className="rounded-2xl border border-neutral-200 bg-card overflow-hidden divide-y divide-neutral-100">
+        <div className="divide-y divide-neutral-100">
             {accounts.map((acc) => {
                 const Icon = TYPE_ICON[acc.type as AccountType]
                 const style = TYPE_STYLE[acc.type as AccountType]
@@ -40,12 +40,10 @@ export function AccountList({ accounts, onEdit, onDeleteRequest }: AccountListPr
                         )}>
                             <Icon className="w-4 h-4" />
                         </div>
-
                         <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium">{acc.name}</p>
                             <p className="text-xs text-muted-foreground">{label}</p>
                         </div>
-
                         <div className="flex items-center gap-1 shrink-0">
                             <p className={cn(
                                 'text-sm font-semibold mr-1',
