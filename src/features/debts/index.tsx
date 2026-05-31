@@ -83,7 +83,7 @@ export default function DebtsPage() {
     }
 
     return (
-        <div className="p-4 md:p-6 space-y-5 max-w-2xl mx-auto">
+        <section className="px-4 pb-4 space-y-4">
             {loading ? <LoadingContent /> : (
                 <>
                     <div className="rounded-2xl border border-neutral-200 bg-card p-4 space-y-3">
@@ -201,6 +201,6 @@ export default function DebtsPage() {
                 onConfirm={handleDeleteConfirm}
                 onClose={() => setDeletingDebt(null)}
             />
-        </div>
+        </section>
     )
 }

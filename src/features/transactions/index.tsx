@@ -14,7 +14,6 @@ import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { LoadingContent } from '@/components/loading-content'
-import NoPeriod from '@/components/no-period'
 
 const TABS = ['calendar', 'analytics'] as const
 type Tab = typeof TABS[number]
@@ -120,11 +119,16 @@ export default function TransactionsPage() {
     const calendarDefaultDate = isCurrentPeriod ? today : selectedPeriod?.start_date
 
     return (
-        <div className="p-4 md:p-6 space-y-5 max-w-2xl mx-auto">
+        <section className="px-4 pb-4 space-y-4">
             {loading ? (
                 <LoadingContent />
             ) : !selectedPeriod ? (
-                <NoPeriod />
+                <section className="rounded-2xl border border-neutral-200 bg-card p-4 flex items-center gap-3">
+                    <div className="flex-1">
+                        <h2 className="text-lg font-semibold">No active periods</h2>
+                        <p className="text-sm text-muted-foreground">Start by creating a pay period to track your transactions.</p>
+                    </div>
+                </section>
             ) : (
                 <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as Tab)} className="w-full">
                     <TabsList variant="default" className="w-full">
@@ -249,6 +253,6 @@ export default function TransactionsPage() {
                 onConfirm={handleDeleteConfirm}
                 onClose={() => setDeletingId(null)}
             />
-        </div>
+        </section>
     )
 }

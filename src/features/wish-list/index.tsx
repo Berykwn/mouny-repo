@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
-import { Plus } from 'lucide-react'
+import { Plus, ShoppingBag } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { BottomDrawer } from '@/components/bottom-drawer'
 import { ConfirmDrawer } from '@/components/confirmation-drawer'
@@ -63,16 +63,16 @@ export default function WishListPage() {
     const affordableCount = items.filter(i => analysis[i.id]?.canAfford).length
 
     return (
-        <div className="p-4 md:p-6 space-y-5 max-w-2xl mx-auto">
+        <section className="px-4 pb-4 space-y-4">
             {loading ? (
                 <LoadingContent />
             ) : (
                 <div className="space-y-5">
                     {/* Summary card */}
                     <div className="rounded-2xl border border-neutral-200 bg-card p-4 flex items-center gap-3">
-                        {/* <div className="w-10 h-10 rounded-xl bg-lime-100 dark:bg-lime-900 flex items-center justify-center flex-shrink-0">
-                            <ShoppingBag className="w-4 h-4 text-lime-600 dark:text-lime-400" />
-                        </div> */}
+                        <div className="w-10 h-10 rounded-xl bg-pink-100 dark:bg-pink-900 flex items-center justify-center flex-shrink-0">
+                            <ShoppingBag className="w-4 h-4 text-pink-600 dark:text-pink-400" />
+                        </div>
                         <div className="flex-1">
                             <p className="text-xs text-muted-foreground">
                                 {items.length} item · {affordableCount} affordable now
@@ -90,7 +90,6 @@ export default function WishListPage() {
                         </Button>
                     </div>
 
-                    {/* Item list */}
                     {periodId && (
                         <WishListItems
                             items={items}
@@ -141,6 +140,6 @@ export default function WishListPage() {
                 onConfirm={handleDeleteConfirm}
                 onClose={() => setDeletingId(null)}
             />
-        </div>
+        </section>
     )
 }

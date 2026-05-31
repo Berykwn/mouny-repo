@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { formatCurrency } from '@/lib/helpers'
 import type { WishListItem } from '@/types'
 import type { WishListAnalysis } from '@/services/wish-list.service'
-import { Trash2, ShoppingBag } from 'lucide-react'
+import { Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface WishListItemsProps {
@@ -28,16 +28,6 @@ const PRIORITY_COLOR: Record<string, string> = {
 
 export function WishListItems({ items, analysis, onBuy, onDeleteRequest }: WishListItemsProps) {
   const [filter, setFilter] = useState<Filter>('all')
-
-  if (items.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center py-16 text-center gap-2">
-        <ShoppingBag className="w-10 h-10 text-muted-foreground/40" />
-        <p className="text-sm font-medium">Your wish list is empty</p>
-        <p className="text-xs text-muted-foreground">Add items you want to buy later</p>
-      </div>
-    )
-  }
 
   const counts = {
     all: items.length,
