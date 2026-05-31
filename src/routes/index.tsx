@@ -16,6 +16,9 @@ import WishListPage from '@/features/wish-list'
 
 // Static
 import NotFoundPage from '@/features/static/not-found'
+import { CategoriesPage } from '@/features/categories'
+import { PeriodHistoryPage } from '@/features/periods'
+import { AccountPage } from '@/features/accounts'
 // import SettingsPage from '@/features/settings'
 
 const router = createBrowserRouter([
@@ -40,6 +43,9 @@ const router = createBrowserRouter([
                     { path: '/transactions', element: <TransactionsPage /> },
                     { path: '/debts', element: <DebtsPage /> },
                     { path: '/wish-list', element: <WishListPage /> },
+                    { path: '/category', element: <CategoriesPage /> },
+                    { path: '/period-history', element: <PeriodHistoryPage /> },
+                    { path: '/accounts', element: <AccountPage /> },
                     // { path: '/settings',     element: <SettingsPage /> },
                 ],
             },
