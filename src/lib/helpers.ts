@@ -69,3 +69,15 @@ export function getDaysBetween(
 
   return Math.floor((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
 }
+
+export function formatShortCurrency (value: number): string {
+    if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1).replace('.0', '')}jt`
+    if (value >= 1_000) return `${(value / 1_000).toFixed(0)}rb`
+    return `${value}`
+}
+
+export function formatPeriodLabel(startDate: string | null): string {
+    if (!startDate) return 'Period'
+    const date = new Date(startDate)
+    return date.toLocaleDateString('id-ID', { month: 'short', year: '2-digit' })
+}

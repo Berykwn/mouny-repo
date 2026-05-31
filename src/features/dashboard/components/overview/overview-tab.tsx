@@ -4,95 +4,131 @@ import { payPeriodsService } from '@/services/pay-periods.service'
 import { transactionsService } from '@/services/transactions.service'
 import { debtsService } from '@/services/debts.service'
 import { wishListService } from '@/services/wish-list.service'
-import { formatCurrency, daysUntil } from '@/lib/helpers'
-import type { Database } from '@/types/database.types'
-import type { TransactionWithDetails, DebtWithAccount, WishListItem } from '@/types'
-import type { WishListAnalysis } from '@/services/wish-list.service'
+import { accountsService } from '@/services/accounts-categories.service'
+import { formatCurrency, formatPeriodLabel } from '@/lib/helpers'
 import { cn } from '@/lib/utils'
 import { SpendingBreakdown } from './spending-breakdown'
 import { LoadingContent } from '@/components/loading-content'
+import { OverviewData, TrendPoint } from '@/types/overview.types'
+import HealthAndTrendSection from './healt-and-trend'
+import { calculateHealthScore } from '@/lib/calculate-health-score'
 
-type ActiveSummary = Database['public']['Views']['active_period_summary']['Row']
-
-interface OverviewData {
-    summary: ActiveSummary
-    transactions: TransactionWithDetails[]
-    prevTransactions: TransactionWithDetails[]
-    debts: DebtWithAccount[]
-    wishItems: WishListItem[]
-    wishAnalysis: Record<string, WishListAnalysis>
-}
-
-async function fetchOverviewData(): Promise<OverviewData | null> {
+async function fetchOverviewData(
+    periodId: string,
+    salaryAmount: number
+): Promise<OverviewData | null> {
     const [
-        { data: summary },
         { data: allPeriods },
+        { data: txs },
         { data: debts },
+        { data: accounts },
     ] = await Promise.all([
-        payPeriodsService.getActiveSummary(),
         payPeriodsService.getAll(),
+        transactionsService.getByPeriod(periodId),
         debtsService.getActive(),
+        accountsService.getAll(),
     ])
 
-    if (!summary) return null
+    const allList = allPeriods ?? []
+    const periodTxs = txs ?? []
 
-    const { data: txs } = await transactionsService.getByPeriod(summary.period_id!)
-    const closedPeriods = (allPeriods ?? []).filter(p => p.status === 'closed')
-    const prevPeriod = closedPeriods[0] ?? null
+    const currentPeriod = allList.find(p => p.id === periodId)
+    if (!currentPeriod) return null
+
+    const currentIndex = allList.findIndex(p => p.id === periodId)
+    const prevPeriod = allList[currentIndex + 1] ?? null
     const prevTxs = prevPeriod
         ? (await transactionsService.getByPeriod(prevPeriod.id)).data ?? []
         : []
+
+    const trendPeriods_raw = allList.slice(currentIndex + 1, currentIndex + 3)
+    const trendTxsResults = await Promise.all(
+        trendPeriods_raw.map(p => transactionsService.getByPeriod(p.id))
+    )
+
+    const trendPeriods: TrendPoint[] = [
+        ...trendPeriods_raw.map((p, i) => {
+            const pts = trendTxsResults[i].data ?? []
+            return {
+                label: formatPeriodLabel(p.start_date ?? null),
+                income: pts.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0),
+                expense: pts.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0),
+            }
+        }).reverse(),
+        {
+            label: formatPeriodLabel(currentPeriod.start_date ?? null),
+            income: periodTxs.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0),
+            expense: periodTxs.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0),
+        },
+    ]
 
     const { data: wishItems } = await wishListService.getAll()
     const list = wishItems ?? []
     const { data: wishAnalysis } = await wishListService.analyze(list)
 
     return {
-        summary,
-        transactions: txs ?? [],
+        totalIncome: periodTxs.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0),
+        totalExpense: periodTxs.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0),
+        salaryAmount,
+        startDate: currentPeriod.start_date,
+        transactions: periodTxs,
         prevTransactions: prevTxs,
         debts: debts ?? [],
         wishItems: list,
         wishAnalysis: wishAnalysis ?? {},
+        accounts: accounts ?? [],
+        trendPeriods,
+        closingBalance: currentPeriod.closing_balance ?? null,
+        prevClosingBalance: prevPeriod?.closing_balance ?? null,
     }
 }
 
-export function OverviewTab() {
-    const navigate = useNavigate()
+export function OverviewTransaction({
+    periodId,
+    salaryAmount,
+    isActivePeriod,
+}: {
+    periodId: string
+    salaryAmount: number
+    isActivePeriod: boolean
+}) {
     const [data, setData] = useState<OverviewData | null>(null)
     const [loading, setLoading] = useState(true)
+    const navigate = useNavigate()
 
     useEffect(() => {
         async function load() {
             setLoading(true)
-            const result = await fetchOverviewData()
+            const result = await fetchOverviewData(periodId, salaryAmount)
             setData(result)
             setLoading(false)
         }
         load()
-    }, [])
+    }, [periodId, salaryAmount])
 
     if (loading) return <LoadingContent />
     if (!data) return (
         <section className='p-4 mt-1.5 rounded-2xl bg-card border border-neutral-200'>
-            <h2 className='text-sm font-semibold'>
-                No active period found!
-            </h2>
-
-            <p className='text-xs text-muted-foreground mt-1'>
-                Please create a new period in the Settings tab to continue.
-            </p>
+            <h2 className='text-sm font-semibold'>Failed to load period data.</h2>
+            <p className='text-xs text-muted-foreground mt-1'>Please try again.</p>
         </section>
     )
 
-    const { summary, transactions, prevTransactions, debts, wishItems, wishAnalysis } = data
+    const {
+        totalIncome,
+        totalExpense,
+        transactions,
+        prevTransactions,
+        accounts,
+        trendPeriods,
+        debts,
+        closingBalance,
+        prevClosingBalance,
+    } = data
 
-    const totalIncome = summary.total_income ?? 0
-    const totalExpense = summary.total_expense ?? 0
-    const expectedIncome = summary.salary_amount ?? 0
     const remaining = totalIncome - totalExpense
-    const spentPercent = expectedIncome > 0
-        ? Math.min(Math.round((totalExpense / expectedIncome) * 100), 100)
+    const spentPercent = salaryAmount > 0
+        ? Math.min(Math.round((totalExpense / salaryAmount) * 100), 100)
         : 0
 
     const prevExpense = prevTransactions.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0)
@@ -126,21 +162,27 @@ export function OverviewTab() {
         ? Math.round((biggestDriver.cur / biggestDriver.prev) * 10) / 10
         : null
 
-    const upcomingDebts = debts
-        .filter(d => d.due_date && daysUntil(d.due_date) <= 30)
-        .sort((a, b) => daysUntil(a.due_date!) - daysUntil(b.due_date!))
-        .slice(0, 3)
+    const totalBalance = accounts.reduce((s, a) => s + a.balance, 0)
+    const totalDebt = debts.reduce((s, d) => s + d.remaining_amount, 0)
+    const displayBalance = isActivePeriod ? totalBalance : (closingBalance ?? totalBalance)
 
-    const affordableWishes = wishItems.filter(w => {
-        const a = wishAnalysis[w.id]
-        return a && a.canAfford && !w.is_purchased
-    }).slice(0, 3)
+    const closingDiffPct: number | null =
+        prevClosingBalance !== null && prevClosingBalance > 0
+            ? Math.round(((displayBalance - prevClosingBalance) / prevClosingBalance) * 100)
+            : null
+
+    const { score, label: healthLabel, reasons: healthReasons } = calculateHealthScore({
+        totalIncome,
+        totalExpense,
+        totalBalance: displayBalance,
+        totalDebt,
+        expenseDiffPct,
+    })
 
     const remainingIsNegative = remaining < 0
 
     return (
         <div className="space-y-3 mt-1.5">
-            {/* Hero card */}
             <div className={cn(
                 'rounded-2xl border border-neutral-200 bg-card p-5 space-y-4',
                 remainingIsNegative && 'border-red-100 dark:border-red-900'
@@ -204,9 +246,45 @@ export function OverviewTab() {
                         )}
                     </div>
                 </div>
+
+                {accounts.length > 0 && (
+                    <button
+                        onClick={() => navigate('/accounts')}
+                        className="w-full flex items-center justify-between pt-3 border-t text-left"
+                    >
+                        <div>
+                            <p className="text-[10px] text-muted-foreground tracking-wide mb-0.5">
+                                {isActivePeriod ? 'Total Balance' : 'Closing Balance'}
+                            </p>
+                            <p className="text-[15px] font-medium leading-none">
+                                {formatCurrency(displayBalance)}
+                            </p>
+                            {closingDiffPct !== null && (
+                                <p className={cn(
+                                    'text-[10px] mt-0.5',
+                                    closingDiffPct >= 0 ? 'text-emerald-600' : 'text-destructive'
+                                )}>
+                                    {closingDiffPct >= 0 ? '↑' : '↓'} {Math.abs(closingDiffPct)}% vs prev period
+                                </p>
+                            )}
+                        </div>
+                        <div className="flex items-center gap-1">
+                            <p className="text-[11px] text-muted-foreground">
+                                {accounts.length} account{accounts.length > 1 ? 's' : ''}
+                            </p>
+                            <span className="text-muted-foreground text-[13px]">→</span>
+                        </div>
+                    </button>
+                )}
             </div>
 
-            {/* Insight */}
+            <HealthAndTrendSection
+                score={score}
+                label={healthLabel}
+                reasons={healthReasons}
+                trendPeriods={trendPeriods}
+            />
+
             {biggestDriver && driverMultiple && driverMultiple > 1.2 && (
                 <div className="rounded-2xl border border-neutral-200 bg-card px-5 py-3.5">
                     <p className="text-[11px] text-muted-foreground italic leading-relaxed border-l-2 border-border pl-3">
@@ -216,96 +294,8 @@ export function OverviewTab() {
                 </div>
             )}
 
-            {/* Spending breakdown */}
             {transactions.length > 0 && (
                 <SpendingBreakdown transactions={transactions} />
-            )}
-
-            {/* Upcoming debts */}
-            {upcomingDebts.length > 0 && (
-                <div className="rounded-2xl border border-neutral-200 bg-card overflow-hidden">
-                    <div className="flex items-center justify-between px-5 pt-4 pb-0">
-                        <p className="text-[10px] font-medium tracking-widest uppercase text-muted-foreground">
-                            Upcoming debts
-                        </p>
-                        <button
-                            onClick={() => navigate('/debts')}
-                            className="text-[11px] text-muted-foreground hover:text-foreground transition-colors"
-                        >
-                            See all →
-                        </button>
-                    </div>
-                    <div className="mt-3 divide-y">
-                        {upcomingDebts.map(debt => {
-                            const days = daysUntil(debt.due_date!)
-                            const isOverdue = days < 0
-                            const isUrgent = days >= 0 && days <= 7
-                            return (
-                                <div
-                                    key={debt.id}
-                                    className={cn(
-                                        'flex justify-between items-center px-5 py-3',
-                                        isOverdue && 'bg-red-50 dark:bg-red-950/30'
-                                    )}
-                                >
-                                    <div>
-                                        <p className="text-[12px] font-medium">{debt.counterparty}</p>
-                                        <p className={cn(
-                                            'text-[10px] mt-0.5',
-                                            isOverdue ? 'text-destructive' :
-                                                isUrgent ? 'text-amber-500' : 'text-muted-foreground'
-                                        )}>
-                                            {isOverdue
-                                                ? `${Math.abs(days)} days overdue`
-                                                : days === 0 ? 'Due today'
-                                                    : `${days} days left`}
-                                        </p>
-                                    </div>
-                                    <p className="text-[14px]">
-                                        {formatCurrency(debt.remaining_amount)}
-                                    </p>
-                                </div>
-                            )
-                        })}
-                    </div>
-                </div>
-            )}
-
-            {/* You can afford */}
-            {affordableWishes.length > 0 && (
-                <div className="rounded-2xl border border-neutral-200 bg-card overflow-hidden">
-                    <div className="flex items-center justify-between px-5 pt-4 pb-0">
-                        <p className="text-[10px] font-medium tracking-widest uppercase text-muted-foreground">
-                            You can afford
-                        </p>
-                        <button
-                            onClick={() => navigate('/wish-list')}
-                            className="text-[11px] text-muted-foreground hover:text-foreground transition-colors"
-                        >
-                            See all →
-                        </button>
-                    </div>
-                    <div className="mt-3 divide-y">
-                        {affordableWishes.map(item => {
-                            const a = wishAnalysis[item.id]
-                            return (
-                                <div key={item.id} className="flex justify-between items-center px-5 py-3">
-                                    <div>
-                                        <p className="text-[12px] font-medium">{item.name}</p>
-                                        {a?.salaryLabel && (
-                                            <p className="text-[10px] text-muted-foreground mt-0.5">{a.salaryLabel}</p>
-                                        )}
-                                    </div>
-                                    {item.estimated_price && (
-                                        <p className="text-[14px] text-emerald-600">
-                                            {formatCurrency(item.estimated_price)}
-                                        </p>
-                                    )}
-                                </div>
-                            )
-                        })}
-                    </div>
-                </div>
             )}
         </div>
     )
