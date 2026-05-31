@@ -4,7 +4,7 @@ import type { TransactionWithDetails } from '@/types'
 import { TrendingUp, TrendingDown, Trash2, ChevronLeft, ChevronRight, ChevronsUpDown, Plus } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
-import { CategoryIcon } from '@/features/dashboard/components/categories/category-icon'
+import { CategoryIcon } from '@/features/categories/components/category-icon'
 
 interface PeriodCalendarProps {
     transactions: TransactionWithDetails[]
