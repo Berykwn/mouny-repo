@@ -77,6 +77,34 @@ export const accountsService = {
             return { data: null, error: handleError(err) }
         }
     },
+
+    async transfer(fromId: string, toId: string, amount: number): Promise<ServiceResult<null>> {
+        try {
+            const { data: accounts, error: fetchError } = await supabase
+                .from('accounts')
+                .select('id, balance')
+                .in('id', [fromId, toId])
+
+            if (fetchError) throw fetchError
+
+            const from = accounts.find(a => a.id === fromId)
+            const to = accounts.find(a => a.id === toId)
+
+            if (!from || !to) throw new Error('Account not found')
+            if (from.balance < amount) throw new Error('Insufficient balance')
+
+            const { error } = await (supabase as any).rpc('transfer_balance', {
+                p_from_id: fromId,
+                p_to_id: toId,
+                p_amount: amount,
+            })
+
+            if (error) throw error
+            return { data: null, error: null }
+        } catch (err) {
+            return { data: null, error: handleError(err) }
+        }
+    },
 }
 
 export const categoriesService = {
