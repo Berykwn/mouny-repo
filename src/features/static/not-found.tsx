@@ -6,13 +6,13 @@ export default function NotFoundPage() {
         <div className="min-h-screen flex flex-col items-center justify-center gap-4 text-center p-6">
             <p className="text-6xl font-bold text-muted-foreground/20">404</p>
             <div className="space-y-1">
-                <h1 className="text-xl font-semibold">Halaman tidak ditemukan</h1>
+                <h1 className="text-xl font-semibold">Page not found</h1>
                 <p className="text-sm text-muted-foreground">
-                    Halaman yang kamu cari tidak ada atau sudah dipindahkan.
+                    The page you are looking for does not exist or has been moved.
                 </p>
             </div>
             <Button asChild variant="outline">
-                <Link to="/dashboard">Kembali ke Dashboard</Link>
+                <Link to="/">Back to Dashboard</Link>
             </Button>
         </div>
     )
