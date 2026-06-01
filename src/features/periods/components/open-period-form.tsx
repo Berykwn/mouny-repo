@@ -185,7 +185,7 @@ export function OpenPeriodForm({ onSuccess }: OpenPeriodFormProps) {
 
             <Button
                 type="submit"
-                className="w-full"
+                className="w-full h-12 rounded-xl text-sm font-semibold"
                 disabled={loading || accounts.length === 0}
             >
                 {loading

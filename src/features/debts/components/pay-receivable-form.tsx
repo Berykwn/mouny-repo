@@ -206,7 +206,11 @@ export function PayReceivableForm({ debt, payPeriodId, periodStartDate, onSucces
                 </p>
             </div>
 
-            <Button type="submit" className="w-full" disabled={loading}>
+            <Button
+                type="submit"
+                className="w-full h-12 rounded-xl text-sm font-semibold"
+                disabled={loading}
+            >
                 {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Record Collection'}
             </Button>
         </form>

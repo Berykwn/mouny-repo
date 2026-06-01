@@ -115,7 +115,7 @@ export default function DashboardPage() {
                                     {isActivePeriod && (
                                         <Button
                                             onClick={() => setClosePeriodDrawer(true)}
-                                            className="w-full"
+                                            className="w-full h-12 rounded-xl text-sm font-semibold"
                                             variant="destructive"
                                         >
                                             <CheckCircle className="w-4 h-4" />

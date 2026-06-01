@@ -143,7 +143,7 @@ export function WishListForm({ payPeriodId, onSuccess }: WishListFormProps) {
                 </p>
             )}
 
-            <Button type="submit" className="w-full h-10 mt-2" disabled={loading}>
+            <Button type="submit" className="w-full h-12 rounded-xl text-sm font-semibold" disabled={loading}>
                 {loading ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (

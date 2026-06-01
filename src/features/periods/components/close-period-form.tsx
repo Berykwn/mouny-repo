@@ -125,7 +125,7 @@ export function ClosePeriodForm({ period, onSuccess }: ClosePeriodFormProps) {
 
                 <Button
                     variant="destructive"
-                    className="w-full"
+                    className="w-full h-12 rounded-xl text-sm font-semibold"
                     onClick={() => setConfirmed(true)}
                 >
                     Yes, close this period
@@ -146,7 +146,7 @@ export function ClosePeriodForm({ period, onSuccess }: ClosePeriodFormProps) {
 
             <Button
                 variant="destructive"
-                className="w-full"
+                className="w-full h-12 rounded-xl text-sm font-semibold"
                 onClick={handleClose}
                 disabled={loading}
             >
@@ -157,7 +157,7 @@ export function ClosePeriodForm({ period, onSuccess }: ClosePeriodFormProps) {
 
             <Button
                 variant="outline"
-                className="w-full"
+                className="w-full h-12 rounded-xl text-sm font-semibold"
                 onClick={() => setConfirmed(false)}
                 disabled={loading}
             >

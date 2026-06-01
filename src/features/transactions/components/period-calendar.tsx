@@ -281,7 +281,7 @@ export function PeriodCalendar({
                         <div className="border-t border-neutral-200" />
                         <Button
                             variant="outline"
-                            className="w-full font-bold"
+                            className="w-full h-12 rounded-xl text-sm font-semibold"
                             onClick={onAddTransaction}
                         >
                             <Plus className="w-4 h-4 mr-2" />

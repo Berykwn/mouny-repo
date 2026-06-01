@@ -26,13 +26,13 @@ export function ConfirmDrawer({
     return (
         <BottomDrawer open={open} onClose={onClose} title={title}>
             <div className="space-y-4 pb-2">
-                <div className="flex items-start gap-3 rounded-lg bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 px-4 py-3">
+                <div className="flex items-start gap-3 rounded-lg bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 px-4 py-4.5">
                     <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                     <p className="text-sm text-amber-800 dark:text-amber-200">{description}</p>
                 </div>
 
                 <Button
-                    className="w-full"
+                    className="w-full h-12 rounded-xl text-sm font-semibold"
                     variant={destructive ? 'destructive' : 'default'}
                     onClick={onConfirm}
                     disabled={loading}
@@ -41,7 +41,7 @@ export function ConfirmDrawer({
                 </Button>
 
                 <Button
-                    className="w-full"
+                    className="w-full h-12 rounded-xl text-sm font-semibold"
                     variant="outline"
                     onClick={onClose}
                     disabled={loading}
