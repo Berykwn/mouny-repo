@@ -5,11 +5,12 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
     Loader2, CalendarIcon, ChevronDown, Check,
-    Landmark, Wallet, TrendingUp, CircleDollarSign,
+    Landmark, Wallet,
     ArrowDownCircle, Film, UtensilsCrossed, Truck,
     Gift, ShoppingCart, Heart, Home, Wifi, MoreHorizontal,
     Bike, ParkingCircle, ArrowUpCircle, ShoppingBag,
     RefreshCw, Shield, Car, Zap, Circle,
+    Plane, Repeat   
 } from 'lucide-react'
 import type { LucideProps } from 'lucide-react'
 import { wishListService } from '@/services/wish-list.service'
@@ -32,7 +33,7 @@ type LucideComponent = React.ForwardRefExoticComponent<Omit<LucideProps, 'ref'> 
 const CATEGORY_ICON_MAP: Record<string, LucideComponent> = {
     'arrow-down-circle': ArrowDownCircle,
     'film': Film,
-    'utensils-crossed': UtensilsCrossed,
+    'utensils': UtensilsCrossed,
     'truck': Truck,
     'gift': Gift,
     'shopping-cart': ShoppingCart,
@@ -48,17 +49,17 @@ const CATEGORY_ICON_MAP: Record<string, LucideComponent> = {
     'shield': Shield,
     'car': Car,
     'zap': Zap,
+    'plane': Plane,
+    'repeat': Repeat
 }
 
 function getCategoryIcon(name: string): LucideComponent {
     return CATEGORY_ICON_MAP[name] ?? Circle
 }
 
-function getAccountIcon(type: string): LucideComponent {
-    if (type === 'bank') return Landmark
-    if (type === 'cash') return Wallet
-    if (type === 'investment') return TrendingUp
-    return CircleDollarSign
+function getAccountIcon(type: string) {
+    if (type === 'bank') return <Landmark className="w-4 h-4 text-muted-foreground" />
+    return <Wallet className="w-4 h-4 text-muted-foreground" />
 }
 
 export function BuyItemForm({ item, periodStart, onSuccess }: BuyItemFormProps) {
@@ -72,6 +73,7 @@ export function BuyItemForm({ item, periodStart, onSuccess }: BuyItemFormProps) 
     const [accounts, setAccounts] = useState<Account[]>([])
     const [categories, setCategories] = useState<Category[]>([])
     const [loading, setLoading] = useState(false)
+    const [accountOpen, setAccountOpen] = useState(false)
     const categoryScrollRef = useRef<HTMLDivElement>(null)
 
     const selectedAccount = accounts.find((a) => a.id === accountId)
@@ -175,51 +177,46 @@ export function BuyItemForm({ item, periodStart, onSuccess }: BuyItemFormProps) 
                 <Label className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
                     Paid from
                 </Label>
-                <Popover>
+                <Popover open={accountOpen} onOpenChange={setAccountOpen}>
                     <PopoverTrigger asChild>
                         <button
                             type="button"
                             disabled={loading}
-                            className="w-full flex items-center gap-3 px-3 h-14 rounded-xl border border-border bg-background text-left transition-colors hover:bg-muted/50 disabled:opacity-50"
+                            className={cn(
+                                'w-full flex items-center justify-between px-3 h-12 rounded-xl border bg-card',
+                                'text-left transition-colors hover:bg-muted/50 disabled:opacity-50'
+                            )}
                         >
-                            {selectedAccount ? (() => {
-                                const Icon = getAccountIcon(selectedAccount.type)
-                                return (
-                                    <>
-                                        <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center shrink-0">
-                                            <Icon className="w-4 h-4 text-muted-foreground" />
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-[13px] font-medium text-foreground truncate">
-                                                {selectedAccount.name}
-                                            </p>
-                                            <p className="text-[11px] text-muted-foreground">
-                                                Rp {Number(selectedAccount.balance ?? 0).toLocaleString('id-ID')}
-                                            </p>
-                                        </div>
-                                    </>
-                                )
-                            })() : (
-                                <span className="text-sm text-muted-foreground flex-1">Select account</span>
+                            {selectedAccount ? (
+                                <div className="flex items-center gap-3">
+                                    <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
+                                        {getAccountIcon(selectedAccount.type)}
+                                    </div>
+                                    <div>
+                                        <p className="text-sm font-medium">{selectedAccount.name}</p>
+                                        <p className="text-xs text-muted-foreground">{formatCurrency(selectedAccount.balance)}</p>
+                                    </div>
+                                </div>
+                            ) : (
+                                <span className="text-sm text-muted-foreground">Select account</span>
                             )}
                             <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />
                         </button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-[--radix-popover-trigger-width] p-1" align="start">
+                    <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-1" align="start">
                         {accounts.map((a) => {
-                            const Icon = getAccountIcon(a.type)
                             return (
                                 <button
                                     key={a.id}
                                     type="button"
-                                    onClick={() => setAccountId(a.id)}
+                                    onClick={() => { setAccountId(a.id); setAccountOpen(false) }}
                                     className={cn(
                                         'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors',
-                                        accountId === a.id ? 'bg-amber-50 dark:bg-amber-950/20' : 'hover:bg-muted'
+                                        accountId === a.id ? 'bg-muted' : 'hover:bg-muted'
                                     )}
                                 >
-                                    <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center shrink-0">
-                                        <Icon className="w-4 h-4 text-muted-foreground" />
+                                    <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
+                                        {getAccountIcon(a.type)}
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <p className="text-[13px] font-medium text-foreground truncate">{a.name}</p>
@@ -228,7 +225,7 @@ export function BuyItemForm({ item, periodStart, onSuccess }: BuyItemFormProps) 
                                         </p>
                                     </div>
                                     {accountId === a.id && (
-                                        <div className="w-4 h-4 rounded-full bg-amber-400 flex items-center justify-center shrink-0">
+                                        <div className="w-4 h-4 rounded-full bg-orange-400 flex items-center justify-center shrink-0">
                                             <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />
                                         </div>
                                     )}
@@ -271,7 +268,7 @@ export function BuyItemForm({ item, periodStart, onSuccess }: BuyItemFormProps) 
                                 className={cn(
                                     'flex flex-col items-center gap-1.5 p-2.5 rounded-xl border transition-all duration-150 shrink-0 w-[72px]',
                                     categoryId === c.id
-                                        ? 'border-blue-400 bg-blue-50 dark:bg-blue-950/20'
+                                        ? 'border-neutral-400 bg-neutral-50 dark:bg-neutral-950/20'
                                         : 'border-border bg-background'
                                 )}
                             >
@@ -285,7 +282,7 @@ export function BuyItemForm({ item, periodStart, onSuccess }: BuyItemFormProps) 
                                     className={cn(
                                         'text-[10px] text-center leading-tight line-clamp-2 w-full',
                                         categoryId === c.id
-                                            ? 'text-blue-700 dark:text-blue-300 font-medium'
+                                            ? 'text-neutral-700 dark:text-neutral-300 font-medium'
                                             : 'text-muted-foreground'
                                     )}
                                 >

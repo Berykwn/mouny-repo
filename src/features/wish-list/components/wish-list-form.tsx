@@ -22,7 +22,7 @@ const PRIORITIES: { value: WishListPriority; label: string; style: string }[] = 
 export function WishListForm({ payPeriodId, onSuccess }: WishListFormProps) {
     const [name, setName] = useState('')
     const [price, setPrice] = useState('')
-    const [priority, setPriority] = useState<WishListPriority>('medium')
+    const [priority, setPriority] = useState<WishListPriority>('low')
     const [notes, setNotes] = useState('')
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
@@ -98,7 +98,7 @@ export function WishListForm({ payPeriodId, onSuccess }: WishListFormProps) {
                         placeholder="0"
                         value={displayPrice}
                         onChange={(e) => handlePriceChange(e.target.value)}
-                        className="pl-9"
+                        className="pl-10 h-11 text-sm font-mono"
                         disabled={loading}
                     />
                 </div>
