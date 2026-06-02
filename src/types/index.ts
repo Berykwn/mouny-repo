@@ -37,5 +37,5 @@ export type TransactionWithDetails = Transaction & {
 }
 
 export type DebtWithAccount = Debt & {
-    pay_from_account: Pick<Account, 'id' | 'name'> | null
+    pay_from_account: Pick<Account, 'id' | 'name' | 'type' | 'balance'> | null
 }
