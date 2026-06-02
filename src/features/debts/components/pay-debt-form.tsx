@@ -3,11 +3,10 @@ import { format } from 'date-fns'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Loader2, CalendarIcon } from 'lucide-react'
+import { Loader2, CalendarIcon, ChevronDown, Landmark, Wallet, Check } from 'lucide-react'
 import { debtsService } from '@/services/debts.service'
 import { transactionsService } from '@/services/transactions.service'
 import { accountsService } from '@/services/accounts-categories.service'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { formatCurrency, toISODate } from '@/lib/helpers'
 import type { Account } from '@/types'
 import type { DebtWithAccount } from '@/types'
@@ -27,12 +26,18 @@ interface PayDebtFormProps {
     onSuccess: () => void
 }
 
+function getAccountIcon(type: string) {
+    if (type === 'bank') return <Landmark className="w-4 h-4 text-muted-foreground" />
+    return <Wallet className="w-4 h-4 text-muted-foreground" />
+}
+
 export function PayDebtForm({ debt, payPeriodId, periodStartDate, onSuccess }: PayDebtFormProps) {
     const today = toISODate()
 
     const [amount, setAmount] = useState(String(debt.remaining_amount))
     const [date, setDate] = useState(today)
     const [loading, setLoading] = useState(false)
+    const [openPaymentPopover, setOpenPaymentPopover] = useState(false)
 
     const [accounts, setAccounts] = useState<Account[]>([])
     const [selectedAccountId, setSelectedAccountId] = useState<string>(
@@ -50,6 +55,8 @@ export function PayDebtForm({ debt, payPeriodId, periodStartDate, onSuccess }: P
             })
         }
     }, [needsAccountPick])
+
+    const selectedAccount = accounts.find(a => a.id === selectedAccountId)
 
     const handleAmountChange = (raw: string) => {
         setAmount(raw.replace(/\D/g, ''))
@@ -81,6 +88,10 @@ export function PayDebtForm({ debt, payPeriodId, periodStartDate, onSuccess }: P
             toast.error('Date cannot be in the future.')
             return
         }
+        if (!selectedAccount) {
+            toast.error('Account not found.')
+            return
+        }
 
         setLoading(true)
 
@@ -108,6 +119,8 @@ export function PayDebtForm({ debt, payPeriodId, periodStartDate, onSuccess }: P
         setLoading(false)
 
         if (debtError) { toast.error(debtError); return }
+
+        toast.success('Dept Payment recorded.')
         onSuccess()
     }
 
@@ -146,14 +159,85 @@ export function PayDebtForm({ debt, payPeriodId, periodStartDate, onSuccess }: P
                         inputMode="numeric"
                         value={displayAmount}
                         onChange={(e) => handleAmountChange(e.target.value)}
-                        className="pl-9"
+                        className="pl-10 h-11 text-sm font-mono"
                         required
                         disabled={loading}
                     />
                 </div>
             </div>
 
-            <div className="space-y-1.5">
+            <div className="space-y-1">
+                <Label>Receive to</Label>
+                {needsAccountPick ? (
+                    <Popover open={openPaymentPopover} onOpenChange={setOpenPaymentPopover}>
+                        <PopoverTrigger asChild>
+                            <button
+                                type="button"
+                                disabled={loading}
+                                className={cn(
+                                    'w-full flex items-center justify-between px-3 h-12 rounded-xl border bg-card',
+                                    'text-left transition-colors hover:bg-muted/50 disabled:opacity-50'
+                                )}
+                            >
+                                {selectedAccount ? (
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
+                                            {getAccountIcon(selectedAccount.type)}
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-medium">{selectedAccount.name}</p>
+                                            <p className="text-xs text-muted-foreground">{formatCurrency(selectedAccount.balance)}</p>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <span className="text-sm text-muted-foreground">Select account</span>
+                                )}
+                                <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />
+                            </button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-1" align="start">
+                            {accounts.map((a) => (
+                                <button
+                                    key={a.id}
+                                    type="button"
+                                    onClick={() => { setSelectedAccountId(a.id); setOpenPaymentPopover(false) }}
+                                    className={cn(
+                                        'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors',
+                                        a.id === selectedAccountId ? 'bg-muted' : 'hover:bg-muted/50'
+                                    )}
+                                >
+                                    <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
+                                        {getAccountIcon(a.type)}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-medium">{a.name}</p>
+                                        <p className="text-xs text-muted-foreground">{formatCurrency(a.balance)}</p>
+                                    </div>
+                                    {a.id === selectedAccountId && (
+                                        <div className="w-4 h-4 rounded-full bg-orange-400 flex items-center justify-center shrink-0">
+                                            <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />
+                                        </div>
+                                    )}
+                                </button>
+                            ))}
+                        </PopoverContent>
+                    </Popover>
+                ) : (
+                    <div className="h-12 px-3 rounded-xl border bg-muted/50 flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
+                            {debt.pay_from_account && getAccountIcon(debt.pay_from_account.type)}
+                        </div>
+                        <div>
+                            <p className="text-sm font-medium">{debt.pay_from_account?.name}</p>
+                            <p className="text-xs text-muted-foreground">
+                                {debt.pay_from_account && formatCurrency(debt.pay_from_account.balance)}
+                            </p>
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            {/* <div className="space-y-1.5">
                 <Label>Pay from</Label>
                 {needsAccountPick ? (
                     <Select value={selectedAccountId} onValueChange={setSelectedAccountId} disabled={loading}>
@@ -171,7 +255,7 @@ export function PayDebtForm({ debt, payPeriodId, periodStartDate, onSuccess }: P
                         <p className="text-sm text-muted-foreground">{debt.pay_from_account?.name}</p>
                     </div>
                 )}
-            </div>
+            </div> */}
 
             <div className="space-y-1.5">
                 <Label>Payment date</Label>

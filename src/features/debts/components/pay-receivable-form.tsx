@@ -3,21 +3,19 @@ import { format } from 'date-fns'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Loader2, CalendarIcon } from 'lucide-react'
+import { Loader2, CalendarIcon, Landmark, Wallet, ChevronDown, Check } from 'lucide-react'
 import { debtsService } from '@/services/debts.service'
-import { transactionsService } from '@/services/transactions.service'
 import { accountsService } from '@/services/accounts-categories.service'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { formatCurrency, toISODate } from '@/lib/helpers'
 import type { Account, DebtWithAccount } from '@/types'
 import { toast } from 'sonner'
+import { cn } from '@/lib/utils'
 import {
     Popover,
     PopoverContent,
     PopoverTrigger,
 } from '@/components/ui/popover'
 import { Calendar } from '@/components/ui/calendar'
-import { cn } from '@/lib/utils'
 
 interface PayReceivableFormProps {
     debt: DebtWithAccount
@@ -26,12 +24,18 @@ interface PayReceivableFormProps {
     onSuccess: () => void
 }
 
-export function PayReceivableForm({ debt, payPeriodId, periodStartDate, onSuccess }: PayReceivableFormProps) {
+function getAccountIcon(type: string) {
+    if (type === 'bank') return <Landmark className="w-4 h-4 text-muted-foreground" />
+    return <Wallet className="w-4 h-4 text-muted-foreground" />
+}
+
+export function PayReceivableForm({ debt, periodStartDate, onSuccess }: PayReceivableFormProps) {
     const today = toISODate()
 
     const [amount, setAmount] = useState(String(debt.remaining_amount))
     const [date, setDate] = useState(today)
     const [loading, setLoading] = useState(false)
+    const [open, setOpen] = useState(false)
 
     const [accounts, setAccounts] = useState<Account[]>([])
     const [selectedAccountId, setSelectedAccountId] = useState<string>(
@@ -40,15 +44,17 @@ export function PayReceivableForm({ debt, payPeriodId, periodStartDate, onSucces
     const needsAccountPick = !debt.pay_from_account_id
 
     useEffect(() => {
-        if (needsAccountPick) {
-            accountsService.getAll().then(({ data }) => {
-                if (data) {
-                    setAccounts(data)
+        accountsService.getAll().then(({ data }) => {
+            if (data) {
+                setAccounts(data)
+                if (needsAccountPick) {
                     setSelectedAccountId(data[0]?.id ?? '')
                 }
-            })
-        }
+            }
+        })
     }, [needsAccountPick])
+
+    const selectedAccount = accounts.find(a => a.id === selectedAccountId)
 
     const handleAmountChange = (raw: string) => {
         setAmount(raw.replace(/\D/g, ''))
@@ -80,33 +86,34 @@ export function PayReceivableForm({ debt, payPeriodId, periodStartDate, onSucces
             toast.error('Date cannot be in the future.')
             return
         }
+        if (!selectedAccount) {
+            toast.error('Account not found.')
+            return
+        }
 
         setLoading(true)
 
-        const { data: category, error: catError } = await debtsService.findOrCreateCategory('Receivable')
+        const { error: accError } = await accountsService.update(selectedAccountId, {
+            name: selectedAccount.name,
+            type: selectedAccount.type,
+            balance_adjustment: parsed,
+        })
 
-        if (catError || !category) {
-            toast.error('Failed to resolve category.')
+        if (accError) {
+            toast.error(String(accError))
             setLoading(false)
             return
         }
 
-        const { error: txError } = await transactionsService.create({
-            pay_period_id: payPeriodId,
-            account_id: selectedAccountId,
-            type: 'income',
-            amount: parsed,
-            note: `Receivable collected — ${debt.counterparty}`,
-            date,
-            category_id: category.id,
-        })
-
-        if (txError) { toast.error(txError); setLoading(false); return }
-
         const { error: debtError } = await debtsService.recordPayment(debt.id, parsed)
         setLoading(false)
 
-        if (debtError) { toast.error(debtError); return }
+        if (debtError) {
+            toast.error(String(debtError))
+            return
+        }
+
+        toast.success('Collection recorded.')
         onSuccess()
     }
 
@@ -115,7 +122,7 @@ export function PayReceivableForm({ debt, payPeriodId, periodStartDate, onSucces
 
     return (
         <form onSubmit={handleSubmit} className="space-y-4 pb-2">
-            <div className="rounded-xl border bg-card p-4 space-y-3">
+            <div className="rounded-2xl border border-neutral-200 bg-card p-4 space-y-3">
                 <div className="flex items-start justify-between">
                     <div>
                         <p className="text-xs text-muted-foreground">Owed by {debt.counterparty}</p>
@@ -134,7 +141,7 @@ export function PayReceivableForm({ debt, payPeriodId, periodStartDate, onSucces
                 </div>
             </div>
 
-            <div className="space-y-1.5">
+            <div className="space-y-1">
                 <Label>Collection amount</Label>
                 <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
@@ -145,34 +152,85 @@ export function PayReceivableForm({ debt, payPeriodId, periodStartDate, onSucces
                         inputMode="numeric"
                         value={displayAmount}
                         onChange={(e) => handleAmountChange(e.target.value)}
-                        className="pl-9"
+                        className="pl-10 h-11 text-sm font-mono"
                         required
                         disabled={loading}
                     />
                 </div>
             </div>
 
-            <div className="space-y-1.5">
+            <div className="space-y-1">
                 <Label>Receive to</Label>
                 {needsAccountPick ? (
-                    <Select value={selectedAccountId} onValueChange={setSelectedAccountId} disabled={loading}>
-                        <SelectTrigger className="h-10">
-                            <SelectValue placeholder="Select account" />
-                        </SelectTrigger>
-                        <SelectContent>
+                    <Popover open={open} onOpenChange={setOpen}>
+                        <PopoverTrigger asChild>
+                            <button
+                                type="button"
+                                disabled={loading}
+                                className={cn(
+                                    'w-full flex items-center justify-between px-3 h-12 rounded-xl border bg-card',
+                                    'text-left transition-colors hover:bg-muted/50 disabled:opacity-50'
+                                )}
+                            >
+                                {selectedAccount ? (
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
+                                            {getAccountIcon(selectedAccount.type)}
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-medium">{selectedAccount.name}</p>
+                                            <p className="text-xs text-muted-foreground">{formatCurrency(selectedAccount.balance)}</p>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <span className="text-sm text-muted-foreground">Select account</span>
+                                )}
+                                <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />
+                            </button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-1" align="start">
                             {accounts.map((a) => (
-                                <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
+                                <button
+                                    key={a.id}
+                                    type="button"
+                                    onClick={() => { setSelectedAccountId(a.id); setOpen(false) }}
+                                    className={cn(
+                                        'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors',
+                                        a.id === selectedAccountId ? 'bg-muted' : 'hover:bg-muted/50'
+                                    )}
+                                >
+                                    <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
+                                        {getAccountIcon(a.type)}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-medium">{a.name}</p>
+                                        <p className="text-xs text-muted-foreground">{formatCurrency(a.balance)}</p>
+                                    </div>
+                                    {a.id === selectedAccountId && (
+                                        <div className="w-4 h-4 rounded-full bg-orange-400 flex items-center justify-center shrink-0">
+                                            <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />
+                                        </div>
+                                    )}
+                                </button>
                             ))}
-                        </SelectContent>
-                    </Select>
+                        </PopoverContent>
+                    </Popover>
                 ) : (
-                    <div className="h-10 px-3 rounded-md border bg-muted/50 flex items-center">
-                        <p className="text-sm text-muted-foreground">{debt.pay_from_account?.name}</p>
+                    <div className="h-12 px-3 rounded-xl border bg-muted/50 flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
+                            {debt.pay_from_account && getAccountIcon(debt.pay_from_account.type)}
+                        </div>
+                        <div>
+                            <p className="text-sm font-medium">{debt.pay_from_account?.name}</p>
+                            <p className="text-xs text-muted-foreground">
+                                {debt.pay_from_account && formatCurrency(debt.pay_from_account.balance)}
+                            </p>
+                        </div>
                     </div>
                 )}
             </div>
 
-            <div className="space-y-1.5">
+            <div className="space-y-1">
                 <Label>Collection date</Label>
                 <Popover>
                     <PopoverTrigger asChild>
@@ -201,7 +259,7 @@ export function PayReceivableForm({ debt, payPeriodId, periodStartDate, onSucces
                         />
                     </PopoverContent>
                 </Popover>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-amber-500">
                     Must be within {periodStartDate} — {today}
                 </p>
             </div>

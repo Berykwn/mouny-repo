@@ -168,7 +168,7 @@ export function DebtForm({ onSuccess, payPeriodId, periodStartDate }: DebtFormPr
             <div className="space-y-1.5">
                 <Label>{type === 'debt' ? 'Lender name' : 'Borrower name'}</Label>
                 <Input
-                    placeholder="Person or party"
+                    placeholder="e.g. John Doe"
                     value={counterparty}
                     onChange={(e) => setCounterparty(e.target.value)}
                     required
@@ -188,7 +188,7 @@ export function DebtForm({ onSuccess, payPeriodId, periodStartDate }: DebtFormPr
                         placeholder="0"
                         value={displayAmount}
                         onChange={(e) => handleAmountChange(e.target.value)}
-                        className="pl-9"
+                        className="pl-10 h-11 text-sm font-mono"
                         required
                         disabled={loading}
                     />
@@ -196,7 +196,13 @@ export function DebtForm({ onSuccess, payPeriodId, periodStartDate }: DebtFormPr
             </div>
 
             {/* Affects balance toggle */}
-            <div className="flex items-center justify-between rounded-xl border p-3 gap-3">
+            <div
+                className=
+                {`flex items-center justify-between rounded-2xl border p-3 gap-3 ${affectsBalance
+                        ? 'bg-muted'
+                        : 'bg-card'
+                    }`}
+            >
                 <div className="space-y-0.5">
                     <p className="text-sm font-medium">Record to balance</p>
                     <p className="text-xs text-muted-foreground">{affectsBalanceLabel}</p>
