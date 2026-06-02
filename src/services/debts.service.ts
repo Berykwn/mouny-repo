@@ -5,7 +5,7 @@ import { COLORS } from '@/lib/static-colors'
 
 const DEBT_CATEGORIES: Record<string, { type: 'income' | 'expense'; color: string; icon: string }> = {
     'Debt Payment': { type: 'expense', color: COLORS[18] ?? '#6b7280', icon: 'arrow-down-circle' },
-    'Receivable':   { type: 'expense', color: COLORS[9]  ?? '#6b7280', icon: 'arrow-up-circle' },
+    'Receivable': { type: 'expense', color: COLORS[9] ?? '#6b7280', icon: 'arrow-up-circle' },
 }
 
 export const debtsService = {
@@ -42,10 +42,19 @@ export const debtsService = {
         try {
             const { data, error } = await supabase
                 .from('debts')
-                .select(`*, pay_from_account:accounts(id, name)`)
+                .select(`
+                *,
+                pay_from_account:accounts(
+                    id,
+                    name,
+                    balance,
+                    type
+                )
+            `)
                 .order('due_date', { ascending: true, nullsFirst: false })
 
             if (error) throw error
+
             return { data, error: null }
         } catch (err) {
             return { data: null, error: handleError(err) }
@@ -56,11 +65,20 @@ export const debtsService = {
         try {
             const { data, error } = await supabase
                 .from('debts')
-                .select(`*, pay_from_account:accounts(id, name)`)
+                .select(`
+                *,
+                pay_from_account:accounts(
+                    id,
+                    name,
+                    balance,
+                    type
+                )
+            `)
                 .eq('status', 'active')
                 .order('due_date', { ascending: true, nullsFirst: false })
 
             if (error) throw error
+
             return { data, error: null }
         } catch (err) {
             return { data: null, error: handleError(err) }
