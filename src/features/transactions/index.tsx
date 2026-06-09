@@ -167,7 +167,7 @@ export default function TransactionsPage() {
                             </TabsContent>
                             <TabsContent value="analytics">
                                 <PeriodAnalytics
-                                    transactions={transactions}
+                                    transactions={transactions as (typeof transactions[0] & { type: 'expense' | 'income' })[]}
                                     period={selectedPeriod}
                                 />
                             </TabsContent>

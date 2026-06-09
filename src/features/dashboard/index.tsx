@@ -146,7 +146,6 @@ export default function DashboardPage() {
                     {selectedPeriod && (
                         <OverviewTransaction
                             periodId={selectedPeriod.id}
-                            salaryAmount={selectedPeriod.salary_amount}
                             isActivePeriod={isActivePeriod}
                         />
                     )}

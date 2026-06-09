@@ -14,8 +14,7 @@ import HealthAndTrendSection from './healt-and-trend'
 import { calculateHealthScore } from '@/lib/calculate-health-score'
 
 async function fetchOverviewData(
-    periodId: string,
-    salaryAmount: number
+    periodId: string
 ): Promise<OverviewData | null> {
     const [
         { data: allPeriods },
@@ -69,7 +68,6 @@ async function fetchOverviewData(
     return {
         totalIncome: periodTxs.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0),
         totalExpense: periodTxs.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0),
-        salaryAmount,
         startDate: currentPeriod.start_date,
         transactions: periodTxs,
         prevTransactions: prevTxs,
@@ -85,11 +83,9 @@ async function fetchOverviewData(
 
 export function OverviewTransaction({
     periodId,
-    salaryAmount,
     isActivePeriod,
 }: {
     periodId: string
-    salaryAmount: number
     isActivePeriod: boolean
 }) {
     const [data, setData] = useState<OverviewData | null>(null)
@@ -99,12 +95,12 @@ export function OverviewTransaction({
     useEffect(() => {
         async function load() {
             setLoading(true)
-            const result = await fetchOverviewData(periodId, salaryAmount)
+            const result = await fetchOverviewData(periodId)
             setData(result)
             setLoading(false)
         }
         load()
-    }, [periodId, salaryAmount])
+    }, [periodId])
 
     if (loading) return <LoadingContent />
     if (!data) return (
@@ -127,8 +123,8 @@ export function OverviewTransaction({
     } = data
 
     const remaining = totalIncome - totalExpense
-    const spentPercent = salaryAmount > 0
-        ? Math.min(Math.round((totalExpense / salaryAmount) * 100), 100)
+    const spentPercent = totalIncome > 0
+        ? Math.min(Math.round((totalExpense / totalIncome) * 100), 100)
         : 0
 
     const prevExpense = prevTransactions.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0)

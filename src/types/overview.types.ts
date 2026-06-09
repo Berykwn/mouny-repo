@@ -10,7 +10,6 @@ export interface TrendPoint {
 export interface OverviewData {
     totalIncome: number
     totalExpense: number
-    salaryAmount: number
     startDate: string
     transactions: TransactionWithDetails[]
     prevTransactions: TransactionWithDetails[]
