@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
-import { Plus, Sparkles } from 'lucide-react'
+import { Plus, Sparkles, Loader2, Tag } from 'lucide-react'
 import { BottomDrawer } from '@/components/bottom-drawer'
 import { ConfirmDrawer } from '@/components/confirmation-drawer'
 import { CategoryForm } from './components/category-form'
@@ -17,6 +17,7 @@ export function CategoriesPage() {
     const [addCategoryDrawer, setAddCategoryDrawer] = useState(false)
     const [deletingCategoryId, setDeletingCategoryId] = useState<string | null>(null)
     const [deleteLoading, setDeleteLoading] = useState(false)
+    const [seeding, setSeeding] = useState(false)
 
     const load = useCallback(async () => {
         setLoading(true)
@@ -32,7 +33,13 @@ export function CategoriesPage() {
         setDeleteLoading(true)
         const { error } = await categoriesService.remove(deletingCategoryId)
         setDeleteLoading(false)
-        if (error) { toast.error(error); setDeletingCategoryId(null); return }
+        if (error) {
+            toast.error(error.includes('foreign key') || error.includes('violates')
+                ? 'Cannot delete — category is used by existing transactions.'
+                : error)
+            setDeletingCategoryId(null)
+            return
+        }
         setCategories(prev => prev.filter(c => c.id !== deletingCategoryId))
         setDeletingCategoryId(null)
         toast.success('Category deleted.')
@@ -61,13 +68,17 @@ export function CategoriesPage() {
                     {categories.length === 0 && (
                         <Button
                             onClick={async () => {
+                                setSeeding(true)
                                 const { error } = await categoriesService.seedDefaults()
+                                setSeeding(false)
                                 if (error) { toast.error(error); return }
+                                toast.success('Default categories added.')
                                 load()
                             }}
+                            disabled={seeding}
                             className='bg-rose-400 text-white font-bold'
                         >
-                            <Sparkles className="w-3 h-3" />
+                            {seeding ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
                             Seed
                         </Button>
                     )}
@@ -83,6 +94,19 @@ export function CategoriesPage() {
 
             {loading ? (
                 <LoadingContent />
+            ) : categories.length === 0 ? (
+                <div
+                    onClick={() => setAddCategoryDrawer(true)}
+                    className="rounded-2xl border border-dashed border-neutral-300 bg-card p-8 text-center space-y-2 cursor-pointer hover:bg-accent transition-colors"
+                >
+                    <div className="w-10 h-10 rounded-2xl bg-sky-50 dark:bg-sky-950 flex items-center justify-center mx-auto">
+                        <Tag className="w-5 h-5 text-sky-400" />
+                    </div>
+                    <div>
+                        <p className="text-sm font-medium">No categories yet</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">Tap to add one, or use Seed above for defaults</p>
+                    </div>
+                </div>
             ) : (
                 <CategoryList
                     categories={categories}

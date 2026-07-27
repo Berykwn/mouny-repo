@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
-import { Plus } from 'lucide-react'
+import { Plus, HandCoins } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { BottomDrawer } from '@/components/bottom-drawer'
 import { ConfirmDrawer } from '@/components/confirmation-drawer'
@@ -139,12 +139,27 @@ export default function DebtsPage() {
                         </div>
                     )}
 
-                    <DebtList
-                        debts={filteredDebts}
-                        onDelete={setDeletingDebt}
-                        onPay={setPayingDebt}
-                        onCollect={setCollectingDebt}
-                    />
+                    {debts.length === 0 ? (
+                        <div
+                            onClick={() => setAddDrawerOpen(true)}
+                            className="rounded-2xl border border-dashed border-neutral-300 bg-card p-8 text-center space-y-2 cursor-pointer hover:bg-accent transition-colors"
+                        >
+                            <div className="w-10 h-10 rounded-2xl bg-amber-50 dark:bg-amber-950 flex items-center justify-center mx-auto">
+                                <HandCoins className="w-5 h-5 text-amber-400" />
+                            </div>
+                            <div>
+                                <p className="text-sm font-medium">No debts yet</p>
+                                <p className="text-xs text-muted-foreground mt-0.5">Tap to track money you owe or are owed</p>
+                            </div>
+                        </div>
+                    ) : (
+                        <DebtList
+                            debts={filteredDebts}
+                            onDelete={setDeletingDebt}
+                            onPay={setPayingDebt}
+                            onCollect={setCollectingDebt}
+                        />
+                    )}
                 </>
             )}
 

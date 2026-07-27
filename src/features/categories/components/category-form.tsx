@@ -111,7 +111,7 @@ export function CategoryForm({ onSuccess, initial }: CategoryFormProps) {
                             className={cn(
                                 'aspect-square rounded-full transition-all duration-150',
                                 color === c
-                                    ? 'ring-2 ring-offset-2 ring-foreground scale-110'
+                                    ? 'ring-2 ring-offset-2 ring-offset-background ring-foreground scale-110'
                                     : 'hover:scale-105'
                             )}
                             style={{ backgroundColor: c }}

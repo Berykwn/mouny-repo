@@ -1,6 +1,6 @@
 import { BottomDrawer } from '@/components/bottom-drawer'
 import { Button } from '@/components/ui/button'
-import { AlertTriangle } from 'lucide-react'
+import { AlertTriangle, Loader2 } from 'lucide-react'
 
 interface ConfirmDrawerProps {
     open: boolean
@@ -37,7 +37,7 @@ export function ConfirmDrawer({
                     onClick={onConfirm}
                     disabled={loading}
                 >
-                    {confirmLabel}
+                    {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : confirmLabel}
                 </Button>
 
                 <Button

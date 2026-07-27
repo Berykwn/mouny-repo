@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
-import { Plus } from 'lucide-react'
+import { Plus, Wallet2 } from 'lucide-react'
 import { BottomDrawer } from '@/components/bottom-drawer'
 import { ConfirmDrawer } from '@/components/confirmation-drawer'
 import { AccountForm } from './components/account-form'
@@ -78,6 +78,19 @@ export function AccountPage() {
 
             {loading ? (
                 <LoadingContent />
+            ) : accounts.length === 0 ? (
+                <div
+                    onClick={() => setAddAccountDrawer(true)}
+                    className="rounded-2xl border border-dashed border-neutral-300 bg-card p-8 text-center space-y-2 cursor-pointer hover:bg-accent transition-colors"
+                >
+                    <div className="w-10 h-10 rounded-2xl bg-rose-50 dark:bg-rose-950 flex items-center justify-center mx-auto">
+                        <Wallet2 className="w-5 h-5 text-rose-400" />
+                    </div>
+                    <div>
+                        <p className="text-sm font-medium">No accounts yet</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">Tap to add your first bank or cash account</p>
+                    </div>
+                </div>
             ) : (
                 <div className="space-y-3 mt-1.5">
                     <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest px-1">
