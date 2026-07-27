@@ -14,12 +14,7 @@ const NAV_ITEMS = [
     { to: '/transactions', label: 'Transactions', icon: ArrowLeftRight },
     { to: '/debts', label: 'Debts', icon: CreditCard },
     { to: '/wish-list', label: 'Wishlist', icon: ShoppingBag },
-]
-
-const EXTRA_PAGES = [
-    { to: '/category', label: 'Categories' },
-    { to: '/period-history', label: 'Period History' },
-    { to: '/accounts', label: 'Accounts' },
+    { to: '/accounts', label: 'Accounts', icon: Wallet },
 ]
 
 const MENU_ITEMS = [
@@ -58,12 +53,11 @@ export default function AppLayout() {
         })
     }, [])
 
-    const currentPage =
-        NAV_ITEMS.find(item =>
-            item.to === '/'
-                ? location.pathname === '/'
-                : location.pathname.startsWith(item.to)
-        ) ?? EXTRA_PAGES.find(item => location.pathname.startsWith(item.to))
+    const currentPage = MENU_ITEMS.find(item =>
+        item.to === '/'
+            ? location.pathname === '/'
+            : location.pathname.startsWith(item.to)
+    )
 
     return (
         <div className="min-h-[100dvh] bg-neutral-50 dark:bg-neutral-950 flex flex-col">
