@@ -105,7 +105,7 @@ export function ClosePeriodForm({ period, onSuccess }: ClosePeriodFormProps) {
                                     >
                                         <CalendarIcon className="mr-2 h-4 w-4" />
                                         {endDate
-                                            ? format(endDate, 'yyyy-MM-dd')
+                                            ? format(endDate, 'dd MMM yyyy')
                                             : 'Pick a date'}
                                     </Button>
                                 </PopoverTrigger>

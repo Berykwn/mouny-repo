@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
 import { formatCurrency, formatDateShort, getDaysBetween } from '@/lib/helpers'
 import { cn } from '@/lib/utils'
+import { BottomDrawer } from '@/components/bottom-drawer'
 
 interface Category {
   id: string
@@ -97,66 +98,38 @@ function DaySheet({ date, transactions, onClose }: DaySheetProps) {
   const total = transactions.reduce((s, t) => s + t.amount, 0)
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end" onClick={onClose}>
-      <div
-        className="w-full bg-white rounded-t-2xl border border-neutral-200 pb-safe"
-        onClick={e => e.stopPropagation()}
-      >
-        <div className="flex justify-center pt-3 pb-1">
-          <div className="w-8 h-1 rounded-full bg-neutral-200" />
-        </div>
+    <BottomDrawer open onClose={onClose} title={formatDateShort(date)}>
+      <p className="text-[22px] font-medium leading-tight -mt-1 mb-3">
+        {formatCurrency(total)}
+      </p>
 
-        <div className="flex items-center justify-between px-4 pt-2 pb-3 border-b border-neutral-100">
-          <div>
-            <p className="text-[11px] text-muted-foreground uppercase tracking-widest font-medium">
-              {formatDateShort(date)}
-            </p>
-            <p className="text-[22px] font-medium leading-tight mt-0.5">
-              {formatCurrency(total)}
-            </p>
-          </div>
-          <button
-            onClick={onClose}
-            className="w-8 h-8 rounded-full bg-neutral-100 flex items-center justify-center text-muted-foreground"
-            aria-label="Close"
+      <div className="-mx-5 max-h-72 overflow-y-auto divide-y divide-neutral-100 dark:divide-neutral-800">
+        {transactions.map((tx) => (
+          <div
+            key={tx.id}
+            className="flex items-center justify-between px-5 py-3"
           >
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-              <path d="M1 1l12 12M13 1L1 13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-            </svg>
-          </button>
-        </div>
-
-        <div className="max-h-72 overflow-y-auto">
-          {transactions.map((tx, i) => (
-            <div
-              key={tx.id}
-              className={cn(
-                'flex items-center justify-between px-4 py-3',
-                i < transactions.length - 1 && 'border-b border-neutral-100'
+            <div className="flex items-center gap-3">
+              {tx.category?.color && (
+                <div
+                  className="w-2 h-2 rounded-full shrink-0"
+                  style={{ backgroundColor: tx.category.color }}
+                />
               )}
-            >
-              <div className="flex items-center gap-3">
-                {tx.category?.color && (
-                  <div
-                    className="w-2 h-2 rounded-full shrink-0"
-                    style={{ backgroundColor: tx.category.color }}
-                  />
+              <div>
+                <p className="text-[13px] font-medium">
+                  {tx.note ?? tx.category?.name ?? 'Expense'}
+                </p>
+                {tx.category && tx.note && (
+                  <p className="text-[11px] text-muted-foreground">{tx.category.name}</p>
                 )}
-                <div>
-                  <p className="text-[13px] font-medium">
-                    {tx.note ?? tx.category?.name ?? 'Expense'}
-                  </p>
-                  {tx.category && tx.note && (
-                    <p className="text-[11px] text-muted-foreground">{tx.category.name}</p>
-                  )}
-                </div>
               </div>
-              <p className="text-[13px] font-medium">{formatCurrency(tx.amount)}</p>
             </div>
-          ))}
-        </div>
+            <p className="text-[13px] font-medium">{formatCurrency(tx.amount)}</p>
+          </div>
+        ))}
       </div>
-    </div>
+    </BottomDrawer>
   )
 }
 

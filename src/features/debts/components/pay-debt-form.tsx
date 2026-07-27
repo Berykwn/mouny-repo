@@ -3,11 +3,11 @@ import { format } from 'date-fns'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Loader2, CalendarIcon, ChevronDown, Landmark, Wallet, Check } from 'lucide-react'
+import { Loader2, CalendarIcon, ChevronDown, Check } from 'lucide-react'
 import { debtsService } from '@/services/debts.service'
 import { transactionsService } from '@/services/transactions.service'
 import { accountsService } from '@/services/accounts-categories.service'
-import { formatCurrency, toISODate } from '@/lib/helpers'
+import { formatCurrency, formatCurrencyInput, parseCurrencyInput, toISODate } from '@/lib/helpers'
 import type { Account } from '@/types'
 import type { DebtWithAccount } from '@/types'
 import { toast } from 'sonner'
@@ -17,6 +17,7 @@ import {
     PopoverTrigger,
 } from '@/components/ui/popover'
 import { Calendar } from '@/components/ui/calendar'
+import { AccountTypeIcon } from '@/components/account-type-icon'
 import { cn } from '@/lib/utils'
 
 interface PayDebtFormProps {
@@ -24,11 +25,6 @@ interface PayDebtFormProps {
     payPeriodId: string
     periodStartDate: string
     onSuccess: () => void
-}
-
-function getAccountIcon(type: string) {
-    if (type === 'bank') return <Landmark className="w-4 h-4 text-muted-foreground" />
-    return <Wallet className="w-4 h-4 text-muted-foreground" />
 }
 
 export function PayDebtForm({ debt, payPeriodId, periodStartDate, onSuccess }: PayDebtFormProps) {
@@ -58,17 +54,11 @@ export function PayDebtForm({ debt, payPeriodId, periodStartDate, onSuccess }: P
 
     const selectedAccount = accounts.find(a => a.id === selectedAccountId)
 
-    const handleAmountChange = (raw: string) => {
-        setAmount(raw.replace(/\D/g, ''))
-    }
-
-    const displayAmount = amount ? Number(amount).toLocaleString('id-ID') : ''
-
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
 
-        const parsed = parseInt(amount, 10)
-        if (!amount || isNaN(parsed) || parsed <= 0) {
+        const parsed = parseCurrencyInput(amount)
+        if (!amount || parsed <= 0) {
             toast.error('Invalid amount.')
             return
         }
@@ -120,7 +110,7 @@ export function PayDebtForm({ debt, payPeriodId, periodStartDate, onSuccess }: P
 
         if (debtError) { toast.error(debtError); return }
 
-        toast.success('Dept Payment recorded.')
+        toast.success('Debt payment recorded.')
         onSuccess()
     }
 
@@ -151,14 +141,14 @@ export function PayDebtForm({ debt, payPeriodId, periodStartDate, onSuccess }: P
             <div className="space-y-1.5">
                 <Label>Payment amount</Label>
                 <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                        Rp.
+                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-muted-foreground font-medium">
+                        Rp
                     </span>
                     <Input
                         type="text"
                         inputMode="numeric"
-                        value={displayAmount}
-                        onChange={(e) => handleAmountChange(e.target.value)}
+                        value={formatCurrencyInput(amount)}
+                        onChange={(e) => setAmount(e.target.value.replace(/\D/g, ''))}
                         className="pl-10 h-11 text-sm font-mono"
                         required
                         disabled={loading}
@@ -182,7 +172,7 @@ export function PayDebtForm({ debt, payPeriodId, periodStartDate, onSuccess }: P
                                 {selectedAccount ? (
                                     <div className="flex items-center gap-3">
                                         <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
-                                            {getAccountIcon(selectedAccount.type)}
+                                            <AccountTypeIcon type={selectedAccount.type} className="w-4 h-4 text-muted-foreground" />
                                         </div>
                                         <div>
                                             <p className="text-sm font-medium">{selectedAccount.name}</p>
@@ -207,7 +197,7 @@ export function PayDebtForm({ debt, payPeriodId, periodStartDate, onSuccess }: P
                                     )}
                                 >
                                     <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
-                                        {getAccountIcon(a.type)}
+                                        <AccountTypeIcon type={a.type} className="w-4 h-4 text-muted-foreground" />
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <p className="text-sm font-medium">{a.name}</p>
@@ -225,7 +215,7 @@ export function PayDebtForm({ debt, payPeriodId, periodStartDate, onSuccess }: P
                 ) : (
                     <div className="h-12 px-3 rounded-xl border bg-muted/50 flex items-center gap-3">
                         <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
-                            {debt.pay_from_account && getAccountIcon(debt.pay_from_account.type)}
+                            {debt.pay_from_account && <AccountTypeIcon type={debt.pay_from_account.type} className="w-4 h-4 text-muted-foreground" />}
                         </div>
                         <div>
                             <p className="text-sm font-medium">{debt.pay_from_account?.name}</p>
@@ -236,26 +226,6 @@ export function PayDebtForm({ debt, payPeriodId, periodStartDate, onSuccess }: P
                     </div>
                 )}
             </div>
-
-            {/* <div className="space-y-1.5">
-                <Label>Pay from</Label>
-                {needsAccountPick ? (
-                    <Select value={selectedAccountId} onValueChange={setSelectedAccountId} disabled={loading}>
-                        <SelectTrigger className="h-10">
-                            <SelectValue placeholder="Select account" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {accounts.map((a) => (
-                                <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                ) : (
-                    <div className="h-10 px-3 rounded-md border bg-muted/50 flex items-center">
-                        <p className="text-sm text-muted-foreground">{debt.pay_from_account?.name}</p>
-                    </div>
-                )}
-            </div> */}
 
             <div className="space-y-1.5">
                 <Label>Payment date</Label>
@@ -269,7 +239,7 @@ export function PayDebtForm({ debt, payPeriodId, periodStartDate, onSuccess }: P
                             )}
                         >
                             <CalendarIcon className="mr-2 h-4 w-4" />
-                            {date ? format(new Date(date), 'yyyy-MM-dd') : 'Pick a date'}
+                            {date ? format(new Date(date), 'dd MMM yyyy') : 'Pick a date'}
                         </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0">

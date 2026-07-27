@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label'
 import { Loader2, CalendarIcon, ChevronDown, Check } from 'lucide-react'
 import { wishListService } from '@/services/wish-list.service'
 import { accountsService, categoriesService } from '@/services/accounts-categories.service'
-import { formatCurrency, toISODate } from '@/lib/helpers'
+import { formatCurrency, formatCurrencyInput, parseCurrencyInput, toISODate } from '@/lib/helpers'
 import { toast } from 'sonner'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Calendar } from '@/components/ui/calendar'
@@ -48,14 +48,11 @@ export function BuyItemForm({ item, periodStart, onSuccess }: BuyItemFormProps) 
         })
     }, [])
 
-    const handlePriceChange = (raw: string) => setPrice(raw.replace(/\D/g, ''))
-    const displayPrice = price ? Number(price).toLocaleString('id-ID') : ''
-
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
 
-        const parsed = parseInt(price, 10)
-        if (!price || isNaN(parsed) || parsed <= 0) {
+        const parsed = parseCurrencyInput(price)
+        if (!price || parsed <= 0) {
             toast.error('Invalid price.')
             return
         }
@@ -122,8 +119,8 @@ export function BuyItemForm({ item, periodStart, onSuccess }: BuyItemFormProps) 
                     <Input
                         type="text"
                         inputMode="numeric"
-                        value={displayPrice}
-                        onChange={(e) => handlePriceChange(e.target.value)}
+                        value={formatCurrencyInput(price)}
+                        onChange={(e) => setPrice(e.target.value.replace(/\D/g, ''))}
                         placeholder="0"
                         disabled={loading}
                         className="pl-10 h-11 text-sm font-mono"
@@ -180,7 +177,7 @@ export function BuyItemForm({ item, periodStart, onSuccess }: BuyItemFormProps) 
                                     <div className="flex-1 min-w-0">
                                         <p className="text-[13px] font-medium text-foreground truncate">{a.name}</p>
                                         <p className="text-[11px] text-muted-foreground">
-                                            Rp {Number(a.balance ?? 0).toLocaleString('id-ID')}
+                                            {formatCurrency(a.balance ?? 0)}
                                         </p>
                                     </div>
                                     {accountId === a.id && (

@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Loader2 } from 'lucide-react'
 import { wishListService } from '@/services/wish-list.service'
+import { formatCurrencyInput, parseCurrencyInput } from '@/lib/helpers'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import type { WishListPriority } from '@/types'
@@ -25,28 +26,15 @@ export function WishListForm({ payPeriodId, onSuccess }: WishListFormProps) {
     const [priority, setPriority] = useState<WishListPriority>('low')
     const [notes, setNotes] = useState('')
     const [loading, setLoading] = useState(false)
-    const [error, setError] = useState<string | null>(null)
-
-    const handlePriceChange = (raw: string) => {
-        const digitsOnly = raw.replace(/\D/g, '')
-        setPrice(digitsOnly)
-    }
-
-    const displayPrice = price
-        ? Number(price).toLocaleString('id-ID')
-        : ''
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
-        setError(null)
         setLoading(true)
 
-        const parsed = price ? parseInt(price, 10) : undefined
+        const parsed = price ? parseCurrencyInput(price) : undefined
 
-        if (price && (isNaN(parsed!) || parsed! <= 0)) {
-            const msg = 'Invalid estimated price.'
-            setError(msg)
-            toast.error(msg)
+        if (price && (!parsed || parsed <= 0)) {
+            toast.error('Invalid estimated price.')
             setLoading(false)
             return
         }
@@ -62,7 +50,6 @@ export function WishListForm({ payPeriodId, onSuccess }: WishListFormProps) {
         setLoading(false)
 
         if (error) {
-            setError(error)
             toast.error(error)
             return
         }
@@ -89,15 +76,15 @@ export function WishListForm({ payPeriodId, onSuccess }: WishListFormProps) {
                     Estimated price <span className="text-muted-foreground">(optional)</span>
                 </Label>
                 <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                        Rp.
+                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-muted-foreground font-medium">
+                        Rp
                     </span>
                     <Input
                         type="text"
                         inputMode="numeric"
                         placeholder="0"
-                        value={displayPrice}
-                        onChange={(e) => handlePriceChange(e.target.value)}
+                        value={formatCurrencyInput(price)}
+                        onChange={(e) => setPrice(e.target.value.replace(/\D/g, ''))}
                         className="pl-10 h-11 text-sm font-mono"
                         disabled={loading}
                     />
@@ -136,12 +123,6 @@ export function WishListForm({ payPeriodId, onSuccess }: WishListFormProps) {
                     disabled={loading}
                 />
             </div>
-
-            {error && (
-                <p className="text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-md px-3 py-2">
-                    {error}
-                </p>
-            )}
 
             <Button type="submit" className="w-full h-12 rounded-xl text-sm font-semibold" disabled={loading}>
                 {loading ? (

@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label'
 import { Loader2, CalendarIcon, ChevronDown, Check } from 'lucide-react'
 import { transactionsService, type CreateTransactionInput } from '@/services/transactions.service'
 import { accountsService, categoriesService } from '@/services/accounts-categories.service'
-import { formatCurrency, toISODate } from '@/lib/helpers'
+import { formatCurrency, formatCurrencyInput, parseCurrencyInput, toISODate } from '@/lib/helpers'
 import type { Account, Category } from '@/types'
 import { toast } from 'sonner'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -75,17 +75,11 @@ export function TransactionForm({ payPeriodId, periodStart, periodEnd, defaultDa
         })
     }, [type])
 
-    const handleAmountChange = (raw: string) => {
-        setAmount(raw.replace(/\D/g, ''))
-    }
-
-    const displayAmount = amount ? Number(amount).toLocaleString('id-ID') : ''
-
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
 
-        const parsed = parseInt(amount, 10)
-        if (!amount || isNaN(parsed) || parsed <= 0) {
+        const parsed = parseCurrencyInput(amount)
+        if (!amount || parsed <= 0) {
             toast.error('Invalid amount.')
             return
         }
@@ -166,8 +160,8 @@ export function TransactionForm({ payPeriodId, periodStart, periodEnd, defaultDa
                     <Input
                         type="text"
                         inputMode="numeric"
-                        value={displayAmount}
-                        onChange={(e) => handleAmountChange(e.target.value)}
+                        value={formatCurrencyInput(amount)}
+                        onChange={(e) => setAmount(e.target.value.replace(/\D/g, ''))}
                         placeholder="0"
                         disabled={loading}
                         className="pl-10 h-11 text-sm font-mono"
@@ -224,7 +218,7 @@ export function TransactionForm({ payPeriodId, periodStart, periodEnd, defaultDa
                                     <div className="flex-1 min-w-0">
                                         <p className="text-[13px] font-medium text-foreground truncate">{a.name}</p>
                                         <p className="text-[11px] text-muted-foreground">
-                                            Rp {Number(a.balance ?? 0).toLocaleString('id-ID')}
+                                            {formatCurrency(a.balance ?? 0)}
                                         </p>
                                     </div>
                                     {accountId === a.id && (

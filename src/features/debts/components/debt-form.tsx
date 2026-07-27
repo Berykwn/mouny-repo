@@ -3,14 +3,13 @@ import { format } from 'date-fns'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Loader2, CalendarIcon } from 'lucide-react'
+import { Loader2, CalendarIcon, ChevronDown, Check } from 'lucide-react'
 import { debtsService } from '@/services/debts.service'
 import { transactionsService } from '@/services/transactions.service'
 import { accountsService } from '@/services/accounts-categories.service'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { Switch } from '@/components/ui/switch'
-import { toISODate } from '@/lib/helpers'
+import { formatCurrency, formatCurrencyInput, parseCurrencyInput, toISODate } from '@/lib/helpers'
 import type { Account } from '@/types'
 import { toast } from 'sonner'
 import {
@@ -19,6 +18,7 @@ import {
     PopoverTrigger,
 } from '@/components/ui/popover'
 import { Calendar } from '@/components/ui/calendar'
+import { AccountTypeIcon } from '@/components/account-type-icon'
 import { cn } from '@/lib/utils'
 
 interface DebtFormProps {
@@ -44,6 +44,8 @@ export function DebtForm({ onSuccess, payPeriodId, periodStartDate }: DebtFormPr
     // Whether this debt/receivable actually moved money in/out of the account
     const [affectsBalance, setAffectsBalance] = useState(false)
 
+    const selectedAccount = accounts.find((a) => a.id === accountId)
+
     useEffect(() => {
         accountsService.getAll().then(({ data }) => {
             if (data) setAccounts(data)
@@ -57,12 +59,6 @@ export function DebtForm({ onSuccess, payPeriodId, periodStartDate }: DebtFormPr
         setAffectsBalance(false)
     }
 
-    const handleAmountChange = (raw: string) => {
-        setAmount(raw.replace(/\D/g, ''))
-    }
-
-    const displayAmount = amount ? Number(amount).toLocaleString('id-ID') : ''
-
     // Label helpers based on type
     const affectsBalanceLabel = type === 'debt'
         ? 'Money received into account (e.g. borrowed cash)'
@@ -71,8 +67,8 @@ export function DebtForm({ onSuccess, payPeriodId, periodStartDate }: DebtFormPr
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
 
-        const parsed = parseInt(amount, 10)
-        if (!amount || isNaN(parsed) || parsed <= 0) {
+        const parsed = parseCurrencyInput(amount)
+        if (!amount || parsed <= 0) {
             toast.error('Invalid amount.')
             return
         }
@@ -179,15 +175,15 @@ export function DebtForm({ onSuccess, payPeriodId, periodStartDate }: DebtFormPr
             <div className="space-y-1.5">
                 <Label>Amount</Label>
                 <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                        Rp.
+                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-muted-foreground font-medium">
+                        Rp
                     </span>
                     <Input
                         type="text"
                         inputMode="numeric"
                         placeholder="0"
-                        value={displayAmount}
-                        onChange={(e) => handleAmountChange(e.target.value)}
+                        value={formatCurrencyInput(amount)}
+                        onChange={(e) => setAmount(e.target.value.replace(/\D/g, ''))}
                         className="pl-10 h-11 text-sm font-mono"
                         required
                         disabled={loading}
@@ -219,16 +215,59 @@ export function DebtForm({ onSuccess, payPeriodId, periodStartDate }: DebtFormPr
                 <>
                     <div className="space-y-1.5">
                         <Label>Account</Label>
-                        <Select value={accountId} onValueChange={setAccountId} disabled={loading}>
-                            <SelectTrigger className="h-10">
-                                <SelectValue placeholder="Select account" />
-                            </SelectTrigger>
-                            <SelectContent>
+                        <Popover>
+                            <PopoverTrigger asChild>
+                                <button
+                                    type="button"
+                                    disabled={loading}
+                                    className={cn(
+                                        'w-full flex items-center justify-between px-3 h-12 rounded-xl border bg-card',
+                                        'text-left transition-colors hover:bg-muted/50 disabled:opacity-50'
+                                    )}
+                                >
+                                    {selectedAccount ? (
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
+                                                <AccountTypeIcon type={selectedAccount.type} className="w-4 h-4 text-muted-foreground" />
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-medium">{selectedAccount.name}</p>
+                                                <p className="text-xs text-muted-foreground">{formatCurrency(selectedAccount.balance)}</p>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <span className="text-sm text-muted-foreground">Select account</span>
+                                    )}
+                                    <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />
+                                </button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-1" align="start">
                                 {accounts.map((a) => (
-                                    <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
+                                    <button
+                                        key={a.id}
+                                        type="button"
+                                        onClick={() => setAccountId(a.id)}
+                                        className={cn(
+                                            'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors',
+                                            accountId === a.id ? 'bg-muted' : 'hover:bg-muted'
+                                        )}
+                                    >
+                                        <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                                            <AccountTypeIcon type={a.type} className="w-4 h-4 text-muted-foreground" />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-[13px] font-medium text-foreground truncate">{a.name}</p>
+                                            <p className="text-[11px] text-muted-foreground">{formatCurrency(a.balance)}</p>
+                                        </div>
+                                        {accountId === a.id && (
+                                            <div className="w-4 h-4 rounded-full bg-orange-400 flex items-center justify-center shrink-0">
+                                                <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />
+                                            </div>
+                                        )}
+                                    </button>
                                 ))}
-                            </SelectContent>
-                        </Select>
+                            </PopoverContent>
+                        </Popover>
                     </div>
 
                     <div className="space-y-1.5">
@@ -243,7 +282,7 @@ export function DebtForm({ onSuccess, payPeriodId, periodStartDate }: DebtFormPr
                                     )}
                                 >
                                     <CalendarIcon className="mr-2 h-4 w-4" />
-                                    {date ? format(new Date(date), 'yyyy-MM-dd') : 'Pick a date'}
+                                    {date ? format(new Date(date), 'dd MMM yyyy') : 'Pick a date'}
                                 </Button>
                             </PopoverTrigger>
                             <PopoverContent className="w-auto p-0">
@@ -279,7 +318,7 @@ export function DebtForm({ onSuccess, payPeriodId, periodStartDate }: DebtFormPr
                             )}
                         >
                             <CalendarIcon className="mr-2 h-4 w-4" />
-                            {dueDate ? format(new Date(dueDate), 'yyyy-MM-dd') : 'Pick a date'}
+                            {dueDate ? format(new Date(dueDate), 'dd MMM yyyy') : 'Pick a date'}
                         </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0">
