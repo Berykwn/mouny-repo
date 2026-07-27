@@ -93,7 +93,14 @@ export const accountsService = {
             if (!from || !to) throw new Error('Account not found')
             if (from.balance < amount) throw new Error('Insufficient balance')
 
-            const { error } = await (supabase as any).rpc('transfer_balance', {
+            // `transfer_balance` isn't in database.types.ts yet (Functions wasn't regenerated
+            // after this RPC was added in Supabase) — cast narrowly instead of `as any`.
+            const { error } = await (supabase as unknown as {
+                rpc: (
+                    fn: 'transfer_balance',
+                    params: { p_from_id: string; p_to_id: string; p_amount: number }
+                ) => PromiseLike<{ error: { message: string } | null }>
+            }).rpc('transfer_balance', {
                 p_from_id: fromId,
                 p_to_id: toId,
                 p_amount: amount,

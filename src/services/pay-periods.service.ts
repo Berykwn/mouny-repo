@@ -86,10 +86,6 @@ export const payPeriodsService = {
         }
     },
 
-    create: (data: any) => supabase.from('pay_periods').insert(data),
-
-    update: (id: string, data: any) => supabase.from('pay_periods').update(data).eq('id', id),
-
     setActive: async (periodId: string) => {
         // Close all active periods first
         await supabase

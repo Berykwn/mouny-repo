@@ -6,7 +6,7 @@ import { ConfirmDrawer } from '@/components/confirmation-drawer'
 import { WishListItems } from './components/wish-list-items'
 import { WishListForm } from './components/wish-list-form'
 import { BuyItemForm } from './components/buy-item-form'
-import { wishListService } from '@/services/wish-list.service'
+import { wishListService, type WishListAnalysis } from '@/services/wish-list.service'
 import { payPeriodsService } from '@/services/pay-periods.service'
 import { formatCurrency } from '@/lib/helpers'
 import type { WishListItem } from '@/types'
@@ -20,7 +20,7 @@ export default function WishListPage() {
     const [loading, setLoading] = useState(true)
     const [addDrawerOpen, setAddDrawerOpen] = useState(false)
     const [buyingItem, setBuyingItem] = useState<WishListItem | null>(null)
-    const [analysis, setAnalysis] = useState<Record<string, any>>({})
+    const [analysis, setAnalysis] = useState<Record<string, WishListAnalysis>>({})
     const [deletingId, setDeletingId] = useState<string | null>(null)
     const [deleteLoading, setDeleteLoading] = useState(false)
 
@@ -91,12 +91,27 @@ export default function WishListPage() {
                     </div>
 
                     {periodId && (
-                        <WishListItems
-                            items={items}
-                            analysis={analysis}
-                            onDeleteRequest={setDeletingId}
-                            onBuy={setBuyingItem}
-                        />
+                        items.length === 0 ? (
+                            <div
+                                onClick={() => setAddDrawerOpen(true)}
+                                className="rounded-2xl border border-dashed border-neutral-300 bg-card p-8 text-center space-y-2 cursor-pointer hover:bg-accent transition-colors"
+                            >
+                                <div className="w-10 h-10 rounded-2xl bg-pink-50 dark:bg-pink-950 flex items-center justify-center mx-auto">
+                                    <ShoppingBag className="w-5 h-5 text-pink-400" />
+                                </div>
+                                <div>
+                                    <p className="text-sm font-medium">No wishes yet</p>
+                                    <p className="text-xs text-muted-foreground mt-0.5">Tap to add something you want to save up for</p>
+                                </div>
+                            </div>
+                        ) : (
+                            <WishListItems
+                                items={items}
+                                analysis={analysis}
+                                onDeleteRequest={setDeletingId}
+                                onBuy={setBuyingItem}
+                            />
+                        )
                     )}
                 </div>
             )}

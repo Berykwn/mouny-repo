@@ -27,7 +27,7 @@ export function PeriodHistory({ periods }: PeriodHistoryProps) {
             setSummaryMap(results)
         }
         load()
-    }, [periods])
+    }, [closed])
 
     if (closed.length === 0) return null
 

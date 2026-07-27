@@ -26,6 +26,8 @@ const PRIORITY_COLOR: Record<string, string> = {
   low: 'bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-400',
 }
 
+const PRIORITY_ORDER: Record<string, number> = { high: 0, medium: 1, low: 2 }
+
 export function WishListItems({ items, analysis, onBuy, onDeleteRequest }: WishListItemsProps) {
   const [filter, setFilter] = useState<Filter>('all')
 
@@ -43,7 +45,9 @@ export function WishListItems({ items, analysis, onBuy, onDeleteRequest }: WishL
     { id: 'low' as Filter, label: `Casual (${counts.low})` },
   ].filter(f => f.id === 'all' || counts[f.id] > 0)
 
-  const filtered = filter === 'all' ? items : items.filter(i => i.priority === filter)
+  const filtered = (filter === 'all' ? items : items.filter(i => i.priority === filter))
+    .slice()
+    .sort((a, b) => PRIORITY_ORDER[a.priority ?? 'low'] - PRIORITY_ORDER[b.priority ?? 'low'])
 
   return (
     <div className="space-y-4">
@@ -122,6 +126,7 @@ export function WishListItems({ items, analysis, onBuy, onDeleteRequest }: WishL
                   </button>
                   <button
                     onClick={() => onDeleteRequest(item.id)}
+                    aria-label={`Remove ${item.name} from wish list`}
                     className="w-7 h-7 rounded-lg bg-red-50 dark:bg-red-950 flex items-center justify-center"
                   >
                     <Trash2 className="w-3.5 h-3.5 text-red-400" />

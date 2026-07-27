@@ -60,7 +60,11 @@ export function CategoriesPage() {
                 <div className="flex items-center gap-2">
                     {categories.length === 0 && (
                         <Button
-                            onClick={async () => { await categoriesService.seedDefaults(); load() }}
+                            onClick={async () => {
+                                const { error } = await categoriesService.seedDefaults()
+                                if (error) { toast.error(error); return }
+                                load()
+                            }}
                             className='bg-rose-400 text-white font-bold'
                         >
                             <Sparkles className="w-3 h-3" />

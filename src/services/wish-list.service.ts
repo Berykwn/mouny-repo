@@ -63,22 +63,6 @@ export const wishListService = {
         }
     },
 
-    async getByPeriod(periodId: string): Promise<ServiceResult<WishListItem[]>> {
-        try {
-            const { data, error } = await supabase
-                .from('wish_list')
-                .select('*')
-                .eq('pay_period_id', periodId)
-                .eq('is_purchased', false)
-                .order('priority', { ascending: true })
-
-            if (error) throw error
-            return { data, error: null }
-        } catch (err) {
-            return { data: null, error: handleError(err) }
-        }
-    },
-
     async create(input: {
         pay_period_id: string
         name: string
