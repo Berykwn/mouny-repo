@@ -3,7 +3,8 @@ import {
     MoreHorizontal, Home, Zap, Wifi, Shield, CreditCard,
     UtensilsCrossed, ShoppingCart, Car, Truck, ShoppingBag,
     Film, Plane, Repeat, Heart, Book, ArrowDownCircle,
-    PiggyBank, type LucideProps
+    PiggyBank, Bike, ParkingCircle, ArrowUpCircle, RefreshCw,
+    type LucideProps
 } from 'lucide-react'
 import type { ElementType } from 'react'
 
@@ -32,4 +33,8 @@ export const ICON_MAP: Record<string, ElementType<LucideProps>> = {
     'book': Book,
     'arrow-down-circle': ArrowDownCircle,
     'piggy-bank': PiggyBank,
+    'bike': Bike,
+    'parking-circle': ParkingCircle,
+    'arrow-up-circle': ArrowUpCircle,
+    'refresh-cw': RefreshCw,
 }

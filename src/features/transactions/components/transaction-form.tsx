@@ -3,17 +3,7 @@ import { format } from 'date-fns'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import {
-    Loader2, CalendarIcon, ChevronDown, Check,
-    Landmark, Wallet,
-    ArrowDownCircle, Film, UtensilsCrossed, Truck,
-    Gift, ShoppingCart, Heart, Home, Wifi, MoreHorizontal,
-    Bike, ParkingCircle, ArrowUpCircle, ShoppingBag,
-    RefreshCw, Shield, Car, Zap, Circle,
-    Plane,
-    Repeat,
-} from 'lucide-react'
-import type { LucideProps } from 'lucide-react'
+import { Loader2, CalendarIcon, ChevronDown, Check } from 'lucide-react'
 import { transactionsService, type CreateTransactionInput } from '@/services/transactions.service'
 import { accountsService, categoriesService } from '@/services/accounts-categories.service'
 import { formatCurrency, toISODate } from '@/lib/helpers'
@@ -21,6 +11,8 @@ import type { Account, Category } from '@/types'
 import { toast } from 'sonner'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Calendar } from '@/components/ui/calendar'
+import { CategoryIcon } from '@/features/categories/components/category-icon'
+import { AccountTypeIcon } from '@/components/account-type-icon'
 import { cn } from '@/lib/utils'
 
 interface TransactionFormProps {
@@ -32,40 +24,6 @@ interface TransactionFormProps {
 }
 
 type TxType = 'income' | 'expense'
-
-type LucideComponent = React.ForwardRefExoticComponent<Omit<LucideProps, 'ref'> & React.RefAttributes<SVGSVGElement>>
-
-const CATEGORY_ICON_MAP: Record<string, LucideComponent> = {
-    'arrow-down-circle': ArrowDownCircle,
-    'film': Film,
-    'utensils': UtensilsCrossed,
-    'truck': Truck,
-    'gift': Gift,
-    'shopping-cart': ShoppingCart,
-    'heart': Heart,
-    'home': Home,
-    'wifi': Wifi,
-    'more-horizontal': MoreHorizontal,
-    'bike': Bike,
-    'parking-circle': ParkingCircle,
-    'arrow-up-circle': ArrowUpCircle,
-    'shopping-bag': ShoppingBag,
-    'refresh-cw': RefreshCw,
-    'shield': Shield,
-    'car': Car,
-    'zap': Zap,
-    'plane': Plane,
-    'repeat': Repeat
-}
-
-function getCategoryIcon(name: string): LucideComponent {
-    return CATEGORY_ICON_MAP[name] ?? Circle
-}
-
-function getAccountIcon(type: string) {
-    if (type === 'bank') return <Landmark className="w-4 h-4 text-muted-foreground" />
-    return <Wallet className="w-4 h-4 text-muted-foreground" />
-}
 
 export function TransactionForm({ payPeriodId, periodStart, periodEnd, defaultDate, onSuccess }: TransactionFormProps) {
     const today = toISODate()
@@ -94,7 +52,7 @@ export function TransactionForm({ payPeriodId, periodStart, periodEnd, defaultDa
 
     useEffect(() => {
         setDate(resolveDate(defaultDate))
-    }, [defaultDate])
+    }, [defaultDate, periodStart, maxDate])
 
     useEffect(() => {
         accountsService.getAll().then(({ data }) => {
@@ -235,7 +193,7 @@ export function TransactionForm({ payPeriodId, periodStart, periodEnd, defaultDa
                             {selectedAccount ? (
                                 <div className="flex items-center gap-3">
                                     <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
-                                        {getAccountIcon(selectedAccount.type)}
+                                        <AccountTypeIcon type={selectedAccount.type} className="w-4 h-4 text-muted-foreground" />
                                     </div>
                                     <div>
                                         <p className="text-sm font-medium">{selectedAccount.name}</p>
@@ -261,7 +219,7 @@ export function TransactionForm({ payPeriodId, periodStart, periodEnd, defaultDa
                                     )}
                                 >
                                     <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center shrink-0">
-                                        {getAccountIcon(a.type)}
+                                        <AccountTypeIcon type={a.type} className="w-4 h-4 text-muted-foreground" />
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <p className="text-[13px] font-medium text-foreground truncate">{a.name}</p>
@@ -287,15 +245,12 @@ export function TransactionForm({ payPeriodId, periodStart, periodEnd, defaultDa
                     <Label className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
                         Category
                     </Label>
-                    {selectedCategory && (() => {
-                        const Icon = getCategoryIcon(selectedCategory.icon ?? '')
-                        return (
-                            <span className="text-[11px] text-muted-foreground flex items-center gap-1">
-                                <Icon className="w-3 h-3" style={{ color: selectedCategory.color ?? undefined }} />
-                                {selectedCategory.name}
-                            </span>
-                        )
-                    })()}
+                    {selectedCategory && (
+                        <span className="text-[11px] text-muted-foreground flex items-center gap-1">
+                            <CategoryIcon name={selectedCategory.icon} className="w-3 h-3" style={{ color: selectedCategory.color ?? undefined }} />
+                            {selectedCategory.name}
+                        </span>
+                    )}
                 </div>
                 <div
                     ref={categoryScrollRef}
@@ -303,7 +258,6 @@ export function TransactionForm({ payPeriodId, periodStart, periodEnd, defaultDa
                     style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
                 >
                     {categories.map((c) => {
-                        const Icon = getCategoryIcon(c.icon ?? '')
                         return (
                             <button
                                 key={c.id}
@@ -321,7 +275,8 @@ export function TransactionForm({ payPeriodId, periodStart, periodEnd, defaultDa
                                     className="w-9 h-9 rounded-lg flex items-center justify-center"
                                     style={{ backgroundColor: c.color ? `${c.color}20` : undefined }}
                                 >
-                                    <Icon
+                                    <CategoryIcon
+                                        name={c.icon}
                                         className="w-4 h-4"
                                         style={{ color: c.color ?? undefined }}
                                     />
