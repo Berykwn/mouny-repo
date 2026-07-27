@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { formatCurrency } from '@/lib/helpers'
+import { formatCurrency, formatDateShort, getDaysBetween } from '@/lib/helpers'
 import { cn } from '@/lib/utils'
 
 interface Category {
@@ -17,7 +17,7 @@ interface Transaction {
   category: Category | null
 }
 
-export interface TransactionWithDetails extends Transaction {}
+export type TransactionWithDetails = Transaction
 
 export interface PayPeriod {
   start_date: string
@@ -37,43 +37,48 @@ interface CatEntry {
   amount: number
 }
 
+interface PeriodStatsBase {
+  days: number
+  daysElapsed: number
+  daysRemaining: number | null
+  dailyAvg: number
+  remaining: number
+}
+
+type PeriodStats =
+  | (PeriodStatsBase & { hasPredictive: false })
+  | (PeriodStatsBase & {
+      hasPredictive: true
+      projectedSpend: number
+      projectedRemaining: number
+      daysUntilBroke: number | null
+    })
+
 interface PeriodAnalyticsProps {
   transactions: TransactionWithDetails[]
   period: PayPeriod
-}
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function getDays(period: PayPeriod): number {
-  const start = new Date(period.start_date)
-  const end = period.end_date ? new Date(period.end_date) : new Date()
-  return Math.max(1, Math.round((end.getTime() - start.getTime()) / 86_400_000))
-}
-
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
 }
 
 interface StatRowProps {
   label: string
   value: string
   sub?: string
+  valueClassName?: string
   onTap?: () => void
-  tappable?: boolean
 }
 
-function StatRow({ label, value, sub, onTap, tappable }: StatRowProps) {
+function StatRow({ label, value, sub, valueClassName, onTap }: StatRowProps) {
   return (
     <div
       className={cn(
         'flex items-center justify-between px-4 py-[9px] border-b border-neutral-100',
-        tappable && 'cursor-pointer active:bg-neutral-50 transition-colors'
+        onTap && 'cursor-pointer active:bg-neutral-50 transition-colors'
       )}
       onClick={onTap}
     >
       <p className="text-[13px] text-muted-foreground">{label}</p>
       <div className="text-right">
-        <p className={cn('text-[13px] font-medium', tappable && 'text-foreground underline decoration-dotted underline-offset-2')}>
+        <p className={cn('text-[13px] font-medium', valueClassName)}>
           {value}
         </p>
         {sub && <p className="text-[10px] text-muted-foreground mt-0.5">{sub}</p>}
@@ -104,7 +109,7 @@ function DaySheet({ date, transactions, onClose }: DaySheetProps) {
         <div className="flex items-center justify-between px-4 pt-2 pb-3 border-b border-neutral-100">
           <div>
             <p className="text-[11px] text-muted-foreground uppercase tracking-widest font-medium">
-              {formatDate(date)}
+              {formatDateShort(date)}
             </p>
             <p className="text-[22px] font-medium leading-tight mt-0.5">
               {formatCurrency(total)}
@@ -155,6 +160,8 @@ function DaySheet({ date, transactions, onClose }: DaySheetProps) {
   )
 }
 
+// ─── Main Component ───────────────────────────────────────────────────────────
+
 export function PeriodAnalytics({ transactions, period }: PeriodAnalyticsProps) {
   const [skippedCats, setSkippedCats] = useState<Set<string>>(new Set())
   const [biggestDayOpen, setBiggestDayOpen] = useState(false)
@@ -164,6 +171,7 @@ export function PeriodAnalytics({ transactions, period }: PeriodAnalyticsProps) 
 
   const totalIncome  = useMemo(() => incomes.reduce((s, t) => s + t.amount, 0), [incomes])
   const totalExpense = useMemo(() => expenses.reduce((s, t) => s + t.amount, 0), [expenses])
+
   const net          = totalIncome - totalExpense
   const spentPercent = totalIncome > 0
     ? Math.min(Math.round((totalExpense / totalIncome) * 100), 100)
@@ -188,7 +196,6 @@ export function PeriodAnalytics({ transactions, period }: PeriodAnalyticsProps) 
     return Array.from(map.values()).sort((a, b) => b.amount - a.amount).slice(0, 5)
   }, [expenses])
 
-
   const activeExpenses = useMemo(
     () => expenses.filter(tx => !tx.category || !skippedCats.has(tx.category.id)),
     [expenses, skippedCats]
@@ -199,26 +206,19 @@ export function PeriodAnalytics({ transactions, period }: PeriodAnalyticsProps) 
     [activeExpenses]
   )
 
-  const days = getDays(period)
-  const dailyAvg = activeTotal / days
-
-  const dailyMap = useMemo(() => {
-    const m = new Map<string, TransactionWithDetails[]>()
-    for (const tx of activeExpenses) {
-      const arr = m.get(tx.date) ?? []
-      arr.push(tx)
-      m.set(tx.date, arr)
-    }
-    return m
-  }, [activeExpenses])
-
-  // Fix: use reduce with explicit return type instead of let variable
+  // Biggest day uses ALL expenses (not filtered) — intentional
   const biggestDayEntry = useMemo<DayEntry | null>(() => {
-    return Array.from(dailyMap.entries()).reduce<DayEntry | null>((best, [date, txs]) => {
+    const map = new Map<string, TransactionWithDetails[]>()
+    for (const tx of expenses) {
+      const arr = map.get(tx.date) ?? []
+      arr.push(tx)
+      map.set(tx.date, arr)
+    }
+    return Array.from(map.entries()).reduce<DayEntry | null>((best, [date, txs]) => {
       const total = txs.reduce((s, t) => s + t.amount, 0)
       return !best || total > best.total ? { date, total, txs } : best
     }, null)
-  }, [dailyMap])
+  }, [expenses])
 
   const biggestExpense = useMemo(
     () => activeExpenses.reduce<TransactionWithDetails | null>(
@@ -227,18 +227,72 @@ export function PeriodAnalytics({ transactions, period }: PeriodAnalyticsProps) 
     [activeExpenses]
   )
 
+  // ─── Period stats computation ──────────────────────────────────────────────
+
+  const stats = useMemo<PeriodStats>(() => {
+    const daysElapsed = Math.max(1, getDaysBetween(period.start_date))
+    const dailyAvg    = daysElapsed > 0 ? activeTotal / daysElapsed : 0
+    const remaining   = totalIncome - activeTotal
+
+    if (!period.end_date) {
+      return {
+        days: daysElapsed,
+        daysElapsed,
+        daysRemaining: null,
+        dailyAvg,
+        remaining,
+        hasPredictive: false,
+      }
+    }
+
+    const totalDays     = Math.max(1, getDaysBetween(period.start_date, period.end_date))
+    const daysRemaining = Math.max(0, totalDays - daysElapsed)
+
+    if (totalIncome === 0) {
+      return {
+        days: totalDays,
+        daysElapsed,
+        daysRemaining,
+        dailyAvg,
+        remaining,
+        hasPredictive: false,
+      }
+    }
+
+    const projectedSpend     = dailyAvg * totalDays
+    const projectedRemaining = totalIncome - projectedSpend
+    const daysUntilBroke     = dailyAvg > 0
+      ? Math.floor(remaining / dailyAvg)
+      : null
+
+    return {
+      days: totalDays,
+      daysElapsed,
+      daysRemaining,
+      dailyAvg,
+      remaining,
+      hasPredictive: true,
+      projectedSpend,
+      projectedRemaining,
+      daysUntilBroke,
+    }
+  }, [period, activeTotal, totalIncome])
+
   const isFiltered = skippedCats.size > 0
 
   function toggleCat(id: string) {
     setSkippedCats(prev => {
       const next = new Set(prev)
-      next.has(id) ? next.delete(id) : next.add(id)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
       return next
     })
   }
 
   return (
     <div className="space-y-2.5 pt-3">
+
+      {/* ── Net summary card ── */}
       <div className="rounded-2xl border border-neutral-200 bg-card p-4">
         <p className="text-[11px] text-muted-foreground mb-1">Net this period</p>
         <p className={cn('text-[30px] font-medium leading-none mb-3', net < 0 && 'text-destructive')}>
@@ -280,6 +334,7 @@ export function PeriodAnalytics({ transactions, period }: PeriodAnalyticsProps) 
       {allCategories.length > 0 && (
         <div className="rounded-2xl border border-neutral-200 bg-card overflow-hidden">
 
+          {/* Bar */}
           <div className="px-4 pt-4 pb-3">
             <div className="h-[4px] rounded-full overflow-hidden flex gap-0.5">
               {allCategories.map(cat => {
@@ -302,6 +357,7 @@ export function PeriodAnalytics({ transactions, period }: PeriodAnalyticsProps) 
             </div>
           </div>
 
+          {/* Category rows */}
           {allCategories.map(cat => {
             const isSkipped = skippedCats.has(cat.id)
             const pct = activeTotal > 0 && !isSkipped
@@ -352,6 +408,7 @@ export function PeriodAnalytics({ transactions, period }: PeriodAnalyticsProps) 
             )
           })}
 
+          {/* Total row */}
           <div className="flex items-center justify-between px-4 py-2.5 bg-muted/40">
             <div>
               <p className="text-[12px] text-muted-foreground">Total spent</p>
@@ -362,24 +419,41 @@ export function PeriodAnalytics({ transactions, period }: PeriodAnalyticsProps) 
             <p className="text-[13px] font-medium">{formatCurrency(activeTotal)}</p>
           </div>
 
+          {/* ── Stats section ── */}
           <div className="border-t border-neutral-100">
             <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-widest px-4 pt-3 pb-1">
               {isFiltered ? 'Stats (filtered)' : 'Stats'}
             </p>
 
             <StatRow
-              label="Daily average"
-              value={formatCurrency(dailyAvg)}
-              sub={`over ${days} days`}
+              label="Remaining"
+              value={formatCurrency(stats.remaining)}
+              valueClassName={stats.remaining < 0 ? 'text-destructive' : undefined}
             />
 
             <StatRow
-              label="Biggest day"
-              value={biggestDayEntry ? formatCurrency(biggestDayEntry.total) : '—'}
-              sub={biggestDayEntry ? formatDate(biggestDayEntry.date) : undefined}
-              tappable={!!biggestDayEntry}
-              onTap={() => biggestDayEntry && setBiggestDayOpen(true)}
+              label="Daily average"
+              value={formatCurrency(stats.dailyAvg)}
+              sub={`over ${stats.daysElapsed} day${stats.daysElapsed !== 1 ? 's' : ''} so far`}
             />
+
+            {stats.daysRemaining !== null && (
+              <StatRow
+                label="Days remaining"
+                value={`${stats.daysRemaining} day${stats.daysRemaining !== 1 ? 's' : ''}`}
+                sub={`of ${stats.days} total`}
+              />
+            )}
+
+            {/* Biggest day uses ALL expenses (not filtered) — intentional, tap to see detail */}
+            {biggestDayEntry && (
+              <StatRow
+                label="Biggest day"
+                value={formatCurrency(biggestDayEntry.total)}
+                sub={formatDateShort(biggestDayEntry.date)}
+                onTap={() => setBiggestDayOpen(true)}
+              />
+            )}
 
             <StatRow
               label="Biggest expense"
@@ -387,15 +461,53 @@ export function PeriodAnalytics({ transactions, period }: PeriodAnalyticsProps) 
               sub={biggestExpense?.note ?? biggestExpense?.category?.name}
             />
 
-            <div className="flex items-center justify-between px-4 py-[9px]">
-              <p className="text-[13px] text-muted-foreground">Transactions</p>
-              <div className="text-right">
-                <p className="text-[13px] font-medium">{activeExpenses.length + incomes.length}</p>
-                <p className="text-[10px] text-muted-foreground mt-0.5">
-                  {activeExpenses.length} out · {incomes.length} in
-                </p>
-              </div>
-            </div>
+            <StatRow
+              label="Transactions"
+              value={`${activeExpenses.length + incomes.length}`}
+              sub={`${activeExpenses.length} out · ${incomes.length} in`}
+            />
+
+            {/* Projection — only shown when the period has an end date and income > 0 */}
+            {stats.hasPredictive && (
+              <>
+                <div className="px-4 pt-3 pb-1">
+                  <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-widest">
+                    Projection
+                  </p>
+                </div>
+
+                <StatRow
+                  label="Projected spend"
+                  value={formatCurrency(stats.projectedSpend)}
+                  sub="if daily avg holds"
+                  valueClassName={
+                    stats.projectedSpend > totalIncome ? 'text-destructive' : undefined
+                  }
+                />
+
+                <StatRow
+                  label="Projected remaining"
+                  value={formatCurrency(stats.projectedRemaining)}
+                  valueClassName={
+                    stats.projectedRemaining < 0 ? 'text-destructive' : undefined
+                  }
+                />
+
+                {stats.daysUntilBroke !== null && (
+                  <StatRow
+                    label="Days until broke"
+                    value={
+                      stats.daysUntilBroke <= 0
+                        ? 'Already over'
+                        : `${stats.daysUntilBroke} day${stats.daysUntilBroke !== 1 ? 's' : ''}`
+                    }
+                    valueClassName={
+                      stats.daysUntilBroke <= 0 ? 'text-destructive' : undefined
+                    }
+                  />
+                )}
+              </>
+            )}
           </div>
         </div>
       )}
