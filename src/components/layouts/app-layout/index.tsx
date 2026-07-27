@@ -17,7 +17,6 @@ const NAV_ITEMS = [
 ]
 
 const EXTRA_PAGES = [
-    { to: '/settings', label: 'Settings' },
     { to: '/category', label: 'Categories' },
     { to: '/period-history', label: 'Period History' },
     { to: '/accounts', label: 'Accounts' },
