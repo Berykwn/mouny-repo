@@ -19,6 +19,7 @@ import NotFoundPage from '@/features/static/not-found'
 import { CategoriesPage } from '@/features/categories'
 import { PeriodHistoryPage } from '@/features/periods'
 import { AccountPage } from '@/features/accounts'
+import MenuPage from '@/features/menu'
 
 const router = createBrowserRouter([
     // Public
@@ -45,6 +46,7 @@ const router = createBrowserRouter([
                     { path: '/category', element: <CategoriesPage /> },
                     { path: '/period-history', element: <PeriodHistoryPage /> },
                     { path: '/accounts', element: <AccountPage /> },
+                    { path: '/menu', element: <MenuPage /> },
                 ],
             },
         ],

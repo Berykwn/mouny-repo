@@ -27,15 +27,15 @@ export function SpendingBreakdown({ transactions }: SpendingBreakdownProps) {
         .slice(0, 5)
 
     return (
-        <div className="rounded-2xl border border-neutral-200 bg-card overflow-hidden">
-            <div className="px-5 pt-4 pb-0">
-                <p className="text-[10px] font-medium tracking-widest uppercase text-muted-foreground">
+        <div className="rounded-[20px] border border-[#e5e5e5] bg-white overflow-hidden">
+            <div className="px-4 pt-3.5 pb-0">
+                <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84]">
                     Breakdown
                 </p>
             </div>
 
             {/* Stacked bar */}
-            <div className="flex h-1.5 mx-5 mt-3 rounded-full overflow-hidden gap-px">
+            <div className="flex h-1.5 mx-4 mt-2.5 rounded-full overflow-hidden gap-px">
                 {categories.map((cat, i) => {
                     const pct = Math.round((cat.amount / totalExpense) * 100)
                     return (
@@ -52,7 +52,7 @@ export function SpendingBreakdown({ transactions }: SpendingBreakdownProps) {
             </div>
 
             {/* Category list */}
-            <div className="mt-3 px-5 space-y-2.5 pb-1">
+            <div className="mt-2.5 px-4 space-y-2 pb-1">
                 {categories.map((cat, i) => {
                     const pct = Math.round((cat.amount / totalExpense) * 100)
                     return (
@@ -61,9 +61,9 @@ export function SpendingBreakdown({ transactions }: SpendingBreakdownProps) {
                                 className="w-1.5 h-1.5 rounded-full shrink-0"
                                 style={{ background: cat.color ?? '#94a3b8' }}
                             />
-                            <span className="text-[12px] text-foreground flex-1">{cat.name}</span>
-                            <span className="text-[11px] text-muted-foreground w-7 text-right">{pct}%</span>
-                            <span className="text-[13px] w-24 text-right">
+                            <span className="text-[12px] text-[#252525] flex-1">{cat.name}</span>
+                            <span className="text-[11px] text-[#8a8a84] w-7 text-right">{pct}%</span>
+                            <span className="text-[13px] text-[#252525] w-24 text-right">
                                 {formatCurrency(cat.amount)}
                             </span>
                         </div>
@@ -71,9 +71,9 @@ export function SpendingBreakdown({ transactions }: SpendingBreakdownProps) {
                 })}
             </div>
 
-            <div className="flex justify-between mx-5 mt-3 pt-3 pb-4 border-t">
-                <span className="text-[11px] text-muted-foreground">Total spent</span>
-                <span className="text-[13px]">{formatCurrency(totalExpense)}</span>
+            <div className="flex justify-between mx-4 mt-2.5 pt-2.5 pb-3.5 border-t border-[#f2f2f0]">
+                <span className="text-[11px] text-[#8a8a84]">Total spent</span>
+                <span className="text-[13px] text-[#252525]">{formatCurrency(totalExpense)}</span>
             </div>
         </div>
     )

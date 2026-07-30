@@ -86,13 +86,13 @@ export default function DebtsPage() {
         <section className="px-4 pb-4 space-y-4">
             {loading ? <LoadingContent /> : (
                 <>
-                    <div className="rounded-2xl border border-neutral-200 bg-card p-4 space-y-3">
+                    <div className="rounded-[20px] border border-[#e5e5e5] bg-white p-4 space-y-3">
                         <div className="flex justify-between items-start">
                             <div>
-                                <p className="text-xs text-muted-foreground">Net position</p>
+                                <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84]">Net position</p>
                                 <p className={cn(
-                                    'text-2xl font-semibold mt-0.5',
-                                    net > 0 ? 'text-green-600' : net < 0 ? 'text-destructive' : 'text-foreground'
+                                    'text-[32px] font-medium tracking-[-0.02em] leading-none mt-1',
+                                    net > 0 ? 'text-[#059669]' : net < 0 ? 'text-[#dc2626]' : 'text-[#252525]'
                                 )}>
                                     {net >= 0 ? '+' : ''}{formatCurrency(net)}
                                 </p>
@@ -103,19 +103,18 @@ export default function DebtsPage() {
                                 onClick={() => setAddDrawerOpen(true)}
                                 disabled={!periodId}
                             >
-                                <Plus className="w-4 h-4 mr-1" />
-                                Debt
+                                <Plus className="w-3.5 h-3.5" /> Debt
                             </Button>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-3 pt-2 border-t border-neutral-100">
+                        <div className="grid grid-cols-2 gap-3 pt-2 border-t border-[#f2f2f0]">
                             <div>
-                                <p className="text-[11px] text-muted-foreground">Debt</p>
-                                <p className="text-sm font-medium text-destructive">{formatCurrency(totalOwed)}</p>
+                                <p className="text-[11px] text-[#8a8a84]">Debt</p>
+                                <p className="text-[13px] font-medium text-[#dc2626]">{formatCurrency(totalOwed)}</p>
                             </div>
                             <div>
-                                <p className="text-[11px] text-muted-foreground">Receivable</p>
-                                <p className="text-sm font-medium text-green-600">{formatCurrency(totalReceivable)}</p>
+                                <p className="text-[11px] text-[#8a8a84]">Receivable</p>
+                                <p className="text-[13px] font-medium text-[#059669]">{formatCurrency(totalReceivable)}</p>
                             </div>
                         </div>
                     </div>
@@ -127,10 +126,10 @@ export default function DebtsPage() {
                                     key={f}
                                     onClick={() => setFilter(f)}
                                     className={cn(
-                                        'px-3 py-1.5 rounded-full text-xs font-medium border transition-colors',
+                                        'px-3 py-1.5 rounded-full text-[12px] font-medium border transition-colors',
                                         filter === f
-                                            ? 'bg-neutral-200 text-neutral-600 border-neutral-200'
-                                            : 'bg-background text-muted-foreground border-border hover:text-foreground hover:border-foreground/40'
+                                            ? 'bg-[#f4f4f2] text-[#252525] border-[#e5e5e5]'
+                                            : 'bg-white text-[#8a8a84] border-[#e5e5e5] hover:text-[#252525]'
                                     )}
                                 >
                                     {filterLabels[f]}
@@ -140,18 +139,19 @@ export default function DebtsPage() {
                     )}
 
                     {debts.length === 0 ? (
-                        <div
+                        <button
+                            type="button"
                             onClick={() => setAddDrawerOpen(true)}
-                            className="rounded-2xl border border-dashed border-neutral-300 bg-card p-8 text-center space-y-2 cursor-pointer hover:bg-accent transition-colors"
+                            className="w-full rounded-[20px] border border-[#e5e5e5] bg-white p-4 flex items-center gap-3 text-left hover:bg-[#fbfbfa] transition-colors"
                         >
-                            <div className="w-10 h-10 rounded-2xl bg-amber-50 dark:bg-amber-950 flex items-center justify-center mx-auto">
-                                <HandCoins className="w-5 h-5 text-amber-400" />
+                            <div className="w-9 h-9 rounded-[10px] bg-[#f4f4f2] flex items-center justify-center shrink-0">
+                                <HandCoins className="w-4 h-4 text-[#8a8a84]" />
                             </div>
-                            <div>
-                                <p className="text-sm font-medium">No debts yet</p>
-                                <p className="text-xs text-muted-foreground mt-0.5">Tap to track money you owe or are owed</p>
+                            <div className="flex-1 min-w-0">
+                                <p className="text-[13px] font-medium text-[#252525]">No debts yet</p>
+                                <p className="text-[11.5px] text-[#8a8a84] mt-0.5">Tap to track money you owe or are owed</p>
                             </div>
-                        </div>
+                        </button>
                     ) : (
                         <DebtList
                             debts={filteredDebts}

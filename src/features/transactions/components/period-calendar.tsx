@@ -1,9 +1,8 @@
-import { useState } from 'react'
-import { formatCurrency } from '@/lib/helpers'
+import { useEffect, useRef, useState } from 'react'
+import { formatCurrency, formatCompact } from '@/lib/helpers'
 import type { TransactionWithDetails } from '@/types'
-import { TrendingUp, TrendingDown, Trash2, ChevronLeft, ChevronRight, ChevronsUpDown, Plus } from 'lucide-react'
+import { TrendingUp, TrendingDown, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { Button } from '@/components/ui/button'
 import { CategoryIcon } from '@/features/categories/components/category-icon'
 
 interface PeriodCalendarProps {
@@ -13,18 +12,14 @@ interface PeriodCalendarProps {
     defaultDate?: string
     onDeleteRequest?: (id: string) => void
     readOnly?: boolean
-    periodLabel: string
-    isCurrentPeriod: boolean
-    canGoPrev: boolean
-    canGoNext: boolean
-    onPrevPeriod: () => void
-    onNextPeriod: () => void
-    onOpenPicker: () => void
     onDateSelect?: (date: string) => void
-    onAddTransaction?: () => void
 }
 
-const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+type CalendarMode = 'month' | 'days'
+
+const CALENDAR_MODE_KEY = 'mouny.calendarMode'
+const DAY_LETTERS = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
+const BAR_MAX_HEIGHT = 26
 
 function formatDateLocal(date: Date) {
     const y = date.getFullYear()
@@ -44,12 +39,26 @@ function getDatesInRange(start: string, end: string): string[] {
     return dates
 }
 
-function heatColor(ratio: number): string {
-    if (ratio >= 0.8) return 'bg-red-500 text-white'
-    if (ratio >= 0.6) return 'bg-red-300 text-red-900 dark:bg-red-700 dark:text-red-100'
-    if (ratio >= 0.4) return 'bg-amber-300 text-amber-900 dark:bg-amber-700 dark:text-amber-100'
-    if (ratio >= 0.2) return 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200'
-    return 'bg-muted text-muted-foreground'
+function rangeLabel(start: string, end: string): string {
+    const s = new Date(start + 'T00:00:00')
+    const e = new Date(end + 'T00:00:00')
+    const sMonth = s.toLocaleDateString('en-GB', { month: 'short' }).toUpperCase()
+    const eMonth = e.toLocaleDateString('en-GB', { month: 'short' }).toUpperCase()
+    return sMonth === eMonth
+        ? `${s.getDate()} – ${e.getDate()} ${sMonth}`
+        : `${s.getDate()} ${sMonth} – ${e.getDate()} ${eMonth}`
+}
+
+function heatBarColor(ratio: number): string {
+    if (ratio >= 0.7) return '#dc2626'
+    if (ratio >= 0.4) return '#e8973a'
+    return '#c9d6b4'
+}
+
+function barHeight(expense: number, maxExpense: number): number {
+    if (expense <= 0) return 0
+    const ratio = maxExpense > 0 ? expense / maxExpense : 0
+    return Math.max(3, Math.round(ratio * BAR_MAX_HEIGHT))
 }
 
 function DayTransactions({
@@ -121,6 +130,27 @@ function DayTransactions({
     )
 }
 
+function ModeSwitch({ mode, onChange }: { mode: CalendarMode; onChange: (m: CalendarMode) => void }) {
+    return (
+        <div className="flex p-[2px] rounded-[9px] bg-[#f4f4f2] shrink-0">
+            {(['month', 'days'] as const).map(m => (
+                <button
+                    key={m}
+                    onClick={() => onChange(m)}
+                    className={cn(
+                        'px-2.5 py-[5px] rounded-[7px] text-[11px] capitalize',
+                        mode === m
+                            ? 'bg-white shadow-[0_1px_2px_rgba(0,0,0,.06)] font-semibold text-[#252525]'
+                            : 'text-[#8a8a84]'
+                    )}
+                >
+                    {m}
+                </button>
+            ))}
+        </div>
+    )
+}
+
 export function PeriodCalendar({
     transactions,
     periodStart,
@@ -128,16 +158,18 @@ export function PeriodCalendar({
     defaultDate,
     onDeleteRequest,
     readOnly,
-    periodLabel,
-    isCurrentPeriod,
-    canGoPrev,
-    canGoNext,
-    onPrevPeriod,
-    onNextPeriod,
-    onOpenPicker,
     onDateSelect,
-    onAddTransaction,
 }: PeriodCalendarProps) {
+    const [mode, setMode] = useState<CalendarMode>(() => {
+        if (typeof localStorage === 'undefined') return 'month'
+        return localStorage.getItem(CALENDAR_MODE_KEY) === 'days' ? 'days' : 'month'
+    })
+
+    const handleModeChange = (m: CalendarMode) => {
+        setMode(m)
+        localStorage.setItem(CALENDAR_MODE_KEY, m)
+    }
+
     const clamp = (d: string) => {
         if (d < periodStart) return periodStart
         if (d > periodEnd) return periodEnd
@@ -147,6 +179,7 @@ export function PeriodCalendar({
     const [selectedDate, setSelectedDate] = useState<string>(clamp(defaultDate ?? periodStart))
 
     const validSelected = clamp(selectedDate)
+    const today = formatDateLocal(new Date())
 
     const txByDate = new Map<string, TransactionWithDetails[]>()
     for (const tx of transactions) {
@@ -176,118 +209,138 @@ export function PeriodCalendar({
 
     const dailyIncomeSummary = selectedTxs.filter(tx => tx.type === 'income').reduce((sum, tx) => sum + tx.amount, 0)
     const dailyExpenseSummary = dailyExpense.get(validSelected) ?? 0
-    // const dailyTotal = dailyIncomeSummary - dailyExpenseSummary
 
     const handleSelectDate = (date: string) => {
         setSelectedDate(date)
         onDateSelect?.(date)
     }
 
+    const railRef = useRef<HTMLDivElement>(null)
+    const selectedPillRef = useRef<HTMLButtonElement>(null)
+
+    useEffect(() => {
+        if (mode === 'days') {
+            selectedPillRef.current?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' })
+        }
+    }, [mode, validSelected])
+
+    const rangeCaption = rangeLabel(periodStart, periodEnd)
+
     return (
         <div className="space-y-3 pt-3">
-            <div className="rounded-2xl border border-neutral-200 bg-card p-4 space-y-4">
-                <div className="flex items-center gap-2">
-                    <button
-                        onClick={onPrevPeriod}
-                        disabled={!canGoPrev}
-                        className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-accent transition-colors disabled:opacity-30 disabled:cursor-not-allowed shrink-0"
-                    >
-                        <ChevronLeft className="w-4 h-4" />
-                    </button>
-
-                    <button
-                        onClick={onOpenPicker}
-                        className="flex-1 flex flex-col items-center gap-0.5 py-1 rounded-lg hover:bg-accent transition-colors"
-                    >
-                        <div className="flex items-center gap-1.5">
-                            <p className="text-xs font-semibold">{periodLabel}</p>
-                            <ChevronsUpDown className="w-3 h-3 text-muted-foreground" />
-                        </div>
-                        {isCurrentPeriod && (
-                            <span className="text-[9px] text-muted-foreground uppercase tracking-widest font-medium">
-                                Active
-                            </span>
-                        )}
-                    </button>
-
-                    <button
-                        onClick={onNextPeriod}
-                        disabled={!canGoNext}
-                        className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-accent transition-colors disabled:opacity-30 disabled:cursor-not-allowed shrink-0"
-                    >
-                        <ChevronRight className="w-4 h-4" />
-                    </button>
+            <div className={cn(
+                'rounded-[20px] border border-[#e5e5e5] bg-white pt-[18px] pb-4',
+                mode === 'month' ? 'px-4' : 'px-0',
+            )}>
+                <div className={cn(
+                    'flex items-center justify-between gap-2.5 pb-[14px]',
+                    mode === 'month' ? 'px-0.5' : 'px-[18px]',
+                )}>
+                    <div>
+                        <p className="text-[11px] tracking-[.14em] uppercase text-[#8a8a84]">{rangeCaption}</p>
+                        <p className="mt-0.5 text-[11px] text-[#a3a3a3]">
+                            {mode === 'month'
+                                ? `tallest day ${formatCompact(maxExpense)}`
+                                : 'swipe the rail, tap a day'}
+                        </p>
+                    </div>
+                    <ModeSwitch mode={mode} onChange={handleModeChange} />
                 </div>
 
-                <div className="flex items-center justify-between">
-                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">
-                        Spending calendar
-                    </p>
-                    <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-                        <span>low</span>
-                        <div className="flex gap-0.5">
-                            {['bg-muted', 'bg-amber-100', 'bg-amber-300', 'bg-red-300', 'bg-red-500'].map((c, i) => (
-                                <div key={i} className={cn('w-3 h-3 rounded-sm', c)} />
+                {mode === 'month' ? (
+                    <>
+                        <div className="grid grid-cols-7 gap-[5px] mb-[6px]">
+                            {DAY_LETTERS.map((l, i) => (
+                                <div key={i} className="text-[9.5px] text-center text-[#b0b0aa] tracking-[.04em]">
+                                    {l}
+                                </div>
                             ))}
                         </div>
-                        <span>high</span>
-                    </div>
-                </div>
 
-                <div className="grid grid-cols-7 gap-1">
-                    {DAY_LABELS.map(d => (
-                        <div key={d} className="text-[10px] text-center text-muted-foreground font-medium py-1">
-                            {d}
+                        <div className="grid grid-cols-7 gap-[5px]">
+                            {paddedDates.map((date, i) => {
+                                if (!date) return <div key={`pad-${i}`} />
+
+                                const dayNum = new Date(date + 'T00:00:00').getDate()
+                                const expense = dailyExpense.get(date) ?? 0
+                                const isSelected = validSelected === date
+                                const isToday = date === today
+                                const isFuture = date > today
+                                const highlighted = isSelected || isToday
+                                const height = barHeight(expense, maxExpense)
+                                const ratio = maxExpense > 0 ? expense / maxExpense : 0
+
+                                return (
+                                    <button
+                                        key={date}
+                                        onClick={() => handleSelectDate(date)}
+                                        className={cn(
+                                            'aspect-square rounded-[9px] p-1 flex flex-col items-center justify-between border',
+                                            highlighted
+                                                ? 'bg-[#f2f6ea] border-[#6FA82B]'
+                                                : isFuture
+                                                    ? 'bg-transparent border-transparent'
+                                                    : 'bg-[#fbfbfa] border-[#f2f2f0]',
+                                        )}
+                                    >
+                                        <span
+                                            className={cn(
+                                                'text-[9.5px] tabular-nums',
+                                                highlighted ? 'font-semibold text-[#4d7a1d]' : isFuture ? 'text-[#d4d4ce]' : 'text-[#252525]',
+                                            )}
+                                        >
+                                            {dayNum}
+                                        </span>
+                                        <div
+                                            className="w-[70%] rounded-[2px_2px_1px_1px]"
+                                            style={{
+                                                height: `${height || 2}px`,
+                                                backgroundColor: height ? heatBarColor(ratio) : '#f2f2f0',
+                                            }}
+                                        />
+                                    </button>
+                                )
+                            })}
                         </div>
-                    ))}
-                </div>
+                    </>
+                ) : (
+                    <div ref={railRef} className="flex gap-[7px] overflow-x-auto px-[18px] pt-0.5 pb-1 [scroll-snap-type:x_mandatory] [&::-webkit-scrollbar]:hidden">
+                        {dates.map(date => {
+                            const d = new Date(date + 'T00:00:00')
+                            const expense = dailyExpense.get(date) ?? 0
+                            const isSelected = validSelected === date
+                            const height = barHeight(expense, maxExpense)
+                            const ratio = maxExpense > 0 ? expense / maxExpense : 0
 
-                <div className="grid grid-cols-7 gap-1">
-                    {paddedDates.map((date, i) => {
-                        if (!date) return <div key={`pad-${i}`} className="aspect-square" />
-
-                        const dayNum = new Date(date + 'T00:00:00').getDate()
-                        const expense = dailyExpense.get(date) ?? 0
-                        const hasTx = txByDate.has(date)
-                        const isSelected = validSelected === date
-                        const ratio = maxExpense > 0 ? expense / maxExpense : 0
-                        const d = new Date(date + 'T00:00:00')
-                        const showMonth = dayNum === 1 && date !== periodStart
-
-                        return (
-                            <div key={date} className="relative">
-                                {showMonth && (
-                                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 text-[8px] text-muted-foreground/60 whitespace-nowrap">
-                                        {d.toLocaleDateString('en-GB', { month: 'short' })}
-                                    </div>
-                                )}
+                            return (
                                 <button
+                                    key={date}
+                                    ref={isSelected ? selectedPillRef : undefined}
                                     onClick={() => handleSelectDate(date)}
                                     className={cn(
-                                        'w-full aspect-square rounded-lg flex items-center justify-center text-[11px] font-medium transition-all',
-                                        isSelected ? 'ring-2 ring-foreground ring-offset-1 scale-105 z-10 relative' : 'hover:opacity-80',
-                                        hasTx ? heatColor(ratio) : 'text-muted-foreground/40'
+                                        'shrink-0 w-[46px] rounded-[14px] border py-[9px] flex flex-col items-center gap-[5px] [scroll-snap-align:center]',
+                                        isSelected ? 'bg-[#252525] border-[#252525]' : 'bg-white border-[#f0f0ee]',
                                     )}
                                 >
-                                    {dayNum}
+                                    <span className={cn('text-[9.5px]', isSelected ? 'text-[rgba(250,250,250,.6)]' : 'text-[#b0b0aa]')}>
+                                        {d.toLocaleDateString('en-GB', { weekday: 'short' }).charAt(0)}
+                                    </span>
+                                    <span className={cn('text-[16px] font-semibold tabular-nums', isSelected ? 'text-[#fafafa]' : 'text-[#252525]')}>
+                                        {d.getDate()}
+                                    </span>
+                                    <div className="w-[14px] h-[26px] flex items-end justify-center">
+                                        <div
+                                            className="w-full rounded-[2px_2px_1px_1px]"
+                                            style={{
+                                                height: `${height || 2}px`,
+                                                backgroundColor: !height ? '#f2f2f0' : isSelected ? '#a3d16a' : heatBarColor(ratio),
+                                            }}
+                                        />
+                                    </div>
                                 </button>
-                            </div>
-                        )
-                    })}
-                </div>
-
-                {onAddTransaction && (
-                    <>
-                        <div className="border-t border-neutral-200" />
-                        <Button
-                            variant="outline"
-                            className="w-full h-12 rounded-xl text-sm font-semibold"
-                            onClick={onAddTransaction}
-                        >
-                            <Plus className="w-4 h-4 mr-2" />
-                            Add Transaction
-                        </Button>
-                    </>
+                            )
+                        })}
+                    </div>
                 )}
             </div>
 
@@ -300,16 +353,9 @@ export function PeriodCalendar({
                     </p>
 
                     {selectedTxs.length > 0 && (
-                        // <p className={cn(
-                        //     'text-xs font-semibold',
-                        //     dailyTotal >= 0 ? 'text-green-600' : 'text-destructive'
-                        // )}>
-                        //     {dailyTotal >= 0 ? '+' : ''}{formatCurrency(dailyTotal)}
-                        // </p>
                         <div className='flex gap-x-1.5'>
                             <p className='text-xs font-semibold text-green-600'>+ {formatCurrency(dailyIncomeSummary)}</p>
                             <p className='text-xs font-semibold text-destructive'>- {formatCurrency(dailyExpenseSummary)}</p>
-                            {/* <p className='text-xs font-semibold'> {formatCurrency(dailyTotal)}</p> */}
                         </div>
                     )}
                 </div>

@@ -1,11 +1,9 @@
 import { useEffect, useState } from 'react'
 import { format } from 'date-fns'
-import { CalendarIcon, ChevronDown, Check, Loader2 } from 'lucide-react'
-
-import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Calendar } from '@/components/ui/calendar'
+import { CalendarIcon, ChevronRight, Loader2 } from 'lucide-react'
 import {
     Popover,
     PopoverContent,
@@ -19,15 +17,20 @@ import { formatCurrency, formatCurrencyInput, parseCurrencyInput, toISODate } fr
 import { toast } from 'sonner'
 import type { Account } from '@/types'
 import { AccountTypeIcon } from '@/components/account-type-icon'
+import { AccountPickerDrawer } from '@/components/account-picker-drawer'
 
 interface OpenPeriodFormProps {
     onSuccess: () => void
 }
 
+const FIELD_LABEL = 'text-[11px] font-medium uppercase tracking-[.14em] text-[#8a8a84]'
+
 export function OpenPeriodForm({ onSuccess }: OpenPeriodFormProps) {
     const [startDate, setStartDate] = useState<Date | undefined>(new Date())
+    const [dateOpen, setDateOpen] = useState(false)
     const [salary, setSalary] = useState('')
     const [accountId, setAccountId] = useState('')
+    const [accountPickerOpen, setAccountPickerOpen] = useState(false)
     const [accounts, setAccounts] = useState<Account[]>([])
     const [notes, setNotes] = useState('')
     const [loading, setLoading] = useState(false)
@@ -79,43 +82,46 @@ export function OpenPeriodForm({ onSuccess }: OpenPeriodFormProps) {
     return (
         <form onSubmit={handleSubmit} className="space-y-4 pb-2">
             <div className="space-y-1.5">
-                <Label>Pay date</Label>
+                <Label className={FIELD_LABEL}>Pay date</Label>
 
-                <Popover>
+                <Popover open={dateOpen} onOpenChange={setDateOpen}>
                     <PopoverTrigger asChild>
-                        <Button
-                            variant="outline"
-                            className={cn(
-                                'w-full justify-start text-left font-normal',
-                                !startDate && 'text-muted-foreground'
-                            )}
+                        <button
+                            type="button"
                             disabled={loading}
+                            className={cn(
+                                'w-full flex items-center h-12 px-3 rounded-[14px] border border-[#e5e5e5] bg-white text-left text-[13px] transition-colors hover:bg-[#fbfbfa] disabled:opacity-50 disabled:pointer-events-none',
+                                !startDate && 'text-[#8a8a84]'
+                            )}
                         >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            <CalendarIcon className="mr-2 h-4 w-4 text-[#8a8a84]" />
                             {startDate
                                 ? format(startDate, 'dd MMM yyyy')
                                 : 'Pick a date'}
-                        </Button>
+                        </button>
                     </PopoverTrigger>
 
-                    <PopoverContent className="w-auto p-0">
+                    <PopoverContent className="w-auto p-0 rounded-[14px] border-[#e5e5e5]">
                         <Calendar
                             mode="single"
                             selected={startDate}
-                            onSelect={(date) => setStartDate(date)}
+                            onSelect={(date) => {
+                                setStartDate(date)
+                                setDateOpen(false)
+                            }}
                         />
                     </PopoverContent>
                 </Popover>
 
-                <span className="text-xs text-muted-foreground">
+                <span className="text-[11px] text-[#8a8a84]">
                     Defaults to today if empty.
                 </span>
             </div>
 
-            <div>
-                <Label>Expected Income / Salary</Label>
-                <div className="relative mt-2">
-                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-muted-foreground font-medium">
+            <div className="space-y-1.5">
+                <Label className={FIELD_LABEL}>Expected Income / Salary</Label>
+                <div className="relative">
+                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[13px] text-[#8a8a84] font-medium">
                         Rp
                     </span>
                     <Input
@@ -124,97 +130,71 @@ export function OpenPeriodForm({ onSuccess }: OpenPeriodFormProps) {
                         placeholder="0"
                         value={formatCurrencyInput(salary)}
                         onChange={(e) => setSalary(e.target.value.replace(/\D/g, ''))}
-                        className="pl-10"
+                        className="pl-10 h-12 rounded-[14px] border-[#e5e5e5] text-[13px] font-mono"
                         required
                         disabled={loading}
                     />
                 </div>
-                <span className="text-xs font-light text-orange-500 -mt-1">
+                <span className="text-[11px] text-[#d97706]">
                     Expected income cannot be edited after the pay period is opened.
                 </span>
             </div>
 
             <div className="space-y-1.5">
-                <Label>Destination account</Label>
-                <Popover>
-                    <PopoverTrigger asChild>
-                        <button
-                            type="button"
-                            disabled={loading}
-                            className={cn(
-                                'w-full flex items-center justify-between px-3 h-12 rounded-xl border bg-card',
-                                'text-left transition-colors hover:bg-muted/50 disabled:opacity-50'
-                            )}
-                        >
-                            {selectedAccount ? (
-                                <div className="flex items-center gap-3">
-                                    <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
-                                        <AccountTypeIcon type={selectedAccount.type} className="w-4 h-4 text-muted-foreground" />
-                                    </div>
-                                    <div>
-                                        <p className="text-sm font-medium">{selectedAccount.name}</p>
-                                        <p className="text-xs text-muted-foreground">{formatCurrency(selectedAccount.balance)}</p>
-                                    </div>
-                                </div>
-                            ) : (
-                                <span className="text-sm text-muted-foreground">Select account</span>
-                            )}
-                            <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />
-                        </button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-1" align="start">
-                        {accounts.map((a) => (
-                            <button
-                                key={a.id}
-                                type="button"
-                                onClick={() => setAccountId(a.id)}
-                                className={cn(
-                                    'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors',
-                                    accountId === a.id ? 'bg-muted' : 'hover:bg-muted'
-                                )}
-                            >
-                                <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center shrink-0">
-                                    <AccountTypeIcon type={a.type} className="w-4 h-4 text-muted-foreground" />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-[13px] font-medium text-foreground truncate">{a.name}</p>
-                                    <p className="text-[11px] text-muted-foreground">{formatCurrency(a.balance)}</p>
-                                </div>
-                                {accountId === a.id && (
-                                    <div className="w-4 h-4 rounded-full bg-orange-400 flex items-center justify-center shrink-0">
-                                        <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />
-                                    </div>
-                                )}
-                            </button>
-                        ))}
-                    </PopoverContent>
-                </Popover>
+                <Label className={FIELD_LABEL}>Destination account</Label>
+                <button
+                    type="button"
+                    disabled={loading}
+                    onClick={() => setAccountPickerOpen(true)}
+                    className="w-full flex items-center justify-between px-3 h-[52px] rounded-[14px] border border-[#e5e5e5] bg-white text-left transition-colors hover:bg-[#fbfbfa] disabled:opacity-50 disabled:pointer-events-none"
+                >
+                    {selectedAccount ? (
+                        <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-9 h-9 rounded-[10px] bg-[#f4f4f2] flex items-center justify-center shrink-0">
+                                <AccountTypeIcon type={selectedAccount.type} className="w-4 h-4 text-[#8a8a84]" />
+                            </div>
+                            <div className="min-w-0">
+                                <p className="text-[13px] font-medium text-[#252525] truncate">{selectedAccount.name}</p>
+                                <p className="text-[11.5px] text-[#8a8a84]">{formatCurrency(selectedAccount.balance)}</p>
+                            </div>
+                        </div>
+                    ) : (
+                        <span className="text-[13px] text-[#8a8a84]">Select account</span>
+                    )}
+                    <ChevronRight className="w-4 h-4 text-[#a3a3a3] shrink-0" />
+                </button>
+                <AccountPickerDrawer
+                    open={accountPickerOpen}
+                    onClose={() => setAccountPickerOpen(false)}
+                    accounts={accounts}
+                    selectedId={accountId}
+                    onSelect={(a) => { setAccountId(a.id); setAccountPickerOpen(false) }}
+                />
             </div>
 
             <div className="space-y-1.5">
-                <Label>
+                <Label className={FIELD_LABEL}>
                     Notes{' '}
-                    <span className="text-muted-foreground font-normal">
-                        (optional)
-                    </span>
+                    <span className="normal-case tracking-normal font-normal">(optional)</span>
                 </Label>
                 <Input
                     placeholder="April salary, bonus, etc."
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
                     disabled={loading}
+                    className="h-12 rounded-[14px] border-[#e5e5e5] text-[13px]"
                 />
             </div>
 
-            <Button
+            <button
                 type="submit"
-                className="w-full h-12 rounded-xl text-sm font-semibold"
                 disabled={loading || accounts.length === 0}
+                className="w-full h-12 rounded-[14px] text-[13px] font-semibold text-white bg-[#6FA82B] hover:bg-[#6FA82B]/90 transition-colors disabled:opacity-50 disabled:pointer-events-none"
             >
                 {loading
-                    ? <Loader2 className="w-4 h-4 animate-spin" />
+                    ? <Loader2 className="w-4 h-4 animate-spin mx-auto" />
                     : 'Open Pay Period'}
-            </Button>
+            </button>
         </form>
     )
 }

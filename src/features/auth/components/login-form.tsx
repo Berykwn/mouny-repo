@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -43,7 +43,7 @@ export function LoginForm() {
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email" className="text-[13px] font-medium text-[#252525]">Email</Label>
                 <Input
                     id="email"
                     type="email"
@@ -58,13 +58,13 @@ export function LoginForm() {
 
             <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                    <Label htmlFor="password">Password</Label>
-                    <a
-                        href="/forgot-password"
-                        className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                    <Label htmlFor="password" className="text-[13px] font-medium text-[#252525]">Password</Label>
+                    <Link
+                        to="/forgot-password"
+                        className="text-[11.5px] text-[#8a8a84] hover:text-[#252525] transition-colors"
                     >
                         Forgot password?
-                    </a>
+                    </Link>
                 </div>
                 <Input
                     id="password"
@@ -79,7 +79,11 @@ export function LoginForm() {
                 />
             </div>
 
-            <Button type="submit" className="w-full" disabled={loading}>
+            <Button
+                type="submit"
+                className="w-full bg-[#6FA82B] hover:bg-[#6FA82B]/90 text-white"
+                disabled={loading}
+            >
                 {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Sign in'}
             </Button>
         </form>

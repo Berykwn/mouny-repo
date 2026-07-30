@@ -29,16 +29,16 @@ export function CategoryList({ categories, onEdit, onDeleteRequest }: CategoryLi
         if (items.length === 0) return null
         return (
             <div className="space-y-1.5">
-                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest px-1">
+                <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84] px-1">
                     {label}
                 </p>
-                <div className="rounded-2xl border border-neutral-200 bg-card overflow-hidden divide-y divide-neutral-100">
+                <div className="rounded-[20px] border border-[#e5e5e5] bg-white overflow-hidden divide-y divide-[#f2f2f0]">
                     {items.map((cat) => {
                         const color = cat.color ?? '#94a3b8'
                         return (
                             <div key={cat.id} className="flex items-center gap-3 px-4 py-2.5">
                                 <div
-                                    className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                                    className="w-7 h-7 rounded-[10px] flex items-center justify-center shrink-0"
                                     style={{ backgroundColor: color + '25' }}
                                 >
                                     <CategoryIcon
@@ -47,17 +47,17 @@ export function CategoryList({ categories, onEdit, onDeleteRequest }: CategoryLi
                                         style={{ color }}
                                     />
                                 </div>
-                                <p className="text-sm flex-1">{cat.name}</p>
+                                <p className="text-[13px] text-[#252525] flex-1">{cat.name}</p>
                                 <div className="flex items-center gap-1">
                                     <button
                                         onClick={() => onEdit(cat)}
-                                        className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+                                        className="w-7 h-7 rounded-full flex items-center justify-center text-[#8a8a84] hover:text-[#252525] hover:bg-[#f4f4f2] transition-colors"
                                     >
                                         <Pencil className="w-3.5 h-3.5" />
                                     </button>
                                     <button
                                         onClick={() => onDeleteRequest(cat.id)}
-                                        className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:text-destructive transition-colors"
+                                        className="w-7 h-7 rounded-full flex items-center justify-center text-[#8a8a84] hover:text-[#dc2626] hover:bg-[#f4f4f2] transition-colors"
                                     >
                                         <Trash2 className="w-3.5 h-3.5" />
                                     </button>

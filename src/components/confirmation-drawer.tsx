@@ -1,6 +1,6 @@
 import { BottomDrawer } from '@/components/bottom-drawer'
-import { Button } from '@/components/ui/button'
 import { AlertTriangle, Loader2 } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 interface ConfirmDrawerProps {
     open: boolean
@@ -26,28 +26,34 @@ export function ConfirmDrawer({
     return (
         <BottomDrawer open={open} onClose={onClose} title={title}>
             <div className="space-y-4 pb-2">
-                <div className="flex items-start gap-3 rounded-lg bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 px-4 py-4.5">
-                    <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                    <p className="text-sm text-amber-800 dark:text-amber-200">{description}</p>
+                <div className={cn(
+                    'flex items-start gap-3 rounded-[14px] border px-4 py-4',
+                    destructive ? 'bg-[#fef2f2] border-[#f3c5c5]' : 'bg-[#f4f4f2] border-[#e5e5e5]'
+                )}>
+                    <AlertTriangle className={cn('w-4 h-4 shrink-0 mt-0.5', destructive ? 'text-[#dc2626]' : 'text-[#8a8a84]')} />
+                    <p className={cn('text-[13px]', destructive ? 'text-[#dc2626]' : 'text-[#252525]')}>{description}</p>
                 </div>
 
-                <Button
-                    className="w-full h-12 rounded-xl text-sm font-semibold"
-                    variant={destructive ? 'destructive' : 'default'}
+                <button
+                    type="button"
                     onClick={onConfirm}
                     disabled={loading}
+                    className={cn(
+                        'w-full h-12 rounded-[14px] text-[13px] font-semibold text-white transition-colors disabled:opacity-50 disabled:pointer-events-none',
+                        destructive ? 'bg-[#dc2626] hover:bg-[#dc2626]/90' : 'bg-[#6FA82B] hover:bg-[#6FA82B]/90'
+                    )}
                 >
-                    {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : confirmLabel}
-                </Button>
+                    {loading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : confirmLabel}
+                </button>
 
-                <Button
-                    className="w-full h-12 rounded-xl text-sm font-semibold"
-                    variant="outline"
+                <button
+                    type="button"
                     onClick={onClose}
                     disabled={loading}
+                    className="w-full h-12 rounded-[14px] text-[13px] font-semibold border border-[#e5e5e5] text-[#252525] hover:bg-[#f4f4f2] transition-colors disabled:opacity-50 disabled:pointer-events-none"
                 >
                     Cancel
-                </Button>
+                </button>
             </div>
         </BottomDrawer>
     )

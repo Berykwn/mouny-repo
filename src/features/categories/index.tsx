@@ -50,18 +50,18 @@ export function CategoriesPage() {
 
     return (
         <section className="px-4 pt-1.5 pb-4 space-y-4">
-            <header className="rounded-2xl border border-neutral-200 bg-card p-4 flex items-center gap-3">
+            <header className="rounded-[20px] border border-[#e5e5e5] bg-white p-4 flex items-center gap-3">
                 <div className="flex-1 min-w-0">
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium">Categories</p>
+                    <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84]">Categories</p>
                     {categories.length > 0 ? (
                         <>
-                            <p className="text-xl font-bold mt-0.5">{categories.length}</p>
-                            <p className="text-[10px] text-muted-foreground mt-0.5">
+                            <p className="text-[20px] font-semibold text-[#252525] mt-0.5">{categories.length}</p>
+                            <p className="text-[11px] text-[#8a8a84] mt-0.5">
                                 {expenseCount} expense · {incomeCount} income
                             </p>
                         </>
                     ) : (
-                        <p className="text-sm text-muted-foreground mt-0.5">No categories yet</p>
+                        <p className="text-[13px] text-[#8a8a84] mt-0.5">No categories yet</p>
                     )}
                 </div>
                 <div className="flex items-center gap-2">
@@ -76,18 +76,19 @@ export function CategoriesPage() {
                                 load()
                             }}
                             disabled={seeding}
-                            className='bg-rose-400 text-white font-bold'
+                            size="sm"
+                            variant="outline"
                         >
-                            {seeding ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                            {seeding ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
                             Seed
                         </Button>
                     )}
                     <Button
                         onClick={() => setAddCategoryDrawer(true)}
-                        variant='outline'
-                        className='font-bold'
+                        size="sm"
+                        variant="outline"
                     >
-                        <Plus className="w-4 h-4" /> Category
+                        <Plus className="w-3.5 h-3.5" /> Category
                     </Button>
                 </div>
             </header>
@@ -95,18 +96,19 @@ export function CategoriesPage() {
             {loading ? (
                 <LoadingContent />
             ) : categories.length === 0 ? (
-                <div
+                <button
+                    type="button"
                     onClick={() => setAddCategoryDrawer(true)}
-                    className="rounded-2xl border border-dashed border-neutral-300 bg-card p-8 text-center space-y-2 cursor-pointer hover:bg-accent transition-colors"
+                    className="w-full rounded-[20px] border border-[#e5e5e5] bg-white p-4 flex items-center gap-3 text-left hover:bg-[#fbfbfa] transition-colors"
                 >
-                    <div className="w-10 h-10 rounded-2xl bg-sky-50 dark:bg-sky-950 flex items-center justify-center mx-auto">
-                        <Tag className="w-5 h-5 text-sky-400" />
+                    <div className="w-9 h-9 rounded-[10px] bg-[#f4f4f2] flex items-center justify-center shrink-0">
+                        <Tag className="w-4 h-4 text-[#8a8a84]" />
                     </div>
-                    <div>
-                        <p className="text-sm font-medium">No categories yet</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">Tap to add one, or use Seed above for defaults</p>
+                    <div className="flex-1 min-w-0">
+                        <p className="text-[13px] font-medium text-[#252525]">No categories yet</p>
+                        <p className="text-[11.5px] text-[#8a8a84] mt-0.5">Tap to add one, or use Seed above for defaults</p>
                     </div>
-                </div>
+                </button>
             ) : (
                 <CategoryList
                     categories={categories}

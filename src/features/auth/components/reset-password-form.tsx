@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 
 export function ResetPasswordForm() {
@@ -46,7 +47,7 @@ export function ResetPasswordForm() {
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-                <Label htmlFor="password">New Password</Label>
+                <Label htmlFor="password" className="text-[13px] font-medium text-[#252525]">New Password</Label>
                 <Input
                     id="password"
                     type="password"
@@ -61,7 +62,7 @@ export function ResetPasswordForm() {
             </div>
 
             <div className="space-y-2">
-                <Label htmlFor="confirm">Confirm Password</Label>
+                <Label htmlFor="confirm" className="text-[13px] font-medium text-[#252525]">Confirm Password</Label>
                 <Input
                     id="confirm"
                     type="password"
@@ -75,8 +76,12 @@ export function ResetPasswordForm() {
                 />
             </div>
 
-            <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? 'Saving...' : 'Save new password'}
+            <Button
+                type="submit"
+                className="w-full bg-[#6FA82B] hover:bg-[#6FA82B]/90 text-white"
+                disabled={loading}
+            >
+                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save new password'}
             </Button>
         </form>
     )

@@ -3,9 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { payPeriodsService } from '@/services/pay-periods.service'
 import { transactionsService } from '@/services/transactions.service'
 import { debtsService } from '@/services/debts.service'
-import { wishListService } from '@/services/wish-list.service'
 import { accountsService } from '@/services/accounts-categories.service'
-import { formatCurrency, formatPeriodLabel } from '@/lib/helpers'
+import { formatCurrency, formatDateShort, formatPeriodLabel } from '@/lib/helpers'
 import { cn } from '@/lib/utils'
 import { SpendingBreakdown } from './spending-breakdown'
 import { LoadingContent } from '@/components/loading-content'
@@ -40,7 +39,7 @@ async function fetchOverviewData(
         ? (await transactionsService.getByPeriod(prevPeriod.id)).data ?? []
         : []
 
-    const trendPeriods_raw = allList.slice(currentIndex + 1, currentIndex + 3)
+    const trendPeriods_raw = allList.slice(currentIndex + 1, currentIndex + 2)
     const trendTxsResults = await Promise.all(
         trendPeriods_raw.map(p => transactionsService.getByPeriod(p.id))
     )
@@ -61,19 +60,12 @@ async function fetchOverviewData(
         },
     ]
 
-    const { data: wishItems } = await wishListService.getAll()
-    const list = wishItems ?? []
-    const { data: wishAnalysis } = await wishListService.analyze(list)
-
     return {
         totalIncome: periodTxs.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0),
         totalExpense: periodTxs.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0),
-        startDate: currentPeriod.start_date,
         transactions: periodTxs,
         prevTransactions: prevTxs,
         debts: debts ?? [],
-        wishItems: list,
-        wishAnalysis: wishAnalysis ?? {},
         accounts: accounts ?? [],
         trendPeriods,
         closingBalance: currentPeriod.closing_balance ?? null,
@@ -104,9 +96,9 @@ export function OverviewTransaction({
 
     if (loading) return <LoadingContent />
     if (!data) return (
-        <section className='p-4 mt-1.5 rounded-2xl bg-card border border-neutral-200'>
-            <h2 className='text-sm font-semibold'>Failed to load period data.</h2>
-            <p className='text-xs text-muted-foreground mt-1'>Please try again.</p>
+        <section className='p-4 mt-1.5 rounded-[20px] bg-white border border-[#e5e5e5]'>
+            <h2 className='text-[13px] font-medium text-[#252525]'>Failed to load period data.</h2>
+            <p className='text-[11.5px] text-[#8a8a84] mt-1'>Please try again.</p>
         </section>
     )
 
@@ -178,64 +170,64 @@ export function OverviewTransaction({
     const remainingIsNegative = remaining < 0
 
     return (
-        <div className="space-y-3 mt-1.5">
+        <div className="space-y-2.5 mt-1.5">
             <div className={cn(
-                'rounded-2xl border border-neutral-200 bg-card p-5 space-y-4',
-                remainingIsNegative && 'border-red-100 dark:border-red-900'
+                'rounded-[20px] border border-[#e5e5e5] bg-white p-4 space-y-3',
+                remainingIsNegative && 'border-[#f3c5c5]'
             )}>
                 <div>
-                    <p className="text-[11px] text-muted-foreground mb-1.5">Remaining</p>
+                    <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84] mb-1.5">Remaining</p>
                     <p className={cn(
-                        'text-[44px] leading-none tracking-tight',
-                        remainingIsNegative ? 'text-destructive' : 'text-foreground'
+                        'text-[44px] leading-none tracking-tight font-medium',
+                        remainingIsNegative ? 'text-[#dc2626]' : 'text-[#252525]'
                     )}>
                         {formatCurrency(remaining)}
                     </p>
                 </div>
 
                 <div className="space-y-1.5">
-                    <div className="h-1 bg-muted rounded-full overflow-hidden">
+                    <div className="h-1 bg-[#f2f2f0] rounded-full overflow-hidden">
                         <div
                             className={cn(
                                 'h-full rounded-full transition-all',
-                                spentPercent >= 90 ? 'bg-destructive' :
-                                    spentPercent >= 70 ? 'bg-amber-500' : 'bg-foreground'
+                                spentPercent >= 90 ? 'bg-[#dc2626]' :
+                                    spentPercent >= 70 ? 'bg-amber-500' : 'bg-[#252525]'
                             )}
                             style={{ width: `${spentPercent}%` }}
                         />
                     </div>
                     <p className={cn(
                         'text-[11px]',
-                        spentPercent >= 90 ? 'text-destructive' : 'text-muted-foreground'
+                        spentPercent >= 90 ? 'text-[#dc2626]' : 'text-[#8a8a84]'
                     )}>
                         {spentPercent}% of income spent
                     </p>
                 </div>
 
-                <div className="grid grid-cols-2 gap-0 pt-3 border-t">
+                <div className="grid grid-cols-2 gap-0 pt-3 border-t border-[#f2f2f0]">
                     <div className="pr-4">
-                        <p className="text-[10px] text-muted-foreground tracking-wide mb-1">Income</p>
-                        <p className="text-[20px] leading-none text-emerald-600 mb-1">
+                        <p className="text-[10px] text-[#8a8a84] tracking-wide mb-1">Income</p>
+                        <p className="text-[20px] leading-none text-[#059669] font-medium mb-1">
                             {formatCurrency(totalIncome)}
                         </p>
                         {incomeDiffPct !== null && (
                             <p className={cn(
                                 'text-[10px] flex items-center gap-1',
-                                incomeDiffPct >= 0 ? 'text-emerald-600' : 'text-destructive'
+                                incomeDiffPct >= 0 ? 'text-[#059669]' : 'text-[#dc2626]'
                             )}>
                                 {incomeDiffPct >= 0 ? '↑' : '↓'} {Math.abs(incomeDiffPct)}% from last
                             </p>
                         )}
                     </div>
-                    <div className="pl-4 border-l">
-                        <p className="text-[10px] text-muted-foreground tracking-wide mb-1">Spent</p>
-                        <p className="text-[20px] leading-none text-foreground mb-1">
+                    <div className="pl-4 border-l border-[#f2f2f0]">
+                        <p className="text-[10px] text-[#8a8a84] tracking-wide mb-1">Spent</p>
+                        <p className="text-[20px] leading-none text-[#252525] font-medium mb-1">
                             {formatCurrency(totalExpense)}
                         </p>
                         {expenseDiffPct !== null && (
                             <p className={cn(
                                 'text-[10px] flex items-center gap-1',
-                                expenseDiffPct <= 0 ? 'text-emerald-600' : 'text-destructive'
+                                expenseDiffPct <= 0 ? 'text-[#059669]' : 'text-[#dc2626]'
                             )}>
                                 {expenseDiffPct >= 0 ? '↑' : '↓'} {Math.abs(expenseDiffPct)}% from last
                             </p>
@@ -246,33 +238,49 @@ export function OverviewTransaction({
                 {accounts.length > 0 && (
                     <button
                         onClick={() => navigate('/accounts')}
-                        className="w-full flex items-center justify-between pt-3 border-t text-left"
+                        className="w-full flex items-center justify-between pt-3 border-t border-[#f2f2f0] text-left"
                     >
                         <div>
-                            <p className="text-[10px] text-muted-foreground tracking-wide mb-0.5">
+                            <p className="text-[10px] text-[#8a8a84] tracking-wide mb-0.5">
                                 {isActivePeriod ? 'Total Balance' : 'Closing Balance'}
                             </p>
-                            <p className="text-[15px] font-medium leading-none">
+                            <p className="text-[15px] font-medium leading-none text-[#252525]">
                                 {formatCurrency(displayBalance)}
                             </p>
                             {closingDiffPct !== null && (
                                 <p className={cn(
                                     'text-[10px] mt-0.5',
-                                    closingDiffPct >= 0 ? 'text-emerald-600' : 'text-destructive'
+                                    closingDiffPct >= 0 ? 'text-[#059669]' : 'text-[#dc2626]'
                                 )}>
                                     {closingDiffPct >= 0 ? '↑' : '↓'} {Math.abs(closingDiffPct)}% vs prev period
                                 </p>
                             )}
                         </div>
                         <div className="flex items-center gap-1">
-                            <p className="text-[11px] text-muted-foreground">
+                            <p className="text-[11px] text-[#8a8a84]">
                                 {accounts.length} account{accounts.length > 1 ? 's' : ''}
                             </p>
-                            <span className="text-muted-foreground text-[13px]">→</span>
+                            <span className="text-[#8a8a84] text-[13px]">→</span>
                         </div>
                     </button>
                 )}
             </div>
+
+            {debts.length > 0 && (
+                <button
+                    onClick={() => navigate('/debts')}
+                    className="w-full rounded-[20px] border border-[#e5e5e5] bg-white p-4 flex items-center justify-between text-left"
+                >
+                    <div>
+                        <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84] mb-1">Debts</p>
+                        <p className="text-[15px] font-medium text-[#252525]">{formatCurrency(totalDebt)} remaining</p>
+                        <p className="text-[11px] text-[#a3a3a3] mt-0.5">
+                            {debts.length} active{debts[0].due_date ? ` · next due ${formatDateShort(debts[0].due_date)}` : ''}
+                        </p>
+                    </div>
+                    <span className="text-[#8a8a84] text-[13px]">→</span>
+                </button>
+            )}
 
             <HealthAndTrendSection
                 score={score}
@@ -282,9 +290,9 @@ export function OverviewTransaction({
             />
 
             {biggestDriver && driverMultiple && driverMultiple > 1.2 && (
-                <div className="rounded-2xl border border-neutral-200 bg-card px-5 py-3.5">
-                    <p className="text-[11px] text-muted-foreground italic leading-relaxed border-l-2 border-border pl-3">
-                        <span className="text-foreground not-italic font-medium">{biggestDriver.name}</span>
+                <div className="rounded-[20px] border border-[#e5e5e5] bg-white px-4 py-3.5">
+                    <p className="text-[11px] text-[#8a8a84] italic leading-relaxed border-l-2 border-[#e5e5e5] pl-3">
+                        <span className="text-[#252525] not-italic font-medium">{biggestDriver.name}</span>
                         {' '}up {driverMultiple}× vs last period — biggest driver this month.
                     </p>
                 </div>

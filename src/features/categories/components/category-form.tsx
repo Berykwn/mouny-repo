@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Loader2 } from 'lucide-react'
@@ -18,6 +17,7 @@ interface CategoryFormProps {
 }
 
 const ICON_KEYS = Object.keys(ICON_MAP)
+const FIELD_LABEL = 'text-[11px] font-medium uppercase tracking-[.14em] text-[#8a8a84]'
 
 export function CategoryForm({ onSuccess, initial }: CategoryFormProps) {
     const [type, setType] = useState<CategoryType>((initial?.type as CategoryType) ?? 'expense')
@@ -61,18 +61,19 @@ export function CategoryForm({ onSuccess, initial }: CategoryFormProps) {
 
             {/* Name */}
             <div className="space-y-1.5">
-                <Label>Category name</Label>
+                <Label className={FIELD_LABEL}>Category name</Label>
                 <Input
                     placeholder={categoryTypeConfig[type].sub}
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     disabled={loading}
+                    className="h-12 rounded-[14px] border-[#e5e5e5] text-[13px]"
                 />
             </div>
 
             {/* Icon picker */}
             <div className="space-y-2">
-                <Label>Icon</Label>
+                <Label className={FIELD_LABEL}>Icon</Label>
                 <div className="grid grid-cols-8 gap-1">
                     {ICON_KEYS.map((key) => {
                         const selected = icon === key
@@ -83,8 +84,8 @@ export function CategoryForm({ onSuccess, initial }: CategoryFormProps) {
                                 title={key}
                                 onClick={() => setIcon(key)}
                                 className={cn(
-                                    'aspect-square rounded-xl flex items-center justify-center transition-all duration-150',
-                                    selected ? 'scale-105' : 'hover:bg-muted'
+                                    'aspect-square rounded-[10px] flex items-center justify-center transition-all duration-150',
+                                    selected ? 'scale-105' : 'hover:bg-[#f4f4f2]'
                                 )}
                                 style={selected ? { backgroundColor: color + '25' } : undefined}
                             >
@@ -101,7 +102,7 @@ export function CategoryForm({ onSuccess, initial }: CategoryFormProps) {
 
             {/* Color picker */}
             <div className="space-y-2">
-                <Label>Color</Label>
+                <Label className={FIELD_LABEL}>Color</Label>
                 <div className="grid grid-cols-10 gap-2">
                     {COLORS.map((c) => (
                         <button
@@ -111,7 +112,7 @@ export function CategoryForm({ onSuccess, initial }: CategoryFormProps) {
                             className={cn(
                                 'aspect-square rounded-full transition-all duration-150',
                                 color === c
-                                    ? 'ring-2 ring-offset-2 ring-offset-background ring-foreground scale-110'
+                                    ? 'ring-2 ring-offset-2 ring-offset-white ring-[#252525] scale-110'
                                     : 'hover:scale-105'
                             )}
                             style={{ backgroundColor: c }}
@@ -121,9 +122,9 @@ export function CategoryForm({ onSuccess, initial }: CategoryFormProps) {
             </div>
 
             {/* Preview */}
-            <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/50">
+            <div className="flex items-center gap-3 p-3 rounded-[14px] bg-[#f4f4f2]">
                 <div
-                    className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                    className="w-9 h-9 rounded-[10px] flex items-center justify-center shrink-0"
                     style={{ backgroundColor: color + '25' }}
                 >
                     <CategoryIcon
@@ -133,19 +134,23 @@ export function CategoryForm({ onSuccess, initial }: CategoryFormProps) {
                     />
                 </div>
                 <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium truncate leading-tight">
-                        {name.trim() || <span className="text-muted-foreground italic font-normal">Category name</span>}
+                    <p className="text-[13px] font-medium text-[#252525] truncate leading-tight">
+                        {name.trim() || <span className="text-[#8a8a84] italic font-normal">Category name</span>}
                     </p>
-                    <p className="text-[11px] text-muted-foreground capitalize mt-0.5">{type}</p>
+                    <p className="text-[11px] text-[#8a8a84] capitalize mt-0.5">{type}</p>
                 </div>
             </div>
 
-            <Button type="submit" className="w-full" disabled={loading}>
+            <button
+                type="submit"
+                disabled={loading}
+                className="w-full h-12 rounded-[14px] text-[13px] font-semibold text-white bg-[#6FA82B] hover:bg-[#6FA82B]/90 transition-colors disabled:opacity-50 disabled:pointer-events-none"
+            >
                 {loading
-                    ? <Loader2 className="w-4 h-4 animate-spin" />
+                    ? <Loader2 className="w-4 h-4 animate-spin mx-auto" />
                     : isEdit ? 'Save Changes' : 'Create Category'
                 }
-            </Button>
+            </button>
         </form>
     )
 }

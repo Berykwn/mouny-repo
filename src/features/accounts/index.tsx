@@ -50,50 +50,53 @@ export function AccountPage() {
 
     return (
         <section className="px-4 pb-4 space-y-4">
-            <header className="rounded-2xl border border-neutral-200 bg-card p-4 flex items-center gap-3">
+            <header className="rounded-[20px] border border-[#e5e5e5] bg-white p-4 flex items-center gap-3">
                 <div className="flex-1 min-w-0">
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium">Total balance</p>
+                    <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84]">Total balance</p>
                     {accounts.length > 0 ? (
                         <>
-                            <p className={cn('text-xl font-bold mt-0.5', totalBalance < 0 ? 'text-destructive' : 'text-primary')}>
+                            <p className={cn(
+                                'text-[32px] font-medium tracking-[-0.02em] leading-none mt-1',
+                                totalBalance < 0 ? 'text-[#dc2626]' : 'text-[#252525]'
+                            )}>
                                 {formatCurrency(totalBalance)}
                             </p>
-                            <p className="text-[10px] text-muted-foreground mt-0.5">
+                            <p className="text-[11px] text-[#8a8a84] mt-1.5">
                                 across {accounts.length} account{accounts.length > 1 ? 's' : ''}
                             </p>
                         </>
                     ) : (
-                        <p className="text-sm text-muted-foreground mt-0.5">Add your first account</p>
+                        <p className="text-[13px] text-[#8a8a84] mt-0.5">Add your first account</p>
                     )}
                 </div>
                 <Button
                     onClick={() => setAddAccountDrawer(true)}
-                    variant='outline'
-                    className='font-bold'
+                    size="sm"
+                    variant="outline"
                 >
-                    <Plus className="w-4 h-4" />
-                    Accounts
+                    <Plus className="w-3.5 h-3.5" /> Account
                 </Button>
             </header>
 
             {loading ? (
                 <LoadingContent />
             ) : accounts.length === 0 ? (
-                <div
+                <button
+                    type="button"
                     onClick={() => setAddAccountDrawer(true)}
-                    className="rounded-2xl border border-dashed border-neutral-300 bg-card p-8 text-center space-y-2 cursor-pointer hover:bg-accent transition-colors"
+                    className="w-full rounded-[20px] border border-[#e5e5e5] bg-white p-4 flex items-center gap-3 text-left hover:bg-[#fbfbfa] transition-colors"
                 >
-                    <div className="w-10 h-10 rounded-2xl bg-rose-50 dark:bg-rose-950 flex items-center justify-center mx-auto">
-                        <Wallet2 className="w-5 h-5 text-rose-400" />
+                    <div className="w-9 h-9 rounded-[10px] bg-[#f4f4f2] flex items-center justify-center shrink-0">
+                        <Wallet2 className="w-4 h-4 text-[#8a8a84]" />
                     </div>
-                    <div>
-                        <p className="text-sm font-medium">No accounts yet</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">Tap to add your first bank or cash account</p>
+                    <div className="flex-1 min-w-0">
+                        <p className="text-[13px] font-medium text-[#252525]">No accounts yet</p>
+                        <p className="text-[11.5px] text-[#8a8a84] mt-0.5">Tap to add your first bank or cash account</p>
                     </div>
-                </div>
+                </button>
             ) : (
                 <div className="space-y-3 mt-1.5">
-                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest px-1">
+                    <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84] px-1">
                         Your accounts
                     </p>
 

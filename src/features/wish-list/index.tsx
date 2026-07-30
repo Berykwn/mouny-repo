@@ -69,41 +69,41 @@ export default function WishListPage() {
             ) : (
                 <div className="space-y-5">
                     {/* Summary card */}
-                    <div className="rounded-2xl border border-neutral-200 bg-card p-4 flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-pink-100 dark:bg-pink-900 flex items-center justify-center flex-shrink-0">
-                            <ShoppingBag className="w-4 h-4 text-pink-600 dark:text-pink-400" />
+                    <div className="rounded-[20px] border border-[#e5e5e5] bg-white p-4 flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-[10px] bg-[#fce7f3] flex items-center justify-center flex-shrink-0">
+                            <ShoppingBag className="w-4 h-4 text-[#db2777]" />
                         </div>
                         <div className="flex-1">
-                            <p className="text-xs text-muted-foreground">
+                            <p className="text-[11.5px] text-[#8a8a84]">
                                 {items.length} item · {affordableCount} affordable now
                             </p>
-                            <p className="text-xl font-bold mt-0.5">{formatCurrency(totalEstimated)}</p>
+                            <p className="text-[32px] font-medium tracking-[-0.02em] leading-none text-[#252525] mt-1">{formatCurrency(totalEstimated)}</p>
                         </div>
                         <Button
                             variant='outline'
+                            size="sm"
                             onClick={() => setAddDrawerOpen(true)}
-                            className="font-bold"
                             disabled={!periodId}
                         >
-                            <Plus className="w-4 h-4" />
-                            Wish
+                            <Plus className="w-3.5 h-3.5" /> Wish
                         </Button>
                     </div>
 
                     {periodId && (
                         items.length === 0 ? (
-                            <div
+                            <button
+                                type="button"
                                 onClick={() => setAddDrawerOpen(true)}
-                                className="rounded-2xl border border-dashed border-neutral-300 bg-card p-8 text-center space-y-2 cursor-pointer hover:bg-accent transition-colors"
+                                className="w-full rounded-[20px] border border-[#e5e5e5] bg-white p-4 flex items-center gap-3 text-left hover:bg-[#fbfbfa] transition-colors"
                             >
-                                <div className="w-10 h-10 rounded-2xl bg-pink-50 dark:bg-pink-950 flex items-center justify-center mx-auto">
-                                    <ShoppingBag className="w-5 h-5 text-pink-400" />
+                                <div className="w-9 h-9 rounded-[10px] bg-[#f4f4f2] flex items-center justify-center shrink-0">
+                                    <ShoppingBag className="w-4 h-4 text-[#8a8a84]" />
                                 </div>
-                                <div>
-                                    <p className="text-sm font-medium">No wishes yet</p>
-                                    <p className="text-xs text-muted-foreground mt-0.5">Tap to add something you want to save up for</p>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-[13px] font-medium text-[#252525]">No wishes yet</p>
+                                    <p className="text-[11.5px] text-[#8a8a84] mt-0.5">Tap to add something you want to save up for</p>
                                 </div>
-                            </div>
+                            </button>
                         ) : (
                             <WishListItems
                                 items={items}

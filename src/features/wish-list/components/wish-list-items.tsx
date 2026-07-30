@@ -21,9 +21,9 @@ const PRIORITY_LABEL: Record<string, string> = {
 }
 
 const PRIORITY_COLOR: Record<string, string> = {
-  high: 'bg-red-50 text-red-500 dark:bg-red-950 dark:text-red-400',
-  medium: 'bg-amber-50 text-amber-500 dark:bg-amber-950 dark:text-amber-400',
-  low: 'bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-400',
+  high: 'bg-[#fef2f2] text-[#dc2626]',
+  medium: 'bg-[#fff7ed] text-[#d97706]',
+  low: 'bg-[#f4f4f2] text-[#8a8a84]',
 }
 
 const PRIORITY_ORDER: Record<string, number> = { high: 0, medium: 1, low: 2 }
@@ -58,10 +58,10 @@ export function WishListItems({ items, analysis, onBuy, onDeleteRequest }: WishL
             key={id}
             onClick={() => setFilter(id)}
             className={cn(
-              'px-3 py-1.5 rounded-full text-xs font-medium border transition-colors',
+              'px-3 py-1.5 rounded-full text-[12px] font-medium border transition-colors',
               filter === id
-                ? 'bg-neutral-200 text-neutral-600 border-neutral-200'
-                : 'bg-background text-muted-foreground border-border hover:text-foreground hover:border-foreground/40'
+                ? 'bg-[#f4f4f2] text-[#252525] border-[#e5e5e5]'
+                : 'bg-white text-[#8a8a84] border-[#e5e5e5] hover:text-[#252525]'
             )}
           >
             {label}
@@ -77,11 +77,11 @@ export function WishListItems({ items, analysis, onBuy, onDeleteRequest }: WishL
           return (
             <div
               key={item.id}
-              className="bg-card rounded-2xl border border-neutral-200 px-4 py-3.5 space-y-2.5"
+              className="rounded-[20px] border border-[#e5e5e5] bg-white px-4 py-3.5 space-y-2.5"
             >
               {/* Header: title + badges */}
               <div className="flex items-center gap-2 min-w-0">
-                <p className="text-sm font-semibold truncate flex-1">{item.name}</p>
+                <p className="text-[13px] font-semibold text-[#252525] truncate flex-1">{item.name}</p>
                 <div className="flex items-center gap-1.5 shrink-0">
                   <span className={cn(
                     'text-[10px] font-semibold px-2 py-0.5 rounded-full',
@@ -92,9 +92,7 @@ export function WishListItems({ items, analysis, onBuy, onDeleteRequest }: WishL
                   {a && a.price > 0 && (
                     <span className={cn(
                       'text-[10px] font-semibold px-2 py-0.5 rounded-full',
-                      a.canAfford
-                        ? 'bg-green-50 text-green-600 dark:bg-green-950 dark:text-green-400'
-                        : 'bg-orange-50 text-orange-500 dark:bg-orange-950 dark:text-orange-400'
+                      a.canAfford ? 'bg-[#f2f6ea] text-[#4d7a1d]' : 'bg-[#fef2f2] text-[#dc2626]'
                     )}>
                       {a.canAfford ? 'Can afford' : `-${formatCurrency(a.shortfall)}`}
                     </span>
@@ -104,32 +102,32 @@ export function WishListItems({ items, analysis, onBuy, onDeleteRequest }: WishL
 
               {/* Body: notes — only if exists */}
               {item.notes && (
-                <p className="text-xs text-muted-foreground line-clamp-2">{item.notes}</p>
+                <p className="text-[11.5px] text-[#8a8a84] line-clamp-2">{item.notes}</p>
               )}
 
               {/* Footer: price + salary label | Buy + Delete */}
               <div className="flex items-center justify-between gap-3 pt-0.5">
                 <div className="flex items-baseline gap-1.5 min-w-0">
-                  <p className="text-sm font-semibold shrink-0">
+                  <p className="text-[13px] font-medium text-[#252525] shrink-0">
                     {item.estimated_price ? formatCurrency(item.estimated_price) : '—'}
                   </p>
                   {a?.salaryLabel && (
-                    <span className="text-[10px] text-muted-foreground truncate">· {a.salaryLabel}</span>
+                    <span className="text-[10px] text-[#8a8a84] truncate">· {a.salaryLabel}</span>
                   )}
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
                   <button
                     onClick={() => onBuy(item)}
-                    className="text-[11px] font-semibold px-3 py-1 rounded-full bg-secondary text-secondary-foreground"
+                    className="text-[11px] font-medium px-3 py-1 rounded-full border border-[#e5e5e5] text-[#252525] hover:bg-[#f4f4f2] transition-colors"
                   >
                     Buy
                   </button>
                   <button
                     onClick={() => onDeleteRequest(item.id)}
                     aria-label={`Remove ${item.name} from wish list`}
-                    className="w-7 h-7 rounded-lg bg-red-50 dark:bg-red-950 flex items-center justify-center"
+                    className="w-7 h-7 rounded-lg bg-[#fef2f2] flex items-center justify-center"
                   >
-                    <Trash2 className="w-3.5 h-3.5 text-red-400" />
+                    <Trash2 className="w-3.5 h-3.5 text-[#dc2626]" />
                   </button>
                 </div>
               </div>
