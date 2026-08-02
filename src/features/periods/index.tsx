@@ -37,7 +37,7 @@ export function PeriodHistoryPage() {
     return (
         <section className="px-4 pb-4 space-y-4">
             {loading ? <LoadingContent /> : (
-                <>
+                <div className="space-y-4 lg:grid lg:grid-cols-[360px_1fr] lg:gap-4 lg:items-start lg:space-y-0">
                     {activePeriod ? (
                         <div className="rounded-[20px] border border-[#e5e5e5] bg-white p-4 space-y-4">
                             <div className="flex items-center justify-between">
@@ -104,7 +104,7 @@ export function PeriodHistoryPage() {
 
                     {/* Period history — always shown if has data */}
                     <PeriodHistory periods={allPeriods} />
-                </>
+                </div>
             )}
 
             {/* Drawers */}

@@ -10,6 +10,7 @@ import { toast } from 'sonner'
 import { AccountTypeIcon } from '@/components/account-type-icon'
 import { AccountPickerDrawer } from '@/components/account-picker-drawer'
 import { DateQuickPicker } from '@/components/date-quick-picker'
+import { ProgressBar } from '@/components/progress-bar'
 
 const FIELD_LABEL = 'text-[11px] font-medium uppercase tracking-[.14em] text-[#8a8a84]'
 const SUBMIT_BUTTON = 'w-full h-12 rounded-[14px] text-[13px] font-semibold text-white bg-[#6FA82B] hover:bg-[#6FA82B]/90 transition-colors disabled:opacity-50 disabled:pointer-events-none'
@@ -117,12 +118,7 @@ export function PayReceivableForm({ debt, periodStartDate, onSuccess }: PayRecei
                     <p className="text-[11.5px] text-[#8a8a84]">of {formatCurrency(debt.total_amount)}</p>
                 </div>
                 <div className="space-y-1">
-                    <div className="h-1 bg-[#f2f2f0] rounded-full overflow-hidden">
-                        <div
-                            className="h-full rounded-full transition-all"
-                            style={{ width: `${collectedPercent}%`, backgroundColor: '#059669' }}
-                        />
-                    </div>
+                    <ProgressBar percent={collectedPercent} color="#059669" />
                     <p className="text-[11px] text-[#8a8a84]">{collectedPercent}% collected</p>
                 </div>
             </div>

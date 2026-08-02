@@ -3,6 +3,28 @@ import { handleError, type ServiceResult } from './_base'
 import type { Account } from '@/types/'
 import type { Category } from '@/types/'
 import { COLORS } from '@/lib/static-colors'
+import { ICON_MAP } from '@/lib/icon-map'
+
+function needsIconRepair(c: Category): boolean {
+    return !c.icon || !(c.icon in ICON_MAP)
+}
+
+// Categories created before icon selection existed (or edited outside the app) can carry a
+// null/stale icon value. Backfill a sensible default and persist it so every other read path
+// (transaction joins, category grids, etc.) sees a real icon from then on.
+async function repairMissingIcons(categories: Category[]): Promise<Category[]> {
+    const broken = categories.filter(needsIconRepair)
+    if (broken.length === 0) return categories
+
+    const fixed = await Promise.all(broken.map(async (c) => {
+        const icon = c.type === 'income' ? 'wallet' : 'shopping-bag'
+        const { data } = await supabase.from('categories').update({ icon }).eq('id', c.id).select().single()
+        return data ?? { ...c, icon }
+    }))
+
+    const byId = new Map(fixed.map(c => [c.id, c]))
+    return categories.map(c => byId.get(c.id) ?? c)
+}
 
 export const accountsService = {
     async getAll(): Promise<ServiceResult<Account[]>> {
@@ -123,7 +145,7 @@ export const categoriesService = {
                 .order('name')
 
             if (error) throw error
-            return { data, error: null }
+            return { data: await repairMissingIcons(data), error: null }
         } catch (err) {
             return { data: null, error: handleError(err) }
         }
@@ -138,7 +160,7 @@ export const categoriesService = {
                 .order('name')
 
             if (error) throw error
-            return { data, error: null }
+            return { data: await repairMissingIcons(data), error: null }
         } catch (err) {
             return { data: null, error: handleError(err) }
         }

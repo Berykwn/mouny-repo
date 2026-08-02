@@ -4,45 +4,6 @@ import type { WishListItem } from '@/types/'
 import { transactionsService } from './transactions.service'
 import { payPeriodsService } from './pay-periods.service'
 
-export interface WishListAnalysis {
-    price: number
-    totalBalance: number
-    canAfford: boolean
-    shortfall: number
-    salaryAmount: number
-    percentOfSalary: number
-    salaryLabel: string
-}
-
-function buildSalaryLabel(price: number, salary: number): string {
-    if (salary <= 0) return ''
-
-    const percent = (price / salary) * 100
-
-    if (percent <= 100) {
-        return `${Math.round(percent)}% of income`
-    }
-
-    const fullSalaries = Math.floor(price / salary)
-    const remainder = price - fullSalaries * salary
-
-    if (fullSalaries === 1) {
-        // 100–199% — show exact shortfall from 1 salary
-        return remainder > 0
-            ? `1 income + ${formatShortfall(remainder)} short`
-            : '1 income'
-    }
-
-    // 2x+ — just show the multiplier
-    return `${Math.ceil(price / salary)}x income`
-}
-
-function formatShortfall(amount: number): string {
-    if (amount >= 1_000_000) return `${(amount / 1_000_000).toFixed(1)}M`
-    if (amount >= 1_000) return `${Math.round(amount / 1_000)}K`
-    return String(Math.round(amount))
-}
-
 export const wishListService = {
     async getAll(): Promise<ServiceResult<WishListItem[]>> {
         try {
@@ -69,18 +30,145 @@ export const wishListService = {
         estimated_price?: number
         priority?: WishListItem['priority']
         notes?: string
+        quantity?: number | null
+        unit?: string | null
+        price_per_unit?: number | null
     }): Promise<ServiceResult<WishListItem>> {
         try {
             const { data: { user } } = await supabase.auth.getUser()
             if (!user) throw new Error('Not logged in')
 
+            const estimated_price = input.quantity && input.price_per_unit
+                ? input.quantity * input.price_per_unit
+                : input.estimated_price
+
             const { data, error } = await supabase
                 .from('wish_list')
                 .insert({
                     ...input,
+                    estimated_price,
                     user_id: user.id,
                     is_purchased: false,
                 })
+                .select()
+                .single()
+
+            if (error) throw error
+            return { data, error: null }
+        } catch (err) {
+            return { data: null, error: handleError(err) }
+        }
+    },
+
+    async update(id: string, input: {
+        name?: string
+        estimated_price?: number
+        priority?: WishListItem['priority']
+        notes?: string
+        quantity?: number | null
+        unit?: string | null
+        price_per_unit?: number | null
+    }): Promise<ServiceResult<WishListItem>> {
+        try {
+            const estimated_price = input.quantity && input.price_per_unit
+                ? input.quantity * input.price_per_unit
+                : input.estimated_price
+
+            const { data, error } = await supabase
+                .from('wish_list')
+                .update({
+                    ...input,
+                    estimated_price,
+                })
+                .eq('id', id)
+                .select()
+                .single()
+
+            if (error) throw error
+            return { data, error: null }
+        } catch (err) {
+            return { data: null, error: handleError(err) }
+        }
+    },
+
+    async contribute(id: string, amount: number): Promise<ServiceResult<WishListItem>> {
+        try {
+            if (amount <= 0) throw new Error('Amount must be greater than zero.')
+
+            const { data: item, error: fetchError } = await supabase
+                .from('wish_list')
+                .select('saved_amount')
+                .eq('id', id)
+                .single()
+
+            if (fetchError) throw fetchError
+
+            const newSaved = Math.max(0, (item.saved_amount ?? 0) + amount)
+
+            const { data, error } = await supabase
+                .from('wish_list')
+                .update({ saved_amount: newSaved })
+                .eq('id', id)
+                .select()
+                .single()
+
+            if (error) throw error
+            return { data, error: null }
+        } catch (err) {
+            return { data: null, error: handleError(err) }
+        }
+    },
+
+    async contributeQuantity(
+        item: WishListItem,
+        input: {
+            quantity: number
+            price_per_unit: number
+            account_id: string
+            category_id?: string
+            date: string
+        }
+    ): Promise<ServiceResult<WishListItem>> {
+        try {
+            if (input.quantity <= 0) throw new Error('Quantity must be greater than zero.')
+
+            const { data: period, error: periodError } =
+                await payPeriodsService.getActive()
+
+            if (periodError || !period) {
+                throw new Error('No active period found')
+            }
+
+            const amount = input.quantity * input.price_per_unit
+
+            const { data: transaction, error: txError } =
+                await transactionsService.create({
+                    pay_period_id: period.id,
+                    account_id: input.account_id,
+                    category_id: input.category_id,
+                    type: 'expense',
+                    amount,
+                    note: `Cicilan: ${item.name}`,
+                    date: input.date,
+                    wish_list_item_id: item.id,
+                })
+
+            if (txError || !transaction) {
+                throw new Error(txError ?? 'Failed to create transaction')
+            }
+
+            const newSavedQuantity = (item.saved_quantity ?? 0) + input.quantity
+            const newSavedAmount = (item.saved_amount ?? 0) + amount
+            const isComplete = !!item.quantity && newSavedQuantity >= item.quantity
+
+            const { data, error } = await supabase
+                .from('wish_list')
+                .update({
+                    saved_quantity: newSavedQuantity,
+                    saved_amount: newSavedAmount,
+                    is_purchased: isComplete,
+                })
+                .eq('id', item.id)
                 .select()
                 .single()
 
@@ -150,50 +238,6 @@ export const wishListService = {
 
             if (error) throw error
             return { data: null, error: null }
-        } catch (err) {
-            return { data: null, error: handleError(err) }
-        }
-    },
-
-    async analyze(items: WishListItem[]): Promise<ServiceResult<Record<string, WishListAnalysis>>> {
-        try {
-            if (items.length === 0) return { data: {}, error: null }
-
-            const [
-                { data: accounts, error: accError },
-                { data: summary },
-            ] = await Promise.all([
-                supabase.from('accounts').select('balance'),
-                supabase.from('active_period_summary').select('salary_amount').single(),
-            ])
-
-            if (accError) throw accError
-
-            const totalBalance = (accounts ?? []).reduce((s, a) => s + Number(a.balance), 0)
-            const salaryAmount = Number(summary?.salary_amount ?? 0)
-
-            const result: Record<string, WishListAnalysis> = {}
-
-            for (const item of items) {
-                const price = item.estimated_price ?? 0
-
-                const canAfford = totalBalance >= price
-                const shortfall = Math.max(0, price - totalBalance)
-                const percentOfSalary = salaryAmount > 0 ? Math.round((price / salaryAmount) * 100) : 0
-                const salaryLabel = salaryAmount > 0 ? buildSalaryLabel(price, salaryAmount) : ''
-
-                result[item.id] = {
-                    price,
-                    totalBalance,
-                    canAfford,
-                    shortfall,
-                    salaryAmount,
-                    percentOfSalary,
-                    salaryLabel,
-                }
-            }
-
-            return { data: result, error: null }
         } catch (err) {
             return { data: null, error: handleError(err) }
         }

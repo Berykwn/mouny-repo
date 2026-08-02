@@ -330,10 +330,10 @@ export function PeriodAnalytics({ transactions, period, previousSummary, totalBa
   }
 
   return (
-    <div className="space-y-2.5 pt-3">
+    <div className="space-y-2.5 pt-3 lg:grid lg:grid-cols-2 lg:gap-4 lg:space-y-0 lg:items-start">
 
       {/* ── Financial health card ── */}
-      <div className="rounded-[20px] border border-[#e5e5e5] bg-white p-4">
+      <div className="rounded-[20px] border border-[#e5e5e5] bg-white p-4 lg:col-span-2">
         <div className="flex items-center justify-between mb-2">
           <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84]">Financial health</p>
           <p className="text-[13px] font-medium text-[#252525]">{health.label}</p>
@@ -350,7 +350,7 @@ export function PeriodAnalytics({ transactions, period, previousSummary, totalBa
       </div>
 
       {/* ── Net summary card ── */}
-      <div className="rounded-[20px] border border-[#e5e5e5] bg-white p-4">
+      <div className="rounded-[20px] border border-[#e5e5e5] bg-white p-4 lg:col-span-2">
         <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84] mb-1">Net this period</p>
         <p className={cn(
           'text-[32px] font-medium tracking-[-0.02em] leading-none mb-1',

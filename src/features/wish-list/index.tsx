@@ -1,12 +1,15 @@
 import { useEffect, useState, useCallback } from 'react'
-import { Plus, ShoppingBag } from 'lucide-react'
+import { Plus, PiggyBank } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { BottomDrawer } from '@/components/bottom-drawer'
 import { ConfirmDrawer } from '@/components/confirmation-drawer'
 import { WishListItems } from './components/wish-list-items'
 import { WishListForm } from './components/wish-list-form'
 import { BuyItemForm } from './components/buy-item-form'
-import { wishListService, type WishListAnalysis } from '@/services/wish-list.service'
+import { ContributeForm } from './components/contribute-form'
+import { ContributeQuantityForm } from './components/contribute-quantity-form'
+import { ProgressBar } from '@/components/progress-bar'
+import { wishListService } from '@/services/wish-list.service'
 import { payPeriodsService } from '@/services/pay-periods.service'
 import { formatCurrency } from '@/lib/helpers'
 import type { WishListItem } from '@/types'
@@ -20,7 +23,8 @@ export default function WishListPage() {
     const [loading, setLoading] = useState(true)
     const [addDrawerOpen, setAddDrawerOpen] = useState(false)
     const [buyingItem, setBuyingItem] = useState<WishListItem | null>(null)
-    const [analysis, setAnalysis] = useState<Record<string, WishListAnalysis>>({})
+    const [contributingItem, setContributingItem] = useState<WishListItem | null>(null)
+    const [editingItem, setEditingItem] = useState<WishListItem | null>(null)
     const [deletingId, setDeletingId] = useState<string | null>(null)
     const [deleteLoading, setDeleteLoading] = useState(false)
 
@@ -37,11 +41,7 @@ export default function WishListPage() {
         setPeriodStart(period.start_date)
 
         const { data: itemsData } = await wishListService.getAll()
-        const list = itemsData ?? []
-        setItems(list)
-
-        const { data: analysisData } = await wishListService.analyze(list)
-        setAnalysis(analysisData ?? {})
+        setItems(itemsData ?? [])
 
         setLoading(false)
     }, [])
@@ -59,8 +59,9 @@ export default function WishListPage() {
         toast.success('Item removed from wish list.')
     }
 
-    const totalEstimated = items.reduce((s, i) => s + (i.estimated_price ?? 0), 0)
-    const affordableCount = items.filter(i => analysis[i.id]?.canAfford).length
+    const totalSaved = items.reduce((s, i) => s + i.saved_amount, 0)
+    const totalTarget = items.reduce((s, i) => s + (i.estimated_price ?? 0), 0)
+    const savedPercent = totalTarget > 0 ? Math.round((totalSaved / totalTarget) * 100) : 0
 
     return (
         <section className="px-4 pb-4 space-y-4">
@@ -68,25 +69,37 @@ export default function WishListPage() {
                 <LoadingContent />
             ) : (
                 <div className="space-y-5">
-                    {/* Summary card */}
-                    <div className="rounded-[20px] border border-[#e5e5e5] bg-white p-4 flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-[10px] bg-[#fce7f3] flex items-center justify-center flex-shrink-0">
-                            <ShoppingBag className="w-4 h-4 text-[#db2777]" />
+                    {/* Savings progress hero */}
+                    <div className="rounded-[20px] border border-[#e5e5e5] bg-white p-5">
+                        <div className="flex items-center justify-between mb-2">
+                            <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84]">Savings progress</p>
+                            <Button
+                                variant='outline'
+                                size="sm"
+                                onClick={() => setAddDrawerOpen(true)}
+                                disabled={!periodId}
+                            >
+                                <Plus className="w-3.5 h-3.5" /> Wish
+                            </Button>
                         </div>
-                        <div className="flex-1">
-                            <p className="text-[11.5px] text-[#8a8a84]">
-                                {items.length} item · {affordableCount} affordable now
+                        <p className="text-[32px] font-medium tracking-[-0.02em] leading-none text-[#252525] tabular-nums">
+                            {formatCurrency(totalSaved)}
+                        </p>
+                        {totalTarget > 0 ? (
+                            <>
+                                <ProgressBar percent={savedPercent} className="mt-3" />
+                                <div className="flex items-center justify-between mt-2">
+                                    <p className="text-[11px] text-[#8a8a84]">saved</p>
+                                    <p className="text-[11px] text-[#8a8a84]">
+                                        of {formatCurrency(totalTarget)} across {items.length} goal{items.length === 1 ? '' : 's'}
+                                    </p>
+                                </div>
+                            </>
+                        ) : items.length > 0 ? (
+                            <p className="text-[11px] text-[#8a8a84] mt-2">
+                                {items.length} goal{items.length === 1 ? '' : 's'} · set a target price to track progress
                             </p>
-                            <p className="text-[32px] font-medium tracking-[-0.02em] leading-none text-[#252525] mt-1">{formatCurrency(totalEstimated)}</p>
-                        </div>
-                        <Button
-                            variant='outline'
-                            size="sm"
-                            onClick={() => setAddDrawerOpen(true)}
-                            disabled={!periodId}
-                        >
-                            <Plus className="w-3.5 h-3.5" /> Wish
-                        </Button>
+                        ) : null}
                     </div>
 
                     {periodId && (
@@ -97,19 +110,20 @@ export default function WishListPage() {
                                 className="w-full rounded-[20px] border border-[#e5e5e5] bg-white p-4 flex items-center gap-3 text-left hover:bg-[#fbfbfa] transition-colors"
                             >
                                 <div className="w-9 h-9 rounded-[10px] bg-[#f4f4f2] flex items-center justify-center shrink-0">
-                                    <ShoppingBag className="w-4 h-4 text-[#8a8a84]" />
+                                    <PiggyBank className="w-4 h-4 text-[#8a8a84]" />
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                    <p className="text-[13px] font-medium text-[#252525]">No wishes yet</p>
-                                    <p className="text-[11.5px] text-[#8a8a84] mt-0.5">Tap to add something you want to save up for</p>
+                                    <p className="text-[13px] font-medium text-[#252525]">No savings goals yet</p>
+                                    <p className="text-[11.5px] text-[#8a8a84] mt-0.5">Tap to start saving toward something you want</p>
                                 </div>
                             </button>
                         ) : (
                             <WishListItems
                                 items={items}
-                                analysis={analysis}
                                 onDeleteRequest={setDeletingId}
                                 onBuy={setBuyingItem}
+                                onContribute={setContributingItem}
+                                onEdit={setEditingItem}
                             />
                         )
                     )}
@@ -129,6 +143,43 @@ export default function WishListPage() {
                     />
                 </BottomDrawer>
             )}
+
+            {/* Edit drawer */}
+            <BottomDrawer
+                open={!!editingItem}
+                onClose={() => setEditingItem(null)}
+                title="Edit Wish Item"
+            >
+                {editingItem && periodId && (
+                    <WishListForm
+                        payPeriodId={periodId}
+                        item={editingItem}
+                        onSuccess={() => { setEditingItem(null); load() }}
+                    />
+                )}
+            </BottomDrawer>
+
+            {/* Contribute drawer */}
+            <BottomDrawer
+                open={!!contributingItem}
+                onClose={() => setContributingItem(null)}
+                title={contributingItem?.quantity ? 'Cicil' : 'Add Funds'}
+            >
+                {contributingItem && (
+                    contributingItem.quantity && periodStart ? (
+                        <ContributeQuantityForm
+                            item={contributingItem}
+                            periodStart={periodStart}
+                            onSuccess={() => { setContributingItem(null); load() }}
+                        />
+                    ) : (
+                        <ContributeForm
+                            item={contributingItem}
+                            onSuccess={() => { setContributingItem(null); load() }}
+                        />
+                    )
+                )}
+            </BottomDrawer>
 
             {/* Buy drawer */}
             <BottomDrawer

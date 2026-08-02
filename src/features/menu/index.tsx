@@ -39,49 +39,51 @@ export default function MenuPage() {
 
     return (
         <section className="px-4 pt-3.5 pb-4 space-y-4">
-            <div>
-                <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84] px-1 mb-1.5">Money</p>
-                <nav className="rounded-[20px] border border-[#e5e5e5] bg-white overflow-hidden">
-                    {MONEY_ITEMS.map(({ to, label, icon: Icon }, i) => (
-                        <NavLink
-                            key={to}
-                            to={to}
-                            className={cn(ROW, i > 0 && 'border-t border-[#f2f2f0]')}
-                        >
-                            <Icon className="w-4 h-4 text-[#8a8a84] shrink-0" strokeWidth={1.75} />
-                            <span className="flex-1">{label}</span>
-                            <ChevronRight className="w-4 h-4 text-[#c4c4be]" />
-                        </NavLink>
-                    ))}
-                </nav>
-            </div>
+            <div className="lg:grid lg:grid-cols-2 lg:gap-4 lg:items-start space-y-4 lg:space-y-0">
+                <div>
+                    <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84] px-1 mb-1.5">Money</p>
+                    <nav className="rounded-[20px] border border-[#e5e5e5] bg-white overflow-hidden">
+                        {MONEY_ITEMS.map(({ to, label, icon: Icon }, i) => (
+                            <NavLink
+                                key={to}
+                                to={to}
+                                className={cn(ROW, i > 0 && 'border-t border-[#f2f2f0]')}
+                            >
+                                <Icon className="w-4 h-4 text-[#8a8a84] shrink-0" strokeWidth={1.75} />
+                                <span className="flex-1">{label}</span>
+                                <ChevronRight className="w-4 h-4 text-[#c4c4be]" />
+                            </NavLink>
+                        ))}
+                    </nav>
+                </div>
 
-            <div>
-                <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84] px-1 mb-1.5">Settings</p>
-                <nav className="rounded-[20px] border border-[#e5e5e5] bg-white overflow-hidden">
-                    {SETTINGS_ITEMS.map(({ to, label, icon: Icon }, i) => (
-                        <NavLink
-                            key={to}
-                            to={to}
-                            className={cn(ROW, i > 0 && 'border-t border-[#f2f2f0]')}
-                        >
-                            <Icon className="w-4 h-4 text-[#8a8a84] shrink-0" strokeWidth={1.75} />
-                            <span className="flex-1">{label}</span>
-                            <ChevronRight className="w-4 h-4 text-[#c4c4be]" />
-                        </NavLink>
-                    ))}
+                <div>
+                    <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84] px-1 mb-1.5">Settings</p>
+                    <nav className="rounded-[20px] border border-[#e5e5e5] bg-white overflow-hidden">
+                        {SETTINGS_ITEMS.map(({ to, label, icon: Icon }, i) => (
+                            <NavLink
+                                key={to}
+                                to={to}
+                                className={cn(ROW, i > 0 && 'border-t border-[#f2f2f0]')}
+                            >
+                                <Icon className="w-4 h-4 text-[#8a8a84] shrink-0" strokeWidth={1.75} />
+                                <span className="flex-1">{label}</span>
+                                <ChevronRight className="w-4 h-4 text-[#c4c4be]" />
+                            </NavLink>
+                        ))}
 
-                    {activePeriod && (
-                        <button
-                            onClick={() => setClosePeriodDrawer(true)}
-                            className={cn(ROW, 'w-full border-t border-[#f2f2f0]')}
-                        >
-                            <CalendarCheck className="w-4 h-4 text-[#8a8a84] shrink-0" strokeWidth={1.75} />
-                            <span className="flex-1 text-left">Close Period</span>
-                            <ChevronRight className="w-4 h-4 text-[#c4c4be]" />
-                        </button>
-                    )}
-                </nav>
+                        {activePeriod && (
+                            <button
+                                onClick={() => setClosePeriodDrawer(true)}
+                                className={cn(ROW, 'w-full border-t border-[#f2f2f0]')}
+                            >
+                                <CalendarCheck className="w-4 h-4 text-[#8a8a84] shrink-0" strokeWidth={1.75} />
+                                <span className="flex-1 text-left">Close Period</span>
+                                <ChevronRight className="w-4 h-4 text-[#c4c4be]" />
+                            </button>
+                        )}
+                    </nav>
+                </div>
             </div>
 
             <button

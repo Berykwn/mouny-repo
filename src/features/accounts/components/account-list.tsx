@@ -17,13 +17,23 @@ const TYPE_LABEL = {
 
 export function AccountList({ accounts, onEdit, onDeleteRequest }: AccountListProps) {
     return (
-        <div className="rounded-[20px] border border-[#e5e5e5] bg-white overflow-hidden">
-            <div className="divide-y divide-[#f2f2f0]">
+        <div className={cn(
+            'rounded-[20px] border border-[#e5e5e5] bg-white overflow-hidden',
+            'lg:bg-transparent lg:border-0 lg:rounded-none lg:overflow-visible',
+            'lg:grid lg:grid-cols-2 lg:gap-3',
+        )}>
+            <div className="divide-y divide-[#f2f2f0] lg:divide-y-0 lg:contents">
                 {accounts.map((acc) => {
                     const label = TYPE_LABEL[acc.type as AccountType]
 
                     return (
-                        <div key={acc.id} className="flex items-center gap-3 px-4 py-3">
+                        <div
+                            key={acc.id}
+                            className={cn(
+                                'flex items-center gap-3 px-4 py-3',
+                                'lg:rounded-[16px] lg:border lg:border-[#e5e5e5] lg:bg-white',
+                            )}
+                        >
                             <div className="w-9 h-9 rounded-[10px] bg-[#f4f4f2] flex items-center justify-center shrink-0">
                                 <AccountTypeIcon type={acc.type} className="w-4 h-4 text-[#8a8a84]" />
                             </div>

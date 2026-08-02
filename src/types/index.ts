@@ -31,6 +31,8 @@ export type DebtType = 'debt' | 'receivable'
 export type DebtStatus = 'active' | 'paid'
 export type WishListPriority = 'low' | 'medium' | 'high'
 
+export const WISH_LIST_UNITS = ['gram', 'kg', 'ons', 'pcs', 'USD'] as const
+
 export type TransactionWithDetails = Transaction & {
     account: Pick<Account, 'id' | 'name' | 'type'>
     category: Pick<Category, 'id' | 'name' | 'color' | 'icon'> | null

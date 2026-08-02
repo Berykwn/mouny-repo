@@ -56,10 +56,18 @@ export function AddTransactionFlow({ payPeriodId, periodStart, periodEnd, defaul
     // the on-screen keyboard opens, so the sheet doesn't shrink and its bottom
     // (Note field, Save button) ends up hidden behind the keyboard. Tracking
     // the visual viewport lets us shrink the sheet to what's actually visible.
+    // Desktop (lg:) renders this as a bounded centered modal instead, so the
+    // viewport-height override must not apply there or it fights `lg:h-auto`.
     useEffect(() => {
         const vv = window.visualViewport
         if (!vv) return
-        const update = () => setViewportHeight(vv.height)
+        const update = () => {
+            if (window.matchMedia('(min-width: 1024px)').matches) {
+                setViewportHeight(null)
+                return
+            }
+            setViewportHeight(vv.height)
+        }
         update()
         vv.addEventListener('resize', update)
         return () => vv.removeEventListener('resize', update)
@@ -139,44 +147,55 @@ export function AddTransactionFlow({ payPeriodId, periodStart, periodEnd, defaul
     }
 
     return (
-        <div
-            className={cn(
-                'fixed inset-x-0 top-0 z-50 bg-white flex flex-col pt-[env(safe-area-inset-top)] h-[100dvh]',
-                'transition-transform duration-300 ease-out',
-                mounted ? 'translate-y-0' : 'translate-y-full'
-            )}
-            style={viewportHeight != null ? { height: viewportHeight } : undefined}
-        >
-            {step === 1 ? (
-                <AmountStep
-                    type={type}
-                    amount={amount}
-                    onTypeChange={setType}
-                    onAmountChange={setAmount}
-                    onNext={() => setStep(2)}
-                    onClose={onClose}
-                />
-            ) : (
-                <DetailsStep
-                    type={type}
-                    amount={amount}
-                    accounts={accounts}
-                    accountId={accountId}
-                    onAccountChange={setAccountId}
-                    categories={categories}
-                    categoryId={categoryId}
-                    onCategoryChange={setCategoryId}
-                    date={date}
-                    periodStart={periodStart}
-                    maxDate={maxDate}
-                    onDateChange={setDate}
-                    note={note}
-                    onNoteChange={setNote}
-                    onBack={() => setStep(1)}
-                    onSubmit={handleSubmit}
-                    loading={loading}
-                />
-            )}
-        </div>
+        <>
+            <div
+                className="hidden lg:block fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
+                onClick={onClose}
+            />
+
+            <div
+                className={cn(
+                    'fixed inset-x-0 top-0 z-50 bg-white flex flex-col pt-[env(safe-area-inset-top)] h-[100dvh]',
+                    'transition-[transform,opacity] duration-300 ease-out',
+                    mounted ? 'translate-y-0' : 'translate-y-full',
+                    // Desktop: centered modal instead of a full-screen takeover
+                    'lg:inset-auto lg:left-1/2 lg:-translate-x-1/2 lg:top-1/2 lg:pt-0 lg:translate-y-[-50%]',
+                    'lg:h-auto lg:max-h-[85vh] lg:w-full lg:max-w-md lg:rounded-[20px] lg:border lg:border-[#e5e5e5] lg:shadow-xl',
+                    mounted ? 'lg:opacity-100' : 'lg:opacity-0',
+                )}
+                style={viewportHeight != null ? { height: viewportHeight } : undefined}
+            >
+                {step === 1 ? (
+                    <AmountStep
+                        type={type}
+                        amount={amount}
+                        onTypeChange={setType}
+                        onAmountChange={setAmount}
+                        onNext={() => setStep(2)}
+                        onClose={onClose}
+                    />
+                ) : (
+                    <DetailsStep
+                        type={type}
+                        amount={amount}
+                        accounts={accounts}
+                        accountId={accountId}
+                        onAccountChange={setAccountId}
+                        categories={categories}
+                        categoryId={categoryId}
+                        onCategoryChange={setCategoryId}
+                        date={date}
+                        periodStart={periodStart}
+                        maxDate={maxDate}
+                        onDateChange={setDate}
+                        note={note}
+                        onNoteChange={setNote}
+                        onBack={() => setStep(1)}
+                        onSubmit={handleSubmit}
+                        loading={loading}
+                    />
+                )}
+            </div>
+        </>
     )
 }

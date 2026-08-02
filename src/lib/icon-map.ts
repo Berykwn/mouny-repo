@@ -4,6 +4,9 @@ import {
     UtensilsCrossed, ShoppingCart, Car, Truck, ShoppingBag,
     Film, Plane, Repeat, Heart, Book, ArrowDownCircle,
     PiggyBank, Bike, ParkingCircle, ArrowUpCircle, RefreshCw,
+    Smartphone, Coffee, PawPrint, Baby, Pill, Dumbbell,
+    WashingMachine, Receipt, Coins, Umbrella, GraduationCap,
+    Bus, Scissors, Gamepad2, Landmark, Music,
     type LucideProps
 } from 'lucide-react'
 import type { ElementType } from 'react'
@@ -37,4 +40,20 @@ export const ICON_MAP: Record<string, ElementType<LucideProps>> = {
     'parking-circle': ParkingCircle,
     'arrow-up-circle': ArrowUpCircle,
     'refresh-cw': RefreshCw,
+    'smartphone': Smartphone,
+    'coffee': Coffee,
+    'paw-print': PawPrint,
+    'baby': Baby,
+    'pill': Pill,
+    'dumbbell': Dumbbell,
+    'washing-machine': WashingMachine,
+    'receipt': Receipt,
+    'coins': Coins,
+    'umbrella': Umbrella,
+    'graduation-cap': GraduationCap,
+    'bus': Bus,
+    'scissors': Scissors,
+    'gamepad-2': Gamepad2,
+    'landmark': Landmark,
+    'music': Music,
 }

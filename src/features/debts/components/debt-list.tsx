@@ -3,6 +3,7 @@ import type { DebtWithAccount } from '@/types'
 import { DollarSign, Trash2, HandCoins } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import { ProgressBar } from '@/components/progress-bar'
 
 interface DebtListProps {
     debts: DebtWithAccount[]
@@ -13,7 +14,7 @@ interface DebtListProps {
 
 export function DebtList({ debts, onDelete, onPay, onCollect }: DebtListProps) {
     return (
-        <div className="space-y-3">
+        <div className="space-y-3 lg:grid lg:grid-cols-2 lg:gap-3 lg:space-y-0">
             {debts.map((debt) => {
                 const paidAmount = debt.total_amount - debt.remaining_amount
                 const paidPercent = Math.round((paidAmount / debt.total_amount) * 100)
@@ -55,12 +56,7 @@ export function DebtList({ debts, onDelete, onPay, onCollect }: DebtListProps) {
                         </div>
 
                         <div className="space-y-1">
-                            <div className="h-1 bg-[#f2f2f0] rounded-full overflow-hidden">
-                                <div
-                                    className="h-full rounded-full transition-all"
-                                    style={{ width: `${paidPercent}%`, backgroundColor: isDebt ? '#dc2626' : '#059669' }}
-                                />
-                            </div>
+                            <ProgressBar percent={paidPercent} color={isDebt ? '#dc2626' : '#059669'} />
                             <p className="text-[11px] text-[#8a8a84]">{paidPercent}% {isDebt ? 'paid' : 'collected'}</p>
                             {debt.notes && (
                                 <div className='pt-2.5 pb-1.5'>

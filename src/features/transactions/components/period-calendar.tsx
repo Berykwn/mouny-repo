@@ -87,7 +87,7 @@ function DayTransactions({
                                 backgroundColor: `${tx.category?.color ?? '#e5e7eb'}25`,
                             }}
                         >
-                            {tx.category?.icon ? (
+                            {tx.category ? (
                                 <CategoryIcon
                                     name={tx.category.icon}
                                     className="w-[15px] h-[15px]"
@@ -227,7 +227,7 @@ export function PeriodCalendar({
     const rangeCaption = rangeLabel(periodStart, periodEnd)
 
     return (
-        <div className="space-y-3 pt-3">
+        <div className="space-y-3 pt-3 lg:grid lg:grid-cols-[1fr_360px] lg:gap-4 lg:items-start lg:space-y-0">
             <div className={cn(
                 'rounded-[20px] border border-[#e5e5e5] bg-white pt-[18px] pb-4',
                 mode === 'month' ? 'px-4' : 'px-0',
@@ -344,7 +344,7 @@ export function PeriodCalendar({
                 )}
             </div>
 
-            <div className="rounded-2xl border border-neutral-200 bg-card">
+            <div className="rounded-2xl border border-neutral-200 bg-card lg:sticky lg:top-4">
                 <div className="flex items-center justify-between p-4">
                     <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">
                         {new Date(validSelected + 'T00:00:00').toLocaleDateString('en-GB', {

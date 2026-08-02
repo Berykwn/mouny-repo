@@ -170,9 +170,9 @@ export function OverviewTransaction({
     const remainingIsNegative = remaining < 0
 
     return (
-        <div className="space-y-2.5 mt-1.5">
+        <div className="space-y-2.5 mt-1.5 lg:grid lg:grid-cols-2 lg:gap-4 lg:space-y-0 lg:items-start">
             <div className={cn(
-                'rounded-[20px] border border-[#e5e5e5] bg-white p-4 space-y-3',
+                'rounded-[20px] border border-[#e5e5e5] bg-white p-4 space-y-3 lg:col-span-2',
                 remainingIsNegative && 'border-[#f3c5c5]'
             )}>
                 <div>
@@ -282,15 +282,17 @@ export function OverviewTransaction({
                 </button>
             )}
 
-            <HealthAndTrendSection
-                score={score}
-                label={healthLabel}
-                reasons={healthReasons}
-                trendPeriods={trendPeriods}
-            />
+            <div className="lg:col-span-2">
+                <HealthAndTrendSection
+                    score={score}
+                    label={healthLabel}
+                    reasons={healthReasons}
+                    trendPeriods={trendPeriods}
+                />
+            </div>
 
             {biggestDriver && driverMultiple && driverMultiple > 1.2 && (
-                <div className="rounded-[20px] border border-[#e5e5e5] bg-white px-4 py-3.5">
+                <div className="rounded-[20px] border border-[#e5e5e5] bg-white px-4 py-3.5 lg:col-span-2">
                     <p className="text-[11px] text-[#8a8a84] italic leading-relaxed border-l-2 border-[#e5e5e5] pl-3">
                         <span className="text-[#252525] not-italic font-medium">{biggestDriver.name}</span>
                         {' '}up {driverMultiple}× vs last period — biggest driver this month.
@@ -299,7 +301,9 @@ export function OverviewTransaction({
             )}
 
             {transactions.length > 0 && (
-                <SpendingBreakdown transactions={transactions} />
+                <div className="lg:col-span-2">
+                    <SpendingBreakdown transactions={transactions} />
+                </div>
             )}
         </div>
     )

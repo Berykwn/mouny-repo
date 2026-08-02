@@ -1,14 +1,16 @@
 import { useState } from 'react'
 import { formatCurrency } from '@/lib/helpers'
 import type { WishListItem } from '@/types'
-import type { WishListAnalysis } from '@/services/wish-list.service'
-import { Trash2 } from 'lucide-react'
+import { Trash2, PiggyBank, ShoppingBag, Pencil } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
+import { ProgressBar } from '@/components/progress-bar'
 
 interface WishListItemsProps {
   items: WishListItem[]
-  analysis: Record<string, WishListAnalysis>
   onBuy: (item: WishListItem) => void
+  onContribute: (item: WishListItem) => void
+  onEdit: (item: WishListItem) => void
   onDeleteRequest: (id: string) => void
 }
 
@@ -28,7 +30,7 @@ const PRIORITY_COLOR: Record<string, string> = {
 
 const PRIORITY_ORDER: Record<string, number> = { high: 0, medium: 1, low: 2 }
 
-export function WishListItems({ items, analysis, onBuy, onDeleteRequest }: WishListItemsProps) {
+export function WishListItems({ items, onBuy, onContribute, onEdit, onDeleteRequest }: WishListItemsProps) {
   const [filter, setFilter] = useState<Filter>('all')
 
   const counts = {
@@ -70,66 +72,128 @@ export function WishListItems({ items, analysis, onBuy, onDeleteRequest }: WishL
       </div>
 
       {/* Item list */}
-      <div className="space-y-2.5">
+      <div className="space-y-2.5 lg:grid lg:grid-cols-2 lg:gap-3 lg:space-y-0">
         {filtered.map((item) => {
-          const a = analysis[item.id]
+          const isUOM = !!item.quantity
+          const hasTarget = isUOM
+            ? item.quantity! > 0
+            : !!item.estimated_price && item.estimated_price > 0
+          const percent = hasTarget
+            ? Math.round(isUOM
+              ? ((item.saved_quantity ?? 0) / item.quantity!) * 100
+              : (item.saved_amount / item.estimated_price!) * 100)
+            : 0
+          const ready = hasTarget && (isUOM
+            ? (item.saved_quantity ?? 0) >= item.quantity!
+            : item.saved_amount >= item.estimated_price!)
 
           return (
             <div
               key={item.id}
               className="rounded-[20px] border border-[#e5e5e5] bg-white px-4 py-3.5 space-y-2.5"
             >
-              {/* Header: title + badges */}
-              <div className="flex items-center gap-2 min-w-0">
-                <p className="text-[13px] font-semibold text-[#252525] truncate flex-1">{item.name}</p>
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <span className={cn(
-                    'text-[10px] font-semibold px-2 py-0.5 rounded-full',
-                    PRIORITY_COLOR[item.priority ?? 'low']
-                  )}>
-                    {PRIORITY_LABEL[item.priority ?? 'low']}
-                  </span>
-                  {a && a.price > 0 && (
+              {/* Header: title + priority | saved of target */}
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="text-[13px] font-semibold text-[#252525] truncate">{item.name}</p>
                     <span className={cn(
-                      'text-[10px] font-semibold px-2 py-0.5 rounded-full',
-                      a.canAfford ? 'bg-[#f2f6ea] text-[#4d7a1d]' : 'bg-[#fef2f2] text-[#dc2626]'
+                      'text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0',
+                      PRIORITY_COLOR[item.priority ?? 'low']
                     )}>
-                      {a.canAfford ? 'Can afford' : `-${formatCurrency(a.shortfall)}`}
+                      {PRIORITY_LABEL[item.priority ?? 'low']}
                     </span>
+                  </div>
+                  {item.quantity && item.unit && (
+                    <p className="text-[11px] text-[#8a8a84] mt-0.5 tabular-nums">
+                      {item.quantity} {item.unit} &times; {formatCurrency(item.price_per_unit ?? 0)}
+                    </p>
+                  )}
+                </div>
+                <div className="text-right shrink-0">
+                  {isUOM ? (
+                    <>
+                      <p className="text-[13px] font-medium text-[#252525] tabular-nums">
+                        {item.saved_quantity ?? 0} {item.unit}
+                      </p>
+                      {hasTarget && (
+                        <p className="text-[11px] text-[#8a8a84] tabular-nums">of {item.quantity} {item.unit}</p>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-[13px] font-medium text-[#252525] tabular-nums">
+                        {formatCurrency(item.saved_amount)}
+                      </p>
+                      {hasTarget && (
+                        <p className="text-[11px] text-[#8a8a84] tabular-nums">of {formatCurrency(item.estimated_price!)}</p>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
+
+              {/* Progress toward target */}
+              {hasTarget ? (
+                <div className="space-y-1">
+                  <ProgressBar percent={percent} />
+                  {ready ? (
+                    <span className="inline-block text-[10.5px] font-semibold px-2 py-0.5 rounded-full bg-[#f2f6ea] text-[#4d7a1d]">
+                      {isUOM ? 'Selesai' : 'Ready to buy'}
+                    </span>
+                  ) : (
+                    <p className="text-[11px] text-[#8a8a84]">
+                      {percent}% {isUOM ? 'terkumpul' : 'saved'}
+                      {isUOM && ` · ${formatCurrency(item.saved_amount)} spent`}
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <p className="text-[11px] text-[#8a8a84]">No target price set</p>
+              )}
 
               {/* Body: notes — only if exists */}
               {item.notes && (
                 <p className="text-[11.5px] text-[#8a8a84] line-clamp-2">{item.notes}</p>
               )}
 
-              {/* Footer: price + salary label | Buy + Delete */}
-              <div className="flex items-center justify-between gap-3 pt-0.5">
-                <div className="flex items-baseline gap-1.5 min-w-0">
-                  <p className="text-[13px] font-medium text-[#252525] shrink-0">
-                    {item.estimated_price ? formatCurrency(item.estimated_price) : '—'}
-                  </p>
-                  {a?.salaryLabel && (
-                    <span className="text-[10px] text-[#8a8a84] truncate">· {a.salaryLabel}</span>
-                  )}
-                </div>
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <button
-                    onClick={() => onBuy(item)}
-                    className="text-[11px] font-medium px-3 py-1 rounded-full border border-[#e5e5e5] text-[#252525] hover:bg-[#f4f4f2] transition-colors"
-                  >
-                    Buy
-                  </button>
-                  <button
-                    onClick={() => onDeleteRequest(item.id)}
-                    aria-label={`Remove ${item.name} from wish list`}
-                    className="w-7 h-7 rounded-lg bg-[#fef2f2] flex items-center justify-center"
-                  >
-                    <Trash2 className="w-3.5 h-3.5 text-[#dc2626]" />
-                  </button>
-                </div>
+              {/* Footer: actions */}
+              <div className="flex items-center justify-end gap-1.5 pt-0.5">
+                {isUOM ? (
+                  <Button variant="outline" size="sm" className="rounded-[10px]" onClick={() => onContribute(item)}>
+                    <PiggyBank className="w-3.5 h-3.5 mr-1 mt-0.5" />
+                    Cicil
+                  </Button>
+                ) : (
+                  <>
+                    <Button variant="outline" size="sm" className="rounded-[10px]" onClick={() => onContribute(item)}>
+                      <PiggyBank className="w-3.5 h-3.5 mr-1 mt-0.5" />
+                      Add funds
+                    </Button>
+                    <Button variant="outline" size="sm" className="rounded-[10px]" onClick={() => onBuy(item)}>
+                      <ShoppingBag className="w-3.5 h-3.5 mr-1 mt-0.5" />
+                      Buy
+                    </Button>
+                  </>
+                )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="rounded-[10px]"
+                  onClick={() => onEdit(item)}
+                  aria-label={`Edit ${item.name}`}
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="rounded-[10px]"
+                  onClick={() => onDeleteRequest(item.id)}
+                  aria-label={`Remove ${item.name} from wish list`}
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </Button>
               </div>
             </div>
           )

@@ -71,7 +71,7 @@ export function CategoryList({ categories, onEdit, onDeleteRequest }: CategoryLi
     }
 
     return (
-        <div className="space-y-4">
+        <div className="space-y-4 lg:grid lg:grid-cols-2 lg:gap-4 lg:items-start lg:space-y-0">
             <Section label="Expenses" items={expense} />
             <Section label="Income" items={income} />
         </div>
