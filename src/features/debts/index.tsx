@@ -14,6 +14,7 @@ import type { DebtWithAccount } from '@/types'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import { LoadingContent } from '@/components/loading-content'
+import { PageHeader } from '@/components/page-header'
 
 type FilterType = 'all' | 'debt' | 'receivable'
 
@@ -83,139 +84,142 @@ export default function DebtsPage() {
     }
 
     return (
-        <section className="px-4 pb-4 space-y-4">
-            {loading ? <LoadingContent /> : (
-                <>
-                    <div className="rounded-[20px] border border-[#e5e5e5] bg-white p-4 space-y-3">
-                        <div className="flex justify-between items-start">
-                            <div>
-                                <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84]">Net position</p>
-                                <p className={cn(
-                                    'text-[32px] font-medium tracking-[-0.02em] leading-none mt-1',
-                                    net > 0 ? 'text-[#059669]' : net < 0 ? 'text-[#dc2626]' : 'text-[#252525]'
-                                )}>
-                                    {net >= 0 ? '+' : ''}{formatCurrency(net)}
-                                </p>
-                            </div>
-                            <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => setAddDrawerOpen(true)}
-                                disabled={!periodId}
-                            >
-                                <Plus className="w-3.5 h-3.5" /> Debt
-                            </Button>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-3 pt-2 border-t border-[#f2f2f0]">
-                            <div>
-                                <p className="text-[11px] text-[#8a8a84]">Debt</p>
-                                <p className="text-[13px] font-medium text-[#dc2626]">{formatCurrency(totalOwed)}</p>
-                            </div>
-                            <div>
-                                <p className="text-[11px] text-[#8a8a84]">Receivable</p>
-                                <p className="text-[13px] font-medium text-[#059669]">{formatCurrency(totalReceivable)}</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    {debts.length > 0 && (
-                        <div className="flex gap-2 flex-wrap">
-                            {(Object.keys(filterLabels) as FilterType[]).map((f) => (
-                                <button
-                                    key={f}
-                                    onClick={() => setFilter(f)}
-                                    className={cn(
-                                        'px-3 py-1.5 rounded-full text-[12px] font-medium border transition-colors',
-                                        filter === f
-                                            ? 'bg-[#f4f4f2] text-[#252525] border-[#e5e5e5]'
-                                            : 'bg-white text-[#8a8a84] border-[#e5e5e5] hover:text-[#252525]'
-                                    )}
+        <>
+            <PageHeader title="Debts" />
+            <section className="px-4 pb-4 space-y-4">
+                {loading ? <LoadingContent /> : (
+                    <>
+                        <div className="rounded-[20px] border border-[#e5e5e5] bg-white p-4 space-y-3 lg:max-w-md">
+                            <div className="flex justify-between items-start">
+                                <div>
+                                    <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84]">Net position</p>
+                                    <p className={cn(
+                                        'text-[32px] lg:text-[26px] font-medium tracking-[-0.02em] leading-none mt-1',
+                                        net > 0 ? 'text-[#059669]' : net < 0 ? 'text-[#dc2626]' : 'text-[#252525]'
+                                    )}>
+                                        {net >= 0 ? '+' : ''}{formatCurrency(net)}
+                                    </p>
+                                </div>
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => setAddDrawerOpen(true)}
+                                    disabled={!periodId}
                                 >
-                                    {filterLabels[f]}
-                                </button>
-                            ))}
-                        </div>
-                    )}
+                                    <Plus className="w-3.5 h-3.5" /> Debt
+                                </Button>
+                            </div>
 
-                    {debts.length === 0 ? (
-                        <button
-                            type="button"
-                            onClick={() => setAddDrawerOpen(true)}
-                            className="w-full rounded-[20px] border border-[#e5e5e5] bg-white p-4 flex items-center gap-3 text-left hover:bg-[#fbfbfa] transition-colors"
-                        >
-                            <div className="w-9 h-9 rounded-[10px] bg-[#f4f4f2] flex items-center justify-center shrink-0">
-                                <HandCoins className="w-4 h-4 text-[#8a8a84]" />
+                            <div className="grid grid-cols-2 gap-3 pt-2 border-t border-[#f2f2f0]">
+                                <div>
+                                    <p className="text-[11px] text-[#8a8a84]">Debt</p>
+                                    <p className="text-[13px] font-medium text-[#dc2626]">{formatCurrency(totalOwed)}</p>
+                                </div>
+                                <div>
+                                    <p className="text-[11px] text-[#8a8a84]">Receivable</p>
+                                    <p className="text-[13px] font-medium text-[#059669]">{formatCurrency(totalReceivable)}</p>
+                                </div>
                             </div>
-                            <div className="flex-1 min-w-0">
-                                <p className="text-[13px] font-medium text-[#252525]">No debts yet</p>
-                                <p className="text-[11.5px] text-[#8a8a84] mt-0.5">Tap to track money you owe or are owed</p>
+                        </div>
+
+                        {debts.length > 0 && (
+                            <div className="flex gap-2 flex-wrap">
+                                {(Object.keys(filterLabels) as FilterType[]).map((f) => (
+                                    <button
+                                        key={f}
+                                        onClick={() => setFilter(f)}
+                                        className={cn(
+                                            'px-3 py-1.5 rounded-full text-[12px] font-medium border transition-colors',
+                                            filter === f
+                                                ? 'bg-[#f4f4f2] text-[#252525] border-[#e5e5e5]'
+                                                : 'bg-white text-[#8a8a84] border-[#e5e5e5] hover:text-[#252525]'
+                                        )}
+                                    >
+                                        {filterLabels[f]}
+                                    </button>
+                                ))}
                             </div>
-                        </button>
-                    ) : (
-                        <DebtList
-                            debts={filteredDebts}
-                            onDelete={setDeletingDebt}
-                            onPay={setPayingDebt}
-                            onCollect={setCollectingDebt}
+                        )}
+
+                        {debts.length === 0 ? (
+                            <button
+                                type="button"
+                                onClick={() => setAddDrawerOpen(true)}
+                                className="w-full rounded-[20px] border border-[#e5e5e5] bg-white p-4 flex items-center gap-3 text-left hover:bg-[#fbfbfa] transition-colors"
+                            >
+                                <div className="w-9 h-9 rounded-[10px] bg-[#f4f4f2] flex items-center justify-center shrink-0">
+                                    <HandCoins className="w-4 h-4 text-[#8a8a84]" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-[13px] font-medium text-[#252525]">No debts yet</p>
+                                    <p className="text-[11.5px] text-[#8a8a84] mt-0.5">Tap to track money you owe or are owed</p>
+                                </div>
+                            </button>
+                        ) : (
+                            <DebtList
+                                debts={filteredDebts}
+                                onDelete={setDeletingDebt}
+                                onPay={setPayingDebt}
+                                onCollect={setCollectingDebt}
+                            />
+                        )}
+                    </>
+                )}
+
+                <BottomDrawer
+                    open={addDrawerOpen}
+                    onClose={() => setAddDrawerOpen(false)}
+                    title="Add Debt"
+                >
+                    {periodId && periodStartDate && (
+                        <DebtForm
+                            payPeriodId={periodId}
+                            periodStartDate={periodStartDate}
+                            onSuccess={() => { setAddDrawerOpen(false); load() }}
                         />
                     )}
-                </>
-            )}
+                </BottomDrawer>
 
-            <BottomDrawer
-                open={addDrawerOpen}
-                onClose={() => setAddDrawerOpen(false)}
-                title="Add Debt"
-            >
-                {periodId && periodStartDate && (
-                    <DebtForm
-                        payPeriodId={periodId}
-                        periodStartDate={periodStartDate}
-                        onSuccess={() => { setAddDrawerOpen(false); load() }}
-                    />
-                )}
-            </BottomDrawer>
+                <BottomDrawer
+                    open={!!payingDebt}
+                    onClose={() => setPayingDebt(null)}
+                    title="Record Payment"
+                >
+                    {payingDebt && periodId && periodStartDate && (
+                        <PayDebtForm
+                            debt={payingDebt}
+                            payPeriodId={periodId}
+                            periodStartDate={periodStartDate}
+                            onSuccess={() => { setPayingDebt(null); load() }}
+                        />
+                    )}
+                </BottomDrawer>
 
-            <BottomDrawer
-                open={!!payingDebt}
-                onClose={() => setPayingDebt(null)}
-                title="Record Payment"
-            >
-                {payingDebt && periodId && periodStartDate && (
-                    <PayDebtForm
-                        debt={payingDebt}
-                        payPeriodId={periodId}
-                        periodStartDate={periodStartDate}
-                        onSuccess={() => { setPayingDebt(null); load() }}
-                    />
-                )}
-            </BottomDrawer>
+                <BottomDrawer
+                    open={!!collectingDebt}
+                    onClose={() => setCollectingDebt(null)}
+                    title="Record Collection"
+                >
+                    {collectingDebt && periodId && periodStartDate && (
+                        <PayReceivableForm
+                            debt={collectingDebt}
+                            payPeriodId={periodId}
+                            periodStartDate={periodStartDate}
+                            onSuccess={() => { setCollectingDebt(null); load() }}
+                        />
+                    )}
+                </BottomDrawer>
 
-            <BottomDrawer
-                open={!!collectingDebt}
-                onClose={() => setCollectingDebt(null)}
-                title="Record Collection"
-            >
-                {collectingDebt && periodId && periodStartDate && (
-                    <PayReceivableForm
-                        debt={collectingDebt}
-                        payPeriodId={periodId}
-                        periodStartDate={periodStartDate}
-                        onSuccess={() => { setCollectingDebt(null); load() }}
-                    />
-                )}
-            </BottomDrawer>
-
-            <ConfirmDrawer
-                open={!!deletingDebt}
-                title="Delete Debt"
-                description={deleteDescription}
-                confirmLabel="Delete"
-                loading={deleteLoading}
-                onConfirm={handleDeleteConfirm}
-                onClose={() => setDeletingDebt(null)}
-            />
-        </section>
+                <ConfirmDrawer
+                    open={!!deletingDebt}
+                    title="Delete Debt"
+                    description={deleteDescription}
+                    confirmLabel="Delete"
+                    loading={deleteLoading}
+                    onConfirm={handleDeleteConfirm}
+                    onClose={() => setDeletingDebt(null)}
+                />
+            </section>
+        </>
     )
 }

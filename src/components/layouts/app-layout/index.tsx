@@ -1,4 +1,4 @@
-import { Outlet, NavLink, useLocation } from 'react-router-dom'
+import { Outlet, NavLink } from 'react-router-dom'
 import { House, List, Wallet, Ellipsis, Plus, CreditCard, ShoppingBag, Tag, History } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useState, useEffect, useCallback } from 'react'
@@ -46,22 +46,7 @@ const SIDEBAR_GROUPS: { label: string | null; items: typeof NAV_ITEMS }[] = [
     },
 ]
 
-const TITLES: Record<string, string> = {
-    '/debts': 'Debts',
-    '/wish-list': 'Wishlist',
-    '/accounts': 'Accounts',
-    '/category': 'Categories',
-    '/period-history': 'Period History',
-    '/menu': 'Menu',
-}
-
-// Routes whose feature page renders its own full header (title + page-specific
-// controls), so the layout's generic title bar would otherwise duplicate it.
-const OWN_HEADER_ROUTES = ['/', '/transactions']
-
 export default function AppLayout() {
-    const location = useLocation()
-
     const [activePeriod, setActivePeriod] = useState<PayPeriod | null>(null)
     const [addDrawerOpen, setAddDrawerOpen] = useState(false)
 
@@ -77,24 +62,21 @@ export default function AppLayout() {
         setAddDrawerOpen(true)
     }, [activePeriod])
 
-    const hasOwnHeader = OWN_HEADER_ROUTES.some(path =>
-        path === '/' ? location.pathname === '/' : location.pathname.startsWith(path)
-    )
-
-    const pageTitle = Object.entries(TITLES).find(([path]) =>
-        path === '/' ? location.pathname === '/' : location.pathname.startsWith(path)
-    )?.[1] ?? 'Mouny.'
-
     return (
         <div className="min-h-[100dvh] bg-neutral-50 dark:bg-neutral-950 flex flex-col">
-
             <aside className={cn(
                 'hidden lg:flex lg:flex-col',
                 'fixed inset-y-0 left-0 z-30 w-64',
                 'bg-white dark:bg-neutral-950 border-r border-neutral-200 dark:border-neutral-800',
                 'px-4 py-6',
             )}>
-                <span className="text-[20px] font-semibold tracking-[-0.02em] text-[#252525] dark:text-white px-1">Mouny.</span>
+                <div className="flex items-center gap-2 px-1">
+                    <img src="/favicon.svg" alt="" className="w-6 h-6 shrink-0" />
+                    <span className="text-[20px] font-semibold tracking-[-0.02em] text-[#252525] dark:text-white">Mouny.</span>
+                    <span className="ml-auto px-1.5 py-0.5 rounded-md border border-[#e5e5e5] bg-[#fbfbfa] text-[10px] text-[#8a8a84] tabular-nums">
+                        v{__APP_VERSION__}
+                    </span>
+                </div>
 
                 <button
                     onClick={handleAddClick}
@@ -121,12 +103,6 @@ export default function AppLayout() {
                     <SidebarNavItem to="/menu" label="Menu" icon={Ellipsis} end={false} />
                 </div>
             </aside>
-
-            {!hasOwnHeader && (
-                <header className="bg-neutral-50 dark:bg-neutral-950 px-5 pt-[22px] pb-2.5 lg:hidden">
-                    <span className="text-[20px] font-semibold tracking-[-0.02em] text-[#252525] dark:text-white">{pageTitle}</span>
-                </header>
-            )}
 
             <main className="flex-1 overflow-y-auto pb-[calc(76px+env(safe-area-inset-bottom))] lg:pl-64 lg:pb-0">
                 <div className="lg:max-w-5xl lg:mx-auto lg:px-8 lg:py-8">

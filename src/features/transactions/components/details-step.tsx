@@ -59,7 +59,7 @@ export function DetailsStep({
     const selectedCategory = categories.find((c) => c.id === categoryId)
 
     return (
-        <div className="flex flex-col h-full">
+        <div className="flex-1 min-h-0 flex flex-col">
             <div className="grid grid-cols-[36px_1fr_36px] items-center px-5 pt-3 pb-2 shrink-0">
                 <button
                     type="button"

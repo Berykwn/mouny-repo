@@ -102,8 +102,8 @@ export default function HealthAndTrendSection({
             <div className="space-y-2">
                 <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84]">Financial Health</p>
                 <div className="flex items-end justify-between">
-                    <p className={cn('text-[22px] leading-none font-medium', scoreColor)}>{label}</p>
-                    <p className={cn('text-[32px] leading-none font-medium', scoreColor)}>{score}</p>
+                    <p className={cn('text-[22px] lg:text-[18px] leading-none font-medium', scoreColor)}>{label}</p>
+                    <p className={cn('text-[32px] lg:text-[26px] leading-none font-medium', scoreColor)}>{score}</p>
                 </div>
                 <div className="h-1 bg-[#f2f2f0] rounded-full overflow-hidden">
                     <div

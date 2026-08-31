@@ -27,7 +27,7 @@ export function SpendingBreakdown({ transactions }: SpendingBreakdownProps) {
         .slice(0, 5)
 
     return (
-        <div className="rounded-[20px] border border-[#e5e5e5] bg-white overflow-hidden">
+        <div className="rounded-[20px] border border-[#e5e5e5] bg-white overflow-hidden lg:max-w-md">
             <div className="px-4 pt-3.5 pb-0">
                 <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84]">
                     Breakdown

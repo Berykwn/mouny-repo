@@ -45,10 +45,7 @@ export default function DashboardPage() {
             <header className="flex flex-col gap-[14px] px-5 pt-[22px] bg-neutral-50 dark:bg-neutral-950">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                        <span className="text-[20px] font-semibold tracking-[-0.02em]">Mouny.</span>
-                        <span className="px-1.5 py-0.5 rounded-md border border-[#e5e5e5] bg-white text-[10px] text-[#8a8a84] tabular-nums">
-                            v{__APP_VERSION__}
-                        </span>
+                        <span className="text-[20px] font-semibold tracking-[-0.02em]">Dashboard</span>
                     </div>
                     {selectedPeriod && (
                         <PeriodChip period={selectedPeriod} onClick={() => setPeriodDrawerOpen(true)} />
@@ -56,7 +53,7 @@ export default function DashboardPage() {
                 </div>
             </header>
 
-            <section className="px-4 pb-4 pt-3.5 space-y-4">
+            <section className="px-4 pb-4 pt-2.5 space-y-4">
                 {periodLoading ? <LoadingContent /> : (
                     <>
                         {!selectedPeriod && (

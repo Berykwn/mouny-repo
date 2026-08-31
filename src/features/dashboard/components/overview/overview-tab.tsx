@@ -178,7 +178,7 @@ export function OverviewTransaction({
                 <div>
                     <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84] mb-1.5">Remaining</p>
                     <p className={cn(
-                        'text-[44px] leading-none tracking-tight font-medium',
+                        'text-[44px] lg:text-[36px] leading-none tracking-tight font-medium',
                         remainingIsNegative ? 'text-[#dc2626]' : 'text-[#252525]'
                     )}>
                         {formatCurrency(remaining)}

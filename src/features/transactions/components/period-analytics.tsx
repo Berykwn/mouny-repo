@@ -353,7 +353,7 @@ export function PeriodAnalytics({ transactions, period, previousSummary, totalBa
       <div className="rounded-[20px] border border-[#e5e5e5] bg-white p-4 lg:col-span-2">
         <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84] mb-1">Net this period</p>
         <p className={cn(
-          'text-[32px] font-medium tracking-[-0.02em] leading-none mb-1',
+          'text-[32px] lg:text-[26px] font-medium tracking-[-0.02em] leading-none mb-1',
           net < 0 ? 'text-[#dc2626]' : 'text-[#252525]'
         )}>
           {net >= 0 ? '+' : ''}{formatCurrency(net)}
