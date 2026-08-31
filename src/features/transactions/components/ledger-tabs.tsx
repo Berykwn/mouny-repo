@@ -1,6 +1,6 @@
 import { cn } from '@/lib/utils'
 
-export type LedgerTab = 'calendar' | 'analytics'
+export type LedgerTab = 'calendar' | 'analytics' | 'all'
 
 interface LedgerTabsProps {
     active: LedgerTab
@@ -29,9 +29,17 @@ export function LedgerTabs({ active, onChange }: LedgerTabsProps) {
                     {tab.label}
                 </button>
             ))}
-            <span className="pb-2.5 text-[14px] text-[#9a9a94] cursor-not-allowed select-none">
+            <button
+                onClick={() => onChange('all')}
+                className={cn(
+                    'hidden lg:inline-flex pb-2.5 -mb-px text-[14px]',
+                    active === 'all'
+                        ? 'font-semibold text-[#252525] border-b-2 border-[#252525]'
+                        : 'text-[#9a9a94]'
+                )}
+            >
                 All
-            </span>
+            </button>
         </div>
     )
 }

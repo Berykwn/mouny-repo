@@ -82,6 +82,35 @@ export const transactionsService = {
         }
     },
 
+    async removeMany(ids: string[]): Promise<ServiceResult<null>> {
+        try {
+            const { error } = await supabase
+                .from('transactions')
+                .delete()
+                .in('id', ids)
+
+            if (error) throw error
+            return { data: null, error: null }
+        } catch (err) {
+            return { data: null, error: handleError(err) }
+        }
+    },
+
+    async updateMany(ids: string[], input: Partial<CreateTransactionInput>): Promise<ServiceResult<Transaction[]>> {
+        try {
+            const { data, error } = await supabase
+                .from('transactions')
+                .update(input)
+                .in('id', ids)
+                .select()
+
+            if (error) throw error
+            return { data, error: null }
+        } catch (err) {
+            return { data: null, error: handleError(err) }
+        }
+    },
+
     async getPeriodSummary(periodId: string): Promise<ServiceResult<{
         income: number
         expense: number

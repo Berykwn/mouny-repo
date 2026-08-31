@@ -6,6 +6,8 @@ import { PeriodAnalytics } from './components/period-analytics'
 import { PeriodCalendar } from './components/period-calendar'
 import { PeriodChip } from './components/period-chip'
 import { LedgerTabs, type LedgerTab } from './components/ledger-tabs'
+import { TransactionListView } from './components/transaction-list-view'
+import { BulkCategoryDrawer } from './components/bulk-category-drawer'
 import { transactionsService } from '@/services/transactions.service'
 import { payPeriodsService } from '@/services/pay-periods.service'
 import { accountsService } from '@/services/accounts-categories.service'
@@ -32,6 +34,11 @@ export default function TransactionsPage() {
     const [periodPickerOpen, setPeriodPickerOpen] = useState(false)
     const [deletingId, setDeletingId] = useState<string | null>(null)
     const [deleteLoading, setDeleteLoading] = useState(false)
+    const [selectedIds, setSelectedIds] = useState<string[]>([])
+    const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false)
+    const [bulkDeleteLoading, setBulkDeleteLoading] = useState(false)
+    const [bulkCategoryOpen, setBulkCategoryOpen] = useState(false)
+    const [bulkCategoryLoading, setBulkCategoryLoading] = useState(false)
 
     const today = toISODate()
 
@@ -112,6 +119,10 @@ export default function TransactionsPage() {
         })
     }, [selectedPeriodIndex, allPeriods])
 
+    useEffect(() => {
+        setSelectedIds([])
+    }, [selectedPeriodIndex])
+
     const handleDeleteConfirm = async () => {
         if (!deletingId) return
         setDeleteLoading(true)
@@ -121,6 +132,33 @@ export default function TransactionsPage() {
         setTransactions(prev => prev.filter(t => t.id !== deletingId))
         setDeletingId(null)
         toast.success('Transaction deleted.')
+    }
+
+    const selectedTxs = transactions.filter(t => selectedIds.includes(t.id))
+    const commonSelectedType = (new Set(selectedTxs.map(t => t.type)).size === 1
+        ? selectedTxs[0]?.type ?? null
+        : null) as 'income' | 'expense' | null
+
+    const handleBulkDeleteConfirm = async () => {
+        setBulkDeleteLoading(true)
+        const { error } = await transactionsService.removeMany(selectedIds)
+        setBulkDeleteLoading(false)
+        if (error) { toast.error(error); return }
+        setTransactions(prev => prev.filter(t => !selectedIds.includes(t.id)))
+        setSelectedIds([])
+        setBulkDeleteOpen(false)
+        toast.success(`${selectedIds.length} transaction(s) deleted.`)
+    }
+
+    const handleBulkCategoryConfirm = async (categoryId: string) => {
+        setBulkCategoryLoading(true)
+        const { error } = await transactionsService.updateMany(selectedIds, { category_id: categoryId })
+        setBulkCategoryLoading(false)
+        if (error) { toast.error(error); return }
+        setSelectedIds([])
+        setBulkCategoryOpen(false)
+        if (selectedPeriod) await loadTransactions(selectedPeriod)
+        toast.success('Category updated.')
     }
 
     const calendarDefaultDate = isCurrentPeriod ? today : selectedPeriod?.start_date
@@ -162,13 +200,22 @@ export default function TransactionsPage() {
                                 onDeleteRequest={isCurrentPeriod ? setDeletingId : undefined}
                                 readOnly={!isCurrentPeriod}
                             />
-                        ) : (
+                        ) : activeTab === 'analytics' ? (
                             <PeriodAnalytics
                                 transactions={transactions as (typeof transactions[0] & { type: 'expense' | 'income' })[]}
                                 period={selectedPeriod}
                                 previousSummary={previousSummary}
                                 totalBalance={totalBalance}
                                 totalDebt={totalDebt}
+                            />
+                        ) : (
+                            <TransactionListView
+                                transactions={transactions}
+                                selectedIds={selectedIds}
+                                onSelectedIdsChange={setSelectedIds}
+                                readOnly={!isCurrentPeriod}
+                                onBulkDeleteRequest={() => setBulkDeleteOpen(true)}
+                                onBulkCategoryRequest={() => setBulkCategoryOpen(true)}
                             />
                         )}
                     </section>
@@ -196,6 +243,24 @@ export default function TransactionsPage() {
                 loading={deleteLoading}
                 onConfirm={handleDeleteConfirm}
                 onClose={() => setDeletingId(null)}
+            />
+
+            <ConfirmDrawer
+                open={bulkDeleteOpen}
+                title="Delete Transactions"
+                description={`Delete ${selectedIds.length} transaction(s)? This will also update your account balance.`}
+                confirmLabel="Delete"
+                loading={bulkDeleteLoading}
+                onConfirm={handleBulkDeleteConfirm}
+                onClose={() => setBulkDeleteOpen(false)}
+            />
+
+            <BulkCategoryDrawer
+                open={bulkCategoryOpen}
+                onClose={() => setBulkCategoryOpen(false)}
+                type={commonSelectedType}
+                loading={bulkCategoryLoading}
+                onConfirm={handleBulkCategoryConfirm}
             />
         </>
     )
