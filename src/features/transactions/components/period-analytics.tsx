@@ -1,14 +1,20 @@
 import { useState, useMemo } from 'react'
-import { Minus, Plus, TrendingUp, TrendingDown } from 'lucide-react'
-import { formatCurrency, formatDateShort, getDaysBetween } from '@/lib/helpers'
+import {
+  Minus, Plus, TrendingUp, TrendingDown, CalendarDays, Flame,
+  Receipt, ArrowLeftRight, Moon, type LucideProps,
+} from 'lucide-react'
+import { formatCurrency, formatDateShort, getDaysBetween, toISODate, heatBarColor } from '@/lib/helpers'
 import { cn } from '@/lib/utils'
 import { BottomDrawer } from '@/components/bottom-drawer'
 import { calculateHealthScore } from '@/lib/calculate-health-score'
+import { CategoryIcon } from '@/features/categories/components/category-icon'
+import type { ElementType } from 'react'
 
 interface Category {
   id: string
   name: string
   color: string | null
+  icon?: string | null
 }
 
 interface Transaction {
@@ -37,6 +43,7 @@ interface CatEntry {
   id: string
   name: string
   color: string | null
+  icon?: string | null
   amount: number
 }
 
@@ -66,6 +73,7 @@ interface PeriodAnalyticsProps {
 }
 
 interface StatTileProps {
+  icon: ElementType<LucideProps>
   label: string
   value: string
   sub?: string
@@ -73,7 +81,7 @@ interface StatTileProps {
   onTap?: () => void
 }
 
-function StatTile({ label, value, sub, valueClassName, onTap }: StatTileProps) {
+function StatTile({ icon: Icon, label, value, sub, valueClassName, onTap }: StatTileProps) {
   return (
     <div
       className={cn(
@@ -82,7 +90,8 @@ function StatTile({ label, value, sub, valueClassName, onTap }: StatTileProps) {
       )}
       onClick={onTap}
     >
-      <p className="text-[10.5px] text-[#8a8a84]">{label}</p>
+      <Icon className="h-[15px] w-[15px] text-[#a3a3a3]" />
+      <p className="text-[10.5px] text-[#8a8a84] mt-1.5">{label}</p>
       <p className={cn('text-[15px] font-medium text-[#252525] mt-1', valueClassName)}>
         {value}
       </p>
@@ -184,6 +193,7 @@ export function PeriodAnalytics({ transactions, period, previousSummary, totalBa
           id:     tx.category.id,
           name:   tx.category.name,
           color:  tx.category.color,
+          icon:   tx.category.icon,
           amount: tx.amount,
         })
       }
@@ -290,6 +300,27 @@ export function PeriodAnalytics({ transactions, period, previousSummary, totalBa
     }
   }, [period, activeTotal, totalIncome])
 
+  // ─── Net-this-period sparkline (daily expense across the elapsed period) ───
+
+  const netSparkline = useMemo(() => {
+    const daysElapsed = Math.min(62, Math.max(1, getDaysBetween(period.start_date)))
+    const start = new Date(period.start_date + 'T00:00:00')
+    const days: { date: string; total: number }[] = []
+    for (let i = 0; i < daysElapsed; i++) {
+      const d = new Date(start)
+      d.setDate(d.getDate() + i)
+      days.push({ date: toISODate(d), total: 0 })
+    }
+    const byDate = new Map(days.map(d => [d.date, d]))
+    for (const tx of expenses) {
+      const bucket = byDate.get(toISODate(new Date(tx.date)))
+      if (bucket) bucket.total += tx.amount
+    }
+    return days
+  }, [period, expenses])
+
+  const netSparklineMax = Math.max(0, ...netSparkline.map(d => d.total))
+
   // ─── Savings rate, trend vs previous period, and health score ──────────────
 
   const savingsRate = totalIncome > 0 ? (net / totalIncome) * 100 : null
@@ -334,18 +365,30 @@ export function PeriodAnalytics({ transactions, period, previousSummary, totalBa
 
       {/* ── Financial health card ── */}
       <div className="rounded-[20px] border border-[#e5e5e5] bg-white p-4 lg:col-span-2">
-        <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center justify-between mb-3">
           <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84]">Financial health</p>
-          <p className="text-[13px] font-medium text-[#252525]">{health.label}</p>
+          <span
+            className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10.5px] font-semibold"
+            style={{ backgroundColor: `${healthBarColor}1f`, color: healthBarColor }}
+          >
+            <span className="h-[5px] w-[5px] rounded-full" style={{ backgroundColor: healthBarColor }} />
+            {health.label}
+          </span>
         </div>
-        <div className="h-1 rounded-full bg-[#f2f2f0] overflow-hidden mb-2">
+        <p
+          className="text-[38px] font-medium leading-none tracking-[-.03em] tabular-nums mb-3"
+          style={{ color: healthBarColor }}
+        >
+          {health.score}
+        </p>
+        <div className="flex h-1.5 w-full overflow-hidden rounded-full bg-[#f2f2f0]">
           <div
             className="h-full rounded-full transition-all duration-300"
             style={{ width: `${health.score}%`, backgroundColor: healthBarColor }}
           />
         </div>
         {health.reasons.length > 0 && (
-          <p className="text-[11.5px] text-[#8a8a84]">{health.reasons.slice(0, 2).join(' · ')}</p>
+          <p className="text-[11.5px] text-[#8a8a84] mt-2.5">{health.reasons.slice(0, 2).join(' · ')}</p>
         )}
       </div>
 
@@ -360,7 +403,7 @@ export function PeriodAnalytics({ transactions, period, previousSummary, totalBa
         </p>
         {savingsRate !== null && (
           <p className={cn(
-            'text-[11.5px] mb-2',
+            'text-[11.5px] mb-3',
             savingsRate < 0 ? 'text-[#dc2626]' : 'text-[#059669]'
           )}>
             {savingsRate >= 0
@@ -369,7 +412,27 @@ export function PeriodAnalytics({ transactions, period, previousSummary, totalBa
           </p>
         )}
 
-        <div className="grid grid-cols-2 gap-0 border-t border-[#f2f2f0] pt-3 mt-2">
+        <div className="flex items-end gap-[2px]" style={{ height: '40px' }}>
+          {netSparkline.map((d, i) => {
+            const isToday = i === netSparkline.length - 1
+            const ratio = netSparklineMax > 0 ? d.total / netSparklineMax : 0
+            const height = d.total > 0 ? Math.max(3, Math.round(ratio * 40)) : 2
+            return (
+              <div
+                key={d.date}
+                className="flex-1 rounded-[1.5px]"
+                style={{
+                  height: `${height}px`,
+                  backgroundColor: d.total <= 0
+                    ? '#f2f2f0'
+                    : isToday ? '#252525' : heatBarColor(ratio),
+                }}
+              />
+            )
+          })}
+        </div>
+
+        <div className="grid grid-cols-2 gap-0 border-t border-[#f2f2f0] pt-3 mt-3">
           <div className="pr-4 border-r border-[#f2f2f0]">
             <p className="text-[10px] text-[#8a8a84] mb-1">In</p>
             <p className="text-[13px] font-medium text-[#059669]">{formatCurrency(totalIncome)}</p>
@@ -458,12 +521,18 @@ export function PeriodAnalytics({ transactions, period, previousSummary, totalBa
                   isSkipped && 'opacity-30'
                 )}
               >
-                <div className="flex items-center gap-2.5">
+                <div className="flex items-center gap-2.5 min-w-0">
                   <div
-                    className="w-[7px] h-[7px] rounded-full shrink-0"
-                    style={{ backgroundColor: cat.color ?? '#94a3b8' }}
-                  />
-                  <p className="text-[13px] text-[#252525]">{cat.name}</p>
+                    className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-[8px]"
+                    style={{ backgroundColor: `${cat.color ?? '#94a3b8'}1f` }}
+                  >
+                    <CategoryIcon
+                      name={isOthers ? undefined : cat.icon}
+                      className="h-[14px] w-[14px]"
+                      style={{ color: cat.color ?? '#94a3b8' }}
+                    />
+                  </div>
+                  <p className="text-[13px] text-[#252525] truncate">{cat.name}</p>
                 </div>
                 <div className="flex items-center gap-3">
                   <span className="text-[12px] text-[#a3a3a3] min-w-[28px] text-right">
@@ -515,6 +584,7 @@ export function PeriodAnalytics({ transactions, period, previousSummary, totalBa
 
         <div className="grid grid-cols-2 gap-2">
           <StatTile
+            icon={CalendarDays}
             label="Daily average"
             value={formatCurrency(stats.dailyAvg)}
             sub={`over ${stats.daysElapsed} day${stats.daysElapsed !== 1 ? 's' : ''}`}
@@ -522,6 +592,7 @@ export function PeriodAnalytics({ transactions, period, previousSummary, totalBa
 
           {stats.daysRemaining !== null && (
             <StatTile
+              icon={CalendarDays}
               label="Days left"
               value={`${stats.daysRemaining}`}
               sub={`of ${stats.days}`}
@@ -531,6 +602,7 @@ export function PeriodAnalytics({ transactions, period, previousSummary, totalBa
           {/* Biggest day uses ALL expenses (not filtered) — intentional, tap to see detail */}
           {biggestDayEntry && (
             <StatTile
+              icon={Flame}
               label="Biggest day"
               value={formatCurrency(biggestDayEntry.total)}
               sub={formatDateShort(biggestDayEntry.date)}
@@ -539,18 +611,21 @@ export function PeriodAnalytics({ transactions, period, previousSummary, totalBa
           )}
 
           <StatTile
+            icon={Receipt}
             label="Biggest expense"
             value={biggestExpense ? formatCurrency(biggestExpense.amount) : '—'}
             sub={biggestExpense?.note ?? biggestExpense?.category?.name}
           />
 
           <StatTile
+            icon={ArrowLeftRight}
             label="Transactions"
             value={`${activeExpenses.length + incomes.length}`}
             sub={`${activeExpenses.length} out · ${incomes.length} in`}
           />
 
           <StatTile
+            icon={Moon}
             label="No-spend days"
             value={`${noSpendDays}`}
             sub={noSpendDays > 0 ? 'nice' : 'none yet'}

@@ -1,4 +1,4 @@
-import { Account, DebtWithAccount, TransactionWithDetails } from "."
+import { Account, PayPeriod, TransactionWithDetails } from "."
 
 export interface TrendPoint {
     label: string
@@ -10,10 +10,8 @@ export interface OverviewData {
     totalIncome: number
     totalExpense: number
     transactions: TransactionWithDetails[]
-    prevTransactions: TransactionWithDetails[]
-    debts: DebtWithAccount[]
     accounts: Account[]
-    trendPeriods: TrendPoint[]
     closingBalance: number | null
-    prevClosingBalance: number | null
+    period: Pick<PayPeriod, 'start_date' | 'end_date'>
+    fallbackTotalDays: number | null
 }

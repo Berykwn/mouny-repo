@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
-import { Plus } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { Coins } from 'lucide-react'
 import { BottomDrawer } from '@/components/bottom-drawer'
 import { PeriodPickerDrawer } from '@/components/period-picker-drawer'
 import { OpenPeriodForm } from '@/features/periods/components/open-period-form'
@@ -7,10 +8,26 @@ import { PeriodChip } from '@/features/transactions/components/period-chip'
 import { payPeriodsService } from '@/services/pay-periods.service'
 import type { PayPeriod } from '@/types'
 import { LoadingContent } from '@/components/loading-content'
-import { Button } from '@/components/ui/button'
+import { useAuth } from '@/hooks/use-auth'
 import { OverviewTransaction } from './components/overview/overview-tab'
+import { TodayEmptyState } from './components/overview/today-empty-state'
+
+function getInitials(user: { user_metadata?: { full_name?: string } | null; email?: string | null } | null): string {
+    const fullName = user?.user_metadata?.full_name
+    if (fullName) {
+        return fullName
+            .trim()
+            .split(/\s+/)
+            .slice(0, 2)
+            .map(part => part[0]?.toUpperCase() ?? '')
+            .join('')
+    }
+    return user?.email ? user.email[0].toUpperCase() : '?'
+}
 
 export default function DashboardPage() {
+    const navigate = useNavigate()
+    const { user } = useAuth()
     const [activePeriod, setActivePeriod] = useState<PayPeriod | null>(null)
     const [allPeriods, setAllPeriods] = useState<PayPeriod[]>([])
     const [selectedPeriod, setSelectedPeriod] = useState<PayPeriod | null>(null)
@@ -39,39 +56,45 @@ export default function DashboardPage() {
     }, [loadPeriods])
 
     const isActivePeriod = selectedPeriod?.id === activePeriod?.id
+    const closedPeriodsCount = allPeriods.filter(p => p.status === 'closed').length
+    const initials = getInitials(user)
 
     return (
         <>
             <header className="flex flex-col gap-[14px] px-5 pt-[22px] bg-neutral-50 dark:bg-neutral-950">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                        <span className="text-[20px] font-semibold tracking-[-0.02em]">Dashboard</span>
+                        <img src="/favicon.svg" alt="" className="w-6 h-6" />
+                        <span className="text-[16px] font-semibold tracking-[-0.02em] text-[#252525]">Mouny.</span>
                     </div>
-                    {selectedPeriod && (
-                        <PeriodChip period={selectedPeriod} onClick={() => setPeriodDrawerOpen(true)} />
-                    )}
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => navigate('/accounts')}
+                            className="w-8 h-8 rounded-full border border-[#e5e5e5] flex items-center justify-center text-[#252525] hover:bg-[#f4f4f2] transition-colors"
+                            aria-label="Accounts"
+                        >
+                            <Coins className="w-4 h-4" />
+                        </button>
+                        <div className="w-8 h-8 rounded-full bg-[#252525] flex items-center justify-center">
+                            <span className="text-[11.5px] font-semibold text-[#fafafa]">{initials}</span>
+                        </div>
+                    </div>
                 </div>
+                {selectedPeriod && (
+                    <div>
+                        <PeriodChip period={selectedPeriod} onClick={() => setPeriodDrawerOpen(true)} />
+                    </div>
+                )}
             </header>
 
             <section className="px-4 pb-4 pt-2.5 space-y-4">
                 {periodLoading ? <LoadingContent /> : (
                     <>
                         {!selectedPeriod && (
-                            <div className="rounded-[20px] border border-[#e5e5e5] bg-white p-4 flex items-center gap-3">
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-[13px] font-medium text-[#252525]">No active period</p>
-                                    <p className="text-[11.5px] text-[#8a8a84] mt-0.5">
-                                        Please open a new period first.
-                                    </p>
-                                </div>
-                                <Button
-                                    onClick={() => setOpenPeriodDrawer(true)}
-                                    size="sm"
-                                    variant="outline"
-                                >
-                                    <Plus className="w-3.5 h-3.5" /> Period
-                                </Button>
-                            </div>
+                            <TodayEmptyState
+                                closedPeriodsCount={closedPeriodsCount}
+                                onOpenPeriod={() => setOpenPeriodDrawer(true)}
+                            />
                         )}
 
                         {selectedPeriod && (

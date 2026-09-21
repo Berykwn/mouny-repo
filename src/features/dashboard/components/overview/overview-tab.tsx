@@ -1,16 +1,15 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { payPeriodsService } from '@/services/pay-periods.service'
 import { transactionsService } from '@/services/transactions.service'
-import { debtsService } from '@/services/debts.service'
 import { accountsService } from '@/services/accounts-categories.service'
-import { formatCurrency, formatDateShort, formatPeriodLabel } from '@/lib/helpers'
-import { cn } from '@/lib/utils'
-import { SpendingBreakdown } from './spending-breakdown'
+import { getDaysBetween } from '@/lib/helpers'
 import { LoadingContent } from '@/components/loading-content'
-import { OverviewData, TrendPoint } from '@/types/overview.types'
-import HealthAndTrendSection from './healt-and-trend'
-import { calculateHealthScore } from '@/lib/calculate-health-score'
+import { OverviewData } from '@/types/overview.types'
+import { usePeriodStats } from '@/hooks/use-period-stats'
+import { SafeToSpendCard } from './safe-to-spend-card'
+import { PeriodInsight } from './period-insight'
+import { TodayTransactionsCard } from './today-transactions-card'
+import { BalancesCard } from './balances-card'
 
 async function fetchOverviewData(
     periodId: string
@@ -18,12 +17,10 @@ async function fetchOverviewData(
     const [
         { data: allPeriods },
         { data: txs },
-        { data: debts },
         { data: accounts },
     ] = await Promise.all([
         payPeriodsService.getAll(),
         transactionsService.getByPeriod(periodId),
-        debtsService.getActive(),
         accountsService.getAll(),
     ])
 
@@ -33,43 +30,22 @@ async function fetchOverviewData(
     const currentPeriod = allList.find(p => p.id === periodId)
     if (!currentPeriod) return null
 
+    // Periods are sorted by start_date descending, so the period immediately
+    // before this one (chronologically) is the previous entry in the list.
     const currentIndex = allList.findIndex(p => p.id === periodId)
     const prevPeriod = allList[currentIndex + 1] ?? null
-    const prevTxs = prevPeriod
-        ? (await transactionsService.getByPeriod(prevPeriod.id)).data ?? []
-        : []
-
-    const trendPeriods_raw = allList.slice(currentIndex + 1, currentIndex + 2)
-    const trendTxsResults = await Promise.all(
-        trendPeriods_raw.map(p => transactionsService.getByPeriod(p.id))
-    )
-
-    const trendPeriods: TrendPoint[] = [
-        ...trendPeriods_raw.map((p, i) => {
-            const pts = trendTxsResults[i].data ?? []
-            return {
-                label: formatPeriodLabel(p.start_date ?? null),
-                income: pts.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0),
-                expense: pts.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0),
-            }
-        }).reverse(),
-        {
-            label: formatPeriodLabel(currentPeriod.start_date ?? null),
-            income: periodTxs.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0),
-            expense: periodTxs.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0),
-        },
-    ]
+    const fallbackTotalDays = prevPeriod?.start_date && prevPeriod?.end_date
+        ? getDaysBetween(prevPeriod.start_date, prevPeriod.end_date)
+        : null
 
     return {
         totalIncome: periodTxs.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0),
         totalExpense: periodTxs.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0),
         transactions: periodTxs,
-        prevTransactions: prevTxs,
-        debts: debts ?? [],
         accounts: accounts ?? [],
-        trendPeriods,
         closingBalance: currentPeriod.closing_balance ?? null,
-        prevClosingBalance: prevPeriod?.closing_balance ?? null,
+        period: { start_date: currentPeriod.start_date, end_date: currentPeriod.end_date },
+        fallbackTotalDays,
     }
 }
 
@@ -82,7 +58,6 @@ export function OverviewTransaction({
 }) {
     const [data, setData] = useState<OverviewData | null>(null)
     const [loading, setLoading] = useState(true)
-    const navigate = useNavigate()
 
     useEffect(() => {
         async function load() {
@@ -94,6 +69,12 @@ export function OverviewTransaction({
         load()
     }, [periodId])
 
+    const stats = usePeriodStats({
+        period: data?.period ?? { start_date: '', end_date: null },
+        transactions: data?.transactions ?? [],
+        fallbackTotalDays: data?.fallbackTotalDays ?? null,
+    })
+
     if (loading) return <LoadingContent />
     if (!data) return (
         <section className='p-4 mt-1.5 rounded-[20px] bg-white border border-[#e5e5e5]'>
@@ -102,209 +83,35 @@ export function OverviewTransaction({
         </section>
     )
 
-    const {
-        totalIncome,
-        totalExpense,
-        transactions,
-        prevTransactions,
-        accounts,
-        trendPeriods,
-        debts,
-        closingBalance,
-        prevClosingBalance,
-    } = data
-
-    const remaining = totalIncome - totalExpense
-    const spentPercent = totalIncome > 0
-        ? Math.min(Math.round((totalExpense / totalIncome) * 100), 100)
-        : 0
-
-    const prevExpense = prevTransactions.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0)
-    const prevIncome = prevTransactions.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0)
-
-    const expenseDiffPct = prevExpense > 0 ? Math.round(((totalExpense - prevExpense) / prevExpense) * 100) : null
-    const incomeDiffPct = prevIncome > 0 ? Math.round(((totalIncome - prevIncome) / prevIncome) * 100) : null
-
-    const expenses = transactions.filter(t => t.type === 'expense')
-    const prevExpenses = prevTransactions.filter(t => t.type === 'expense')
-    const catMap = new Map<string, { name: string; cur: number; prev: number }>()
-    for (const tx of expenses) {
-        const key = tx.category?.id ?? '__none__'
-        const name = tx.category?.name ?? 'Uncategorized'
-        const e = catMap.get(key) ?? { name, cur: 0, prev: 0 }
-        e.cur += tx.amount
-        catMap.set(key, e)
-    }
-    for (const tx of prevExpenses) {
-        const key = tx.category?.id ?? '__none__'
-        const name = tx.category?.name ?? 'Uncategorized'
-        const e = catMap.get(key) ?? { name, cur: 0, prev: 0 }
-        e.prev += tx.amount
-        catMap.set(key, e)
-    }
-
-    const biggestDriver = Array.from(catMap.values())
-        .filter(c => c.prev > 0 && c.cur > c.prev)
-        .sort((a, b) => (b.cur - b.prev) - (a.cur - a.prev))[0] ?? null
-    const driverMultiple = biggestDriver
-        ? Math.round((biggestDriver.cur / biggestDriver.prev) * 10) / 10
-        : null
-
-    const totalBalance = accounts.reduce((s, a) => s + a.balance, 0)
-    const totalDebt = debts.reduce((s, d) => s + d.remaining_amount, 0)
-    const displayBalance = isActivePeriod ? totalBalance : (closingBalance ?? totalBalance)
-
-    const closingDiffPct: number | null =
-        prevClosingBalance !== null && prevClosingBalance > 0
-            ? Math.round(((displayBalance - prevClosingBalance) / prevClosingBalance) * 100)
-            : null
-
-    const { score, label: healthLabel, reasons: healthReasons } = calculateHealthScore({
-        totalIncome,
-        totalExpense,
-        totalBalance: displayBalance,
-        totalDebt,
-        expenseDiffPct,
-    })
-
-    const remainingIsNegative = remaining < 0
+    const { transactions, accounts, closingBalance } = data
 
     return (
-        <div className="space-y-2.5 mt-1.5 lg:grid lg:grid-cols-2 lg:gap-4 lg:space-y-0 lg:items-start">
-            <div className={cn(
-                'rounded-[20px] border border-[#e5e5e5] bg-white p-4 space-y-3 lg:col-span-2',
-                remainingIsNegative && 'border-[#f3c5c5]'
-            )}>
-                <div>
-                    <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84] mb-1.5">Remaining</p>
-                    <p className={cn(
-                        'text-[44px] lg:text-[36px] leading-none tracking-tight font-medium',
-                        remainingIsNegative ? 'text-[#dc2626]' : 'text-[#252525]'
-                    )}>
-                        {formatCurrency(remaining)}
-                    </p>
-                </div>
+        <div className="space-y-3 mt-1.5 lg:max-w-md">
+            <SafeToSpendCard
+                totalIncome={stats.totalIncome}
+                totalExpense={stats.totalExpense}
+                remaining={stats.remaining}
+                spentPercent={stats.spentPercent}
+            />
 
-                <div className="space-y-1.5">
-                    <div className="h-1 bg-[#f2f2f0] rounded-full overflow-hidden">
-                        <div
-                            className={cn(
-                                'h-full rounded-full transition-all',
-                                spentPercent >= 90 ? 'bg-[#dc2626]' :
-                                    spentPercent >= 70 ? 'bg-amber-500' : 'bg-[#252525]'
-                            )}
-                            style={{ width: `${spentPercent}%` }}
-                        />
-                    </div>
-                    <p className={cn(
-                        'text-[11px]',
-                        spentPercent >= 90 ? 'text-[#dc2626]' : 'text-[#8a8a84]'
-                    )}>
-                        {spentPercent}% of income spent
-                    </p>
-                </div>
+            {isActivePeriod && (
+                <>
+                    <PeriodInsight
+                        transactions={transactions}
+                        totalExpense={stats.totalExpense}
+                        dailyAvg={stats.dailyAvg}
+                        safeDaily={stats.safeDaily}
+                    />
 
-                <div className="grid grid-cols-2 gap-0 pt-3 border-t border-[#f2f2f0]">
-                    <div className="pr-4">
-                        <p className="text-[10px] text-[#8a8a84] tracking-wide mb-1">Income</p>
-                        <p className="text-[20px] leading-none text-[#059669] font-medium mb-1">
-                            {formatCurrency(totalIncome)}
-                        </p>
-                        {incomeDiffPct !== null && (
-                            <p className={cn(
-                                'text-[10px] flex items-center gap-1',
-                                incomeDiffPct >= 0 ? 'text-[#059669]' : 'text-[#dc2626]'
-                            )}>
-                                {incomeDiffPct >= 0 ? '↑' : '↓'} {Math.abs(incomeDiffPct)}% from last
-                            </p>
-                        )}
-                    </div>
-                    <div className="pl-4 border-l border-[#f2f2f0]">
-                        <p className="text-[10px] text-[#8a8a84] tracking-wide mb-1">Spent</p>
-                        <p className="text-[20px] leading-none text-[#252525] font-medium mb-1">
-                            {formatCurrency(totalExpense)}
-                        </p>
-                        {expenseDiffPct !== null && (
-                            <p className={cn(
-                                'text-[10px] flex items-center gap-1',
-                                expenseDiffPct <= 0 ? 'text-[#059669]' : 'text-[#dc2626]'
-                            )}>
-                                {expenseDiffPct >= 0 ? '↑' : '↓'} {Math.abs(expenseDiffPct)}% from last
-                            </p>
-                        )}
-                    </div>
-                </div>
-
-                {accounts.length > 0 && (
-                    <button
-                        onClick={() => navigate('/accounts')}
-                        className="w-full flex items-center justify-between pt-3 border-t border-[#f2f2f0] text-left"
-                    >
-                        <div>
-                            <p className="text-[10px] text-[#8a8a84] tracking-wide mb-0.5">
-                                {isActivePeriod ? 'Total Balance' : 'Closing Balance'}
-                            </p>
-                            <p className="text-[15px] font-medium leading-none text-[#252525]">
-                                {formatCurrency(displayBalance)}
-                            </p>
-                            {closingDiffPct !== null && (
-                                <p className={cn(
-                                    'text-[10px] mt-0.5',
-                                    closingDiffPct >= 0 ? 'text-[#059669]' : 'text-[#dc2626]'
-                                )}>
-                                    {closingDiffPct >= 0 ? '↑' : '↓'} {Math.abs(closingDiffPct)}% vs prev period
-                                </p>
-                            )}
-                        </div>
-                        <div className="flex items-center gap-1">
-                            <p className="text-[11px] text-[#8a8a84]">
-                                {accounts.length} account{accounts.length > 1 ? 's' : ''}
-                            </p>
-                            <span className="text-[#8a8a84] text-[13px]">→</span>
-                        </div>
-                    </button>
-                )}
-            </div>
-
-            {debts.length > 0 && (
-                <button
-                    onClick={() => navigate('/debts')}
-                    className="w-full rounded-[20px] border border-[#e5e5e5] bg-white p-4 flex items-center justify-between text-left"
-                >
-                    <div>
-                        <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84] mb-1">Debts</p>
-                        <p className="text-[15px] font-medium text-[#252525]">{formatCurrency(totalDebt)} remaining</p>
-                        <p className="text-[11px] text-[#a3a3a3] mt-0.5">
-                            {debts.length} active{debts[0].due_date ? ` · next due ${formatDateShort(debts[0].due_date)}` : ''}
-                        </p>
-                    </div>
-                    <span className="text-[#8a8a84] text-[13px]">→</span>
-                </button>
+                    <TodayTransactionsCard transactions={transactions} />
+                </>
             )}
 
-            <div className="lg:col-span-2">
-                <HealthAndTrendSection
-                    score={score}
-                    label={healthLabel}
-                    reasons={healthReasons}
-                    trendPeriods={trendPeriods}
-                />
-            </div>
-
-            {biggestDriver && driverMultiple && driverMultiple > 1.2 && (
-                <div className="rounded-[20px] border border-[#e5e5e5] bg-white px-4 py-3.5 lg:col-span-2">
-                    <p className="text-[11px] text-[#8a8a84] italic leading-relaxed border-l-2 border-[#e5e5e5] pl-3">
-                        <span className="text-[#252525] not-italic font-medium">{biggestDriver.name}</span>
-                        {' '}up {driverMultiple}× vs last period — biggest driver this month.
-                    </p>
-                </div>
-            )}
-
-            {transactions.length > 0 && (
-                <div className="lg:col-span-2">
-                    <SpendingBreakdown transactions={transactions} />
-                </div>
-            )}
+            <BalancesCard
+                accounts={accounts}
+                isActivePeriod={isActivePeriod}
+                closingBalance={closingBalance}
+            />
         </div>
     )
 }
