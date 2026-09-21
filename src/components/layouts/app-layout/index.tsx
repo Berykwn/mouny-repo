@@ -113,6 +113,7 @@ export default function AppLayout() {
                     <AddTransactionFlow
                         payPeriodId={activePeriod.id}
                         periodStart={activePeriod.start_date}
+                        periodEnd={activePeriod.end_date ?? undefined}
                         defaultDate={toISODate()}
                         onClose={() => setAddDrawerOpen(false)}
                         onSuccess={() => {

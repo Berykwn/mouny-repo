@@ -1,3 +1,9 @@
+export function heatBarColor(ratio: number): string {
+    if (ratio >= 0.7) return '#dc2626'
+    if (ratio >= 0.4) return '#e8973a'
+    return '#c9d6b4'
+}
+
 export function formatCurrency(amount: number): string {
     return new Intl.NumberFormat('id-ID', {
         style: 'currency',

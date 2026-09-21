@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
-import { formatCurrency, formatCompact } from '@/lib/helpers'
+import { formatCurrency, formatCompact, heatBarColor } from '@/lib/helpers'
 import type { TransactionWithDetails } from '@/types'
-import { TrendingUp, TrendingDown, Trash2 } from 'lucide-react'
+import { TrendingUp, TrendingDown, Plus } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { CategoryIcon } from '@/features/categories/components/category-icon'
+import { useLongPress } from '@/hooks/use-long-press'
 
 interface PeriodCalendarProps {
     transactions: TransactionWithDetails[]
@@ -11,6 +12,7 @@ interface PeriodCalendarProps {
     periodEnd: string
     defaultDate?: string
     onDeleteRequest?: (id: string) => void
+    onAddRequest?: (date: string) => void
     readOnly?: boolean
     onDateSelect?: (date: string) => void
 }
@@ -49,16 +51,78 @@ function rangeLabel(start: string, end: string): string {
         : `${s.getDate()} ${sMonth} – ${e.getDate()} ${eMonth}`
 }
 
-function heatBarColor(ratio: number): string {
-    if (ratio >= 0.7) return '#dc2626'
-    if (ratio >= 0.4) return '#e8973a'
-    return '#c9d6b4'
-}
-
 function barHeight(expense: number, maxExpense: number): number {
     if (expense <= 0) return 0
     const ratio = maxExpense > 0 ? expense / maxExpense : 0
     return Math.max(3, Math.round(ratio * BAR_MAX_HEIGHT))
+}
+
+function DayTransactionRow({
+    tx,
+    onDeleteRequest,
+    deletable,
+}: {
+    tx: TransactionWithDetails
+    onDeleteRequest?: (id: string) => void
+    deletable: boolean
+}) {
+    const longPressHandlers = useLongPress(() => onDeleteRequest?.(tx.id))
+
+    const title = tx.note || tx.category?.name || (tx.type === 'income' ? 'Income' : 'Expense')
+    const subtitle = [
+        tx.category?.name && tx.note ? tx.category.name : null,
+        tx.account.name,
+    ].filter(Boolean).join(' · ')
+
+    return (
+        <div
+            className={cn(
+                'flex items-center gap-3 px-4 py-2.5 border-b border-neutral-200 last:border-b-0 select-none',
+                deletable && 'active:bg-[#f7f7f5] transition-colors',
+            )}
+            tabIndex={deletable ? 0 : undefined}
+            onKeyDown={deletable ? (event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                    if (event.key === ' ') event.preventDefault()
+                    onDeleteRequest?.(tx.id)
+                }
+            } : undefined}
+            {...(deletable ? longPressHandlers : {})}
+        >
+            <div
+                className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                style={{
+                    backgroundColor: `${tx.category?.color ?? '#e5e7eb'}25`,
+                }}
+            >
+                {tx.category ? (
+                    <CategoryIcon
+                        name={tx.category.icon}
+                        className="w-[15px] h-[15px]"
+                        style={{
+                            color: tx.category.color ?? '#6b7280',
+                        }}
+                    />
+                ) : tx.type === 'income' ? (
+                    <TrendingUp className="w-3.5 h-3.5 text-green-600 dark:text-green-400" />
+                ) : (
+                    <TrendingDown className="w-3.5 h-3.5 text-red-500 dark:text-red-400" />
+                )}
+            </div>
+            <div className="flex-1 min-w-0">
+                <p className="text-xs font-medium truncate">{title}</p>
+                {subtitle && (
+                    <p className="text-[10px] text-muted-foreground truncate">{subtitle}</p>
+                )}
+            </div>
+            <p className={cn(
+                'text-xs font-bold shrink-0',
+                tx.type === 'income' ? 'text-green-600' : 'text-foreground'
+            )}>
+                {tx.type === 'income' ? '+' : '-'}{formatCurrency(tx.amount)}
+            </p>
+        </div>
+    )
 }
 
 function DayTransactions({
@@ -70,62 +134,18 @@ function DayTransactions({
     onDeleteRequest?: (id: string) => void
     readOnly?: boolean
 }) {
+    const deletable = !readOnly && !!onDeleteRequest
+
     return (
         <div className="border-t border-neutral-200">
-            {txs.map(tx => {
-                const title = tx.note || tx.category?.name || (tx.type === 'income' ? 'Income' : 'Expense')
-                const subtitle = [
-                    tx.category?.name && tx.note ? tx.category.name : null,
-                    tx.account.name,
-                ].filter(Boolean).join(' · ')
-
-                return (
-                    <div key={tx.id} className="flex items-center gap-3 px-4 py-2.5 border-b border-neutral-200 last:border-b-0">
-                        <div
-                            className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-                            style={{
-                                backgroundColor: `${tx.category?.color ?? '#e5e7eb'}25`,
-                            }}
-                        >
-                            {tx.category ? (
-                                <CategoryIcon
-                                    name={tx.category.icon}
-                                    className="w-[15px] h-[15px]"
-                                    style={{
-                                        color: tx.category.color ?? '#6b7280',
-                                    }}
-                                />
-                            ) : tx.type === 'income' ? (
-                                <TrendingUp className="w-3.5 h-3.5 text-green-600 dark:text-green-400" />
-                            ) : (
-                                <TrendingDown className="w-3.5 h-3.5 text-red-500 dark:text-red-400" />
-                            )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                            <p className="text-xs font-medium truncate">{title}</p>
-                            {subtitle && (
-                                <p className="text-[10px] text-muted-foreground truncate">{subtitle}</p>
-                            )}
-                        </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                            <p className={cn(
-                                'text-xs font-bold',
-                                tx.type === 'income' ? 'text-green-600' : 'text-foreground'
-                            )}>
-                                {tx.type === 'income' ? '+' : '-'}{formatCurrency(tx.amount)}
-                            </p>
-                            {!readOnly && onDeleteRequest && (
-                                <button
-                                    onClick={() => onDeleteRequest(tx.id)}
-                                    className="text-muted-foreground hover:text-destructive transition-colors"
-                                >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                            )}
-                        </div>
-                    </div>
-                )
-            })}
+            {txs.map(tx => (
+                <DayTransactionRow
+                    key={tx.id}
+                    tx={tx}
+                    onDeleteRequest={onDeleteRequest}
+                    deletable={deletable}
+                />
+            ))}
         </div>
     )
 }
@@ -157,6 +177,7 @@ export function PeriodCalendar({
     periodEnd,
     defaultDate,
     onDeleteRequest,
+    onAddRequest,
     readOnly,
     onDateSelect,
 }: PeriodCalendarProps) {
@@ -344,19 +365,47 @@ export function PeriodCalendar({
                 )}
             </div>
 
-            <div className="rounded-2xl border border-neutral-200 bg-card lg:sticky lg:top-4">
-                <div className="flex items-center justify-between p-4">
-                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">
-                        {new Date(validSelected + 'T00:00:00').toLocaleDateString('en-GB', {
-                            weekday: 'long', day: 'numeric', month: 'long'
-                        })}
-                    </p>
+            <div className="rounded-[20px] border border-neutral-200 bg-card overflow-hidden lg:sticky lg:top-4">
+                <div className="flex items-center justify-between gap-2.5 px-5 pt-4 pb-3.5">
+                    <div>
+                        <p className="text-[14px] font-semibold text-[#252525]">
+                            {new Date(validSelected + 'T00:00:00').toLocaleDateString('en-GB', {
+                                weekday: 'long', day: 'numeric', month: 'long'
+                            })}
+                        </p>
 
-                    {selectedTxs.length > 0 && (
-                        <div className='flex gap-x-1.5'>
-                            <p className='text-xs font-semibold text-green-600'>+ {formatCurrency(dailyIncomeSummary)}</p>
-                            <p className='text-xs font-semibold text-destructive'>- {formatCurrency(dailyExpenseSummary)}</p>
-                        </div>
+                        {selectedTxs.length > 0 && (
+                            <p className="mt-0.5 text-[11px]">
+                                <span className="text-[#8a8a84]">
+                                    {selectedTxs.length} transaction{selectedTxs.length === 1 ? '' : 's'} ·{' '}
+                                </span>
+                                <span style={{ color: '#dc2626' }}>−{formatCurrency(dailyExpenseSummary)}</span>
+                                {dailyIncomeSummary > 0 && (
+                                    <span style={{ color: '#059669' }}> · +{formatCurrency(dailyIncomeSummary)}</span>
+                                )}
+                            </p>
+                        )}
+                    </div>
+
+                    {onAddRequest && (
+                        <button
+                            onClick={() => onAddRequest(validSelected)}
+                            aria-label="Add transaction"
+                            className="shrink-0 -m-2.5 p-2.5"
+                        >
+                            <span
+                                className="flex items-center gap-1 rounded-[10px] border"
+                                style={{
+                                    padding: '7px 11px 7px 9px',
+                                    backgroundColor: '#f7faf2',
+                                    borderColor: '#cfdcb8',
+                                    color: '#4d7a1d',
+                                }}
+                            >
+                                <Plus className="w-[13px] h-[13px]" />
+                                <span className="text-[12px] font-semibold">Add</span>
+                            </span>
+                        </button>
                     )}
                 </div>
 

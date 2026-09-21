@@ -8,12 +8,13 @@ import { PeriodChip } from './components/period-chip'
 import { LedgerTabs, type LedgerTab } from './components/ledger-tabs'
 import { TransactionListView } from './components/transaction-list-view'
 import { BulkCategoryDrawer } from './components/bulk-category-drawer'
+import { AddTransactionFlow } from './components/add-transaction-flow'
 import { transactionsService } from '@/services/transactions.service'
 import { payPeriodsService } from '@/services/pay-periods.service'
 import { accountsService } from '@/services/accounts-categories.service'
 import { debtsService } from '@/services/debts.service'
 import { toISODate } from '@/lib/helpers'
-import { onTransactionsChanged } from '@/lib/transactions-bus'
+import { onTransactionsChanged, emitTransactionsChanged } from '@/lib/transactions-bus'
 import type { TransactionWithDetails, PayPeriod } from '@/types'
 import { toast } from 'sonner'
 import { LoadingContent } from '@/components/loading-content'
@@ -39,6 +40,7 @@ export default function TransactionsPage() {
     const [bulkDeleteLoading, setBulkDeleteLoading] = useState(false)
     const [bulkCategoryOpen, setBulkCategoryOpen] = useState(false)
     const [bulkCategoryLoading, setBulkCategoryLoading] = useState(false)
+    const [addDrawerDate, setAddDrawerDate] = useState<string | null>(null)
 
     const today = toISODate()
 
@@ -198,6 +200,7 @@ export default function TransactionsPage() {
                                 periodEnd={selectedPeriod.end_date ?? today}
                                 defaultDate={calendarDefaultDate}
                                 onDeleteRequest={isCurrentPeriod ? setDeletingId : undefined}
+                                onAddRequest={isCurrentPeriod ? setAddDrawerDate : undefined}
                                 readOnly={!isCurrentPeriod}
                             />
                         ) : activeTab === 'analytics' ? (
@@ -262,6 +265,20 @@ export default function TransactionsPage() {
                 loading={bulkCategoryLoading}
                 onConfirm={handleBulkCategoryConfirm}
             />
+
+            {addDrawerDate && selectedPeriod && isCurrentPeriod && (
+                <AddTransactionFlow
+                    payPeriodId={selectedPeriod.id}
+                    periodStart={selectedPeriod.start_date}
+                    periodEnd={selectedPeriod.end_date ?? undefined}
+                    defaultDate={addDrawerDate}
+                    onClose={() => setAddDrawerDate(null)}
+                    onSuccess={() => {
+                        setAddDrawerDate(null)
+                        emitTransactionsChanged()
+                    }}
+                />
+            )}
         </>
     )
 }
