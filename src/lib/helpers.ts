@@ -88,6 +88,19 @@ export function formatShortCurrency (value: number): string {
     return `${value}`
 }
 
+export function getInitials(user: { user_metadata?: { full_name?: string } | null; email?: string | null } | null): string {
+    const fullName = user?.user_metadata?.full_name
+    if (fullName) {
+        return fullName
+            .trim()
+            .split(/\s+/)
+            .slice(0, 2)
+            .map(part => part[0]?.toUpperCase() ?? '')
+            .join('')
+    }
+    return user?.email ? user.email[0].toUpperCase() : '?'
+}
+
 export function formatPeriodLabel(startDate: string | null): string {
     if (!startDate) return 'Period'
     const date = new Date(startDate)

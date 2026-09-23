@@ -9,21 +9,9 @@ import { payPeriodsService } from '@/services/pay-periods.service'
 import type { PayPeriod } from '@/types'
 import { LoadingContent } from '@/components/loading-content'
 import { useAuth } from '@/hooks/use-auth'
+import { getInitials } from '@/lib/helpers'
 import { OverviewTransaction } from './components/overview/overview-tab'
 import { TodayEmptyState } from './components/overview/today-empty-state'
-
-function getInitials(user: { user_metadata?: { full_name?: string } | null; email?: string | null } | null): string {
-    const fullName = user?.user_metadata?.full_name
-    if (fullName) {
-        return fullName
-            .trim()
-            .split(/\s+/)
-            .slice(0, 2)
-            .map(part => part[0]?.toUpperCase() ?? '')
-            .join('')
-    }
-    return user?.email ? user.email[0].toUpperCase() : '?'
-}
 
 export default function DashboardPage() {
     const navigate = useNavigate()
@@ -61,8 +49,8 @@ export default function DashboardPage() {
 
     return (
         <>
-            <header className="flex flex-col gap-[14px] px-5 pt-[22px] bg-neutral-50 dark:bg-neutral-950">
-                <div className="flex items-center justify-between">
+            <header className="flex flex-col gap-[14px] px-5 pt-[22px] lg:px-0 lg:pt-0 bg-neutral-50 dark:bg-neutral-950">
+                <div className="lg:hidden flex items-center justify-between">
                     <div className="flex items-center gap-2">
                         <img src="/favicon.svg" alt="" className="w-6 h-6" />
                         <span className="text-[16px] font-semibold tracking-[-0.02em] text-[#252525]">Mouny.</span>
@@ -87,7 +75,7 @@ export default function DashboardPage() {
                 )}
             </header>
 
-            <section className="px-4 pb-4 pt-2.5 space-y-4">
+            <section className="px-4 pb-4 pt-2.5 lg:px-0 space-y-4">
                 {periodLoading ? <LoadingContent /> : (
                     <>
                         {!selectedPeriod && (

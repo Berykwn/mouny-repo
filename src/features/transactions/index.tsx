@@ -167,9 +167,9 @@ export default function TransactionsPage() {
 
     return (
         <>
-            <header className="flex flex-col gap-[14px] px-5 pt-[22px] bg-neutral-50 dark:bg-neutral-950">
+            <header className="flex flex-col gap-[14px] px-5 pt-[22px] lg:px-0 lg:pt-0 bg-neutral-50 dark:bg-neutral-950">
                 <div className="flex items-center justify-between">
-                    <span className="text-[20px] font-semibold tracking-[-0.02em]">Ledger.</span>
+                    <span className="lg:hidden text-[20px] font-semibold tracking-[-0.02em]">Ledger.</span>
                     {selectedPeriod && (
                         <PeriodChip period={selectedPeriod} onClick={() => setPeriodPickerOpen(true)} />
                     )}
@@ -179,7 +179,7 @@ export default function TransactionsPage() {
                 )}
             </header>
 
-            <section className="px-4 pb-4 pt-3.5 space-y-4">
+            <section className="px-4 pb-4 pt-3.5 lg:px-0 space-y-4">
                 {loading ? (
                     <LoadingContent />
                 ) : !selectedPeriod ? (

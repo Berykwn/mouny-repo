@@ -1,11 +1,12 @@
-import { Outlet, NavLink } from 'react-router-dom'
-import { House, List, Wallet, Ellipsis, Plus, CreditCard, ShoppingBag, Tag, History } from 'lucide-react'
+import { Outlet, NavLink, useLocation, Link } from 'react-router-dom'
+import { House, List, Wallet, Ellipsis, Plus, CreditCard, ShoppingBag, Tag, History, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useState, useEffect, useCallback } from 'react'
 import { AddTransactionFlow } from '@/features/transactions/components/add-transaction-flow'
 import { payPeriodsService } from '@/services/pay-periods.service'
-import { toISODate } from '@/lib/helpers'
+import { toISODate, getInitials } from '@/lib/helpers'
 import { emitTransactionsChanged } from '@/lib/transactions-bus'
+import { useAuth } from '@/hooks/use-auth'
 import type { PayPeriod } from '@/types'
 import { toast } from 'sonner'
 
@@ -46,9 +47,23 @@ const SIDEBAR_GROUPS: { label: string | null; items: typeof NAV_ITEMS }[] = [
     },
 ]
 
+const ROUTE_LABELS: Record<string, string> = {
+    '/': 'Today',
+    '/transactions': 'Ledger',
+    '/accounts': 'Accounts',
+    '/debts': 'Debts',
+    '/wish-list': 'Wishlist',
+    '/category': 'Categories',
+    '/period-history': 'Period History',
+    '/menu': 'Menu',
+}
+
 export default function AppLayout() {
+    const location = useLocation()
+    const { user } = useAuth()
     const [activePeriod, setActivePeriod] = useState<PayPeriod | null>(null)
     const [addDrawerOpen, setAddDrawerOpen] = useState(false)
+    const currentLabel = ROUTE_LABELS[location.pathname] ?? 'Today'
 
     useEffect(() => {
         payPeriodsService.getActive().then(({ data }) => setActivePeriod(data))
@@ -78,14 +93,6 @@ export default function AppLayout() {
                     </span>
                 </div>
 
-                <button
-                    onClick={handleAddClick}
-                    className="mt-5 h-11 rounded-[12px] bg-[#6FA82B] text-white text-[13px] font-semibold flex items-center justify-center gap-1.5 hover:bg-[#6FA82B]/90 transition-colors"
-                >
-                    <Plus className="w-4 h-4" strokeWidth={2} />
-                    Add Transaction
-                </button>
-
                 <nav className="mt-6 flex flex-col gap-4 flex-1 overflow-y-auto">
                     {SIDEBAR_GROUPS.map((group, i) => (
                         <div key={group.label ?? i} className="space-y-0.5">
@@ -106,6 +113,29 @@ export default function AppLayout() {
 
             <main className="flex-1 overflow-y-auto pb-[calc(76px+env(safe-area-inset-bottom))] lg:pl-64 lg:pb-0">
                 <div className="lg:max-w-5xl lg:mx-auto lg:px-8 lg:py-8">
+                    <div className="hidden lg:flex items-center justify-between mb-6">
+                        <div className="flex items-center gap-1.5 text-[13px]">
+                            <Link to="/" className="text-[#8a8a84] hover:text-[#252525] transition-colors">
+                                Mouny
+                            </Link>
+                            <ChevronRight className="w-3.5 h-3.5 text-[#c4c4be]" />
+                            <span className="font-medium text-[#252525]">{currentLabel}</span>
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                            <button
+                                onClick={handleAddClick}
+                                className="h-9 px-4 rounded-[10px] bg-[#6FA82B] text-white text-[13px] font-semibold flex items-center justify-center gap-1.5 hover:bg-[#6FA82B]/90 transition-colors"
+                            >
+                                <Plus className="w-4 h-4" strokeWidth={2} />
+                                Add Transaction
+                            </button>
+                            <div className="w-8 h-8 rounded-full bg-[#252525] flex items-center justify-center shrink-0">
+                                <span className="text-[11.5px] font-semibold text-[#fafafa]">{getInitials(user)}</span>
+                            </div>
+                        </div>
+                    </div>
+
                     <Outlet />
                 </div>
 
