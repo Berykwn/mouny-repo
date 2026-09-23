@@ -10,6 +10,7 @@ interface LedgerTabsProps {
 const TABS: { key: LedgerTab; label: string }[] = [
     { key: 'calendar', label: 'Calendar' },
     { key: 'analytics', label: 'Analytics' },
+    { key: 'all', label: 'All' },
 ]
 
 export function LedgerTabs({ active, onChange }: LedgerTabsProps) {
@@ -29,17 +30,6 @@ export function LedgerTabs({ active, onChange }: LedgerTabsProps) {
                     {tab.label}
                 </button>
             ))}
-            <button
-                onClick={() => onChange('all')}
-                className={cn(
-                    'hidden lg:inline-flex pb-2.5 -mb-px text-[14px]',
-                    active === 'all'
-                        ? 'font-semibold text-[#252525] border-b-2 border-[#252525]'
-                        : 'text-[#9a9a94]'
-                )}
-            >
-                All
-            </button>
         </div>
     )
 }

@@ -49,29 +49,31 @@ export function TransactionListView({
             {!readOnly && selectedIds.length > 0 && (
                 <div className="sticky top-0 z-10 flex items-center justify-between px-4 py-2.5 bg-[#f4f4f2] border-b border-[#e5e5e5]">
                     <p className="text-[13px] font-medium text-[#252525]">{selectedIds.length} selected</p>
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1">
                         <button
                             type="button"
                             disabled={!commonType}
-                            title={!commonType ? 'Select transactions of only one type' : undefined}
+                            title={!commonType ? 'Select transactions of only one type' : 'Change category'}
                             onClick={onBulkCategoryRequest}
-                            className="flex items-center gap-1.5 px-2.5 h-8 rounded-[10px] text-[12px] font-medium text-[#252525] hover:bg-white transition-colors disabled:opacity-40 disabled:pointer-events-none"
+                            className="flex items-center gap-1.5 px-2 sm:px-2.5 h-8 rounded-[10px] text-[12px] font-medium text-[#252525] hover:bg-white transition-colors disabled:opacity-40 disabled:pointer-events-none"
                         >
-                            <Tag className="w-3.5 h-3.5" /> Change category
+                            <Tag className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Change category</span>
                         </button>
                         <button
                             type="button"
+                            title="Export"
                             onClick={handleExport}
-                            className="flex items-center gap-1.5 px-2.5 h-8 rounded-[10px] text-[12px] font-medium text-[#252525] hover:bg-white transition-colors"
+                            className="flex items-center gap-1.5 px-2 sm:px-2.5 h-8 rounded-[10px] text-[12px] font-medium text-[#252525] hover:bg-white transition-colors"
                         >
-                            <Download className="w-3.5 h-3.5" /> Export
+                            <Download className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Export</span>
                         </button>
                         <button
                             type="button"
+                            title="Delete"
                             onClick={onBulkDeleteRequest}
-                            className="flex items-center gap-1.5 px-2.5 h-8 rounded-[10px] text-[12px] font-medium text-[#dc2626] hover:bg-white transition-colors"
+                            className="flex items-center gap-1.5 px-2 sm:px-2.5 h-8 rounded-[10px] text-[12px] font-medium text-[#dc2626] hover:bg-white transition-colors"
                         >
-                            <Trash2 className="w-3.5 h-3.5" /> Delete
+                            <Trash2 className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Delete</span>
                         </button>
                         <button
                             type="button"
@@ -91,10 +93,10 @@ export function TransactionListView({
                         onCheckedChange={toggleAll}
                     />
                 )}
-                <p className="w-[64px] shrink-0 text-[10px] uppercase tracking-[.1em] text-[#8a8a84]">Date</p>
+                <p className="hidden lg:block w-[64px] shrink-0 text-[10px] uppercase tracking-[.1em] text-[#8a8a84]">Date</p>
                 <p className="flex-1 text-[10px] uppercase tracking-[.1em] text-[#8a8a84]">Details</p>
-                <p className="w-[120px] shrink-0 text-[10px] uppercase tracking-[.1em] text-[#8a8a84]">Account</p>
-                <p className="w-[110px] shrink-0 text-right text-[10px] uppercase tracking-[.1em] text-[#8a8a84]">Amount</p>
+                <p className="hidden lg:block w-[120px] shrink-0 text-[10px] uppercase tracking-[.1em] text-[#8a8a84]">Account</p>
+                <p className="w-[90px] lg:w-[110px] shrink-0 text-right text-[10px] uppercase tracking-[.1em] text-[#8a8a84]">Amount</p>
             </div>
 
             {transactions.length === 0 ? (
@@ -104,6 +106,7 @@ export function TransactionListView({
                     {transactions.map(tx => {
                         const title = tx.note || tx.category?.name || (tx.type === 'income' ? 'Income' : 'Expense')
                         const subtitle = tx.category?.name && tx.note ? tx.category.name : null
+                        const mobileSubtitle = [formatDateShort(tx.date), tx.account.name, subtitle].filter(Boolean).join(' · ')
                         const selected = selectedIds.includes(tx.id)
 
                         return (
@@ -119,7 +122,7 @@ export function TransactionListView({
                                 {!readOnly && (
                                     <Checkbox checked={selected} onCheckedChange={() => toggle(tx.id)} onClick={(e) => e.stopPropagation()} />
                                 )}
-                                <p className="w-[64px] shrink-0 text-[12px] text-[#8a8a84]">{formatDateShort(tx.date)}</p>
+                                <p className="hidden lg:block w-[64px] shrink-0 text-[12px] text-[#8a8a84]">{formatDateShort(tx.date)}</p>
                                 <div className="flex-1 min-w-0 flex items-center gap-2.5">
                                     <div
                                         className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
@@ -139,12 +142,13 @@ export function TransactionListView({
                                     </div>
                                     <div className="min-w-0">
                                         <p className="text-[13px] font-medium text-[#252525] truncate">{title}</p>
-                                        {subtitle && <p className="text-[11px] text-[#8a8a84] truncate">{subtitle}</p>}
+                                        <p className="lg:hidden text-[11px] text-[#8a8a84] truncate">{mobileSubtitle}</p>
+                                        {subtitle && <p className="hidden lg:block text-[11px] text-[#8a8a84] truncate">{subtitle}</p>}
                                     </div>
                                 </div>
-                                <p className="w-[120px] shrink-0 text-[12px] text-[#8a8a84] truncate">{tx.account.name}</p>
+                                <p className="hidden lg:block w-[120px] shrink-0 text-[12px] text-[#8a8a84] truncate">{tx.account.name}</p>
                                 <p className={cn(
-                                    'w-[110px] shrink-0 text-right text-[13px] font-medium',
+                                    'w-[90px] lg:w-[110px] shrink-0 text-right text-[13px] font-medium',
                                     tx.type === 'income' ? 'text-[#059669]' : 'text-[#252525]'
                                 )}>
                                     {tx.type === 'income' ? '+' : '-'}{formatCurrency(tx.amount)}

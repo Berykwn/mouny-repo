@@ -19,7 +19,7 @@ import type { TransactionWithDetails, PayPeriod } from '@/types'
 import { toast } from 'sonner'
 import { LoadingContent } from '@/components/loading-content'
 
-const TABS: LedgerTab[] = ['calendar', 'analytics']
+const TABS: LedgerTab[] = ['calendar', 'analytics', 'all']
 
 export default function TransactionsPage() {
     const [activeTab, setActiveTab] = useState<LedgerTab>('calendar')
