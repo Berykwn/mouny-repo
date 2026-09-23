@@ -1,9 +1,9 @@
 import { useState, useMemo, useEffect } from 'react'
 import {
   Minus, Plus, TrendingUp, TrendingDown, CalendarDays, Flame,
-  Receipt, ArrowLeftRight, Moon, type LucideProps,
+  Receipt, ArrowLeftRight, Moon, Wallet, type LucideProps,
 } from 'lucide-react'
-import { AreaChart, Area, Tooltip, ResponsiveContainer } from 'recharts'
+import { AreaChart, Area, BarChart, Bar, XAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import { formatCurrency, formatDateShort, getDaysBetween, toISODate } from '@/lib/helpers'
 import { cn } from '@/lib/utils'
 import { BottomDrawer } from '@/components/bottom-drawer'
@@ -286,6 +286,36 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
 
   const { trend } = usePeriodTrend(periods, period, transactions)
 
+  // ─── Desktop-only breakdowns (spending by account, by day of week, period comparison) ──
+
+  const byAccount = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const tx of activeExpenses) {
+      map.set(tx.account.name, (map.get(tx.account.name) ?? 0) + tx.amount)
+    }
+    return Array.from(map.entries())
+      .map(([name, amount]) => ({ name, amount }))
+      .sort((a, b) => b.amount - a.amount)
+  }, [activeExpenses])
+
+  const byWeekday = useMemo(() => {
+    const labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+    const totals = new Array(7).fill(0) as number[]
+    for (const tx of activeExpenses) {
+      const jsDay = new Date(tx.date + 'T00:00:00').getDay() // 0 = Sunday
+      totals[(jsDay + 6) % 7] += tx.amount
+    }
+    return labels.map((day, i) => ({ day, total: totals[i] }))
+  }, [activeExpenses])
+
+  const periodComparison = useMemo(() => {
+    if (trend.length < 2) return null
+    const best = trend.reduce((mx, t) => t.net > mx.net ? t : mx, trend[0])
+    const worst = trend.reduce((mn, t) => t.net < mn.net ? t : mn, trend[0])
+    const average = trend.reduce((s, t) => s + t.net, 0) / trend.length
+    return { best, worst, average }
+  }, [trend])
+
   // ─── Savings rate, trend vs previous period, and health score ──────────────
 
   const savingsRate = totalIncome > 0 ? (net / totalIncome) * 100 : null
@@ -417,6 +447,36 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
         <PeriodTrendChart trend={trend} />
       </div>
 
+      {/* ── Across your periods (desktop only) ── */}
+      {periodComparison && (
+        <div className="hidden lg:block rounded-[20px] border border-[#e5e5e5] bg-white p-4 lg:col-span-2">
+          <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84] mb-3">Across your periods</p>
+          <div className="grid grid-cols-3 gap-2">
+            <StatTile
+              icon={TrendingUp}
+              label="Best period"
+              value={formatCurrency(periodComparison.best.net)}
+              sub={periodComparison.best.label}
+              valueClassName="text-[#059669]"
+            />
+            <StatTile
+              icon={TrendingDown}
+              label="Worst period"
+              value={formatCurrency(periodComparison.worst.net)}
+              sub={periodComparison.worst.label}
+              valueClassName={periodComparison.worst.net < 0 ? 'text-[#dc2626]' : undefined}
+            />
+            <StatTile
+              icon={ArrowLeftRight}
+              label="Average net"
+              value={formatCurrency(periodComparison.average)}
+              sub={`across ${trend.length} periods`}
+              valueClassName={periodComparison.average < 0 ? 'text-[#dc2626]' : undefined}
+            />
+          </div>
+        </div>
+      )}
+
       {/* ── Vs last period card ── */}
       {previousSummary && (
         <div className="rounded-[20px] border border-[#e5e5e5] bg-white overflow-hidden">
@@ -461,6 +521,15 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
             sub={`over ${stats.daysElapsed} day${stats.daysElapsed !== 1 ? 's' : ''}`}
           />
 
+          {stats.safeDaily !== null && (
+            <StatTile
+              icon={Wallet}
+              label="Safe per day"
+              value={formatCurrency(stats.safeDaily)}
+              sub="to stay on track"
+            />
+          )}
+
           {stats.daysRemaining !== null && (
             <StatTile
               icon={CalendarDays}
@@ -503,6 +572,57 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
           />
         </div>
       </div>
+
+      {/* ── Spending by account (desktop only) ── */}
+      {byAccount.length > 0 && (
+        <div className="hidden lg:block rounded-[20px] border border-[#e5e5e5] bg-white overflow-hidden">
+          <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84] px-4 pt-4 pb-3">
+            Spending by account
+          </p>
+          {byAccount.map(a => {
+            const pct = activeTotal > 0 ? Math.round((a.amount / activeTotal) * 100) : 0
+            return (
+              <div key={a.name} className="px-4 py-[9px] border-b border-[#f2f2f0] last:border-b-0">
+                <div className="flex items-center justify-between mb-1">
+                  <p className="text-[13px] text-[#252525]">{a.name}</p>
+                  <p className="text-[13px] font-medium text-[#252525]">{formatCurrency(a.amount)}</p>
+                </div>
+                <div className="h-1 rounded-full bg-[#f2f2f0] overflow-hidden">
+                  <div className="h-full rounded-full bg-[#94a3b8]" style={{ width: `${pct}%` }} />
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* ── By day of week (desktop only) ── */}
+      {byWeekday.some(d => d.total > 0) && (
+        <div className="hidden lg:block rounded-[20px] border border-[#e5e5e5] bg-white p-4">
+          <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84] mb-3">By day of week</p>
+          <div style={{ width: '100%', height: 140 }}>
+            <ResponsiveContainer>
+              <BarChart data={byWeekday} margin={{ top: 4, right: 0, left: 0, bottom: 0 }}>
+                <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 10.5, fill: '#a3a3a3' }} />
+                <Tooltip
+                  cursor={{ fill: '#f4f4f2' }}
+                  content={({ active, payload }) => {
+                    if (!active || !payload?.length) return null
+                    const d = payload[0].payload as { day: string; total: number }
+                    return (
+                      <div className="rounded-[10px] border border-[#e5e5e5] bg-white px-2.5 py-1.5 shadow-lg">
+                        <p className="text-[10.5px] text-[#8a8a84]">{d.day}</p>
+                        <p className="text-[12px] font-medium text-[#252525]">{formatCurrency(d.total)}</p>
+                      </div>
+                    )
+                  }}
+                />
+                <Bar dataKey="total" radius={[3, 3, 0, 0]} fill="#4d7a1d" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
 
       {/* ── Budgets card ── */}
       {sortedCategories.length > 0 && (
