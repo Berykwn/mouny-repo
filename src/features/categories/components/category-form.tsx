@@ -3,7 +3,9 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Loader2 } from 'lucide-react'
 import { categoriesService } from '@/services/accounts-categories.service'
+import { categoryBudgetsService } from '@/services/budgets.service'
 import { cn } from '@/lib/utils'
+import { formatCurrencyInput, parseCurrencyInput } from '@/lib/helpers'
 import { toast } from 'sonner'
 import type { Category, CategoryType } from '@/types'
 import { COLORS } from '@/lib/static-colors'
@@ -14,16 +16,19 @@ import { categoryTypeConfig, CategoryTypePicker } from './category-type-picker'
 interface CategoryFormProps {
     onSuccess: () => void
     initial?: Category
+    /** Existing standing spending target for this category, if any (expense categories only). */
+    initialBudget?: number | null
 }
 
 const ICON_KEYS = Object.keys(ICON_MAP)
 const FIELD_LABEL = 'text-[11px] font-medium uppercase tracking-[.14em] text-[#8a8a84]'
 
-export function CategoryForm({ onSuccess, initial }: CategoryFormProps) {
+export function CategoryForm({ onSuccess, initial, initialBudget }: CategoryFormProps) {
     const [type, setType] = useState<CategoryType>((initial?.type as CategoryType) ?? 'expense')
     const [name, setName] = useState(initial?.name ?? '')
     const [color, setColor] = useState<string>(initial?.color ?? COLORS[0])
     const [icon, setIcon] = useState<string>(initial?.icon ?? ICON_KEYS[0])
+    const [budget, setBudget] = useState(initialBudget ? String(initialBudget) : '')
     const [loading, setLoading] = useState(false)
 
     const isEdit = !!initial
@@ -40,17 +45,26 @@ export function CategoryForm({ onSuccess, initial }: CategoryFormProps) {
 
         const payload = { name: name.trim(), type, color, icon }
 
-        const { error } = isEdit
+        const { data: category, error } = isEdit
             ? await categoriesService.update(initial.id, payload)
             : await categoriesService.create(payload)
 
-        setLoading(false)
-
-        if (error) {
-            toast.error(error)
+        if (error || !category) {
+            setLoading(false)
+            toast.error(error ?? 'Something went wrong.')
             return
         }
 
+        if (type === 'expense') {
+            const budgetAmount = parseCurrencyInput(budget)
+            if (budgetAmount > 0) {
+                await categoryBudgetsService.upsert(category.id, budgetAmount)
+            } else if (isEdit && initialBudget) {
+                await categoryBudgetsService.remove(category.id)
+            }
+        }
+
+        setLoading(false)
         toast.success(isEdit ? 'Category updated successfully.' : 'Category created successfully.')
         onSuccess()
     }
@@ -70,6 +84,25 @@ export function CategoryForm({ onSuccess, initial }: CategoryFormProps) {
                     className="h-12 rounded-[14px] border-[#e5e5e5] text-[13px]"
                 />
             </div>
+
+            {/* Spending target (expense categories only) */}
+            {type === 'expense' && (
+                <div className="space-y-1.5">
+                    <Label className={FIELD_LABEL}>Spending target per period (optional)</Label>
+                    <div className="flex items-center gap-2 h-12 rounded-[14px] border border-[#e5e5e5] px-4">
+                        <span className="text-[13px] text-[#8a8a84] font-medium">Rp</span>
+                        <input
+                            inputMode="numeric"
+                            value={formatCurrencyInput(budget)}
+                            onChange={(e) => setBudget(e.target.value.replace(/\D/g, ''))}
+                            placeholder="0"
+                            disabled={loading}
+                            className="flex-1 text-[13px] font-medium text-[#252525] outline-none bg-transparent"
+                        />
+                    </div>
+                    <p className="text-[10.5px] text-[#a3a3a3]">Shown as budget progress in Analytics.</p>
+                </div>
+            )}
 
             {/* Icon picker */}
             <div className="space-y-2">

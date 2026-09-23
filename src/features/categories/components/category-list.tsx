@@ -1,14 +1,16 @@
 import type { Category } from '@/types'
 import { Trash2, Pencil } from 'lucide-react'
 import { CategoryIcon } from './category-icon'
+import { formatCurrency } from '@/lib/helpers'
 
 interface CategoryListProps {
     categories: Category[]
+    budgets: Record<string, number>
     onEdit: (category: Category) => void
     onDeleteRequest: (id: string) => void
 }
 
-export function CategoryList({ categories, onEdit, onDeleteRequest }: CategoryListProps) {
+export function CategoryList({ categories, budgets, onEdit, onDeleteRequest }: CategoryListProps) {
     const expense = categories
         .filter(c => c.type === 'expense')
         .sort(
@@ -47,7 +49,14 @@ export function CategoryList({ categories, onEdit, onDeleteRequest }: CategoryLi
                                         style={{ color }}
                                     />
                                 </div>
-                                <p className="text-[13px] text-[#252525] flex-1">{cat.name}</p>
+                                <div className="min-w-0 flex-1">
+                                    <p className="text-[13px] text-[#252525] truncate">{cat.name}</p>
+                                    {cat.type === 'expense' && budgets[cat.id] !== undefined && (
+                                        <p className="text-[11px] text-[#8a8a84] truncate mt-0.5">
+                                            Target {formatCurrency(budgets[cat.id])}/period
+                                        </p>
+                                    )}
+                                </div>
                                 <div className="flex items-center gap-1">
                                     <button
                                         onClick={() => onEdit(cat)}

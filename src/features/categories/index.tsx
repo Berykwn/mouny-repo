@@ -5,6 +5,7 @@ import { ConfirmDrawer } from '@/components/confirmation-drawer'
 import { CategoryForm } from './components/category-form'
 import { CategoryList } from './components/category-list'
 import { categoriesService } from '@/services/accounts-categories.service'
+import { categoryBudgetsService } from '@/services/budgets.service'
 import type { Category } from '@/types'
 import { toast } from 'sonner'
 import { LoadingContent } from '@/components/loading-content'
@@ -13,6 +14,7 @@ import { PageHeader } from '@/components/page-header'
 
 export function CategoriesPage() {
     const [categories, setCategories] = useState<Category[]>([])
+    const [budgets, setBudgets] = useState<Record<string, number>>({})
     const [loading, setLoading] = useState(true)
     const [editCategory, setEditCategory] = useState<Category | null>(null)
     const [addCategoryDrawer, setAddCategoryDrawer] = useState(false)
@@ -22,8 +24,14 @@ export function CategoriesPage() {
 
     const load = useCallback(async () => {
         setLoading(true)
-        const { data: cats } = await categoriesService.getAll()
+        const [{ data: cats }, { data: budgetRows }] = await Promise.all([
+            categoriesService.getAll(),
+            categoryBudgetsService.getAll(),
+        ])
         setCategories(cats ?? [])
+        const map: Record<string, number> = {}
+        for (const b of budgetRows ?? []) map[b.category_id] = b.amount
+        setBudgets(map)
         setLoading(false)
     }, [])
 
@@ -115,6 +123,7 @@ export function CategoriesPage() {
                 ) : (
                     <CategoryList
                         categories={categories}
+                        budgets={budgets}
                         onEdit={setEditCategory}
                         onDeleteRequest={setDeletingCategoryId}
                     />
@@ -125,7 +134,13 @@ export function CategoriesPage() {
                     <CategoryForm onSuccess={() => { setAddCategoryDrawer(false); load() }} />
                 </BottomDrawer>
                 <BottomDrawer open={!!editCategory} onClose={() => setEditCategory(null)} title="Edit Category">
-                    {editCategory && <CategoryForm initial={editCategory} onSuccess={() => { setEditCategory(null); load() }} />}
+                    {editCategory && (
+                        <CategoryForm
+                            initial={editCategory}
+                            initialBudget={budgets[editCategory.id] ?? null}
+                            onSuccess={() => { setEditCategory(null); load() }}
+                        />
+                    )}
                 </BottomDrawer>
 
                 <ConfirmDrawer
