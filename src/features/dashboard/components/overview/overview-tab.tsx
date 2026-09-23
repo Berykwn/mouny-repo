@@ -86,26 +86,28 @@ export function OverviewTransaction({
     const { transactions, accounts, closingBalance } = data
 
     return (
-        <div className="space-y-3 mt-1.5 lg:max-w-md">
-            <SafeToSpendCard
-                totalIncome={stats.totalIncome}
-                totalExpense={stats.totalExpense}
-                remaining={stats.remaining}
-                spentPercent={stats.spentPercent}
-            />
+        <div className="mt-1.5 space-y-3 lg:space-y-0 lg:grid lg:grid-cols-[1fr_360px] lg:gap-4 lg:items-start">
+            <div className="space-y-3">
+                <SafeToSpendCard
+                    totalIncome={stats.totalIncome}
+                    totalExpense={stats.totalExpense}
+                    remaining={stats.remaining}
+                    spentPercent={stats.spentPercent}
+                />
 
-            {isActivePeriod && (
-                <>
-                    <PeriodInsight
-                        transactions={transactions}
-                        totalExpense={stats.totalExpense}
-                        dailyAvg={stats.dailyAvg}
-                        safeDaily={stats.safeDaily}
-                    />
+                {isActivePeriod && (
+                    <>
+                        <PeriodInsight
+                            transactions={transactions}
+                            totalExpense={stats.totalExpense}
+                            dailyAvg={stats.dailyAvg}
+                            safeDaily={stats.safeDaily}
+                        />
 
-                    <TodayTransactionsCard transactions={transactions} />
-                </>
-            )}
+                        <TodayTransactionsCard transactions={transactions} />
+                    </>
+                )}
+            </div>
 
             <BalancesCard
                 accounts={accounts}

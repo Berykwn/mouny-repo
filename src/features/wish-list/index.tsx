@@ -67,13 +67,13 @@ export default function WishListPage() {
     return (
         <>
             <PageHeader title="Wishlist" />
-            <section className="px-4 pb-4 space-y-4">
+            <section className="px-4 pb-4 lg:px-0 space-y-4">
                 {loading ? (
                     <LoadingContent />
                 ) : (
-                    <div className="space-y-5">
+                    <div className="space-y-5 lg:space-y-0 lg:grid lg:grid-cols-[360px_1fr] lg:gap-4 lg:items-start">
                         {/* Savings progress hero */}
-                        <div className="rounded-[20px] border border-[#e5e5e5] bg-white p-5 lg:max-w-md">
+                        <div className="rounded-[20px] border border-[#e5e5e5] bg-white p-5">
                             <div className="flex items-center justify-between mb-2">
                                 <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84]">Savings progress</p>
                                 <Button

@@ -52,64 +52,66 @@ export function AccountPage() {
     return (
         <>
             <PageHeader title="Accounts" />
-            <section className="px-4 pb-4 space-y-4">
-                <header className="rounded-[20px] border border-[#e5e5e5] bg-white p-4 flex items-center gap-3">
-                    <div className="flex-1 min-w-0">
-                        <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84]">Total balance</p>
-                        {accounts.length > 0 ? (
-                            <>
-                                <p className={cn(
-                                    'text-[32px] font-medium tracking-[-0.02em] leading-none mt-1',
-                                    totalBalance < 0 ? 'text-[#dc2626]' : 'text-[#252525]'
-                                )}>
-                                    {formatCurrency(totalBalance)}
-                                </p>
-                                <p className="text-[11px] text-[#8a8a84] mt-1.5">
-                                    across {accounts.length} account{accounts.length > 1 ? 's' : ''}
-                                </p>
-                            </>
-                        ) : (
-                            <p className="text-[13px] text-[#8a8a84] mt-0.5">Add your first account</p>
-                        )}
-                    </div>
-                    <Button
-                        onClick={() => setAddAccountDrawer(true)}
-                        size="sm"
-                        variant="outline"
-                    >
-                        <Plus className="w-3.5 h-3.5" /> Account
-                    </Button>
-                </header>
-
-                {loading ? (
-                    <LoadingContent />
-                ) : accounts.length === 0 ? (
-                    <button
-                        type="button"
-                        onClick={() => setAddAccountDrawer(true)}
-                        className="w-full rounded-[20px] border border-[#e5e5e5] bg-white p-4 flex items-center gap-3 text-left hover:bg-[#fbfbfa] transition-colors"
-                    >
-                        <div className="w-9 h-9 rounded-[10px] bg-[#f4f4f2] flex items-center justify-center shrink-0">
-                            <Wallet2 className="w-4 h-4 text-[#8a8a84]" />
-                        </div>
+            <section className="px-4 pb-4 lg:px-0 space-y-4">
+                <div className="space-y-4 lg:space-y-0 lg:grid lg:grid-cols-[360px_1fr] lg:gap-4 lg:items-start">
+                    <header className="rounded-[20px] border border-[#e5e5e5] bg-white p-4 flex items-center gap-3">
                         <div className="flex-1 min-w-0">
-                            <p className="text-[13px] font-medium text-[#252525]">No accounts yet</p>
-                            <p className="text-[11.5px] text-[#8a8a84] mt-0.5">Tap to add your first bank or cash account</p>
+                            <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84]">Total balance</p>
+                            {accounts.length > 0 ? (
+                                <>
+                                    <p className={cn(
+                                        'text-[32px] font-medium tracking-[-0.02em] leading-none mt-1',
+                                        totalBalance < 0 ? 'text-[#dc2626]' : 'text-[#252525]'
+                                    )}>
+                                        {formatCurrency(totalBalance)}
+                                    </p>
+                                    <p className="text-[11px] text-[#8a8a84] mt-1.5">
+                                        across {accounts.length} account{accounts.length > 1 ? 's' : ''}
+                                    </p>
+                                </>
+                            ) : (
+                                <p className="text-[13px] text-[#8a8a84] mt-0.5">Add your first account</p>
+                            )}
                         </div>
-                    </button>
-                ) : (
-                    <div className="space-y-3 mt-1.5">
-                        <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84] px-1">
-                            Your accounts
-                        </p>
+                        <Button
+                            onClick={() => setAddAccountDrawer(true)}
+                            size="sm"
+                            variant="outline"
+                        >
+                            <Plus className="w-3.5 h-3.5" /> Account
+                        </Button>
+                    </header>
 
-                        <AccountList
-                            accounts={accounts}
-                            onEdit={setEditAccount}
-                            onDeleteRequest={setDeletingAccountId}
-                        />
-                    </div>
-                )}
+                    {loading ? (
+                        <LoadingContent />
+                    ) : accounts.length === 0 ? (
+                        <button
+                            type="button"
+                            onClick={() => setAddAccountDrawer(true)}
+                            className="w-full rounded-[20px] border border-[#e5e5e5] bg-white p-4 flex items-center gap-3 text-left hover:bg-[#fbfbfa] transition-colors"
+                        >
+                            <div className="w-9 h-9 rounded-[10px] bg-[#f4f4f2] flex items-center justify-center shrink-0">
+                                <Wallet2 className="w-4 h-4 text-[#8a8a84]" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <p className="text-[13px] font-medium text-[#252525]">No accounts yet</p>
+                                <p className="text-[11.5px] text-[#8a8a84] mt-0.5">Tap to add your first bank or cash account</p>
+                            </div>
+                        </button>
+                    ) : (
+                        <div className="space-y-3">
+                            <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84] px-1">
+                                Your accounts
+                            </p>
+
+                            <AccountList
+                                accounts={accounts}
+                                onEdit={setEditAccount}
+                                onDeleteRequest={setDeletingAccountId}
+                            />
+                        </div>
+                    )}
+                </div>
 
                 {/* Drawers */}
                 <BottomDrawer open={addAccountDrawer} onClose={() => setAddAccountDrawer(false)} title="Add Account">

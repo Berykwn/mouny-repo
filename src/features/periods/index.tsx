@@ -38,7 +38,7 @@ export function PeriodHistoryPage() {
     return (
         <>
             <PageHeader title="Period History" />
-            <section className="px-4 pb-4 space-y-4">
+            <section className="px-4 pb-4 lg:px-0 space-y-4">
                 {loading ? <LoadingContent /> : (
                     <div className="space-y-4 lg:grid lg:grid-cols-[360px_1fr] lg:gap-4 lg:items-start lg:space-y-0">
                         {activePeriod ? (

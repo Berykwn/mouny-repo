@@ -41,7 +41,7 @@ export default function MenuPage() {
     return (
         <>
             <PageHeader title="Menu" />
-            <section className="px-4 pb-4 space-y-4">
+            <section className="px-4 pb-4 lg:px-0 space-y-4">
                 <div className="lg:grid lg:grid-cols-2 lg:gap-4 lg:items-start space-y-4 lg:space-y-0">
                     <div>
                         <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84] px-1 mb-1.5">Money</p>
