@@ -205,8 +205,9 @@ export default function TransactionsPage() {
                             />
                         ) : activeTab === 'analytics' ? (
                             <PeriodAnalytics
-                                transactions={transactions as (typeof transactions[0] & { type: 'expense' | 'income' })[]}
+                                transactions={transactions}
                                 period={selectedPeriod}
+                                periods={allPeriods}
                                 previousSummary={previousSummary}
                                 totalBalance={totalBalance}
                                 totalDebt={totalDebt}

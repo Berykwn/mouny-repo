@@ -7,6 +7,9 @@ export type AccountUpdate = Database['public']['Tables']['accounts']['Update']
 export type Category = Database['public']['Tables']['categories']['Row']
 export type CategoryInsert = Database['public']['Tables']['categories']['Insert']
 
+export type CategoryBudget = Database['public']['Tables']['category_budgets']['Row']
+export type CategoryBudgetInsert = Database['public']['Tables']['category_budgets']['Insert']
+
 export type PayPeriod = Database['public']['Tables']['pay_periods']['Row']
 export type PayPeriodInsert = Database['public']['Tables']['pay_periods']['Insert']
 export type PayPeriodUpdate = Database['public']['Tables']['pay_periods']['Update']

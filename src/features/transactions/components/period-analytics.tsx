@@ -1,37 +1,20 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import {
   Minus, Plus, TrendingUp, TrendingDown, CalendarDays, Flame,
   Receipt, ArrowLeftRight, Moon, type LucideProps,
 } from 'lucide-react'
-import { formatCurrency, formatDateShort, getDaysBetween, toISODate, heatBarColor } from '@/lib/helpers'
+import { AreaChart, Area, Tooltip, ResponsiveContainer } from 'recharts'
+import { formatCurrency, formatDateShort, getDaysBetween, toISODate } from '@/lib/helpers'
 import { cn } from '@/lib/utils'
 import { BottomDrawer } from '@/components/bottom-drawer'
 import { calculateHealthScore } from '@/lib/calculate-health-score'
+import { usePeriodStats } from '@/hooks/use-period-stats'
 import { CategoryIcon } from '@/features/categories/components/category-icon'
+import { categoryBudgetsService } from '@/services/budgets.service'
+import { usePeriodTrend } from '../hooks/use-period-trend'
+import { PeriodTrendChart } from './period-trend-chart'
 import type { ElementType } from 'react'
-
-interface Category {
-  id: string
-  name: string
-  color: string | null
-  icon?: string | null
-}
-
-interface Transaction {
-  id: string
-  date: string
-  amount: number
-  type: 'expense' | 'income'
-  note: string | null
-  category: Category | null
-}
-
-export type TransactionWithDetails = Transaction
-
-export interface PayPeriod {
-  start_date: string
-  end_date: string | null
-}
+import type { PayPeriod, TransactionWithDetails } from '@/types'
 
 interface DayEntry {
   date: string
@@ -47,26 +30,10 @@ interface CatEntry {
   amount: number
 }
 
-interface PeriodStatsBase {
-  days: number
-  daysElapsed: number
-  daysRemaining: number | null
-  dailyAvg: number
-  remaining: number
-}
-
-type PeriodStats =
-  | (PeriodStatsBase & { hasPredictive: false })
-  | (PeriodStatsBase & {
-      hasPredictive: true
-      projectedSpend: number
-      projectedRemaining: number
-      daysUntilBroke: number | null
-    })
-
 interface PeriodAnalyticsProps {
   transactions: TransactionWithDetails[]
   period: PayPeriod
+  periods: PayPeriod[]
   previousSummary: { income: number; expense: number; net: number } | null
   totalBalance: number
   totalDebt: number
@@ -167,11 +134,42 @@ function DaySheet({ date, transactions, onClose }: DaySheetProps) {
   )
 }
 
+function SparkTooltip({ active, payload }: {
+  active?: boolean
+  payload?: { payload: { date: string; total: number } }[]
+}) {
+  if (!active || !payload?.length) return null
+  const d = payload[0].payload
+  return (
+    <div className="rounded-[10px] border border-[#e5e5e5] bg-white px-2.5 py-1.5 shadow-lg">
+      <p className="text-[10.5px] text-[#8a8a84]">{formatDateShort(d.date)}</p>
+      <p className="text-[12px] font-medium text-[#252525]">{formatCurrency(d.total)}</p>
+    </div>
+  )
+}
+
+// Budget progress color: green while comfortably under, amber approaching, red over.
+function budgetColor(ratio: number): string {
+  if (ratio >= 1) return '#dc2626'
+  if (ratio >= 0.7) return '#d97706'
+  return '#4d7a1d'
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export function PeriodAnalytics({ transactions, period, previousSummary, totalBalance, totalDebt }: PeriodAnalyticsProps) {
+export function PeriodAnalytics({ transactions, period, periods, previousSummary, totalBalance, totalDebt }: PeriodAnalyticsProps) {
   const [skippedCats, setSkippedCats] = useState<Set<string>>(new Set())
   const [biggestDayOpen, setBiggestDayOpen] = useState(false)
+  const [budgets, setBudgets] = useState<Record<string, number>>({})
+
+  useEffect(() => {
+    categoryBudgetsService.getAll().then(({ data }) => {
+      if (!data) return
+      const map: Record<string, number> = {}
+      for (const b of data) map[b.category_id] = b.amount
+      setBudgets(map)
+    })
+  }, [])
 
   const expenses = useMemo(() => transactions.filter(t => t.type === 'expense'), [transactions])
   const incomes  = useMemo(() => transactions.filter(t => t.type === 'income'),  [transactions])
@@ -212,6 +210,18 @@ export function PeriodAnalytics({ transactions, period, previousSummary, totalBa
     return top5
   }, [expenses])
 
+  // Categories at/near their target float to the top — the first thing you see
+  // is what's about to blow its budget. Un-targeted categories come next, Others last.
+  const sortedCategories = useMemo(() => {
+    const real = allCategories.filter(c => c.id !== '__others__')
+    const others = allCategories.find(c => c.id === '__others__')
+    const budgeted = real
+      .filter(c => budgets[c.id] !== undefined)
+      .sort((a, b) => (b.amount / budgets[b.id]) - (a.amount / budgets[a.id]))
+    const unbudgeted = real.filter(c => budgets[c.id] === undefined)
+    return [...budgeted, ...unbudgeted, ...(others ? [others] : [])]
+  }, [allCategories, budgets])
+
   const activeExpenses = useMemo(
     () => expenses.filter(tx => !tx.category || !skippedCats.has(tx.category.id)),
     [expenses, skippedCats]
@@ -243,62 +253,15 @@ export function PeriodAnalytics({ transactions, period, previousSummary, totalBa
     [activeExpenses]
   )
 
-  const noSpendDays = useMemo(() => {
-    const daysElapsed = Math.max(1, getDaysBetween(period.start_date))
-    const spentDates = new Set(activeExpenses.map(tx => tx.date))
-    return Math.max(0, daysElapsed - spentDates.size)
-  }, [period, activeExpenses])
+  // ─── Period stats — delegated to the shared hook, fed the skip-filtered set ──
 
-  // ─── Period stats computation ──────────────────────────────────────────────
+  const statsTransactions = useMemo(
+    () => [...incomes, ...activeExpenses],
+    [incomes, activeExpenses]
+  )
 
-  const stats = useMemo<PeriodStats>(() => {
-    const daysElapsed = Math.max(1, getDaysBetween(period.start_date))
-    const dailyAvg    = daysElapsed > 0 ? activeTotal / daysElapsed : 0
-    const remaining   = totalIncome - activeTotal
-
-    if (!period.end_date) {
-      return {
-        days: daysElapsed,
-        daysElapsed,
-        daysRemaining: null,
-        dailyAvg,
-        remaining,
-        hasPredictive: false,
-      }
-    }
-
-    const totalDays     = Math.max(1, getDaysBetween(period.start_date, period.end_date))
-    const daysRemaining = Math.max(0, totalDays - daysElapsed)
-
-    if (totalIncome === 0) {
-      return {
-        days: totalDays,
-        daysElapsed,
-        daysRemaining,
-        dailyAvg,
-        remaining,
-        hasPredictive: false,
-      }
-    }
-
-    const projectedSpend     = dailyAvg * totalDays
-    const projectedRemaining = totalIncome - projectedSpend
-    const daysUntilBroke     = dailyAvg > 0
-      ? Math.floor(remaining / dailyAvg)
-      : null
-
-    return {
-      days: totalDays,
-      daysElapsed,
-      daysRemaining,
-      dailyAvg,
-      remaining,
-      hasPredictive: true,
-      projectedSpend,
-      projectedRemaining,
-      daysUntilBroke,
-    }
-  }, [period, activeTotal, totalIncome])
+  const stats = usePeriodStats({ period, transactions: statsTransactions })
+  const hasPredictive = !!period.end_date && stats.totalIncome > 0 && stats.projectedSpend !== null
 
   // ─── Net-this-period sparkline (daily expense across the elapsed period) ───
 
@@ -319,7 +282,9 @@ export function PeriodAnalytics({ transactions, period, previousSummary, totalBa
     return days
   }, [period, expenses])
 
-  const netSparklineMax = Math.max(0, ...netSparkline.map(d => d.total))
+  // ─── Multi-period trend ─────────────────────────────────────────────────────
+
+  const { trend } = usePeriodTrend(periods, period, transactions)
 
   // ─── Savings rate, trend vs previous period, and health score ──────────────
 
@@ -376,7 +341,7 @@ export function PeriodAnalytics({ transactions, period, previousSummary, totalBa
           </span>
         </div>
         <p
-          className="text-[38px] font-medium leading-none tracking-[-.03em] tabular-nums mb-3"
+          className="text-[44px] font-medium leading-none tracking-[-.03em] tabular-nums mb-3"
           style={{ color: healthBarColor }}
         >
           {health.score}
@@ -412,24 +377,26 @@ export function PeriodAnalytics({ transactions, period, previousSummary, totalBa
           </p>
         )}
 
-        <div className="flex items-end gap-[2px]" style={{ height: '40px' }}>
-          {netSparkline.map((d, i) => {
-            const isToday = i === netSparkline.length - 1
-            const ratio = netSparklineMax > 0 ? d.total / netSparklineMax : 0
-            const height = d.total > 0 ? Math.max(3, Math.round(ratio * 40)) : 2
-            return (
-              <div
-                key={d.date}
-                className="flex-1 rounded-[1.5px]"
-                style={{
-                  height: `${height}px`,
-                  backgroundColor: d.total <= 0
-                    ? '#f2f2f0'
-                    : isToday ? '#252525' : heatBarColor(ratio),
-                }}
+        <div style={{ width: '100%', height: 44 }}>
+          <ResponsiveContainer>
+            <AreaChart data={netSparkline} margin={{ top: 2, right: 0, left: 0, bottom: 0 }}>
+              <defs>
+                <linearGradient id="netSparkFill" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#252525" stopOpacity={0.22} />
+                  <stop offset="100%" stopColor="#252525" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <Tooltip content={<SparkTooltip />} cursor={{ stroke: '#e5e5e5' }} />
+              <Area
+                type="monotone"
+                dataKey="total"
+                stroke="#252525"
+                strokeWidth={1.5}
+                fill="url(#netSparkFill)"
+                isAnimationActive={false}
               />
-            )
-          })}
+            </AreaChart>
+          </ResponsiveContainer>
         </div>
 
         <div className="grid grid-cols-2 gap-0 border-t border-[#f2f2f0] pt-3 mt-3">
@@ -442,6 +409,12 @@ export function PeriodAnalytics({ transactions, period, previousSummary, totalBa
             <p className="text-[13px] font-medium text-[#252525]">{formatCurrency(totalExpense)}</p>
           </div>
         </div>
+      </div>
+
+      {/* ── Spending trend card ── */}
+      <div className="rounded-[20px] border border-[#e5e5e5] bg-white p-4 lg:col-span-2">
+        <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84] mb-3">Spending trend</p>
+        <PeriodTrendChart trend={trend} />
       </div>
 
       {/* ── Vs last period card ── */}
@@ -474,108 +447,6 @@ export function PeriodAnalytics({ transactions, period, previousSummary, totalBa
         </div>
       )}
 
-      {/* ── Where it went card ── */}
-      {allCategories.length > 0 && (
-        <div className="rounded-[20px] border border-[#e5e5e5] bg-white overflow-hidden">
-          <div className="flex items-center justify-between px-4 pt-4 pb-3">
-            <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84]">Where it went</p>
-            <p className="text-[11px] text-[#a3a3a3]">tap − to exclude</p>
-          </div>
-
-          {/* Ribbon */}
-          <div className="px-4 pb-3">
-            <div className="h-[5px] rounded-full overflow-hidden flex gap-0.5">
-              {allCategories.map(cat => {
-                const pct = activeTotal > 0 && !skippedCats.has(cat.id)
-                  ? (cat.amount / activeTotal) * 100
-                  : 0
-                return (
-                  <div
-                    key={cat.id}
-                    className="transition-all duration-300"
-                    style={{
-                      width:           `${pct}%`,
-                      backgroundColor: cat.color ?? '#94a3b8',
-                      minWidth:        pct > 0 ? 2 : 0,
-                    }}
-                  />
-                )
-              })}
-              <div className="flex-1 bg-[#f2f2f0]" />
-            </div>
-          </div>
-
-          {/* Category rows */}
-          {allCategories.map(cat => {
-            const isOthers = cat.id === '__others__'
-            const isSkipped = !isOthers && skippedCats.has(cat.id)
-            const pct = activeTotal > 0 && !isSkipped
-              ? Math.round((cat.amount / activeTotal) * 100)
-              : null
-
-            return (
-              <div
-                key={cat.id}
-                className={cn(
-                  'flex items-center justify-between px-4 py-[9px] border-b border-[#f2f2f0] transition-opacity',
-                  isSkipped && 'opacity-30'
-                )}
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div
-                    className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-[8px]"
-                    style={{ backgroundColor: `${cat.color ?? '#94a3b8'}1f` }}
-                  >
-                    <CategoryIcon
-                      name={isOthers ? undefined : cat.icon}
-                      className="h-[14px] w-[14px]"
-                      style={{ color: cat.color ?? '#94a3b8' }}
-                    />
-                  </div>
-                  <p className="text-[13px] text-[#252525] truncate">{cat.name}</p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="text-[12px] text-[#a3a3a3] min-w-[28px] text-right">
-                    {pct !== null ? `${pct}%` : '—'}
-                  </span>
-                  <span className="text-[13px] font-medium text-[#252525] min-w-[82px] text-right">
-                    {formatCurrency(cat.amount)}
-                  </span>
-                  {!isOthers && (
-                    <button
-                      onClick={() => toggleCat(cat.id)}
-                      aria-label={isSkipped ? `Include ${cat.name}` : `Exclude ${cat.name}`}
-                      className={cn(
-                        'w-[22px] h-[22px] rounded-full border flex items-center justify-center shrink-0 transition-colors text-[#8a8a84]',
-                        isSkipped
-                          ? 'border-[#e5e5e5] bg-[#f4f4f2]'
-                          : 'border-[#e5e5e5] bg-white'
-                      )}
-                    >
-                      {isSkipped
-                        ? <Plus className="w-[13px] h-[13px]" />
-                        : <Minus className="w-[13px] h-[13px]" />
-                      }
-                    </button>
-                  )}
-                </div>
-              </div>
-            )
-          })}
-
-          {/* Total row */}
-          <div className="flex items-center justify-between px-4 py-2.5 bg-[#f4f4f2]">
-            <div>
-              <p className="text-[12px] text-[#8a8a84]">Total spent</p>
-              {isFiltered && (
-                <p className="text-[10px] text-[#a3a3a3] italic">excl. skipped</p>
-              )}
-            </div>
-            <p className="text-[13px] font-medium text-[#252525]">{formatCurrency(activeTotal)}</p>
-          </div>
-        </div>
-      )}
-
       {/* ── Stats card ── */}
       <div className="rounded-[20px] border border-[#e5e5e5] bg-white p-4">
         <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84] mb-3">
@@ -595,7 +466,7 @@ export function PeriodAnalytics({ transactions, period, previousSummary, totalBa
               icon={CalendarDays}
               label="Days left"
               value={`${stats.daysRemaining}`}
-              sub={`of ${stats.days}`}
+              sub={stats.totalDays !== null ? `of ${stats.totalDays}` : undefined}
             />
           )}
 
@@ -627,15 +498,110 @@ export function PeriodAnalytics({ transactions, period, previousSummary, totalBa
           <StatTile
             icon={Moon}
             label="No-spend days"
-            value={`${noSpendDays}`}
-            sub={noSpendDays > 0 ? 'nice' : 'none yet'}
+            value={`${stats.noSpendDays}`}
+            sub={stats.noSpendDays > 0 ? 'nice' : 'none yet'}
           />
         </div>
       </div>
 
+      {/* ── Budgets card ── */}
+      {sortedCategories.length > 0 && (
+        <div className="rounded-[20px] border border-[#e5e5e5] bg-white overflow-hidden lg:col-span-2">
+          <div className="flex items-center justify-between px-4 pt-4 pb-3">
+            <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84]">Budgets</p>
+            <p className="text-[11px] text-[#a3a3a3]">tap − to exclude · set targets in Categories</p>
+          </div>
+
+          {sortedCategories.map(cat => {
+            const isOthers = cat.id === '__others__'
+            const isSkipped = !isOthers && skippedCats.has(cat.id)
+            const pct = activeTotal > 0 && !isSkipped
+              ? Math.round((cat.amount / activeTotal) * 100)
+              : null
+            const target = budgets[cat.id]
+            const ratio = target ? cat.amount / target : null
+
+            return (
+              <div
+                key={cat.id}
+                className={cn(
+                  'px-4 py-3 border-b border-[#f2f2f0] transition-opacity',
+                  isSkipped && 'opacity-30'
+                )}
+              >
+                <div className="flex items-center justify-between mb-1.5">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div
+                      className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-[8px]"
+                      style={{ backgroundColor: `${cat.color ?? '#94a3b8'}1f` }}
+                    >
+                      <CategoryIcon
+                        name={isOthers ? undefined : cat.icon}
+                        className="h-[14px] w-[14px]"
+                        style={{ color: cat.color ?? '#94a3b8' }}
+                      />
+                    </div>
+                    <p className="text-[13px] text-[#252525] truncate">{cat.name}</p>
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <span className="text-[12px] text-[#a3a3a3] min-w-[28px] text-right">
+                      {pct !== null ? `${pct}%` : '—'}
+                    </span>
+                    <span className="text-[13px] font-medium text-[#252525] min-w-[82px] text-right">
+                      {formatCurrency(cat.amount)}
+                    </span>
+                    {!isOthers && (
+                      <button
+                        onClick={() => toggleCat(cat.id)}
+                        aria-label={isSkipped ? `Include ${cat.name}` : `Exclude ${cat.name}`}
+                        className={cn(
+                          'w-[22px] h-[22px] rounded-full border flex items-center justify-center shrink-0 transition-colors text-[#8a8a84]',
+                          isSkipped
+                            ? 'border-[#e5e5e5] bg-[#f4f4f2]'
+                            : 'border-[#e5e5e5] bg-white'
+                        )}
+                      >
+                        {isSkipped
+                          ? <Plus className="w-[13px] h-[13px]" />
+                          : <Minus className="w-[13px] h-[13px]" />
+                        }
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {!isOthers && target !== undefined && ratio !== null && (
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 h-1.5 rounded-full bg-[#f2f2f0] overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all duration-300"
+                        style={{ width: `${Math.min(100, Math.round(ratio * 100))}%`, backgroundColor: budgetColor(ratio) }}
+                      />
+                    </div>
+                    <span className="text-[10.5px] text-[#a3a3a3] shrink-0">
+                      {Math.round(ratio * 100)}% of {formatCurrency(target)}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )
+          })}
+
+          <div className="flex items-center justify-between px-4 py-2.5 bg-[#f4f4f2]">
+            <div>
+              <p className="text-[12px] text-[#8a8a84]">Total spent</p>
+              {isFiltered && (
+                <p className="text-[10px] text-[#a3a3a3] italic">excl. skipped</p>
+              )}
+            </div>
+            <p className="text-[13px] font-medium text-[#252525]">{formatCurrency(activeTotal)}</p>
+          </div>
+        </div>
+      )}
+
       {/* ── Projection card — only when the period has an end date and income > 0 ── */}
-      {stats.hasPredictive && (
-        <div className="rounded-[20px] border border-[#cfdcb8] bg-[#f2f6ea] overflow-hidden">
+      {hasPredictive && stats.projectedSpend !== null && stats.projectedClose !== null && (
+        <div className="rounded-[20px] border border-[#cfdcb8] bg-[#f2f6ea] overflow-hidden lg:col-span-2">
           <p className="text-[11px] uppercase tracking-[.14em] text-[#4d7a1d] px-4 pt-4 pb-1">
             Projection
           </p>
@@ -657,22 +623,22 @@ export function PeriodAnalytics({ transactions, period, previousSummary, totalBa
             <p className="text-[13px] text-[#4d7a1d]">Projected close</p>
             <p className={cn(
               'text-[13px] font-medium',
-              stats.projectedRemaining < 0 ? 'text-[#dc2626]' : 'text-[#252525]'
+              stats.projectedClose < 0 ? 'text-[#dc2626]' : 'text-[#252525]'
             )}>
-              {formatCurrency(stats.projectedRemaining)}
+              {formatCurrency(stats.projectedClose)}
             </p>
           </div>
 
-          {stats.daysUntilBroke !== null && (
+          {stats.runwayDays !== null && (
             <div className="flex items-center justify-between px-4 py-[9px] border-t border-[#dfe8d2]">
               <p className="text-[13px] text-[#4d7a1d]">Runway at this pace</p>
               <p className={cn(
                 'text-[13px] font-medium',
-                stats.daysUntilBroke <= 0 ? 'text-[#dc2626]' : 'text-[#252525]'
+                stats.runwayDays <= 0 ? 'text-[#dc2626]' : 'text-[#252525]'
               )}>
-                {stats.daysUntilBroke <= 0
+                {stats.runwayDays <= 0
                   ? 'Already over'
-                  : `${stats.daysUntilBroke} day${stats.daysUntilBroke !== 1 ? 's' : ''}`}
+                  : `${stats.runwayDays} day${stats.runwayDays !== 1 ? 's' : ''}`}
               </p>
             </div>
           )}

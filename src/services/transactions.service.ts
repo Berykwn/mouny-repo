@@ -148,6 +148,39 @@ export const transactionsService = {
         }
     },
 
+    async getPeriodSummaries(periodIds: string[]): Promise<ServiceResult<Record<string, {
+        income: number
+        expense: number
+        net: number
+    }>>> {
+        if (periodIds.length === 0) return { data: {}, error: null }
+
+        try {
+            const { data, error } = await supabase
+                .from('transactions')
+                .select('pay_period_id, type, amount')
+                .in('pay_period_id', periodIds)
+
+            if (error) throw error
+
+            const summaries: Record<string, { income: number; expense: number; net: number }> = {}
+            for (const id of periodIds) {
+                summaries[id] = { income: 0, expense: 0, net: 0 }
+            }
+            for (const tx of data ?? []) {
+                const summary = summaries[tx.pay_period_id]
+                if (!summary) continue
+                if (tx.type === 'income') summary.income += tx.amount
+                else summary.expense += tx.amount
+                summary.net = summary.income - summary.expense
+            }
+
+            return { data: summaries, error: null }
+        } catch (err) {
+            return { data: null, error: handleError(err) }
+        }
+    },
+
     async findOrCreateDebtPaymentCategory(): Promise<ServiceResult<Category>> {
         try {
             const { data: { user } } = await supabase.auth.getUser()
