@@ -250,7 +250,7 @@ export function PeriodCalendar({
     return (
         <div className="space-y-3 pt-3 lg:grid lg:grid-cols-[1fr_360px] lg:gap-4 lg:items-start lg:space-y-0">
             <div className={cn(
-                'rounded-[20px] border border-[#e5e5e5] bg-white pt-[18px] pb-4',
+                'rounded-[20px] border border-[#e5e5e5] bg-white pt-[18px] pb-4 lg:max-w-[480px]',
                 mode === 'month' ? 'px-4' : 'px-0',
             )}>
                 <div className={cn(
