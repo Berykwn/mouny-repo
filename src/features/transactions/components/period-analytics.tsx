@@ -3,8 +3,8 @@ import {
   TrendingUp, TrendingDown, CalendarDays, Flame,
   Receipt, ArrowLeftRight, Moon, Wallet, ChevronRight, type LucideProps,
 } from 'lucide-react'
-import { AreaChart, Area, BarChart, Bar, XAxis, Tooltip, ResponsiveContainer } from 'recharts'
-import { formatCurrency, formatDateShort, getDaysBetween, toISODate } from '@/lib/helpers'
+import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
+import { formatCurrency, formatShortCurrency, formatDateShort, getDaysBetween, toISODate } from '@/lib/helpers'
 import { cn } from '@/lib/utils'
 import { BottomDrawer } from '@/components/bottom-drawer'
 import { calculateHealthScore } from '@/lib/calculate-health-score'
@@ -213,7 +213,6 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
   const [biggestDayOpen, setBiggestDayOpen] = useState(false)
   const [budgets, setBudgets] = useState<Record<string, number>>({})
   const [activeSubTab, setActiveSubTab] = useState<AnalyticsSubTab>('overview')
-  const [showAllCategories, setShowAllCategories] = useState(false)
   const [expandedCategoryId, setExpandedCategoryId] = useState<string | null>(null)
 
   useEffect(() => {
@@ -264,42 +263,20 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
     return map
   }, [expenses])
 
-  // Tapping a category row expands it in place to the transactions behind its total —
-  // "Others" spans whichever categories didn't make the top 5.
+  // Tapping a category row expands it in place to the transactions behind its total.
   function categoryTransactions(cat: CatEntry): TransactionWithDetails[] {
-    if (cat.id === '__others__') {
-      const otherIds = new Set(categoriesByAmount.slice(5).map(c => c.id))
-      return expenses.filter(tx => tx.category && otherIds.has(tx.category.id))
-    }
     return expensesByCategoryId.get(cat.id) ?? []
   }
 
-  const hiddenCategoriesCount = Math.max(0, categoriesByAmount.length - 5)
-
-  // Capped to top 5 + an "Others" bucket by default; `showAllCategories` breaks the bucket open.
-  const allCategories = useMemo<CatEntry[]>(() => {
-    if (showAllCategories || hiddenCategoriesCount === 0) return categoriesByAmount
-    const top5 = categoriesByAmount.slice(0, 5)
-    const rest = categoriesByAmount.slice(5)
-    return [...top5, {
-      id:     '__others__',
-      name:   `Others (${rest.length})`,
-      color:  '#d4d4d4',
-      amount: rest.reduce((s, c) => s + c.amount, 0),
-    }]
-  }, [categoriesByAmount, showAllCategories, hiddenCategoriesCount])
-
   // Categories at/near their target float to the top — the first thing you see
-  // is what's about to blow its budget. Un-targeted categories come next, Others last.
+  // is what's about to blow its budget. Un-targeted categories come next.
   const sortedCategories = useMemo(() => {
-    const real = allCategories.filter(c => c.id !== '__others__')
-    const others = allCategories.find(c => c.id === '__others__')
-    const budgeted = real
+    const budgeted = categoriesByAmount
       .filter(c => budgets[c.id] !== undefined)
       .sort((a, b) => (b.amount / budgets[b.id]) - (a.amount / budgets[a.id]))
-    const unbudgeted = real.filter(c => budgets[c.id] === undefined)
-    return [...budgeted, ...unbudgeted, ...(others ? [others] : [])]
-  }, [allCategories, budgets])
+    const unbudgeted = categoriesByAmount.filter(c => budgets[c.id] === undefined)
+    return [...budgeted, ...unbudgeted]
+  }, [categoriesByAmount, budgets])
 
   // Biggest day / biggest expense look across all expenses in the period.
   const biggestDayEntry = useMemo<DayEntry | null>(() => {
@@ -460,14 +437,25 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
             style={{ width: `${health.score}%`, backgroundColor: healthBarColor }}
           />
         </div>
-        {health.reasons.length > 0 && (
-          <p className="text-[11.5px] text-[#8a8a84] mt-2.5">{health.reasons.slice(0, 2).join(' · ')}</p>
+        {(health.periodReasons.length > 0 || health.overallReasons.length > 0) && (
+          <div className="mt-2.5 space-y-1">
+            {health.periodReasons.length > 0 && (
+              <p className="text-[11.5px] text-[#8a8a84]">
+                <span className="text-[#a3a3a3]">This period:</span> {health.periodReasons.join(' · ')}
+              </p>
+            )}
+            {health.overallReasons.length > 0 && (
+              <p className="text-[11.5px] text-[#8a8a84]">
+                <span className="text-[#a3a3a3]">Overall:</span> {health.overallReasons.join(' · ')}
+              </p>
+            )}
+          </div>
         )}
       </div>
 
-      {/* ── Net summary card (Overview) ── */}
+      {/* ── Period summary card (Overview) — net + vs last period, so the comparison has context ── */}
       <div className={cn('rounded-[20px] border border-[#e5e5e5] bg-white p-4 lg:col-span-2', activeSubTab !== 'overview' && 'lg:hidden')}>
-        <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84] mb-1">Net this period</p>
+        <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84] mb-1">Period summary</p>
         <p className={cn(
           'text-[32px] lg:text-[26px] font-medium tracking-[-0.02em] leading-none mb-1',
           net < 0 ? 'text-[#dc2626]' : 'text-[#252525]'
@@ -517,76 +505,48 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
             <p className="text-[13px] font-medium text-[#252525]">{formatCurrency(totalExpense)}</p>
           </div>
         </div>
+
+        {previousSummary && (
+          <div className="-mx-4 mt-3 border-t border-[#f2f2f0]">
+            <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84] px-4 pt-3 pb-1">
+              Vs last period
+            </p>
+
+            <div className="flex items-center justify-between px-4 py-[9px] border-t border-[#f2f2f0]">
+              <p className="text-[13px] text-[#252525]">Income</p>
+              <DiffValue pct={incomeDiffPct} goodWhenUp />
+            </div>
+
+            <div className="flex items-center justify-between px-4 py-[9px] border-t border-[#f2f2f0]">
+              <p className="text-[13px] text-[#252525]">Expense</p>
+              <DiffValue pct={expenseDiffPct} goodWhenUp={false} />
+            </div>
+
+            <div className="flex items-center justify-between px-4 py-[9px] border-t border-[#f2f2f0]">
+              <p className="text-[13px] text-[#252525]">Net</p>
+              <p className={cn(
+                'text-[13px] font-medium',
+                netDiffAbs !== null && netDiffAbs < 0 ? 'text-[#dc2626]' : 'text-[#059669]'
+              )}>
+                {netDiffAbs !== null && netDiffAbs >= 0 ? '+' : ''}
+                {netDiffAbs !== null ? formatCurrency(netDiffAbs) : '—'}
+              </p>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ── Spending trend card (Trends) ── */}
       <div className={cn('rounded-[20px] border border-[#e5e5e5] bg-white p-4 lg:col-span-2', activeSubTab !== 'trends' && 'lg:hidden')}>
-        <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84] mb-3">Spending trend</p>
+        <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84]">Spending trend</p>
+        {trend.length >= 2 && (
+          <p className="text-[11px] text-[#a3a3a3] mt-0.5 mb-3">Last {trend.length} pay periods</p>
+        )}
         <PeriodTrendChart trend={trend} />
       </div>
 
-      {/* ── Across your periods (Overview, desktop only) ── */}
-      {periodComparison && (
-        <div className={cn('hidden rounded-[20px] border border-[#e5e5e5] bg-white p-4 lg:col-span-2', activeSubTab === 'overview' && 'lg:block')}>
-          <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84] mb-3">Across your periods</p>
-          <div className="grid grid-cols-3 gap-2">
-            <StatTile
-              icon={TrendingUp}
-              label="Best period"
-              value={formatCurrency(periodComparison.best.net)}
-              sub={periodComparison.best.label}
-              valueClassName="text-[#059669]"
-            />
-            <StatTile
-              icon={TrendingDown}
-              label="Worst period"
-              value={formatCurrency(periodComparison.worst.net)}
-              sub={periodComparison.worst.label}
-              valueClassName={periodComparison.worst.net < 0 ? 'text-[#dc2626]' : undefined}
-            />
-            <StatTile
-              icon={ArrowLeftRight}
-              label="Average net"
-              value={formatCurrency(periodComparison.average)}
-              sub={`across ${trend.length} periods`}
-              valueClassName={periodComparison.average < 0 ? 'text-[#dc2626]' : undefined}
-            />
-          </div>
-        </div>
-      )}
-
-      {/* ── Vs last period card (Overview) ── */}
-      {previousSummary && (
-        <div className={cn('rounded-[20px] border border-[#e5e5e5] bg-white overflow-hidden', activeSubTab !== 'overview' && 'lg:hidden')}>
-          <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84] px-4 pt-4 pb-1">
-            Vs last period
-          </p>
-
-          <div className="flex items-center justify-between px-4 py-[9px] border-t border-[#f2f2f0]">
-            <p className="text-[13px] text-[#252525]">Income</p>
-            <DiffValue pct={incomeDiffPct} goodWhenUp />
-          </div>
-
-          <div className="flex items-center justify-between px-4 py-[9px] border-t border-[#f2f2f0]">
-            <p className="text-[13px] text-[#252525]">Expense</p>
-            <DiffValue pct={expenseDiffPct} goodWhenUp={false} />
-          </div>
-
-          <div className="flex items-center justify-between px-4 py-[9px] border-t border-[#f2f2f0]">
-            <p className="text-[13px] text-[#252525]">Net</p>
-            <p className={cn(
-              'text-[13px] font-medium',
-              netDiffAbs !== null && netDiffAbs < 0 ? 'text-[#dc2626]' : 'text-[#059669]'
-            )}>
-              {netDiffAbs !== null && netDiffAbs >= 0 ? '+' : ''}
-              {netDiffAbs !== null ? formatCurrency(netDiffAbs) : '—'}
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* ── Stats card (Overview) ── */}
-      <div className={cn('rounded-[20px] border border-[#e5e5e5] bg-white p-4', activeSubTab !== 'overview' && 'lg:hidden')}>
+      {/* ── Stats card (Overview) — this period's stats, plus how it stacks up against past periods ── */}
+      <div className={cn('rounded-[20px] border border-[#e5e5e5] bg-white p-4 lg:col-span-2', activeSubTab !== 'overview' && 'lg:hidden')}>
         <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84] mb-3">Stats</p>
 
         <div className="grid grid-cols-2 gap-2">
@@ -646,14 +606,44 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
             sub={stats.noSpendDays > 0 ? 'nice' : 'none yet'}
           />
         </div>
+
+        {periodComparison && (
+          <div className="mt-4 pt-3 border-t border-[#f2f2f0]">
+            <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84] mb-2">Across your periods</p>
+            <div className="grid grid-cols-3 gap-2">
+              <StatTile
+                icon={TrendingUp}
+                label="Best period"
+                value={formatCurrency(periodComparison.best.net)}
+                sub={periodComparison.best.label}
+                valueClassName="text-[#059669]"
+              />
+              <StatTile
+                icon={TrendingDown}
+                label="Worst period"
+                value={formatCurrency(periodComparison.worst.net)}
+                sub={periodComparison.worst.label}
+                valueClassName={periodComparison.worst.net < 0 ? 'text-[#dc2626]' : undefined}
+              />
+              <StatTile
+                icon={ArrowLeftRight}
+                label="Average net"
+                value={formatCurrency(periodComparison.average)}
+                sub={`across ${trend.length} periods`}
+                valueClassName={periodComparison.average < 0 ? 'text-[#dc2626]' : undefined}
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ── Spending by account (Trends, desktop only) ── */}
       {byAccount.length > 0 && (
         <div className={cn('hidden rounded-[20px] border border-[#e5e5e5] bg-white overflow-hidden', activeSubTab === 'trends' && 'lg:block')}>
-          <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84] px-4 pt-4 pb-3">
+          <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84] px-4 pt-4">
             Spending by account
           </p>
+          <p className="text-[11px] text-[#a3a3a3] px-4 pb-3">% of this period's total expense</p>
           {byAccount.map(a => {
             const pct = totalExpense > 0 ? Math.round((a.amount / totalExpense) * 100) : 0
             return (
@@ -674,11 +664,19 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
       {/* ── By day of week (Trends, desktop only) ── */}
       {byWeekday.some(d => d.total > 0) && (
         <div className={cn('hidden rounded-[20px] border border-[#e5e5e5] bg-white p-4', activeSubTab === 'trends' && 'lg:block')}>
-          <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84] mb-3">By day of week</p>
+          <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84]">By day of week</p>
+          <p className="text-[11px] text-[#a3a3a3] mb-3">Total expense per weekday, this period</p>
           <div style={{ width: '100%', height: 140 }}>
             <ResponsiveContainer>
               <BarChart data={byWeekday} margin={{ top: 4, right: 0, left: 0, bottom: 0 }}>
                 <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 10.5, fill: '#a3a3a3' }} />
+                <YAxis
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 10, fill: '#a3a3a3' }}
+                  tickFormatter={(v: number) => formatShortCurrency(v)}
+                  width={36}
+                />
                 <Tooltip
                   cursor={{ fill: '#f4f4f2' }}
                   content={({ active, payload }) => {
@@ -708,7 +706,6 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
           </div>
 
           {sortedCategories.map(cat => {
-            const isOthers = cat.id === '__others__'
             const isExpanded = expandedCategoryId === cat.id
             const pct = totalExpense > 0
               ? Math.round((cat.amount / totalExpense) * 100)
@@ -729,7 +726,7 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
                         style={{ backgroundColor: `${cat.color ?? '#94a3b8'}1f` }}
                       >
                         <CategoryIcon
-                          name={isOthers ? undefined : cat.icon}
+                          name={cat.icon}
                           className="h-[14px] w-[14px]"
                           style={{ color: cat.color ?? '#94a3b8' }}
                         />
@@ -749,7 +746,7 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
                     </div>
                   </div>
 
-                  {!isOthers && target !== undefined && ratio !== null && (
+                  {target !== undefined && ratio !== null && (
                     <div className="flex items-center gap-2">
                       <div className="flex-1 h-1.5 rounded-full bg-[#f2f2f0] overflow-hidden">
                         <div
@@ -768,16 +765,6 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
               </div>
             )
           })}
-
-          {hiddenCategoriesCount > 0 && (
-            <button
-              type="button"
-              onClick={() => setShowAllCategories(v => !v)}
-              className="w-full px-4 py-2.5 text-[12px] font-medium text-[#252525] border-b border-[#f2f2f0] hover:bg-[#fbfbfa] transition-colors text-left"
-            >
-              {showAllCategories ? 'Show less' : `See all categories (${categoriesByAmount.length})`}
-            </button>
-          )}
 
           <div className="flex items-center justify-between px-4 py-2.5 bg-[#f4f4f2]">
             <p className="text-[12px] text-[#8a8a84]">Total spent</p>
