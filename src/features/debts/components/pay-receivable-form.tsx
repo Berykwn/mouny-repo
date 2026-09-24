@@ -34,18 +34,17 @@ export function PayReceivableForm({ debt, periodStartDate, onSuccess }: PayRecei
     const [selectedAccountId, setSelectedAccountId] = useState<string>(
         debt.pay_from_account_id ?? ''
     )
-    const needsAccountPick = !debt.pay_from_account_id
 
     useEffect(() => {
         accountsService.getAll().then(({ data }) => {
             if (data) {
                 setAccounts(data)
-                if (needsAccountPick) {
+                if (!debt.pay_from_account_id) {
                     setSelectedAccountId(data[0]?.id ?? '')
                 }
             }
         })
-    }, [needsAccountPick])
+    }, [debt.pay_from_account_id])
 
     const selectedAccount = accounts.find(a => a.id === selectedAccountId)
 
@@ -143,50 +142,34 @@ export function PayReceivableForm({ debt, periodStartDate, onSuccess }: PayRecei
 
             <div className="space-y-1.5">
                 <Label className={FIELD_LABEL}>Receive to</Label>
-                {needsAccountPick ? (
-                    <>
-                        <button
-                            type="button"
-                            disabled={loading}
-                            onClick={() => setAccountPickerOpen(true)}
-                            className="w-full flex items-center justify-between px-3 h-[52px] rounded-[14px] border border-[#e5e5e5] bg-white text-left transition-colors hover:bg-[#fbfbfa] disabled:opacity-50 disabled:pointer-events-none"
-                        >
-                            {selectedAccount ? (
-                                <div className="flex items-center gap-3 min-w-0">
-                                    <div className="w-9 h-9 rounded-[10px] bg-[#f4f4f2] flex items-center justify-center shrink-0">
-                                        <AccountTypeIcon type={selectedAccount.type} className="w-4 h-4 text-[#8a8a84]" />
-                                    </div>
-                                    <div className="min-w-0">
-                                        <p className="text-[13px] font-medium text-[#252525] truncate">{selectedAccount.name}</p>
-                                        <p className="text-[11.5px] text-[#8a8a84]">{formatCurrency(selectedAccount.balance)}</p>
-                                    </div>
-                                </div>
-                            ) : (
-                                <span className="text-[13px] text-[#8a8a84]">Select account</span>
-                            )}
-                            <ChevronRight className="w-4 h-4 text-[#a3a3a3] shrink-0" />
-                        </button>
-                        <AccountPickerDrawer
-                            open={accountPickerOpen}
-                            onClose={() => setAccountPickerOpen(false)}
-                            accounts={accounts}
-                            selectedId={selectedAccountId}
-                            onSelect={(a) => { setSelectedAccountId(a.id); setAccountPickerOpen(false) }}
-                        />
-                    </>
-                ) : (
-                    <div className="h-[52px] px-3 rounded-[14px] border border-[#e5e5e5] bg-[#f4f4f2] flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-[10px] bg-white flex items-center justify-center shrink-0">
-                            {debt.pay_from_account && <AccountTypeIcon type={debt.pay_from_account.type} className="w-4 h-4 text-[#8a8a84]" />}
+                <button
+                    type="button"
+                    disabled={loading}
+                    onClick={() => setAccountPickerOpen(true)}
+                    className="w-full flex items-center justify-between px-3 h-[52px] rounded-[14px] border border-[#e5e5e5] bg-white text-left transition-colors hover:bg-[#fbfbfa] disabled:opacity-50 disabled:pointer-events-none"
+                >
+                    {selectedAccount ? (
+                        <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-9 h-9 rounded-[10px] bg-[#f4f4f2] flex items-center justify-center shrink-0">
+                                <AccountTypeIcon type={selectedAccount.type} className="w-4 h-4 text-[#8a8a84]" />
+                            </div>
+                            <div className="min-w-0">
+                                <p className="text-[13px] font-medium text-[#252525] truncate">{selectedAccount.name}</p>
+                                <p className="text-[11.5px] text-[#8a8a84]">{formatCurrency(selectedAccount.balance)}</p>
+                            </div>
                         </div>
-                        <div>
-                            <p className="text-[13px] font-medium text-[#252525]">{debt.pay_from_account?.name}</p>
-                            <p className="text-[11.5px] text-[#8a8a84]">
-                                {debt.pay_from_account && formatCurrency(debt.pay_from_account.balance)}
-                            </p>
-                        </div>
-                    </div>
-                )}
+                    ) : (
+                        <span className="text-[13px] text-[#8a8a84]">Select account</span>
+                    )}
+                    <ChevronRight className="w-4 h-4 text-[#a3a3a3] shrink-0" />
+                </button>
+                <AccountPickerDrawer
+                    open={accountPickerOpen}
+                    onClose={() => setAccountPickerOpen(false)}
+                    accounts={accounts}
+                    selectedId={selectedAccountId}
+                    onSelect={(a) => { setSelectedAccountId(a.id); setAccountPickerOpen(false) }}
+                />
             </div>
 
             <div className="space-y-1.5">
