@@ -15,7 +15,7 @@ const TABS: { key: LedgerTab; label: string }[] = [
 
 export function LedgerTabs({ active, onChange }: LedgerTabsProps) {
     return (
-        <div className="flex gap-[22px] border-b border-[#e5e5e5]">
+        <div className="flex gap-[22px] border-b border-line">
             {TABS.map(tab => (
                 <button
                     key={tab.key}
@@ -23,7 +23,7 @@ export function LedgerTabs({ active, onChange }: LedgerTabsProps) {
                     className={cn(
                         'pb-2.5 -mb-px text-[14px]',
                         active === tab.key
-                            ? 'font-semibold text-[#252525] border-b-2 border-[#252525]'
+                            ? 'font-semibold text-brand border-b-2 border-brand'
                             : 'text-[#9a9a94]'
                     )}
                 >

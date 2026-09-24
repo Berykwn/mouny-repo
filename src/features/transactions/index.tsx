@@ -1,7 +1,9 @@
 import { useEffect, useState, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { useSwipeable } from 'react-swipeable'
 import { ConfirmDrawer } from '@/components/confirmation-drawer'
 import { PeriodPickerDrawer } from '@/components/period-picker-drawer'
+import { useTopBarSlotNode } from '@/contexts/TopBarSlotContext'
 import { PeriodAnalytics } from './components/period-analytics'
 import { PeriodCalendar } from './components/period-calendar'
 import { PeriodChip } from './components/period-chip'
@@ -43,6 +45,7 @@ export default function TransactionsPage() {
     const [addDrawerDate, setAddDrawerDate] = useState<string | null>(null)
 
     const today = toISODate()
+    const topBarSlotNode = useTopBarSlotNode()
 
     const selectedPeriod = allPeriods[selectedPeriodIndex] ?? null
     const isCurrentPeriod = selectedPeriod?.id === activePeriod?.id
@@ -167,9 +170,14 @@ export default function TransactionsPage() {
 
     return (
         <>
+            {topBarSlotNode && selectedPeriod && createPortal(
+                <PeriodChip period={selectedPeriod} onClick={() => setPeriodPickerOpen(true)} />,
+                topBarSlotNode
+            )}
+
             <header className="flex flex-col gap-[14px] px-5 pt-[22px] lg:px-0 lg:pt-0 bg-neutral-50 dark:bg-neutral-950">
-                <div className="flex items-center justify-between">
-                    <span className="lg:hidden text-[20px] font-semibold tracking-[-0.02em]">Ledger.</span>
+                <div className="lg:hidden flex items-center justify-between">
+                    <span className="text-[20px] font-semibold tracking-[-0.02em]">Ledger.</span>
                     {selectedPeriod && (
                         <PeriodChip period={selectedPeriod} onClick={() => setPeriodPickerOpen(true)} />
                     )}

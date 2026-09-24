@@ -45,17 +45,17 @@ export function TransactionListView({
     }
 
     return (
-        <div className="rounded-[20px] border border-[#e5e5e5] bg-white overflow-hidden">
+        <div className="card overflow-hidden">
             {!readOnly && selectedIds.length > 0 && (
-                <div className="sticky top-0 z-10 flex items-center justify-between px-4 py-2.5 bg-[#f4f4f2] border-b border-[#e5e5e5]">
-                    <p className="text-[13px] font-medium text-[#252525]">{selectedIds.length} selected</p>
+                <div className="sticky top-0 z-10 flex items-center justify-between px-4 py-2.5 bg-surface-hover border-b border-line">
+                    <p className="text-[13px] font-medium text-ink">{selectedIds.length} selected</p>
                     <div className="flex items-center gap-1">
                         <button
                             type="button"
                             disabled={!commonType}
                             title={!commonType ? 'Select transactions of only one type' : 'Change category'}
                             onClick={onBulkCategoryRequest}
-                            className="flex items-center gap-1.5 px-2 sm:px-2.5 h-8 rounded-[10px] text-[12px] font-medium text-[#252525] hover:bg-white transition-colors disabled:opacity-40 disabled:pointer-events-none"
+                            className="flex items-center gap-1.5 px-2 sm:px-2.5 h-8 rounded-[10px] text-[12px] font-medium text-ink hover:bg-white transition-colors disabled:opacity-40 disabled:pointer-events-none"
                         >
                             <Tag className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Change category</span>
                         </button>
@@ -63,7 +63,7 @@ export function TransactionListView({
                             type="button"
                             title="Export"
                             onClick={handleExport}
-                            className="flex items-center gap-1.5 px-2 sm:px-2.5 h-8 rounded-[10px] text-[12px] font-medium text-[#252525] hover:bg-white transition-colors"
+                            className="flex items-center gap-1.5 px-2 sm:px-2.5 h-8 rounded-[10px] text-[12px] font-medium text-ink hover:bg-white transition-colors"
                         >
                             <Download className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Export</span>
                         </button>
@@ -71,14 +71,14 @@ export function TransactionListView({
                             type="button"
                             title="Delete"
                             onClick={onBulkDeleteRequest}
-                            className="flex items-center gap-1.5 px-2 sm:px-2.5 h-8 rounded-[10px] text-[12px] font-medium text-[#dc2626] hover:bg-white transition-colors"
+                            className="flex items-center gap-1.5 px-2 sm:px-2.5 h-8 rounded-[10px] text-[12px] font-medium text-negative hover:bg-white transition-colors"
                         >
                             <Trash2 className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Delete</span>
                         </button>
                         <button
                             type="button"
                             onClick={() => onSelectedIdsChange([])}
-                            className="flex items-center justify-center w-8 h-8 rounded-[10px] text-[#8a8a84] hover:bg-white transition-colors"
+                            className="flex items-center justify-center w-8 h-8 rounded-[10px] text-muted-ink hover:bg-white transition-colors"
                         >
                             <X className="w-3.5 h-3.5" />
                         </button>
@@ -86,21 +86,21 @@ export function TransactionListView({
                 </div>
             )}
 
-            <div className="flex items-center gap-3 px-4 py-2.5 border-b border-[#e5e5e5] bg-[#fbfbfa]">
+            <div className="flex items-center gap-3 px-4 py-2.5 border-b border-line bg-surface-soft">
                 {!readOnly && (
                     <Checkbox
                         checked={allSelected ? true : someSelected ? 'indeterminate' : false}
                         onCheckedChange={toggleAll}
                     />
                 )}
-                <p className="hidden lg:block w-[64px] shrink-0 text-[10px] uppercase tracking-[.1em] text-[#8a8a84]">Date</p>
-                <p className="flex-1 text-[10px] uppercase tracking-[.1em] text-[#8a8a84]">Details</p>
-                <p className="hidden lg:block w-[120px] shrink-0 text-[10px] uppercase tracking-[.1em] text-[#8a8a84]">Account</p>
-                <p className="w-[90px] lg:w-[110px] shrink-0 text-right text-[10px] uppercase tracking-[.1em] text-[#8a8a84]">Amount</p>
+                <p className="hidden lg:block w-[64px] shrink-0 text-[10px] uppercase tracking-[.1em] text-muted-ink">Date</p>
+                <p className="flex-1 text-[10px] uppercase tracking-[.1em] text-muted-ink">Details</p>
+                <p className="hidden lg:block w-[120px] shrink-0 text-[10px] uppercase tracking-[.1em] text-muted-ink">Account</p>
+                <p className="w-[90px] lg:w-[110px] shrink-0 text-right text-[10px] uppercase tracking-[.1em] text-muted-ink">Amount</p>
             </div>
 
             {transactions.length === 0 ? (
-                <p className="text-[13px] text-[#8a8a84] px-4 py-6 text-center">No transactions this period.</p>
+                <p className="text-[13px] text-muted-ink px-4 py-6 text-center">No transactions this period.</p>
             ) : (
                 <div>
                     {transactions.map(tx => {
@@ -114,15 +114,15 @@ export function TransactionListView({
                                 key={tx.id}
                                 onClick={() => !readOnly && toggle(tx.id)}
                                 className={cn(
-                                    'flex items-center gap-3 px-4 py-2.5 border-b border-[#f2f2f0] last:border-b-0',
-                                    !readOnly && 'cursor-pointer hover:bg-[#fbfbfa] transition-colors',
-                                    selected && 'bg-[#f2f6ea]'
+                                    'flex items-center gap-3 px-4 py-2.5 border-b border-line-soft last:border-b-0',
+                                    !readOnly && 'cursor-pointer hover:bg-surface-soft transition-colors',
+                                    selected && 'bg-brand/10'
                                 )}
                             >
                                 {!readOnly && (
                                     <Checkbox checked={selected} onCheckedChange={() => toggle(tx.id)} onClick={(e) => e.stopPropagation()} />
                                 )}
-                                <p className="hidden lg:block w-[64px] shrink-0 text-[12px] text-[#8a8a84]">{formatDateShort(tx.date)}</p>
+                                <p className="hidden lg:block w-[64px] shrink-0 text-[12px] text-muted-ink">{formatDateShort(tx.date)}</p>
                                 <div className="flex-1 min-w-0 flex items-center gap-2.5">
                                     <div
                                         className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
@@ -135,21 +135,21 @@ export function TransactionListView({
                                                 style={{ color: tx.category.color ?? '#6b7280' }}
                                             />
                                         ) : tx.type === 'income' ? (
-                                            <TrendingUp className="w-3.5 h-3.5 text-green-600" />
+                                            <TrendingUp className="w-3.5 h-3.5 text-positive" />
                                         ) : (
-                                            <TrendingDown className="w-3.5 h-3.5 text-red-500" />
+                                            <TrendingDown className="w-3.5 h-3.5 text-negative" />
                                         )}
                                     </div>
                                     <div className="min-w-0">
-                                        <p className="text-[13px] font-medium text-[#252525] truncate">{title}</p>
-                                        <p className="lg:hidden text-[11px] text-[#8a8a84] truncate">{mobileSubtitle}</p>
-                                        {subtitle && <p className="hidden lg:block text-[11px] text-[#8a8a84] truncate">{subtitle}</p>}
+                                        <p className="text-[13px] font-medium text-ink truncate">{title}</p>
+                                        <p className="lg:hidden text-[11px] text-muted-ink truncate">{mobileSubtitle}</p>
+                                        {subtitle && <p className="hidden lg:block text-[11px] text-muted-ink truncate">{subtitle}</p>}
                                     </div>
                                 </div>
-                                <p className="hidden lg:block w-[120px] shrink-0 text-[12px] text-[#8a8a84] truncate">{tx.account.name}</p>
+                                <p className="hidden lg:block w-[120px] shrink-0 text-[12px] text-muted-ink truncate">{tx.account.name}</p>
                                 <p className={cn(
                                     'w-[90px] lg:w-[110px] shrink-0 text-right text-[13px] font-medium',
-                                    tx.type === 'income' ? 'text-[#059669]' : 'text-[#252525]'
+                                    tx.type === 'income' ? 'text-positive' : 'text-ink'
                                 )}>
                                     {tx.type === 'income' ? '+' : '-'}{formatCurrency(tx.amount)}
                                 </p>

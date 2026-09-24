@@ -11,16 +11,19 @@ const typeConfig: Record<CategoryType, {
     label: string
     sub: string
     icon: LucideIcon
+    tone: 'positive' | 'negative'
 }> = {
     expense: {
         label: 'Expense',
         sub: 'Food, transport...',
         icon: TrendingDown,
+        tone: 'negative',
     },
     income: {
         label: 'Income',
         sub: 'Salary, freelance...',
         icon: TrendingUp,
+        tone: 'positive',
     },
 }
 
@@ -33,6 +36,7 @@ export function CategoryTypePicker({ value, onChange }: CategoryTypePickerProps)
                 const config = typeConfig[t]
                 const Icon = config.icon
                 const isSelected = value === t
+                const positive = config.tone === 'positive'
 
                 return (
                     <button
@@ -42,22 +46,24 @@ export function CategoryTypePicker({ value, onChange }: CategoryTypePickerProps)
                         className={cn(
                             'relative flex flex-1 items-center gap-2.5 rounded-[14px] border-[1.5px] p-3 text-left transition-all duration-150',
                             isSelected
-                                ? 'border-[#6FA82B] bg-[#f2f6ea]'
-                                : 'border-[#e5e5e5] bg-white hover:border-[#d4d4d4]'
+                                ? positive
+                                    ? 'border-positive bg-positive/10'
+                                    : 'border-negative bg-negative/10'
+                                : 'border-line bg-white hover:border-[#d4d4d4]'
                         )}
                     >
                         <div className={cn(
                             'flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px]',
-                            isSelected ? 'bg-[#6FA82B]/15' : 'bg-[#f4f4f2]'
+                            isSelected ? (positive ? 'bg-positive/15' : 'bg-negative/15') : 'bg-surface-hover'
                         )}>
-                            <Icon className={cn('h-5 w-5', isSelected ? 'text-[#4d7a1d]' : 'text-[#8a8a84]')} />
+                            <Icon className={cn('h-5 w-5', isSelected ? (positive ? 'text-positive' : 'text-negative') : 'text-muted-ink')} />
                         </div>
                         <div>
-                            <p className="text-[13px] font-medium leading-tight text-[#252525]">{config.label}</p>
-                            <p className={cn('mt-0.5 text-[11px] leading-snug', isSelected ? 'text-[#4d7a1d]' : 'text-[#8a8a84]')}>{config.sub}</p>
+                            <p className="text-[13px] font-medium leading-tight text-ink">{config.label}</p>
+                            <p className={cn('mt-0.5 text-[11px] leading-snug', isSelected ? (positive ? 'text-positive' : 'text-negative') : 'text-muted-ink')}>{config.sub}</p>
                         </div>
                         {isSelected && (
-                            <div className="absolute right-2 top-2 flex h-[18px] w-[18px] items-center justify-center rounded-full bg-[#6FA82B]">
+                            <div className={cn('absolute right-2 top-2 flex h-[18px] w-[18px] items-center justify-center rounded-full', positive ? 'bg-positive' : 'bg-negative')}>
                                 <Check className="h-2.5 w-2.5 text-white" strokeWidth={3} />
                             </div>
                         )}

@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import {
-  Minus, Plus, TrendingUp, TrendingDown, CalendarDays, Flame,
-  Receipt, ArrowLeftRight, Moon, Wallet, type LucideProps,
+  TrendingUp, TrendingDown, CalendarDays, Flame,
+  Receipt, ArrowLeftRight, Moon, Wallet, ChevronRight, type LucideProps,
 } from 'lucide-react'
 import { AreaChart, Area, BarChart, Bar, XAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import { formatCurrency, formatDateShort, getDaysBetween, toISODate } from '@/lib/helpers'
@@ -134,6 +134,50 @@ function DaySheet({ date, transactions, onClose }: DaySheetProps) {
   )
 }
 
+interface CategoryTransactionListProps {
+  transactions: TransactionWithDetails[]
+}
+
+// Inline, collapsible list of the transactions behind a category's total — expanded in place under its row.
+function CategoryTransactionList({ transactions }: CategoryTransactionListProps) {
+  const sorted = useMemo(
+    () => [...transactions].sort((a, b) => b.amount - a.amount),
+    [transactions]
+  )
+
+  return (
+    <div className="px-4 pb-3 -mt-1 bg-[#fbfbfa]">
+      <div className="rounded-[12px] border border-[#f0f0ee] bg-white overflow-hidden divide-y divide-[#f2f2f0]">
+        {sorted.map((tx) => (
+          <div
+            key={tx.id}
+            className="flex items-center justify-between px-3 py-2.5"
+          >
+            <div className="flex items-center gap-2.5 min-w-0">
+              {tx.category?.color && (
+                <div
+                  className="w-2 h-2 rounded-full shrink-0"
+                  style={{ backgroundColor: tx.category.color }}
+                />
+              )}
+              <div className="min-w-0">
+                <p className="text-[12.5px] font-medium text-[#252525] truncate">
+                  {tx.note ?? tx.category?.name ?? 'Expense'}
+                </p>
+                <p className="text-[10.5px] text-[#a3a3a3]">
+                  {formatDateShort(tx.date)}
+                  {tx.category && tx.note ? ` · ${tx.category.name}` : ''}
+                </p>
+              </div>
+            </div>
+            <p className="text-[12.5px] font-medium text-[#252525] shrink-0 pl-2">{formatCurrency(tx.amount)}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 function SparkTooltip({ active, payload }: {
   active?: boolean
   payload?: { payload: { date: string; total: number } }[]
@@ -155,12 +199,22 @@ function budgetColor(ratio: number): string {
   return '#4d7a1d'
 }
 
+type AnalyticsSubTab = 'overview' | 'trends' | 'categories'
+
+const ANALYTICS_SUB_TABS: { key: AnalyticsSubTab; label: string }[] = [
+  { key: 'overview', label: 'Overview' },
+  { key: 'trends', label: 'Trends' },
+  { key: 'categories', label: 'Categories' },
+]
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export function PeriodAnalytics({ transactions, period, periods, previousSummary, totalBalance, totalDebt }: PeriodAnalyticsProps) {
-  const [skippedCats, setSkippedCats] = useState<Set<string>>(new Set())
   const [biggestDayOpen, setBiggestDayOpen] = useState(false)
   const [budgets, setBudgets] = useState<Record<string, number>>({})
+  const [activeSubTab, setActiveSubTab] = useState<AnalyticsSubTab>('overview')
+  const [showAllCategories, setShowAllCategories] = useState(false)
+  const [expandedCategoryId, setExpandedCategoryId] = useState<string | null>(null)
 
   useEffect(() => {
     categoryBudgetsService.getAll().then(({ data }) => {
@@ -179,7 +233,7 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
 
   const net = totalIncome - totalExpense
 
-  const allCategories = useMemo<CatEntry[]>(() => {
+  const categoriesByAmount = useMemo<CatEntry[]>(() => {
     const map = new Map<string, CatEntry>()
     for (const tx of expenses) {
       if (!tx.category) continue
@@ -196,19 +250,44 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
         })
       }
     }
-    const sorted = Array.from(map.values()).sort((a, b) => b.amount - a.amount)
-    const top5 = sorted.slice(0, 5)
-    const rest = sorted.slice(5)
-    if (rest.length > 0) {
-      top5.push({
-        id:     '__others__',
-        name:   `Others (${rest.length})`,
-        color:  '#d4d4d4',
-        amount: rest.reduce((s, c) => s + c.amount, 0),
-      })
-    }
-    return top5
+    return Array.from(map.values()).sort((a, b) => b.amount - a.amount)
   }, [expenses])
+
+  const expensesByCategoryId = useMemo(() => {
+    const map = new Map<string, TransactionWithDetails[]>()
+    for (const tx of expenses) {
+      if (!tx.category) continue
+      const arr = map.get(tx.category.id) ?? []
+      arr.push(tx)
+      map.set(tx.category.id, arr)
+    }
+    return map
+  }, [expenses])
+
+  // Tapping a category row expands it in place to the transactions behind its total —
+  // "Others" spans whichever categories didn't make the top 5.
+  function categoryTransactions(cat: CatEntry): TransactionWithDetails[] {
+    if (cat.id === '__others__') {
+      const otherIds = new Set(categoriesByAmount.slice(5).map(c => c.id))
+      return expenses.filter(tx => tx.category && otherIds.has(tx.category.id))
+    }
+    return expensesByCategoryId.get(cat.id) ?? []
+  }
+
+  const hiddenCategoriesCount = Math.max(0, categoriesByAmount.length - 5)
+
+  // Capped to top 5 + an "Others" bucket by default; `showAllCategories` breaks the bucket open.
+  const allCategories = useMemo<CatEntry[]>(() => {
+    if (showAllCategories || hiddenCategoriesCount === 0) return categoriesByAmount
+    const top5 = categoriesByAmount.slice(0, 5)
+    const rest = categoriesByAmount.slice(5)
+    return [...top5, {
+      id:     '__others__',
+      name:   `Others (${rest.length})`,
+      color:  '#d4d4d4',
+      amount: rest.reduce((s, c) => s + c.amount, 0),
+    }]
+  }, [categoriesByAmount, showAllCategories, hiddenCategoriesCount])
 
   // Categories at/near their target float to the top — the first thing you see
   // is what's about to blow its budget. Un-targeted categories come next, Others last.
@@ -222,17 +301,7 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
     return [...budgeted, ...unbudgeted, ...(others ? [others] : [])]
   }, [allCategories, budgets])
 
-  const activeExpenses = useMemo(
-    () => expenses.filter(tx => !tx.category || !skippedCats.has(tx.category.id)),
-    [expenses, skippedCats]
-  )
-
-  const activeTotal = useMemo(
-    () => activeExpenses.reduce((s, t) => s + t.amount, 0),
-    [activeExpenses]
-  )
-
-  // Biggest day uses ALL expenses (not filtered) — intentional
+  // Biggest day / biggest expense look across all expenses in the period.
   const biggestDayEntry = useMemo<DayEntry | null>(() => {
     const map = new Map<string, TransactionWithDetails[]>()
     for (const tx of expenses) {
@@ -247,17 +316,17 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
   }, [expenses])
 
   const biggestExpense = useMemo(
-    () => activeExpenses.reduce<TransactionWithDetails | null>(
+    () => expenses.reduce<TransactionWithDetails | null>(
       (mx, tx) => (!mx || tx.amount > mx.amount ? tx : mx), null
     ),
-    [activeExpenses]
+    [expenses]
   )
 
-  // ─── Period stats — delegated to the shared hook, fed the skip-filtered set ──
+  // ─── Period stats — delegated to the shared hook ───────────────────────────
 
   const statsTransactions = useMemo(
-    () => [...incomes, ...activeExpenses],
-    [incomes, activeExpenses]
+    () => [...incomes, ...expenses],
+    [incomes, expenses]
   )
 
   const stats = usePeriodStats({ period, transactions: statsTransactions })
@@ -290,23 +359,23 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
 
   const byAccount = useMemo(() => {
     const map = new Map<string, number>()
-    for (const tx of activeExpenses) {
+    for (const tx of expenses) {
       map.set(tx.account.name, (map.get(tx.account.name) ?? 0) + tx.amount)
     }
     return Array.from(map.entries())
       .map(([name, amount]) => ({ name, amount }))
       .sort((a, b) => b.amount - a.amount)
-  }, [activeExpenses])
+  }, [expenses])
 
   const byWeekday = useMemo(() => {
     const labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
     const totals = new Array(7).fill(0) as number[]
-    for (const tx of activeExpenses) {
+    for (const tx of expenses) {
       const jsDay = new Date(tx.date + 'T00:00:00').getDay() // 0 = Sunday
       totals[(jsDay + 6) % 7] += tx.amount
     }
     return labels.map((day, i) => ({ day, total: totals[i] }))
-  }, [activeExpenses])
+  }, [expenses])
 
   const periodComparison = useMemo(() => {
     if (trend.length < 2) return null
@@ -344,22 +413,31 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
 
   const healthBarColor = health.score >= 80 ? '#059669' : health.score >= 60 ? '#4d7a1d' : health.score >= 40 ? '#d97706' : '#dc2626'
 
-  const isFiltered = skippedCats.size > 0
-
-  function toggleCat(id: string) {
-    setSkippedCats(prev => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
-  }
-
   return (
+    <>
+      {/* ── Desktop-only sub-tab nav — lets desktop show one short group at a time instead of one long scroll ── */}
+      <div className="hidden lg:flex items-center gap-1 rounded-xl bg-[#f4f4f2] p-[3px] mt-3 w-fit">
+        {ANALYTICS_SUB_TABS.map(tab => (
+          <button
+            key={tab.key}
+            type="button"
+            onClick={() => setActiveSubTab(tab.key)}
+            className={cn(
+              'px-4 py-1.5 text-[12.5px] rounded-[9px] transition-colors duration-150',
+              activeSubTab === tab.key
+                ? 'bg-white text-[#252525] font-semibold shadow-sm'
+                : 'text-[#8a8a84] font-medium'
+            )}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
     <div className="space-y-2.5 pt-3 lg:grid lg:grid-cols-2 lg:gap-4 lg:space-y-0 lg:items-start">
 
-      {/* ── Financial health card ── */}
-      <div className="rounded-[20px] border border-[#e5e5e5] bg-white p-4 lg:col-span-2">
+      {/* ── Financial health card (Overview) ── */}
+      <div className={cn('rounded-[20px] border border-[#e5e5e5] bg-white p-4 lg:col-span-2', activeSubTab !== 'overview' && 'lg:hidden')}>
         <div className="flex items-center justify-between mb-3">
           <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84]">Financial health</p>
           <span
@@ -387,8 +465,8 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
         )}
       </div>
 
-      {/* ── Net summary card ── */}
-      <div className="rounded-[20px] border border-[#e5e5e5] bg-white p-4 lg:col-span-2">
+      {/* ── Net summary card (Overview) ── */}
+      <div className={cn('rounded-[20px] border border-[#e5e5e5] bg-white p-4 lg:col-span-2', activeSubTab !== 'overview' && 'lg:hidden')}>
         <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84] mb-1">Net this period</p>
         <p className={cn(
           'text-[32px] lg:text-[26px] font-medium tracking-[-0.02em] leading-none mb-1',
@@ -441,15 +519,15 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
         </div>
       </div>
 
-      {/* ── Spending trend card ── */}
-      <div className="rounded-[20px] border border-[#e5e5e5] bg-white p-4 lg:col-span-2">
+      {/* ── Spending trend card (Trends) ── */}
+      <div className={cn('rounded-[20px] border border-[#e5e5e5] bg-white p-4 lg:col-span-2', activeSubTab !== 'trends' && 'lg:hidden')}>
         <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84] mb-3">Spending trend</p>
         <PeriodTrendChart trend={trend} />
       </div>
 
-      {/* ── Across your periods (desktop only) ── */}
+      {/* ── Across your periods (Overview, desktop only) ── */}
       {periodComparison && (
-        <div className="hidden lg:block rounded-[20px] border border-[#e5e5e5] bg-white p-4 lg:col-span-2">
+        <div className={cn('hidden rounded-[20px] border border-[#e5e5e5] bg-white p-4 lg:col-span-2', activeSubTab === 'overview' && 'lg:block')}>
           <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84] mb-3">Across your periods</p>
           <div className="grid grid-cols-3 gap-2">
             <StatTile
@@ -477,9 +555,9 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
         </div>
       )}
 
-      {/* ── Vs last period card ── */}
+      {/* ── Vs last period card (Overview) ── */}
       {previousSummary && (
-        <div className="rounded-[20px] border border-[#e5e5e5] bg-white overflow-hidden">
+        <div className={cn('rounded-[20px] border border-[#e5e5e5] bg-white overflow-hidden', activeSubTab !== 'overview' && 'lg:hidden')}>
           <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84] px-4 pt-4 pb-1">
             Vs last period
           </p>
@@ -507,11 +585,9 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
         </div>
       )}
 
-      {/* ── Stats card ── */}
-      <div className="rounded-[20px] border border-[#e5e5e5] bg-white p-4">
-        <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84] mb-3">
-          {isFiltered ? 'Stats (filtered)' : 'Stats'}
-        </p>
+      {/* ── Stats card (Overview) ── */}
+      <div className={cn('rounded-[20px] border border-[#e5e5e5] bg-white p-4', activeSubTab !== 'overview' && 'lg:hidden')}>
+        <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84] mb-3">Stats</p>
 
         <div className="grid grid-cols-2 gap-2">
           <StatTile
@@ -539,7 +615,6 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
             />
           )}
 
-          {/* Biggest day uses ALL expenses (not filtered) — intentional, tap to see detail */}
           {biggestDayEntry && (
             <StatTile
               icon={Flame}
@@ -560,8 +635,8 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
           <StatTile
             icon={ArrowLeftRight}
             label="Transactions"
-            value={`${activeExpenses.length + incomes.length}`}
-            sub={`${activeExpenses.length} out · ${incomes.length} in`}
+            value={`${expenses.length + incomes.length}`}
+            sub={`${expenses.length} out · ${incomes.length} in`}
           />
 
           <StatTile
@@ -573,14 +648,14 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
         </div>
       </div>
 
-      {/* ── Spending by account (desktop only) ── */}
+      {/* ── Spending by account (Trends, desktop only) ── */}
       {byAccount.length > 0 && (
-        <div className="hidden lg:block rounded-[20px] border border-[#e5e5e5] bg-white overflow-hidden">
+        <div className={cn('hidden rounded-[20px] border border-[#e5e5e5] bg-white overflow-hidden', activeSubTab === 'trends' && 'lg:block')}>
           <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84] px-4 pt-4 pb-3">
             Spending by account
           </p>
           {byAccount.map(a => {
-            const pct = activeTotal > 0 ? Math.round((a.amount / activeTotal) * 100) : 0
+            const pct = totalExpense > 0 ? Math.round((a.amount / totalExpense) * 100) : 0
             return (
               <div key={a.name} className="px-4 py-[9px] border-b border-[#f2f2f0] last:border-b-0">
                 <div className="flex items-center justify-between mb-1">
@@ -596,9 +671,9 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
         </div>
       )}
 
-      {/* ── By day of week (desktop only) ── */}
+      {/* ── By day of week (Trends, desktop only) ── */}
       {byWeekday.some(d => d.total > 0) && (
-        <div className="hidden lg:block rounded-[20px] border border-[#e5e5e5] bg-white p-4">
+        <div className={cn('hidden rounded-[20px] border border-[#e5e5e5] bg-white p-4', activeSubTab === 'trends' && 'lg:block')}>
           <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84] mb-3">By day of week</p>
           <div style={{ width: '100%', height: 140 }}>
             <ResponsiveContainer>
@@ -624,104 +699,96 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
         </div>
       )}
 
-      {/* ── Budgets card ── */}
+      {/* ── Budgets card (Categories) ── */}
       {sortedCategories.length > 0 && (
-        <div className="rounded-[20px] border border-[#e5e5e5] bg-white overflow-hidden lg:col-span-2">
+        <div className={cn('rounded-[20px] border border-[#e5e5e5] bg-white overflow-hidden lg:col-span-2', activeSubTab !== 'categories' && 'lg:hidden')}>
           <div className="flex items-center justify-between px-4 pt-4 pb-3">
             <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84]">Budgets</p>
-            <p className="text-[11px] text-[#a3a3a3]">tap − to exclude · set targets in Categories</p>
+            <p className="text-[11px] text-[#a3a3a3]">tap a row for detail</p>
           </div>
 
           {sortedCategories.map(cat => {
             const isOthers = cat.id === '__others__'
-            const isSkipped = !isOthers && skippedCats.has(cat.id)
-            const pct = activeTotal > 0 && !isSkipped
-              ? Math.round((cat.amount / activeTotal) * 100)
+            const isExpanded = expandedCategoryId === cat.id
+            const pct = totalExpense > 0
+              ? Math.round((cat.amount / totalExpense) * 100)
               : null
             const target = budgets[cat.id]
             const ratio = target ? cat.amount / target : null
 
             return (
-              <div
-                key={cat.id}
-                className={cn(
-                  'px-4 py-3 border-b border-[#f2f2f0] transition-opacity',
-                  isSkipped && 'opacity-30'
-                )}
-              >
-                <div className="flex items-center justify-between mb-1.5">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <div
-                      className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-[8px]"
-                      style={{ backgroundColor: `${cat.color ?? '#94a3b8'}1f` }}
-                    >
-                      <CategoryIcon
-                        name={isOthers ? undefined : cat.icon}
-                        className="h-[14px] w-[14px]"
-                        style={{ color: cat.color ?? '#94a3b8' }}
+              <div key={cat.id} className="border-b border-[#f2f2f0]">
+                <div
+                  onClick={() => setExpandedCategoryId(id => id === cat.id ? null : cat.id)}
+                  className="px-4 py-3 cursor-pointer hover:bg-[#fbfbfa] transition-colors"
+                >
+                  <div className="flex items-center justify-between mb-1.5">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div
+                        className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-[8px]"
+                        style={{ backgroundColor: `${cat.color ?? '#94a3b8'}1f` }}
+                      >
+                        <CategoryIcon
+                          name={isOthers ? undefined : cat.icon}
+                          className="h-[14px] w-[14px]"
+                          style={{ color: cat.color ?? '#94a3b8' }}
+                        />
+                      </div>
+                      <p className="text-[13px] text-[#252525] truncate">{cat.name}</p>
+                    </div>
+                    <div className="flex items-center gap-3 shrink-0">
+                      <span className="text-[12px] text-[#a3a3a3] min-w-[28px] text-right">
+                        {pct !== null ? `${pct}%` : '—'}
+                      </span>
+                      <span className="text-[13px] font-medium text-[#252525] min-w-[82px] text-right">
+                        {formatCurrency(cat.amount)}
+                      </span>
+                      <ChevronRight
+                        className={cn('w-[13px] h-[13px] text-[#c4c4be] shrink-0 transition-transform', isExpanded && 'rotate-90')}
                       />
                     </div>
-                    <p className="text-[13px] text-[#252525] truncate">{cat.name}</p>
                   </div>
-                  <div className="flex items-center gap-3 shrink-0">
-                    <span className="text-[12px] text-[#a3a3a3] min-w-[28px] text-right">
-                      {pct !== null ? `${pct}%` : '—'}
-                    </span>
-                    <span className="text-[13px] font-medium text-[#252525] min-w-[82px] text-right">
-                      {formatCurrency(cat.amount)}
-                    </span>
-                    {!isOthers && (
-                      <button
-                        onClick={() => toggleCat(cat.id)}
-                        aria-label={isSkipped ? `Include ${cat.name}` : `Exclude ${cat.name}`}
-                        className={cn(
-                          'w-[22px] h-[22px] rounded-full border flex items-center justify-center shrink-0 transition-colors text-[#8a8a84]',
-                          isSkipped
-                            ? 'border-[#e5e5e5] bg-[#f4f4f2]'
-                            : 'border-[#e5e5e5] bg-white'
-                        )}
-                      >
-                        {isSkipped
-                          ? <Plus className="w-[13px] h-[13px]" />
-                          : <Minus className="w-[13px] h-[13px]" />
-                        }
-                      </button>
-                    )}
-                  </div>
+
+                  {!isOthers && target !== undefined && ratio !== null && (
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 h-1.5 rounded-full bg-[#f2f2f0] overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all duration-300"
+                          style={{ width: `${Math.min(100, Math.round(ratio * 100))}%`, backgroundColor: budgetColor(ratio) }}
+                        />
+                      </div>
+                      <span className="text-[10.5px] text-[#a3a3a3] shrink-0">
+                        {Math.round(ratio * 100)}% of {formatCurrency(target)}
+                      </span>
+                    </div>
+                  )}
                 </div>
 
-                {!isOthers && target !== undefined && ratio !== null && (
-                  <div className="flex items-center gap-2">
-                    <div className="flex-1 h-1.5 rounded-full bg-[#f2f2f0] overflow-hidden">
-                      <div
-                        className="h-full rounded-full transition-all duration-300"
-                        style={{ width: `${Math.min(100, Math.round(ratio * 100))}%`, backgroundColor: budgetColor(ratio) }}
-                      />
-                    </div>
-                    <span className="text-[10.5px] text-[#a3a3a3] shrink-0">
-                      {Math.round(ratio * 100)}% of {formatCurrency(target)}
-                    </span>
-                  </div>
-                )}
+                {isExpanded && <CategoryTransactionList transactions={categoryTransactions(cat)} />}
               </div>
             )
           })}
 
+          {hiddenCategoriesCount > 0 && (
+            <button
+              type="button"
+              onClick={() => setShowAllCategories(v => !v)}
+              className="w-full px-4 py-2.5 text-[12px] font-medium text-[#252525] border-b border-[#f2f2f0] hover:bg-[#fbfbfa] transition-colors text-left"
+            >
+              {showAllCategories ? 'Show less' : `See all categories (${categoriesByAmount.length})`}
+            </button>
+          )}
+
           <div className="flex items-center justify-between px-4 py-2.5 bg-[#f4f4f2]">
-            <div>
-              <p className="text-[12px] text-[#8a8a84]">Total spent</p>
-              {isFiltered && (
-                <p className="text-[10px] text-[#a3a3a3] italic">excl. skipped</p>
-              )}
-            </div>
-            <p className="text-[13px] font-medium text-[#252525]">{formatCurrency(activeTotal)}</p>
+            <p className="text-[12px] text-[#8a8a84]">Total spent</p>
+            <p className="text-[13px] font-medium text-[#252525]">{formatCurrency(totalExpense)}</p>
           </div>
         </div>
       )}
 
-      {/* ── Projection card — only when the period has an end date and income > 0 ── */}
+      {/* ── Projection card (Overview) — only when the period has an end date and income > 0 ── */}
       {hasPredictive && stats.projectedSpend !== null && stats.projectedClose !== null && (
-        <div className="rounded-[20px] border border-[#cfdcb8] bg-[#f2f6ea] overflow-hidden lg:col-span-2">
+        <div className={cn('rounded-[20px] border border-[#cfdcb8] bg-[#f2f6ea] overflow-hidden lg:col-span-2', activeSubTab !== 'overview' && 'lg:hidden')}>
           <p className="text-[11px] uppercase tracking-[.14em] text-[#4d7a1d] px-4 pt-4 pb-1">
             Projection
           </p>
@@ -765,6 +832,8 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
         </div>
       )}
 
+    </div>
+
       {biggestDayOpen && biggestDayEntry && (
         <DaySheet
           date={biggestDayEntry.date}
@@ -772,6 +841,6 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
           onClose={() => setBiggestDayOpen(false)}
         />
       )}
-    </div>
+    </>
   )
 }

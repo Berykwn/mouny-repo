@@ -38,6 +38,22 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+
+  /* App semantic palette — brand + per-context data colors, formalizing what
+     was previously ~1000 scattered hex literals across feature code. */
+  --brand: #6FA82B;
+  --brand-soft: #e3e8db;
+  --positive: #059669;
+  --negative: #dc2626;
+  --warning: #d97706;
+  --info: #3d6eb6;
+  --ink: #252525;
+  --muted-ink: #8a8a84;
+  --subtle-ink: #a3a3a3;
+  --line: #e5e5e5;
+  --line-soft: #f2f2f0;
+  --surface-soft: #fbfbfa;
+  --surface-hover: #f4f4f2;
 }
 
 .dark {
@@ -72,6 +88,20 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+
+  --brand: #7fc23c;
+  --brand-soft: #2d3a22;
+  --positive: #10b981;
+  --negative: #ef4444;
+  --warning: #f59e0b;
+  --info: #5b8fd6;
+  --ink: #f2f2f0;
+  --muted-ink: #a3a3a3;
+  --subtle-ink: #8a8a84;
+  --line: rgba(255, 255, 255, 0.1);
+  --line-soft: rgba(255, 255, 255, 0.06);
+  --surface-soft: #1a1a1a;
+  --surface-hover: #232323;
 }
 
 @theme inline {
@@ -111,6 +141,20 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+
+  --color-brand: var(--brand);
+  --color-brand-soft: var(--brand-soft);
+  --color-positive: var(--positive);
+  --color-negative: var(--negative);
+  --color-warning: var(--warning);
+  --color-info: var(--info);
+  --color-ink: var(--ink);
+  --color-muted-ink: var(--muted-ink);
+  --color-subtle-ink: var(--subtle-ink);
+  --color-line: var(--line);
+  --color-line-soft: var(--line-soft);
+  --color-surface-soft: var(--surface-soft);
+  --color-surface-hover: var(--surface-hover);
 }
 
 @layer base {
@@ -120,5 +164,11 @@
 
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+@layer components {
+  .card {
+    @apply rounded-[20px] border border-line bg-white dark:bg-neutral-950 dark:border-neutral-800;
   }
 }

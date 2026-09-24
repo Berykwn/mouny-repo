@@ -62,18 +62,18 @@ export function CategoriesPage() {
             <PageHeader title="Categories" />
             <section className="px-4 pb-4 lg:px-0 space-y-4">
                 <div className="space-y-4 lg:space-y-0 lg:grid lg:grid-cols-[360px_1fr] lg:gap-4 lg:items-start">
-                    <header className="rounded-[20px] border border-[#e5e5e5] bg-white p-4 flex items-center gap-3">
+                    <header className="card p-4 flex items-center gap-3">
                         <div className="flex-1 min-w-0">
-                            <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84]">Categories</p>
+                            <p className="text-[11px] uppercase tracking-[.14em] text-muted-ink">Categories</p>
                             {categories.length > 0 ? (
                                 <>
-                                    <p className="text-[20px] font-semibold text-[#252525] mt-0.5">{categories.length}</p>
-                                    <p className="text-[11px] text-[#8a8a84] mt-0.5">
+                                    <p className="text-[20px] font-semibold text-ink mt-0.5">{categories.length}</p>
+                                    <p className="text-[11px] text-muted-ink mt-0.5">
                                         {expenseCount} expense · {incomeCount} income
                                     </p>
                                 </>
                             ) : (
-                                <p className="text-[13px] text-[#8a8a84] mt-0.5">No categories yet</p>
+                                <p className="text-[13px] text-muted-ink mt-0.5">No categories yet</p>
                             )}
                         </div>
                         <div className="flex items-center gap-2">
@@ -111,14 +111,14 @@ export function CategoriesPage() {
                         <button
                             type="button"
                             onClick={() => setAddCategoryDrawer(true)}
-                            className="w-full rounded-[20px] border border-[#e5e5e5] bg-white p-4 flex items-center gap-3 text-left hover:bg-[#fbfbfa] transition-colors"
+                            className="card w-full p-4 flex items-center gap-3 text-left hover:bg-surface-hover transition-colors"
                         >
-                            <div className="w-9 h-9 rounded-[10px] bg-[#f4f4f2] flex items-center justify-center shrink-0">
-                                <Tag className="w-4 h-4 text-[#8a8a84]" />
+                            <div className="w-9 h-9 rounded-[10px] bg-info/10 flex items-center justify-center shrink-0">
+                                <Tag className="w-4 h-4 text-info" />
                             </div>
                             <div className="flex-1 min-w-0">
-                                <p className="text-[13px] font-medium text-[#252525]">No categories yet</p>
-                                <p className="text-[11.5px] text-[#8a8a84] mt-0.5">Tap to add one, or use Seed above for defaults</p>
+                                <p className="text-[13px] font-medium text-ink">No categories yet</p>
+                                <p className="text-[11.5px] text-muted-ink mt-0.5">Tap to add one, or use Seed above for defaults</p>
                             </div>
                         </button>
                     ) : (

@@ -19,25 +19,25 @@ export function TodayTransactionsCard({ transactions }: TodayTransactionsCardPro
     }, [transactions])
 
     return (
-        <div className="rounded-[20px] border border-[#e5e5e5] bg-white overflow-hidden">
+        <div className="card overflow-hidden">
             <button
                 type="button"
                 onClick={() => navigate('/transactions')}
                 className="flex w-full items-center justify-between px-5 pt-4 pb-3 text-left"
             >
-                <p className="text-[11px] font-normal uppercase tracking-[.14em] text-[#8a8a84]">
+                <p className="text-[11px] font-normal uppercase tracking-[.14em] text-muted-ink">
                     Today
                 </p>
-                <ArrowRight className="h-[13px] w-[13px] text-[#8a8a84]" />
+                <ArrowRight className="h-[13px] w-[13px] text-muted-ink" />
             </button>
 
             {todayTxs.length === 0 ? (
-                <p className="px-5 pb-4 text-[12px] text-[#8a8a84]">No transactions yet today.</p>
+                <p className="px-5 pb-4 text-[12px] text-muted-ink">No transactions yet today.</p>
             ) : (
                 todayTxs.map(tx => (
                     <div
                         key={tx.id}
-                        className="flex items-center gap-2.5 border-t border-[#f4f4f2] px-5 py-[9px]"
+                        className="flex items-center gap-2.5 border-t border-surface-hover px-5 py-[9px]"
                     >
                         <div
                             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px]"
@@ -50,16 +50,16 @@ export function TodayTransactionsCard({ transactions }: TodayTransactionsCardPro
                             />
                         </div>
                         <div className="min-w-0 flex-1">
-                            <p className="truncate text-[13.5px] font-medium text-[#252525]">
+                            <p className="truncate text-[13.5px] font-medium text-ink">
                                 {tx.note ?? tx.category?.name ?? (tx.type === 'income' ? 'Income' : 'Expense')}
                             </p>
                             {tx.category && tx.note && (
-                                <p className="truncate text-[11px] text-[#a3a3a3]">{tx.category.name}</p>
+                                <p className="truncate text-[11px] text-subtle-ink">{tx.category.name}</p>
                             )}
                         </div>
                         <p className={cn(
                             'text-[13.5px] tabular-nums shrink-0',
-                            tx.type === 'income' ? 'text-[#059669]' : 'text-[#252525]'
+                            tx.type === 'income' ? 'text-positive' : 'text-ink'
                         )}>
                             {tx.type === 'income' ? '+' : ''}{formatCurrency(tx.amount)}
                         </p>

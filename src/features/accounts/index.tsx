@@ -54,23 +54,23 @@ export function AccountPage() {
             <PageHeader title="Accounts" />
             <section className="px-4 pb-4 lg:px-0 space-y-4">
                 <div className="space-y-4 lg:space-y-0 lg:grid lg:grid-cols-[360px_1fr] lg:gap-4 lg:items-start">
-                    <header className="rounded-[20px] border border-[#e5e5e5] bg-white p-4 flex items-center gap-3">
+                    <header className="card p-4 flex items-center gap-3">
                         <div className="flex-1 min-w-0">
-                            <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84]">Total balance</p>
+                            <p className="text-[11px] uppercase tracking-[.14em] text-muted-ink">Total balance</p>
                             {accounts.length > 0 ? (
                                 <>
                                     <p className={cn(
                                         'text-[32px] font-medium tracking-[-0.02em] leading-none mt-1',
-                                        totalBalance < 0 ? 'text-[#dc2626]' : 'text-[#252525]'
+                                        totalBalance < 0 ? 'text-negative' : 'text-ink'
                                     )}>
                                         {formatCurrency(totalBalance)}
                                     </p>
-                                    <p className="text-[11px] text-[#8a8a84] mt-1.5">
+                                    <p className="text-[11px] text-muted-ink mt-1.5">
                                         across {accounts.length} account{accounts.length > 1 ? 's' : ''}
                                     </p>
                                 </>
                             ) : (
-                                <p className="text-[13px] text-[#8a8a84] mt-0.5">Add your first account</p>
+                                <p className="text-[13px] text-muted-ink mt-0.5">Add your first account</p>
                             )}
                         </div>
                         <Button
@@ -88,19 +88,19 @@ export function AccountPage() {
                         <button
                             type="button"
                             onClick={() => setAddAccountDrawer(true)}
-                            className="w-full rounded-[20px] border border-[#e5e5e5] bg-white p-4 flex items-center gap-3 text-left hover:bg-[#fbfbfa] transition-colors"
+                            className="card w-full p-4 flex items-center gap-3 text-left hover:bg-surface-soft transition-colors"
                         >
-                            <div className="w-9 h-9 rounded-[10px] bg-[#f4f4f2] flex items-center justify-center shrink-0">
-                                <Wallet2 className="w-4 h-4 text-[#8a8a84]" />
+                            <div className="w-9 h-9 rounded-[10px] bg-brand/10 flex items-center justify-center shrink-0">
+                                <Wallet2 className="w-4 h-4 text-brand" />
                             </div>
                             <div className="flex-1 min-w-0">
-                                <p className="text-[13px] font-medium text-[#252525]">No accounts yet</p>
-                                <p className="text-[11.5px] text-[#8a8a84] mt-0.5">Tap to add your first bank or cash account</p>
+                                <p className="text-[13px] font-medium text-ink">No accounts yet</p>
+                                <p className="text-[11.5px] text-muted-ink mt-0.5">Tap to add your first bank or cash account</p>
                             </div>
                         </button>
                     ) : (
                         <div className="space-y-3">
-                            <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84] px-1">
+                            <p className="text-[11px] uppercase tracking-[.14em] text-muted-ink px-1">
                                 Your accounts
                             </p>
 

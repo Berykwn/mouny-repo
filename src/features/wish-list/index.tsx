@@ -73,9 +73,9 @@ export default function WishListPage() {
                 ) : (
                     <div className="space-y-5 lg:space-y-0 lg:grid lg:grid-cols-[360px_1fr] lg:gap-4 lg:items-start">
                         {/* Savings progress hero */}
-                        <div className="rounded-[20px] border border-[#e5e5e5] bg-white p-5">
+                        <div className="card p-5">
                             <div className="flex items-center justify-between mb-2">
-                                <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84]">Savings progress</p>
+                                <p className="text-[11px] uppercase tracking-[.14em] text-muted-ink">Savings progress</p>
                                 <Button
                                     variant='outline'
                                     size="sm"
@@ -85,21 +85,21 @@ export default function WishListPage() {
                                     <Plus className="w-3.5 h-3.5" /> Wish
                                 </Button>
                             </div>
-                            <p className="text-[32px] lg:text-[26px] font-medium tracking-[-0.02em] leading-none text-[#252525] tabular-nums">
+                            <p className="text-[32px] lg:text-[26px] font-medium tracking-[-0.02em] leading-none text-ink tabular-nums">
                                 {formatCurrency(totalSaved)}
                             </p>
                             {totalTarget > 0 ? (
                                 <>
                                     <ProgressBar percent={savedPercent} className="mt-3" />
                                     <div className="flex items-center justify-between mt-2">
-                                        <p className="text-[11px] text-[#8a8a84]">saved</p>
-                                        <p className="text-[11px] text-[#8a8a84]">
+                                        <p className="text-[11px] text-muted-ink">saved</p>
+                                        <p className="text-[11px] text-muted-ink">
                                             of {formatCurrency(totalTarget)} across {items.length} goal{items.length === 1 ? '' : 's'}
                                         </p>
                                     </div>
                                 </>
                             ) : items.length > 0 ? (
-                                <p className="text-[11px] text-[#8a8a84] mt-2">
+                                <p className="text-[11px] text-muted-ink mt-2">
                                     {items.length} goal{items.length === 1 ? '' : 's'} · set a target price to track progress
                                 </p>
                             ) : null}
@@ -110,14 +110,14 @@ export default function WishListPage() {
                                 <button
                                     type="button"
                                     onClick={() => setAddDrawerOpen(true)}
-                                    className="w-full rounded-[20px] border border-[#e5e5e5] bg-white p-4 flex items-center gap-3 text-left hover:bg-[#fbfbfa] transition-colors"
+                                    className="w-full card p-4 flex items-center gap-3 text-left hover:bg-surface-soft transition-colors"
                                 >
-                                    <div className="w-9 h-9 rounded-[10px] bg-[#f4f4f2] flex items-center justify-center shrink-0">
-                                        <PiggyBank className="w-4 h-4 text-[#8a8a84]" />
+                                    <div className="w-9 h-9 rounded-[10px] bg-brand/10 flex items-center justify-center shrink-0">
+                                        <PiggyBank className="w-4 h-4 text-brand" />
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                        <p className="text-[13px] font-medium text-[#252525]">No savings goals yet</p>
-                                        <p className="text-[11.5px] text-[#8a8a84] mt-0.5">Tap to start saving toward something you want</p>
+                                        <p className="text-[13px] font-medium text-ink">No savings goals yet</p>
+                                        <p className="text-[11.5px] text-muted-ink mt-0.5">Tap to start saving toward something you want</p>
                                     </div>
                                 </button>
                             ) : (

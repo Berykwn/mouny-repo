@@ -7,6 +7,7 @@ import { payPeriodsService } from '@/services/pay-periods.service'
 import { toISODate, getInitials } from '@/lib/helpers'
 import { emitTransactionsChanged } from '@/lib/transactions-bus'
 import { useAuth } from '@/hooks/use-auth'
+import { TopBarSlotContext } from '@/contexts/TopBarSlotContext'
 import type { PayPeriod } from '@/types'
 import { toast } from 'sonner'
 
@@ -63,6 +64,7 @@ export default function AppLayout() {
     const { user } = useAuth()
     const [activePeriod, setActivePeriod] = useState<PayPeriod | null>(null)
     const [addDrawerOpen, setAddDrawerOpen] = useState(false)
+    const [topBarSlotNode, setTopBarSlotNode] = useState<HTMLDivElement | null>(null)
     const currentLabel = ROUTE_LABELS[location.pathname] ?? 'Today'
 
     useEffect(() => {
@@ -87,8 +89,8 @@ export default function AppLayout() {
             )}>
                 <div className="flex items-center gap-2 px-1">
                     <img src="/favicon.svg" alt="" className="w-6 h-6 shrink-0" />
-                    <span className="text-[20px] font-semibold tracking-[-0.02em] text-[#252525] dark:text-white">Mouny.</span>
-                    <span className="ml-auto px-1.5 py-0.5 rounded-md border border-[#e5e5e5] bg-[#fbfbfa] text-[10px] text-[#8a8a84] tabular-nums">
+                    <span className="text-[20px] font-semibold tracking-[-0.02em] text-ink dark:text-white">Mouny.</span>
+                    <span className="ml-auto px-1.5 py-0.5 rounded-md border border-line bg-surface-soft text-[10px] text-muted-ink tabular-nums">
                         v{__APP_VERSION__}
                     </span>
                 </div>
@@ -97,7 +99,7 @@ export default function AppLayout() {
                     {SIDEBAR_GROUPS.map((group, i) => (
                         <div key={group.label ?? i} className="space-y-0.5">
                             {group.label && (
-                                <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84] px-3 mb-1">
+                                <p className="text-[11px] uppercase tracking-[.14em] text-muted-ink px-3 mb-1">
                                     {group.label}
                                 </p>
                             )}
@@ -115,28 +117,31 @@ export default function AppLayout() {
                 <div className="lg:max-w-5xl lg:mx-auto lg:px-8 lg:py-8">
                     <div className="hidden lg:flex items-center justify-between mb-6">
                         <div className="flex items-center gap-1.5 text-[13px]">
-                            <Link to="/" className="text-[#8a8a84] hover:text-[#252525] transition-colors">
+                            <Link to="/" className="text-muted-ink hover:text-ink transition-colors">
                                 Mouny
                             </Link>
                             <ChevronRight className="w-3.5 h-3.5 text-[#c4c4be]" />
-                            <span className="font-medium text-[#252525]">{currentLabel}</span>
+                            <span className="font-medium text-ink">{currentLabel}</span>
                         </div>
 
                         <div className="flex items-center gap-3">
+                            <div ref={setTopBarSlotNode} className="contents" />
                             <button
                                 onClick={handleAddClick}
-                                className="h-9 px-4 rounded-[10px] bg-[#6FA82B] text-white text-[13px] font-semibold flex items-center justify-center gap-1.5 hover:bg-[#6FA82B]/90 transition-colors"
+                                className="h-9 px-4 rounded-[10px] bg-brand text-white text-[13px] font-semibold flex items-center justify-center gap-1.5 hover:bg-brand/90 transition-colors"
                             >
                                 <Plus className="w-4 h-4" strokeWidth={2} />
                                 Add Transaction
                             </button>
-                            <div className="w-8 h-8 rounded-full bg-[#252525] flex items-center justify-center shrink-0">
+                            <div className="w-8 h-8 rounded-full bg-ink flex items-center justify-center shrink-0">
                                 <span className="text-[11.5px] font-semibold text-[#fafafa]">{getInitials(user)}</span>
                             </div>
                         </div>
                     </div>
 
-                    <Outlet />
+                    <TopBarSlotContext value={topBarSlotNode}>
+                        <Outlet />
+                    </TopBarSlotContext>
                 </div>
 
                 {activePeriod && addDrawerOpen && (
@@ -165,7 +170,7 @@ export default function AppLayout() {
                 <div className="w-[72px] flex justify-center shrink-0">
                     <button
                         onClick={handleAddClick}
-                        className="w-[54px] h-[54px] rounded-full bg-[#6FA82B] flex items-center justify-center -mt-[40px] shadow-[0_8px_18px_-6px_rgba(111,168,43,.7)]"
+                        className="w-[54px] h-[54px] rounded-full bg-brand flex items-center justify-center -mt-[40px] shadow-[0_8px_18px_-6px_rgba(111,168,43,.7)]"
                     >
                         <Plus className="w-6 h-6 text-white" strokeWidth={2} />
                     </button>
@@ -188,12 +193,12 @@ function NavItem({ to, label, icon: Icon, end }: { to: string; label: string; ic
             {({ isActive }) => (
                 <>
                     <Icon
-                        className={cn('w-5 h-5', isActive ? 'text-[#252525]' : 'text-[#b0b0aa]')}
+                        className={cn('w-5 h-5', isActive ? 'text-brand' : 'text-[#b0b0aa]')}
                         strokeWidth={2}
                     />
                     <span className={cn(
                         'text-[10px] leading-none',
-                        isActive ? 'font-semibold text-[#252525]' : 'text-[#9a9a94]',
+                        isActive ? 'font-semibold text-brand' : 'text-[#9a9a94]',
                     )}>
                         {label}
                     </span>
@@ -208,17 +213,20 @@ function SidebarNavItem({ to, label, icon: Icon, end }: { to: string; label: str
         <NavLink
             to={to}
             end={end}
-            className="flex items-center gap-3 h-10 px-3 rounded-[10px] hover:bg-[#f4f4f2] dark:hover:bg-neutral-900 transition-colors"
+            className={({ isActive }) => cn(
+                'flex items-center gap-3 h-10 px-3 rounded-[10px] transition-colors',
+                isActive ? 'bg-brand/10' : 'hover:bg-surface-hover dark:hover:bg-neutral-900'
+            )}
         >
             {({ isActive }) => (
                 <>
                     <Icon
-                        className={cn('w-4 h-4 shrink-0', isActive ? 'text-[#252525]' : 'text-[#b0b0aa]')}
+                        className={cn('w-4 h-4 shrink-0', isActive ? 'text-brand' : 'text-[#b0b0aa]')}
                         strokeWidth={2}
                     />
                     <span className={cn(
                         'text-[13px]',
-                        isActive ? 'font-semibold text-[#252525]' : 'text-[#8a8a84]',
+                        isActive ? 'font-semibold text-brand' : 'text-muted-ink',
                     )}>
                         {label}
                     </span>

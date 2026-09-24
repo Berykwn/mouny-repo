@@ -13,10 +13,10 @@ interface PeriodInsightProps {
 type Tone = 'warning' | 'positive' | 'info' | 'neutral'
 
 const TONE_CLASSES: Record<Tone, string> = {
-    warning: 'border-[#dc2626] text-[#dc2626]',
-    positive: 'border-[#6FA82B] text-[#4d7a1d]',
-    info: 'border-[#8a8a84] text-[#5b5b55]',
-    neutral: 'border-[#e5e5e5] text-[#8a8a84]',
+    warning: 'border-warning text-warning',
+    positive: 'border-brand text-positive',
+    info: 'border-info text-info',
+    neutral: 'border-line text-muted-ink',
 }
 
 export function PeriodInsight({ transactions, totalExpense, dailyAvg, safeDaily }: PeriodInsightProps) {

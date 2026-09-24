@@ -19,19 +19,21 @@ export function BalancesCard({ accounts, isActivePeriod, closingBalance }: Balan
         <button
             type="button"
             onClick={() => navigate('/accounts')}
-            className="flex w-full items-center justify-between rounded-[20px] border border-[#e5e5e5] bg-white px-5 py-4 text-left"
+            className="card flex w-full items-center justify-between px-5 py-4 text-left"
         >
             <div className="flex items-center gap-2.5">
-                <Wallet className="h-4 w-4 text-[#a3a3a3]" />
-                <span className="text-[13.5px] text-[#252525]">
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-info/10">
+                    <Wallet className="h-3.5 w-3.5 text-info" />
+                </div>
+                <span className="text-[13.5px] text-ink">
                     {isActivePeriod ? 'Balances' : 'Closing balance'}
                 </span>
             </div>
             <div className="flex items-center gap-2">
-                <span className="text-[13.5px] font-medium tabular-nums text-[#252525]">
+                <span className="text-[13.5px] font-medium tabular-nums text-ink">
                     {formatCurrency(total)}
                 </span>
-                <ArrowRight className="h-[13px] w-[13px] text-[#8a8a84]" />
+                <ArrowRight className="h-[13px] w-[13px] text-muted-ink" />
             </div>
         </button>
     )

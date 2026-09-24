@@ -42,36 +42,36 @@ export function PeriodHistoryPage() {
                 {loading ? <LoadingContent /> : (
                     <div className="space-y-4 lg:grid lg:grid-cols-[360px_1fr] lg:gap-4 lg:items-start lg:space-y-0">
                         {activePeriod ? (
-                            <div className="rounded-[20px] border border-[#e5e5e5] bg-white p-4 space-y-4">
+                            <div className="card p-4 space-y-4">
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-2.5">
-                                        <div className="w-9 h-9 rounded-[10px] bg-[#f2f6ea] flex items-center justify-center shrink-0">
-                                            <CalendarDays className="w-4 h-4 text-[#6FA82B]" />
+                                        <div className="w-9 h-9 rounded-[10px] bg-brand/10 flex items-center justify-center shrink-0">
+                                            <CalendarDays className="w-4 h-4 text-brand" />
                                         </div>
                                         <div>
-                                            <p className="text-[13px] font-semibold text-[#252525]">Active Period</p>
+                                            <p className="text-[13px] font-semibold text-ink">Active Period</p>
                                             <div className="flex items-center gap-1.5 mt-0.5">
-                                                <div className="w-1.5 h-1.5 rounded-full bg-[#6FA82B] animate-pulse" />
-                                                <p className="text-[11px] text-[#6FA82B] font-medium">Ongoing</p>
+                                                <div className="w-1.5 h-1.5 rounded-full bg-brand animate-pulse" />
+                                                <p className="text-[11px] text-brand font-medium">Ongoing</p>
                                             </div>
                                         </div>
                                     </div>
-                                    <span className="text-[11px] text-[#8a8a84]">{daysSince} days ago</span>
+                                    <span className="text-[11px] text-muted-ink">{daysSince} days ago</span>
                                 </div>
 
-                                <div className="space-y-2 pt-1 border-t border-[#f2f2f0]">
+                                <div className="space-y-2 pt-1 border-t border-line-soft">
                                     <div className="flex justify-between text-[13px]">
-                                        <span className="text-[#8a8a84]">Start</span>
-                                        <span className="font-medium text-[#252525]">{formatDate(activePeriod.start_date)}</span>
+                                        <span className="text-muted-ink">Start</span>
+                                        <span className="font-medium text-ink">{formatDate(activePeriod.start_date)}</span>
                                     </div>
                                     <div className="flex justify-between text-[13px]">
-                                        <span className="text-[#8a8a84]">Expected income</span>
-                                        <span className="font-medium text-[#252525]">{formatCurrency(activePeriod.salary_amount)}</span>
+                                        <span className="text-muted-ink">Expected income</span>
+                                        <span className="font-medium text-ink">{formatCurrency(activePeriod.salary_amount)}</span>
                                     </div>
                                     {activePeriod.notes && (
                                         <div className="flex justify-between text-[13px]">
-                                            <span className="text-[#8a8a84]">Notes</span>
-                                            <span className="font-medium text-[#252525] text-right max-w-[60%] truncate">{activePeriod.notes}</span>
+                                            <span className="text-muted-ink">Notes</span>
+                                            <span className="font-medium text-ink text-right max-w-[60%] truncate">{activePeriod.notes}</span>
                                         </div>
                                     )}
                                 </div>
@@ -79,17 +79,17 @@ export function PeriodHistoryPage() {
                                 <button
                                     type="button"
                                     onClick={() => setClosePeriodDrawer(true)}
-                                    className="w-full h-12 rounded-[14px] text-[13px] font-semibold text-white bg-[#dc2626] hover:bg-[#dc2626]/90 transition-colors flex items-center justify-center gap-2"
+                                    className="w-full h-12 rounded-[14px] text-[13px] font-semibold text-white bg-negative hover:bg-negative/90 transition-colors flex items-center justify-center gap-2"
                                 >
                                     <CheckCircle className="w-4 h-4" />
                                     Close Period
                                 </button>
                             </div>
                         ) : (
-                            <div className="rounded-[20px] border border-[#e5e5e5] bg-white p-4 flex items-center gap-3">
+                            <div className="card p-4 flex items-center gap-3">
                                 <div className="flex-1 min-w-0">
-                                    <p className="text-[13px] font-semibold text-[#252525]">No active period</p>
-                                    <p className="text-[11.5px] text-[#8a8a84] mt-0.5">
+                                    <p className="text-[13px] font-semibold text-ink">No active period</p>
+                                    <p className="text-[11.5px] text-muted-ink mt-0.5">
                                         {closedPeriods.length > 0
                                             ? `${closedPeriods.length} closed period${closedPeriods.length > 1 ? 's' : ''} in history`
                                             : 'Start tracking your spending'}

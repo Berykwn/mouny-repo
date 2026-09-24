@@ -31,10 +31,10 @@ export function CategoryList({ categories, budgets, onEdit, onDeleteRequest }: C
         if (items.length === 0) return null
         return (
             <div className="space-y-1.5">
-                <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84] px-1">
+                <p className="text-[11px] uppercase tracking-[.14em] text-muted-ink px-1">
                     {label}
                 </p>
-                <div className="rounded-[20px] border border-[#e5e5e5] bg-white overflow-hidden divide-y divide-[#f2f2f0]">
+                <div className="card overflow-hidden divide-y divide-line-soft">
                     {items.map((cat) => {
                         const color = cat.color ?? '#94a3b8'
                         return (
@@ -50,9 +50,9 @@ export function CategoryList({ categories, budgets, onEdit, onDeleteRequest }: C
                                     />
                                 </div>
                                 <div className="min-w-0 flex-1">
-                                    <p className="text-[13px] text-[#252525] truncate">{cat.name}</p>
+                                    <p className="text-[13px] text-ink truncate">{cat.name}</p>
                                     {cat.type === 'expense' && budgets[cat.id] !== undefined && (
-                                        <p className="text-[11px] text-[#8a8a84] truncate mt-0.5">
+                                        <p className="text-[11px] text-muted-ink truncate mt-0.5">
                                             Target {formatCurrency(budgets[cat.id])}/period
                                         </p>
                                     )}
@@ -60,13 +60,13 @@ export function CategoryList({ categories, budgets, onEdit, onDeleteRequest }: C
                                 <div className="flex items-center gap-1">
                                     <button
                                         onClick={() => onEdit(cat)}
-                                        className="w-7 h-7 rounded-full flex items-center justify-center text-[#8a8a84] hover:text-[#252525] hover:bg-[#f4f4f2] transition-colors"
+                                        className="w-7 h-7 rounded-full flex items-center justify-center text-muted-ink hover:text-ink hover:bg-surface-hover transition-colors"
                                     >
                                         <Pencil className="w-3.5 h-3.5" />
                                     </button>
                                     <button
                                         onClick={() => onDeleteRequest(cat.id)}
-                                        className="w-7 h-7 rounded-full flex items-center justify-center text-[#8a8a84] hover:text-[#dc2626] hover:bg-[#f4f4f2] transition-colors"
+                                        className="w-7 h-7 rounded-full flex items-center justify-center text-muted-ink hover:text-negative hover:bg-surface-hover transition-colors"
                                     >
                                         <Trash2 className="w-3.5 h-3.5" />
                                     </button>

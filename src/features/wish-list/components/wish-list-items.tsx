@@ -23,9 +23,9 @@ const PRIORITY_LABEL: Record<string, string> = {
 }
 
 const PRIORITY_COLOR: Record<string, string> = {
-  high: 'bg-[#fef2f2] text-[#dc2626]',
-  medium: 'bg-[#fff7ed] text-[#d97706]',
-  low: 'bg-[#f4f4f2] text-[#8a8a84]',
+  high: 'bg-negative/10 text-negative',
+  medium: 'bg-warning/10 text-warning',
+  low: 'bg-surface-hover text-muted-ink',
 }
 
 const PRIORITY_ORDER: Record<string, number> = { high: 0, medium: 1, low: 2 }
@@ -62,8 +62,8 @@ export function WishListItems({ items, onBuy, onContribute, onEdit, onDeleteRequ
             className={cn(
               'px-3 py-1.5 rounded-full text-[12px] font-medium border transition-colors',
               filter === id
-                ? 'bg-[#f4f4f2] text-[#252525] border-[#e5e5e5]'
-                : 'bg-white text-[#8a8a84] border-[#e5e5e5] hover:text-[#252525]'
+                ? 'bg-surface-hover text-ink border-line'
+                : 'bg-white text-muted-ink border-line hover:text-ink'
             )}
           >
             {label}
@@ -90,13 +90,13 @@ export function WishListItems({ items, onBuy, onContribute, onEdit, onDeleteRequ
           return (
             <div
               key={item.id}
-              className="rounded-[20px] border border-[#e5e5e5] bg-white px-4 py-3.5 space-y-2.5"
+              className="card px-4 py-3.5 space-y-2.5"
             >
               {/* Header: title + priority | saved of target */}
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <p className="text-[13px] font-semibold text-[#252525] truncate">{item.name}</p>
+                    <p className="text-[13px] font-semibold text-ink truncate">{item.name}</p>
                     <span className={cn(
                       'text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0',
                       PRIORITY_COLOR[item.priority ?? 'low']
@@ -105,7 +105,7 @@ export function WishListItems({ items, onBuy, onContribute, onEdit, onDeleteRequ
                     </span>
                   </div>
                   {item.quantity && item.unit && (
-                    <p className="text-[11px] text-[#8a8a84] mt-0.5 tabular-nums">
+                    <p className="text-[11px] text-muted-ink mt-0.5 tabular-nums">
                       {item.quantity} {item.unit} &times; {formatCurrency(item.price_per_unit ?? 0)}
                     </p>
                   )}
@@ -113,20 +113,20 @@ export function WishListItems({ items, onBuy, onContribute, onEdit, onDeleteRequ
                 <div className="text-right shrink-0">
                   {isUOM ? (
                     <>
-                      <p className="text-[13px] font-medium text-[#252525] tabular-nums">
+                      <p className="text-[13px] font-medium text-ink tabular-nums">
                         {item.saved_quantity ?? 0} {item.unit}
                       </p>
                       {hasTarget && (
-                        <p className="text-[11px] text-[#8a8a84] tabular-nums">of {item.quantity} {item.unit}</p>
+                        <p className="text-[11px] text-muted-ink tabular-nums">of {item.quantity} {item.unit}</p>
                       )}
                     </>
                   ) : (
                     <>
-                      <p className="text-[13px] font-medium text-[#252525] tabular-nums">
+                      <p className="text-[13px] font-medium text-ink tabular-nums">
                         {formatCurrency(item.saved_amount)}
                       </p>
                       {hasTarget && (
-                        <p className="text-[11px] text-[#8a8a84] tabular-nums">of {formatCurrency(item.estimated_price!)}</p>
+                        <p className="text-[11px] text-muted-ink tabular-nums">of {formatCurrency(item.estimated_price!)}</p>
                       )}
                     </>
                   )}
@@ -136,25 +136,25 @@ export function WishListItems({ items, onBuy, onContribute, onEdit, onDeleteRequ
               {/* Progress toward target */}
               {hasTarget ? (
                 <div className="space-y-1">
-                  <ProgressBar percent={percent} />
+                  <ProgressBar percent={percent} color={ready ? 'var(--positive)' : undefined} />
                   {ready ? (
-                    <span className="inline-block text-[10.5px] font-semibold px-2 py-0.5 rounded-full bg-[#f2f6ea] text-[#4d7a1d]">
+                    <span className="inline-block text-[10.5px] font-semibold px-2 py-0.5 rounded-full bg-positive/10 text-positive">
                       {isUOM ? 'Selesai' : 'Ready to buy'}
                     </span>
                   ) : (
-                    <p className="text-[11px] text-[#8a8a84]">
+                    <p className="text-[11px] text-muted-ink">
                       {percent}% {isUOM ? 'terkumpul' : 'saved'}
                       {isUOM && ` · ${formatCurrency(item.saved_amount)} spent`}
                     </p>
                   )}
                 </div>
               ) : (
-                <p className="text-[11px] text-[#8a8a84]">No target price set</p>
+                <p className="text-[11px] text-muted-ink">No target price set</p>
               )}
 
               {/* Body: notes — only if exists */}
               {item.notes && (
-                <p className="text-[11.5px] text-[#8a8a84] line-clamp-2">{item.notes}</p>
+                <p className="text-[11.5px] text-muted-ink line-clamp-2">{item.notes}</p>
               )}
 
               {/* Footer: actions */}

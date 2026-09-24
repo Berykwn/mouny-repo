@@ -24,43 +24,43 @@ export function DebtList({ debts, onDelete, onPay, onCollect }: DebtListProps) {
                 const isDebt = debt.type === 'debt'
 
                 const dueDatePillClass = isOverdue
-                    ? 'bg-[#fef2f2] text-[#dc2626]'
+                    ? 'bg-negative/10 text-negative'
                     : isUrgent
-                        ? 'bg-[#fff7ed] text-[#d97706]'
-                        : 'bg-[#f4f4f2] text-[#8a8a84]'
+                        ? 'bg-warning/10 text-warning'
+                        : 'bg-surface-hover text-muted-ink'
 
                 return (
-                    <div key={debt.id} className="rounded-[20px] border border-[#e5e5e5] bg-white p-4 space-y-3">
+                    <div key={debt.id} className="card p-4 space-y-3">
                         <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0">
                                 <div className="flex items-center gap-2 flex-wrap">
-                                    <p className="text-[13px] font-medium text-[#252525] truncate">{debt.counterparty}</p>
+                                    <p className="text-[13px] font-medium text-ink truncate">{debt.counterparty}</p>
                                     <span className={cn(
                                         'text-[10px] font-medium px-1.5 py-0.5 rounded-full',
-                                        isDebt ? 'bg-[#fef2f2] text-[#dc2626]' : 'bg-[#f2f6ea] text-[#4d7a1d]'
+                                        isDebt ? 'bg-negative/10 text-negative' : 'bg-positive/10 text-positive'
                                     )}>
                                         {isDebt ? 'Debt' : 'Receivable'}
                                     </span>
                                 </div>
                                 {debt.pay_from_account && (
-                                    <p className="text-[11.5px] text-[#8a8a84] mt-0.5">
+                                    <p className="text-[11.5px] text-muted-ink mt-0.5">
                                         via {debt.pay_from_account.name}
                                     </p>
                                 )}
                             </div>
 
                             <div className="text-right shrink-0">
-                                <p className="text-[13px] font-medium text-[#252525]">{formatCurrency(debt.remaining_amount)}</p>
-                                <p className="text-[11px] text-[#8a8a84]">of {formatCurrency(debt.total_amount)}</p>
+                                <p className="text-[13px] font-medium text-ink">{formatCurrency(debt.remaining_amount)}</p>
+                                <p className="text-[11px] text-muted-ink">of {formatCurrency(debt.total_amount)}</p>
                             </div>
                         </div>
 
                         <div className="space-y-1">
-                            <ProgressBar percent={paidPercent} color={isDebt ? '#dc2626' : '#059669'} />
-                            <p className="text-[11px] text-[#8a8a84]">{paidPercent}% {isDebt ? 'paid' : 'collected'}</p>
+                            <ProgressBar percent={paidPercent} color={isDebt ? 'var(--negative)' : 'var(--positive)'} />
+                            <p className="text-[11px] text-muted-ink">{paidPercent}% {isDebt ? 'paid' : 'collected'}</p>
                             {debt.notes && (
                                 <div className='pt-2.5 pb-1.5'>
-                                    <p className='text-[11.5px] text-[#8a8a84] font-medium'>{debt.notes}</p>
+                                    <p className='text-[11.5px] text-muted-ink font-medium'>{debt.notes}</p>
                                 </div>
                             )}
                         </div>

@@ -77,9 +77,9 @@ export function OverviewTransaction({
 
     if (loading) return <LoadingContent />
     if (!data) return (
-        <section className='p-4 mt-1.5 rounded-[20px] bg-white border border-[#e5e5e5]'>
-            <h2 className='text-[13px] font-medium text-[#252525]'>Failed to load period data.</h2>
-            <p className='text-[11.5px] text-[#8a8a84] mt-1'>Please try again.</p>
+        <section className='card p-4 mt-1.5'>
+            <h2 className='text-[13px] font-medium text-ink'>Failed to load period data.</h2>
+            <p className='text-[11.5px] text-muted-ink mt-1'>Please try again.</p>
         </section>
     )
 

@@ -11,16 +11,23 @@ import { cn } from '@/lib/utils'
 import { PageHeader } from '@/components/page-header'
 
 const MONEY_ITEMS = [
-    { to: '/debts', label: 'Debts', icon: CreditCard },
-    { to: '/wish-list', label: 'Wishlist', icon: ShoppingBag },
+    { to: '/debts', label: 'Debts', icon: CreditCard, tint: 'warning' },
+    { to: '/wish-list', label: 'Wishlist', icon: ShoppingBag, tint: 'brand' },
 ]
 
 const SETTINGS_ITEMS = [
-    { to: '/category', label: 'Categories', icon: Tag },
-    { to: '/period-history', label: 'Period History', icon: History },
+    { to: '/category', label: 'Categories', icon: Tag, tint: 'info' },
+    { to: '/period-history', label: 'Period History', icon: History, tint: 'info' },
 ]
 
-const ROW = 'flex items-center gap-3 px-4 py-3.5 text-[13px] font-medium text-[#252525] hover:bg-[#fbfbfa] transition-colors'
+const TINT_CLASSES: Record<string, string> = {
+    brand: 'bg-brand/10 text-brand',
+    info: 'bg-info/10 text-info',
+    warning: 'bg-warning/10 text-warning',
+    negative: 'bg-negative/10 text-negative',
+}
+
+const ROW = 'flex items-center gap-3 px-4 py-3.5 text-[13px] font-medium text-ink hover:bg-surface-soft transition-colors'
 
 export default function MenuPage() {
     const navigate = useNavigate()
@@ -44,15 +51,17 @@ export default function MenuPage() {
             <section className="px-4 pb-4 lg:px-0 space-y-4">
                 <div className="lg:grid lg:grid-cols-2 lg:gap-4 lg:items-start space-y-4 lg:space-y-0">
                     <div>
-                        <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84] px-1 mb-1.5">Money</p>
-                        <nav className="rounded-[20px] border border-[#e5e5e5] bg-white overflow-hidden">
-                            {MONEY_ITEMS.map(({ to, label, icon: Icon }, i) => (
+                        <p className="text-[11px] uppercase tracking-[.14em] text-muted-ink px-1 mb-1.5">Money</p>
+                        <nav className="card overflow-hidden">
+                            {MONEY_ITEMS.map(({ to, label, icon: Icon, tint }, i) => (
                                 <NavLink
                                     key={to}
                                     to={to}
-                                    className={cn(ROW, i > 0 && 'border-t border-[#f2f2f0]')}
+                                    className={cn(ROW, i > 0 && 'border-t border-line-soft')}
                                 >
-                                    <Icon className="w-4 h-4 text-[#8a8a84] shrink-0" strokeWidth={1.75} />
+                                    <div className={cn('flex h-7 w-7 shrink-0 items-center justify-center rounded-full', TINT_CLASSES[tint])}>
+                                        <Icon className="w-3.5 h-3.5" strokeWidth={1.75} />
+                                    </div>
                                     <span className="flex-1">{label}</span>
                                     <ChevronRight className="w-4 h-4 text-[#c4c4be]" />
                                 </NavLink>
@@ -61,15 +70,17 @@ export default function MenuPage() {
                     </div>
 
                     <div>
-                        <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84] px-1 mb-1.5">Settings</p>
-                        <nav className="rounded-[20px] border border-[#e5e5e5] bg-white overflow-hidden">
-                            {SETTINGS_ITEMS.map(({ to, label, icon: Icon }, i) => (
+                        <p className="text-[11px] uppercase tracking-[.14em] text-muted-ink px-1 mb-1.5">Settings</p>
+                        <nav className="card overflow-hidden">
+                            {SETTINGS_ITEMS.map(({ to, label, icon: Icon, tint }, i) => (
                                 <NavLink
                                     key={to}
                                     to={to}
-                                    className={cn(ROW, i > 0 && 'border-t border-[#f2f2f0]')}
+                                    className={cn(ROW, i > 0 && 'border-t border-line-soft')}
                                 >
-                                    <Icon className="w-4 h-4 text-[#8a8a84] shrink-0" strokeWidth={1.75} />
+                                    <div className={cn('flex h-7 w-7 shrink-0 items-center justify-center rounded-full', TINT_CLASSES[tint])}>
+                                        <Icon className="w-3.5 h-3.5" strokeWidth={1.75} />
+                                    </div>
                                     <span className="flex-1">{label}</span>
                                     <ChevronRight className="w-4 h-4 text-[#c4c4be]" />
                                 </NavLink>
@@ -78,9 +89,11 @@ export default function MenuPage() {
                             {activePeriod && (
                                 <button
                                     onClick={() => setClosePeriodDrawer(true)}
-                                    className={cn(ROW, 'w-full border-t border-[#f2f2f0]')}
+                                    className={cn(ROW, 'w-full border-t border-line-soft')}
                                 >
-                                    <CalendarCheck className="w-4 h-4 text-[#8a8a84] shrink-0" strokeWidth={1.75} />
+                                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand/10">
+                                        <CalendarCheck className="w-3.5 h-3.5 text-brand" strokeWidth={1.75} />
+                                    </div>
                                     <span className="flex-1 text-left">Close Period</span>
                                     <ChevronRight className="w-4 h-4 text-[#c4c4be]" />
                                 </button>
@@ -91,7 +104,7 @@ export default function MenuPage() {
 
                 <button
                     onClick={() => setLogoutConfirm(true)}
-                    className="w-full flex items-center gap-3 rounded-[20px] border border-[#f3c5c5] bg-[#fef2f2] px-4 py-3.5 text-[13px] font-medium text-[#dc2626] transition-colors"
+                    className="w-full flex items-center gap-3 rounded-[20px] border border-negative/20 bg-negative/10 px-4 py-3.5 text-[13px] font-medium text-negative transition-colors"
                 >
                     <LogOut className="w-4 h-4 shrink-0" strokeWidth={1.75} />
                     Logout

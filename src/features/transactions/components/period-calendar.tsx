@@ -77,7 +77,7 @@ function DayTransactionRow({
     return (
         <div
             className={cn(
-                'flex items-center gap-3 px-4 py-2.5 border-b border-neutral-200 last:border-b-0 select-none',
+                'flex items-center gap-3 px-4 py-2.5 border-b border-line last:border-b-0 select-none',
                 deletable && 'active:bg-[#f7f7f5] transition-colors',
             )}
             tabIndex={deletable ? 0 : undefined}
@@ -104,9 +104,9 @@ function DayTransactionRow({
                         }}
                     />
                 ) : tx.type === 'income' ? (
-                    <TrendingUp className="w-3.5 h-3.5 text-green-600 dark:text-green-400" />
+                    <TrendingUp className="w-3.5 h-3.5 text-positive" />
                 ) : (
-                    <TrendingDown className="w-3.5 h-3.5 text-red-500 dark:text-red-400" />
+                    <TrendingDown className="w-3.5 h-3.5 text-negative" />
                 )}
             </div>
             <div className="flex-1 min-w-0">
@@ -117,7 +117,7 @@ function DayTransactionRow({
             </div>
             <p className={cn(
                 'text-xs font-bold shrink-0',
-                tx.type === 'income' ? 'text-green-600' : 'text-foreground'
+                tx.type === 'income' ? 'text-positive' : 'text-foreground'
             )}>
                 {tx.type === 'income' ? '+' : '-'}{formatCurrency(tx.amount)}
             </p>
@@ -137,7 +137,7 @@ function DayTransactions({
     const deletable = !readOnly && !!onDeleteRequest
 
     return (
-        <div className="border-t border-neutral-200">
+        <div className="border-t border-line">
             {txs.map(tx => (
                 <DayTransactionRow
                     key={tx.id}
@@ -152,7 +152,7 @@ function DayTransactions({
 
 function ModeSwitch({ mode, onChange }: { mode: CalendarMode; onChange: (m: CalendarMode) => void }) {
     return (
-        <div className="flex p-[2px] rounded-[9px] bg-[#f4f4f2] shrink-0">
+        <div className="flex p-[2px] rounded-[9px] bg-surface-hover shrink-0">
             {(['month', 'days'] as const).map(m => (
                 <button
                     key={m}
@@ -160,8 +160,8 @@ function ModeSwitch({ mode, onChange }: { mode: CalendarMode; onChange: (m: Cale
                     className={cn(
                         'px-2.5 py-[5px] rounded-[7px] text-[11px] capitalize',
                         mode === m
-                            ? 'bg-white shadow-[0_1px_2px_rgba(0,0,0,.06)] font-semibold text-[#252525]'
-                            : 'text-[#8a8a84]'
+                            ? 'bg-white shadow-[0_1px_2px_rgba(0,0,0,.06)] font-semibold text-ink'
+                            : 'text-muted-ink'
                     )}
                 >
                     {m}
@@ -248,9 +248,9 @@ export function PeriodCalendar({
     const rangeCaption = rangeLabel(periodStart, periodEnd)
 
     return (
-        <div className="space-y-3 pt-3 lg:grid lg:grid-cols-[1fr_360px] lg:gap-4 lg:items-start lg:space-y-0">
+        <div className="space-y-3 pt-3 lg:grid lg:grid-cols-[480px_360px] lg:gap-4 lg:items-start lg:space-y-0">
             <div className={cn(
-                'rounded-[20px] border border-[#e5e5e5] bg-white pt-[18px] pb-4 lg:max-w-[480px]',
+                'card pt-[18px] pb-4',
                 mode === 'month' ? 'px-4' : 'px-0',
             )}>
                 <div className={cn(
@@ -258,8 +258,8 @@ export function PeriodCalendar({
                     mode === 'month' ? 'px-0.5' : 'px-[18px]',
                 )}>
                     <div>
-                        <p className="text-[11px] tracking-[.14em] uppercase text-[#8a8a84]">{rangeCaption}</p>
-                        <p className="mt-0.5 text-[11px] text-[#a3a3a3]">
+                        <p className="text-[11px] tracking-[.14em] uppercase text-muted-ink">{rangeCaption}</p>
+                        <p className="mt-0.5 text-[11px] text-subtle-ink">
                             {mode === 'month'
                                 ? `tallest day ${formatCompact(maxExpense)}`
                                 : 'swipe the rail, tap a day'}
@@ -298,16 +298,16 @@ export function PeriodCalendar({
                                         className={cn(
                                             'aspect-square rounded-[9px] p-1 flex flex-col items-center justify-between border',
                                             highlighted
-                                                ? 'bg-[#f2f6ea] border-[#6FA82B]'
+                                                ? 'bg-brand/10 border-brand'
                                                 : isFuture
                                                     ? 'bg-transparent border-transparent'
-                                                    : 'bg-[#fbfbfa] border-[#f2f2f0]',
+                                                    : 'bg-surface-soft border-line-soft',
                                         )}
                                     >
                                         <span
                                             className={cn(
                                                 'text-[9.5px] tabular-nums',
-                                                highlighted ? 'font-semibold text-[#4d7a1d]' : isFuture ? 'text-[#d4d4ce]' : 'text-[#252525]',
+                                                highlighted ? 'font-semibold text-[#4d7a1d]' : isFuture ? 'text-[#d4d4ce]' : 'text-ink',
                                             )}
                                         >
                                             {dayNum}
@@ -346,7 +346,7 @@ export function PeriodCalendar({
                                     <span className={cn('text-[9.5px]', isSelected ? 'text-[rgba(250,250,250,.6)]' : 'text-[#b0b0aa]')}>
                                         {d.toLocaleDateString('en-GB', { weekday: 'short' }).charAt(0)}
                                     </span>
-                                    <span className={cn('text-[16px] font-semibold tabular-nums', isSelected ? 'text-[#fafafa]' : 'text-[#252525]')}>
+                                    <span className={cn('text-[16px] font-semibold tabular-nums', isSelected ? 'text-[#fafafa]' : 'text-ink')}>
                                         {d.getDate()}
                                     </span>
                                     <div className="w-[14px] h-[26px] flex items-end justify-center">
@@ -365,10 +365,10 @@ export function PeriodCalendar({
                 )}
             </div>
 
-            <div className="rounded-[20px] border border-neutral-200 bg-card overflow-hidden lg:sticky lg:top-4">
+            <div className="card overflow-hidden lg:sticky lg:top-4">
                 <div className="flex items-center justify-between gap-2.5 px-5 pt-4 pb-3.5">
                     <div>
-                        <p className="text-[14px] font-semibold text-[#252525]">
+                        <p className="text-[14px] font-semibold text-ink">
                             {new Date(validSelected + 'T00:00:00').toLocaleDateString('en-GB', {
                                 weekday: 'long', day: 'numeric', month: 'long'
                             })}
@@ -376,12 +376,12 @@ export function PeriodCalendar({
 
                         {selectedTxs.length > 0 && (
                             <p className="mt-0.5 text-[11px]">
-                                <span className="text-[#8a8a84]">
+                                <span className="text-muted-ink">
                                     {selectedTxs.length} transaction{selectedTxs.length === 1 ? '' : 's'} ·{' '}
                                 </span>
-                                <span style={{ color: '#dc2626' }}>−{formatCurrency(dailyExpenseSummary)}</span>
+                                <span className="text-negative">−{formatCurrency(dailyExpenseSummary)}</span>
                                 {dailyIncomeSummary > 0 && (
-                                    <span style={{ color: '#059669' }}> · +{formatCurrency(dailyIncomeSummary)}</span>
+                                    <span className="text-positive"> · +{formatCurrency(dailyIncomeSummary)}</span>
                                 )}
                             </p>
                         )}
