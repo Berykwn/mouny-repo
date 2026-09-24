@@ -61,8 +61,8 @@ export function CategoriesPage() {
         <>
             <PageHeader title="Categories" />
             <section className="px-4 pb-4 lg:px-0 space-y-4">
-                <div className="space-y-4 lg:space-y-0 lg:grid lg:grid-cols-[360px_1fr] lg:gap-4 lg:items-start">
-                    <header className="card p-4 flex items-center gap-3">
+                <div className="space-y-4 lg:space-y-0 lg:grid lg:grid-cols-[1fr_360px] lg:gap-4 lg:items-start">
+                    <header className="card p-4 flex items-center gap-3 lg:order-2">
                         <div className="flex-1 min-w-0">
                             <p className="text-[11px] uppercase tracking-[.14em] text-muted-ink">Categories</p>
                             {categories.length > 0 ? (
@@ -76,7 +76,7 @@ export function CategoriesPage() {
                                 <p className="text-[13px] text-muted-ink mt-0.5">No categories yet</p>
                             )}
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 shrink-0">
                             {categories.length === 0 && (
                                 <Button
                                     onClick={async () => {
@@ -105,30 +105,32 @@ export function CategoriesPage() {
                         </div>
                     </header>
 
-                    {loading ? (
-                        <LoadingContent />
-                    ) : categories.length === 0 ? (
-                        <button
-                            type="button"
-                            onClick={() => setAddCategoryDrawer(true)}
-                            className="card w-full p-4 flex items-center gap-3 text-left hover:bg-surface-hover transition-colors"
-                        >
-                            <div className="w-9 h-9 rounded-[10px] bg-info/10 flex items-center justify-center shrink-0">
-                                <Tag className="w-4 h-4 text-info" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <p className="text-[13px] font-medium text-ink">No categories yet</p>
-                                <p className="text-[11.5px] text-muted-ink mt-0.5">Tap to add one, or use Seed above for defaults</p>
-                            </div>
-                        </button>
-                    ) : (
-                        <CategoryList
-                            categories={categories}
-                            budgets={budgets}
-                            onEdit={setEditCategory}
-                            onDeleteRequest={setDeletingCategoryId}
-                        />
-                    )}
+                    <div className="lg:order-1">
+                        {loading ? (
+                            <LoadingContent />
+                        ) : categories.length === 0 ? (
+                            <button
+                                type="button"
+                                onClick={() => setAddCategoryDrawer(true)}
+                                className="card w-full p-4 flex items-center gap-3 text-left hover:bg-surface-hover transition-colors"
+                            >
+                                <div className="w-9 h-9 rounded-[10px] bg-info/10 flex items-center justify-center shrink-0">
+                                    <Tag className="w-4 h-4 text-info" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-[13px] font-medium text-ink">No categories yet</p>
+                                    <p className="text-[11.5px] text-muted-ink mt-0.5">Tap to add one, or use Seed above for defaults</p>
+                                </div>
+                            </button>
+                        ) : (
+                            <CategoryList
+                                categories={categories}
+                                budgets={budgets}
+                                onEdit={setEditCategory}
+                                onDeleteRequest={setDeletingCategoryId}
+                            />
+                        )}
+                    </div>
                 </div>
 
                 {/* Drawers */}

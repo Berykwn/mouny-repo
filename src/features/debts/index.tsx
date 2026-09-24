@@ -88,8 +88,8 @@ export default function DebtsPage() {
             <PageHeader title="Debts" />
             <section className="px-4 pb-4 lg:px-0 space-y-4">
                 {loading ? <LoadingContent /> : (
-                    <div className="space-y-4 lg:space-y-0 lg:grid lg:grid-cols-[360px_1fr] lg:gap-4 lg:items-start">
-                        <div className="card p-4 space-y-3">
+                    <div className="space-y-4 lg:grid lg:grid-cols-[1fr_360px] lg:gap-4 lg:items-start lg:space-y-0">
+                        <div className="card p-4 space-y-3 lg:order-2">
                             <div className="flex justify-between items-start">
                                 <div>
                                     <p className="text-[11px] uppercase tracking-[.14em] text-muted-ink">Net position</p>
@@ -122,7 +122,7 @@ export default function DebtsPage() {
                             </div>
                         </div>
 
-                        <div className="space-y-4">
+                        <div className="space-y-4 lg:order-1">
                             {debts.length > 0 && (
                                 <div className="flex gap-2 flex-wrap">
                                     {(Object.keys(filterLabels) as FilterType[]).map((f) => (

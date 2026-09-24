@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { formatCurrency } from '@/lib/helpers'
 import type { WishListItem } from '@/types'
-import { Trash2, PiggyBank, ShoppingBag, Pencil } from 'lucide-react'
+import { Trash2, PiggyBank, ShoppingBag, Pencil, ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { ProgressBar } from '@/components/progress-bar'
@@ -32,6 +32,16 @@ const PRIORITY_ORDER: Record<string, number> = { high: 0, medium: 1, low: 2 }
 
 export function WishListItems({ items, onBuy, onContribute, onEdit, onDeleteRequest }: WishListItemsProps) {
   const [filter, setFilter] = useState<Filter>('all')
+  const [openIds, setOpenIds] = useState<Set<string>>(new Set())
+
+  const toggle = (id: string) => {
+    setOpenIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
 
   const counts = {
     all: items.length,
@@ -72,7 +82,7 @@ export function WishListItems({ items, onBuy, onContribute, onEdit, onDeleteRequ
       </div>
 
       {/* Item list */}
-      <div className="space-y-2.5 lg:grid lg:grid-cols-2 lg:gap-3 lg:space-y-0">
+      <div className="card overflow-hidden divide-y divide-line-soft">
         {filtered.map((item) => {
           const isUOM = !!item.quantity
           const hasTarget = isUOM
@@ -86,14 +96,20 @@ export function WishListItems({ items, onBuy, onContribute, onEdit, onDeleteRequ
           const ready = hasTarget && (isUOM
             ? (item.saved_quantity ?? 0) >= item.quantity!
             : item.saved_amount >= item.estimated_price!)
+          const isOpen = openIds.has(item.id)
 
           return (
             <div
               key={item.id}
-              className="card px-4 py-3.5 space-y-2.5"
+              className={cn('transition-colors duration-200', isOpen && 'bg-surface-hover')}
             >
-              {/* Header: title + priority | saved of target */}
-              <div className="flex items-start justify-between gap-3">
+              <button
+                onClick={() => toggle(item.id)}
+                className={cn(
+                  'w-full flex items-center justify-between gap-3 px-4 py-3.5 text-left transition-colors',
+                  !isOpen && 'hover:bg-surface-soft'
+                )}
+              >
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <p className="text-[13px] font-semibold text-ink truncate">{item.name}</p>
@@ -104,97 +120,94 @@ export function WishListItems({ items, onBuy, onContribute, onEdit, onDeleteRequ
                       {PRIORITY_LABEL[item.priority ?? 'low']}
                     </span>
                   </div>
+                  <p className={cn('text-[11.5px] mt-0.5 tabular-nums', ready ? 'text-positive' : 'text-muted-ink')}>
+                    {isUOM ? `${item.saved_quantity ?? 0} ${item.unit}` : formatCurrency(item.saved_amount)}
+                    {hasTarget && (
+                      <span className="text-muted-ink">
+                        {' '}of {isUOM ? `${item.quantity} ${item.unit}` : formatCurrency(item.estimated_price!)}
+                      </span>
+                    )}
+                  </p>
+                </div>
+
+                <ChevronDown className={cn(
+                  'w-3.5 h-3.5 text-muted-ink transition-transform shrink-0',
+                  isOpen && 'rotate-180'
+                )} />
+              </button>
+
+              {isOpen && (
+                <div className="px-4 pb-4 pt-1 space-y-2.5">
                   {item.quantity && item.unit && (
-                    <p className="text-[11px] text-muted-ink mt-0.5 tabular-nums">
+                    <p className="text-[11px] text-muted-ink tabular-nums">
                       {item.quantity} {item.unit} &times; {formatCurrency(item.price_per_unit ?? 0)}
                     </p>
                   )}
-                </div>
-                <div className="text-right shrink-0">
-                  {isUOM ? (
-                    <>
-                      <p className="text-[13px] font-medium text-ink tabular-nums">
-                        {item.saved_quantity ?? 0} {item.unit}
-                      </p>
-                      {hasTarget && (
-                        <p className="text-[11px] text-muted-ink tabular-nums">of {item.quantity} {item.unit}</p>
+
+                  {/* Progress toward target */}
+                  {hasTarget ? (
+                    <div className="space-y-1">
+                      <ProgressBar percent={percent} color={ready ? 'var(--positive)' : undefined} />
+                      {ready ? (
+                        <span className="inline-block text-[10.5px] font-semibold px-2 py-0.5 rounded-full bg-positive/10 text-positive">
+                          {isUOM ? 'Selesai' : 'Ready to buy'}
+                        </span>
+                      ) : (
+                        <p className="text-[11px] text-muted-ink">
+                          {percent}% {isUOM ? 'terkumpul' : 'saved'}
+                          {isUOM && ` · ${formatCurrency(item.saved_amount)} spent`}
+                        </p>
                       )}
-                    </>
+                    </div>
                   ) : (
-                    <>
-                      <p className="text-[13px] font-medium text-ink tabular-nums">
-                        {formatCurrency(item.saved_amount)}
-                      </p>
-                      {hasTarget && (
-                        <p className="text-[11px] text-muted-ink tabular-nums">of {formatCurrency(item.estimated_price!)}</p>
-                      )}
-                    </>
+                    <p className="text-[11px] text-muted-ink">No target price set</p>
                   )}
-                </div>
-              </div>
 
-              {/* Progress toward target */}
-              {hasTarget ? (
-                <div className="space-y-1">
-                  <ProgressBar percent={percent} color={ready ? 'var(--positive)' : undefined} />
-                  {ready ? (
-                    <span className="inline-block text-[10.5px] font-semibold px-2 py-0.5 rounded-full bg-positive/10 text-positive">
-                      {isUOM ? 'Selesai' : 'Ready to buy'}
-                    </span>
-                  ) : (
-                    <p className="text-[11px] text-muted-ink">
-                      {percent}% {isUOM ? 'terkumpul' : 'saved'}
-                      {isUOM && ` · ${formatCurrency(item.saved_amount)} spent`}
-                    </p>
+                  {/* Notes — only if exists */}
+                  {item.notes && (
+                    <p className="text-[11.5px] text-muted-ink">{item.notes}</p>
                   )}
+
+                  {/* Actions */}
+                  <div className="flex items-center justify-end gap-1.5 pt-2 border-t border-line-soft">
+                    {isUOM ? (
+                      <Button variant="outline" size="sm" className="rounded-[10px]" onClick={() => onContribute(item)}>
+                        <PiggyBank className="w-3.5 h-3.5 mr-1 mt-0.5" />
+                        Cicil
+                      </Button>
+                    ) : (
+                      <>
+                        <Button variant="outline" size="sm" className="rounded-[10px]" onClick={() => onContribute(item)}>
+                          <PiggyBank className="w-3.5 h-3.5 mr-1 mt-0.5" />
+                          Add funds
+                        </Button>
+                        <Button variant="outline" size="sm" className="rounded-[10px]" onClick={() => onBuy(item)}>
+                          <ShoppingBag className="w-3.5 h-3.5 mr-1 mt-0.5" />
+                          Buy
+                        </Button>
+                      </>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="rounded-[10px]"
+                      onClick={() => onEdit(item)}
+                      aria-label={`Edit ${item.name}`}
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="rounded-[10px]"
+                      onClick={() => onDeleteRequest(item.id)}
+                      aria-label={`Remove ${item.name} from wish list`}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
                 </div>
-              ) : (
-                <p className="text-[11px] text-muted-ink">No target price set</p>
               )}
-
-              {/* Body: notes — only if exists */}
-              {item.notes && (
-                <p className="text-[11.5px] text-muted-ink line-clamp-2">{item.notes}</p>
-              )}
-
-              {/* Footer: actions */}
-              <div className="flex items-center justify-end gap-1.5 pt-0.5">
-                {isUOM ? (
-                  <Button variant="outline" size="sm" className="rounded-[10px]" onClick={() => onContribute(item)}>
-                    <PiggyBank className="w-3.5 h-3.5 mr-1 mt-0.5" />
-                    Cicil
-                  </Button>
-                ) : (
-                  <>
-                    <Button variant="outline" size="sm" className="rounded-[10px]" onClick={() => onContribute(item)}>
-                      <PiggyBank className="w-3.5 h-3.5 mr-1 mt-0.5" />
-                      Add funds
-                    </Button>
-                    <Button variant="outline" size="sm" className="rounded-[10px]" onClick={() => onBuy(item)}>
-                      <ShoppingBag className="w-3.5 h-3.5 mr-1 mt-0.5" />
-                      Buy
-                    </Button>
-                  </>
-                )}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="rounded-[10px]"
-                  onClick={() => onEdit(item)}
-                  aria-label={`Edit ${item.name}`}
-                >
-                  <Pencil className="w-3.5 h-3.5" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="rounded-[10px]"
-                  onClick={() => onDeleteRequest(item.id)}
-                  aria-label={`Remove ${item.name} from wish list`}
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </Button>
-              </div>
             </div>
           )
         })}

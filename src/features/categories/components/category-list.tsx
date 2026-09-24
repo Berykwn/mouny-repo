@@ -32,32 +32,35 @@ export function CategoryList({ categories, budgets, onEdit, onDeleteRequest }: C
         return (
             <div className="space-y-1.5">
                 <p className="text-[11px] uppercase tracking-[.14em] text-muted-ink px-1">
-                    {label}
+                    {label} <span className="text-subtle-ink">· {items.length}</span>
                 </p>
                 <div className="card overflow-hidden divide-y divide-line-soft">
                     {items.map((cat) => {
                         const color = cat.color ?? '#94a3b8'
                         return (
-                            <div key={cat.id} className="flex items-center gap-3 px-4 py-2.5">
+                            <div
+                                key={cat.id}
+                                className="flex items-center gap-3 px-4 py-[9px]"
+                            >
                                 <div
-                                    className="w-7 h-7 rounded-[10px] flex items-center justify-center shrink-0"
+                                    className="w-8 h-8 rounded-[10px] flex items-center justify-center shrink-0"
                                     style={{ backgroundColor: color + '25' }}
                                 >
                                     <CategoryIcon
                                         name={cat.icon}
-                                        className="w-[15px] h-[15px]"
+                                        className="w-4 h-4"
                                         style={{ color }}
                                     />
                                 </div>
-                                <div className="min-w-0 flex-1">
-                                    <p className="text-[13px] text-ink truncate">{cat.name}</p>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-[13px] font-medium text-ink truncate">{cat.name}</p>
                                     {cat.type === 'expense' && budgets[cat.id] !== undefined && (
-                                        <p className="text-[11px] text-muted-ink truncate mt-0.5">
-                                            Target {formatCurrency(budgets[cat.id])}/period
+                                        <p className="text-[11px] text-muted-ink truncate">
+                                            {formatCurrency(budgets[cat.id])}/period
                                         </p>
                                     )}
                                 </div>
-                                <div className="flex items-center gap-1">
+                                <div className="flex items-center shrink-0">
                                     <button
                                         onClick={() => onEdit(cat)}
                                         className="w-7 h-7 rounded-full flex items-center justify-center text-muted-ink hover:text-ink hover:bg-surface-hover transition-colors"
@@ -80,7 +83,7 @@ export function CategoryList({ categories, budgets, onEdit, onDeleteRequest }: C
     }
 
     return (
-        <div className="space-y-4 lg:grid lg:grid-cols-2 lg:gap-4 lg:items-start lg:space-y-0">
+        <div className="space-y-4">
             <Section label="Expenses" items={expense} />
             <Section label="Income" items={income} />
         </div>

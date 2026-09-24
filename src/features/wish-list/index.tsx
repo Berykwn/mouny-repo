@@ -64,49 +64,52 @@ export default function WishListPage() {
     const totalTarget = items.reduce((s, i) => s + (i.estimated_price ?? 0), 0)
     const savedPercent = totalTarget > 0 ? Math.round((totalSaved / totalTarget) * 100) : 0
 
+    const savingsHero = (
+        <>
+            <div className="flex items-center justify-between mb-2">
+                <p className="text-[11px] uppercase tracking-[.14em] text-muted-ink">Savings progress</p>
+                <Button
+                    variant='outline'
+                    size="sm"
+                    onClick={() => setAddDrawerOpen(true)}
+                    disabled={!periodId}
+                >
+                    <Plus className="w-3.5 h-3.5" /> Wish
+                </Button>
+            </div>
+            <p className="text-[32px] lg:text-[26px] font-medium tracking-[-0.02em] leading-none text-ink tabular-nums">
+                {formatCurrency(totalSaved)}
+            </p>
+            {totalTarget > 0 ? (
+                <>
+                    <ProgressBar percent={savedPercent} className="mt-3" />
+                    <div className="flex items-center justify-between mt-2">
+                        <p className="text-[11px] text-muted-ink">saved</p>
+                        <p className="text-[11px] text-muted-ink">
+                            of {formatCurrency(totalTarget)} across {items.length} goal{items.length === 1 ? '' : 's'}
+                        </p>
+                    </div>
+                </>
+            ) : items.length > 0 ? (
+                <p className="text-[11px] text-muted-ink mt-2">
+                    {items.length} goal{items.length === 1 ? '' : 's'} · set a target price to track progress
+                </p>
+            ) : null}
+        </>
+    )
+
     return (
         <>
             <PageHeader title="Wishlist" />
             <section className="px-4 pb-4 lg:px-0 space-y-4">
                 {loading ? (
                     <LoadingContent />
-                ) : (
-                    <div className="space-y-5 lg:space-y-0 lg:grid lg:grid-cols-[360px_1fr] lg:gap-4 lg:items-start">
-                        {/* Savings progress hero */}
-                        <div className="card p-5">
-                            <div className="flex items-center justify-between mb-2">
-                                <p className="text-[11px] uppercase tracking-[.14em] text-muted-ink">Savings progress</p>
-                                <Button
-                                    variant='outline'
-                                    size="sm"
-                                    onClick={() => setAddDrawerOpen(true)}
-                                    disabled={!periodId}
-                                >
-                                    <Plus className="w-3.5 h-3.5" /> Wish
-                                </Button>
-                            </div>
-                            <p className="text-[32px] lg:text-[26px] font-medium tracking-[-0.02em] leading-none text-ink tabular-nums">
-                                {formatCurrency(totalSaved)}
-                            </p>
-                            {totalTarget > 0 ? (
-                                <>
-                                    <ProgressBar percent={savedPercent} className="mt-3" />
-                                    <div className="flex items-center justify-between mt-2">
-                                        <p className="text-[11px] text-muted-ink">saved</p>
-                                        <p className="text-[11px] text-muted-ink">
-                                            of {formatCurrency(totalTarget)} across {items.length} goal{items.length === 1 ? '' : 's'}
-                                        </p>
-                                    </div>
-                                </>
-                            ) : items.length > 0 ? (
-                                <p className="text-[11px] text-muted-ink mt-2">
-                                    {items.length} goal{items.length === 1 ? '' : 's'} · set a target price to track progress
-                                </p>
-                            ) : null}
-                        </div>
+                ) : periodId ? (
+                    <div className="space-y-4 lg:space-y-0 lg:grid lg:grid-cols-[1fr_360px] lg:gap-4 lg:items-start">
+                        <div className="card p-5 lg:order-2">{savingsHero}</div>
 
-                        {periodId && (
-                            items.length === 0 ? (
+                        <div className="lg:order-1">
+                            {items.length === 0 ? (
                                 <button
                                     type="button"
                                     onClick={() => setAddDrawerOpen(true)}
@@ -128,9 +131,11 @@ export default function WishListPage() {
                                     onContribute={setContributingItem}
                                     onEdit={setEditingItem}
                                 />
-                            )
-                        )}
+                            )}
+                        </div>
                     </div>
+                ) : (
+                    <div className="card p-5 lg:max-w-[360px]">{savingsHero}</div>
                 )}
 
                 {/* Add drawer */}
