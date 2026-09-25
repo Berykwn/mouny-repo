@@ -46,9 +46,10 @@ interface StatTileProps {
   sub?: string
   valueClassName?: string
   onTap?: () => void
+  color?: string
 }
 
-function StatTile({ icon: Icon, label, value, sub, valueClassName, onTap }: StatTileProps) {
+function StatTile({ icon: Icon, label, value, sub, valueClassName, onTap, color = '#94a3b8' }: StatTileProps) {
   return (
     <div
       className={cn(
@@ -57,7 +58,12 @@ function StatTile({ icon: Icon, label, value, sub, valueClassName, onTap }: Stat
       )}
       onClick={onTap}
     >
-      <Icon className="h-[15px] w-[15px] text-[#a3a3a3]" />
+      <div
+        className="flex h-[26px] w-[26px] items-center justify-center rounded-[8px]"
+        style={{ backgroundColor: `${color}1f` }}
+      >
+        <Icon className="h-[14px] w-[14px]" style={{ color }} />
+      </div>
       <p className="text-[10.5px] text-[#8a8a84] mt-1.5">{label}</p>
       <p className={cn('text-[15px] font-medium text-[#252525] mt-1', valueClassName)}>
         {value}
@@ -555,6 +561,7 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
             label="Daily average"
             value={formatCurrency(stats.dailyAvg)}
             sub={`over ${stats.daysElapsed} day${stats.daysElapsed !== 1 ? 's' : ''}`}
+            color="#3b82f6"
           />
 
           {stats.safeDaily !== null && (
@@ -563,6 +570,7 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
               label="Safe per day"
               value={formatCurrency(stats.safeDaily)}
               sub="to stay on track"
+              color="#16a34a"
             />
           )}
 
@@ -572,6 +580,7 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
               label="Days left"
               value={`${stats.daysRemaining}`}
               sub={stats.totalDays !== null ? `of ${stats.totalDays}` : undefined}
+              color="#f59e0b"
             />
           )}
 
@@ -582,6 +591,7 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
               value={formatCurrency(biggestDayEntry.total)}
               sub={formatDateShort(biggestDayEntry.date)}
               onTap={() => setBiggestDayOpen(true)}
+              color="#f97316"
             />
           )}
 
@@ -590,6 +600,7 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
             label="Biggest expense"
             value={biggestExpense ? formatCurrency(biggestExpense.amount) : '—'}
             sub={biggestExpense?.note ?? biggestExpense?.category?.name}
+            color="#8b5cf6"
           />
 
           <StatTile
@@ -597,6 +608,7 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
             label="Transactions"
             value={`${expenses.length + incomes.length}`}
             sub={`${expenses.length} out · ${incomes.length} in`}
+            color="#14b8a6"
           />
 
           <StatTile
@@ -604,6 +616,7 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
             label="No-spend days"
             value={`${stats.noSpendDays}`}
             sub={stats.noSpendDays > 0 ? 'nice' : 'none yet'}
+            color="#6366f1"
           />
         </div>
 
@@ -617,6 +630,7 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
                 value={formatCurrency(periodComparison.best.net)}
                 sub={periodComparison.best.label}
                 valueClassName="text-[#059669]"
+                color="#059669"
               />
               <StatTile
                 icon={TrendingDown}
@@ -624,6 +638,7 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
                 value={formatCurrency(periodComparison.worst.net)}
                 sub={periodComparison.worst.label}
                 valueClassName={periodComparison.worst.net < 0 ? 'text-[#dc2626]' : undefined}
+                color="#dc2626"
               />
               <StatTile
                 icon={ArrowLeftRight}
@@ -631,6 +646,7 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
                 value={formatCurrency(periodComparison.average)}
                 sub={`across ${trend.length} periods`}
                 valueClassName={periodComparison.average < 0 ? 'text-[#dc2626]' : undefined}
+                color="#64748b"
               />
             </div>
           </div>

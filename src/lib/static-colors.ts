@@ -19,4 +19,31 @@ export const COLORS = [
 
     // NEUTRAL
     '#64748b', '#94a3b8',
+
+    // YELLOW / AMBER
+    '#fde047', '#facc15', '#eab308',
+
+    // LIME
+    '#a3e635', '#84cc16',
+
+    // EMERALD
+    '#34d399', '#10b981', '#059669',
+
+    // SKY
+    '#38bdf8', '#0ea5e9',
+
+    // INDIGO
+    '#818cf8', '#6366f1', '#4f46e5',
+
+    // FUCHSIA
+    '#e879f9', '#d946ef', '#c026d3',
+
+    // ROSE
+    '#fb7185', '#f43f5e', '#e11d48',
+
+    // STONE / BROWN
+    '#a8a29e', '#78716c', '#57534e',
+
+    // GRAY
+    '#9ca3af', '#6b7280', '#4b5563',
 ]
