@@ -2,14 +2,16 @@ import { useEffect, useState } from 'react'
 import { payPeriodsService } from '@/services/pay-periods.service'
 import { transactionsService } from '@/services/transactions.service'
 import { accountsService } from '@/services/accounts-categories.service'
+import { debtsService } from '@/services/debts.service'
 import { getDaysBetween } from '@/lib/helpers'
 import { LoadingContent } from '@/components/loading-content'
 import { OverviewData } from '@/types/overview.types'
 import { usePeriodStats } from '@/hooks/use-period-stats'
 import { SafeToSpendCard } from './safe-to-spend-card'
-import { PeriodInsight } from './period-insight'
-import { TodayTransactionsCard } from './today-transactions-card'
+import { PeriodInsights } from './period-insights'
+import { TodayWeekCard } from './today-week-card'
 import { BalancesCard } from './balances-card'
+import { AnalyticsSection } from '../analytics/analytics-section'
 
 async function fetchOverviewData(
     periodId: string
@@ -18,14 +20,17 @@ async function fetchOverviewData(
         { data: allPeriods },
         { data: txs },
         { data: accounts },
+        { data: debts },
     ] = await Promise.all([
         payPeriodsService.getAll(),
         transactionsService.getByPeriod(periodId),
         accountsService.getAll(),
+        debtsService.getActive(),
     ])
 
     const allList = allPeriods ?? []
     const periodTxs = txs ?? []
+    const accountsList = accounts ?? []
 
     const currentPeriod = allList.find(p => p.id === periodId)
     if (!currentPeriod) return null
@@ -38,14 +43,22 @@ async function fetchOverviewData(
         ? getDaysBetween(prevPeriod.start_date, prevPeriod.end_date)
         : null
 
+    const { data: previousSummary } = prevPeriod
+        ? await transactionsService.getPeriodSummary(prevPeriod.id)
+        : { data: null }
+
     return {
         totalIncome: periodTxs.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0),
         totalExpense: periodTxs.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0),
         transactions: periodTxs,
-        accounts: accounts ?? [],
+        accounts: accountsList,
         closingBalance: currentPeriod.closing_balance ?? null,
-        period: { start_date: currentPeriod.start_date, end_date: currentPeriod.end_date },
+        period: currentPeriod,
         fallbackTotalDays,
+        allPeriods: allList,
+        previousSummary: previousSummary ?? null,
+        totalBalance: accountsList.reduce((s, a) => s + a.balance, 0),
+        totalDebt: (debts ?? []).reduce((s, d) => s + d.remaining_amount, 0),
     }
 }
 
@@ -86,34 +99,38 @@ export function OverviewTransaction({
     const { transactions, accounts, closingBalance } = data
 
     return (
-        <div className="mt-1.5 space-y-3 lg:space-y-0 lg:grid lg:grid-cols-[1fr_360px] lg:gap-4 lg:items-start">
-            <div className="space-y-3">
-                <SafeToSpendCard
-                    totalIncome={stats.totalIncome}
-                    totalExpense={stats.totalExpense}
-                    remaining={stats.remaining}
-                    spentPercent={stats.spentPercent}
-                />
+        <div className="mt-1.5">
+            <div className="space-y-3 lg:space-y-0 lg:grid lg:grid-cols-[1fr_360px] lg:gap-4 lg:items-start">
+                <div className="space-y-3">
+                    <SafeToSpendCard
+                        totalIncome={stats.totalIncome}
+                        totalExpense={stats.totalExpense}
+                        remaining={stats.remaining}
+                        spentPercent={stats.spentPercent}
+                    />
 
-                {isActivePeriod && (
-                    <>
-                        <PeriodInsight
+                    {isActivePeriod && <PeriodInsights transactions={transactions} stats={stats} />}
+                </div>
+
+                <div className="space-y-3">
+                    <BalancesCard
+                        accounts={accounts}
+                        isActivePeriod={isActivePeriod}
+                        closingBalance={closingBalance}
+                    />
+
+                    {isActivePeriod && (
+                        <TodayWeekCard
+                            key={data.period.start_date}
                             transactions={transactions}
-                            totalExpense={stats.totalExpense}
-                            dailyAvg={stats.dailyAvg}
-                            safeDaily={stats.safeDaily}
+                            periodStart={data.period.start_date}
+                            periodEnd={data.period.end_date}
                         />
-
-                        <TodayTransactionsCard transactions={transactions} />
-                    </>
-                )}
+                    )}
+                </div>
             </div>
 
-            <BalancesCard
-                accounts={accounts}
-                isActivePeriod={isActivePeriod}
-                closingBalance={closingBalance}
-            />
+            <AnalyticsSection data={data} />
         </div>
     )
 }

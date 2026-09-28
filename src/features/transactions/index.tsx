@@ -4,7 +4,6 @@ import { useSwipeable } from 'react-swipeable'
 import { ConfirmDrawer } from '@/components/confirmation-drawer'
 import { PeriodPickerDrawer } from '@/components/period-picker-drawer'
 import { useTopBarSlotNode } from '@/contexts/TopBarSlotContext'
-import { PeriodAnalytics } from './components/period-analytics'
 import { PeriodCalendar } from './components/period-calendar'
 import { PeriodChip } from './components/period-chip'
 import { LedgerTabs, type LedgerTab } from './components/ledger-tabs'
@@ -13,15 +12,13 @@ import { BulkCategoryDrawer } from './components/bulk-category-drawer'
 import { AddTransactionFlow } from './components/add-transaction-flow'
 import { transactionsService } from '@/services/transactions.service'
 import { payPeriodsService } from '@/services/pay-periods.service'
-import { accountsService } from '@/services/accounts-categories.service'
-import { debtsService } from '@/services/debts.service'
 import { toISODate } from '@/lib/helpers'
 import { onTransactionsChanged, emitTransactionsChanged } from '@/lib/transactions-bus'
 import type { TransactionWithDetails, PayPeriod } from '@/types'
 import { toast } from 'sonner'
 import { LoadingContent } from '@/components/loading-content'
 
-const TABS: LedgerTab[] = ['calendar', 'analytics', 'all']
+const TABS: LedgerTab[] = ['calendar', 'all']
 
 export default function TransactionsPage() {
     const [activeTab, setActiveTab] = useState<LedgerTab>('calendar')
@@ -29,9 +26,6 @@ export default function TransactionsPage() {
     const [activePeriod, setActivePeriod] = useState<PayPeriod | null>(null)
     const [selectedPeriodIndex, setSelectedPeriodIndex] = useState<number>(0)
     const [transactions, setTransactions] = useState<TransactionWithDetails[]>([])
-    const [previousSummary, setPreviousSummary] = useState<{ income: number; expense: number; net: number } | null>(null)
-    const [totalBalance, setTotalBalance] = useState(0)
-    const [totalDebt, setTotalDebt] = useState(0)
     const [loading, setLoading] = useState(true)
     const [txLoading, setTxLoading] = useState(false)
     const [periodPickerOpen, setPeriodPickerOpen] = useState(false)
@@ -64,15 +58,6 @@ export default function TransactionsPage() {
         delta: 50,
     })
 
-    const loadBalanceAndDebt = useCallback(async () => {
-        const [{ data: accounts }, { data: debts }] = await Promise.all([
-            accountsService.getAll(),
-            debtsService.getActive(),
-        ])
-        setTotalBalance((accounts ?? []).reduce((s, a) => s + a.balance, 0))
-        setTotalDebt((debts ?? []).reduce((s, d) => s + d.remaining_amount, 0))
-    }, [])
-
     const init = useCallback(async () => {
         setLoading(true)
         const [{ data: active }, { data: all }] = await Promise.all([
@@ -93,9 +78,8 @@ export default function TransactionsPage() {
             const { data: txs } = await transactionsService.getByPeriod(defaultPeriod.id)
             setTransactions(txs ?? [])
         }
-        await loadBalanceAndDebt()
         setLoading(false)
-    }, [loadBalanceAndDebt])
+    }, [])
 
     useEffect(() => { init() }, [init])
 
@@ -109,20 +93,8 @@ export default function TransactionsPage() {
     useEffect(() => {
         return onTransactionsChanged(() => {
             if (isCurrentPeriod && activePeriod) loadTransactions(activePeriod)
-            loadBalanceAndDebt()
         })
-    }, [isCurrentPeriod, activePeriod, loadTransactions, loadBalanceAndDebt])
-
-    useEffect(() => {
-        const prevPeriod = allPeriods[selectedPeriodIndex + 1]
-        if (!prevPeriod) {
-            setPreviousSummary(null)
-            return
-        }
-        transactionsService.getPeriodSummary(prevPeriod.id).then(({ data }) => {
-            setPreviousSummary(data)
-        })
-    }, [selectedPeriodIndex, allPeriods])
+    }, [isCurrentPeriod, activePeriod, loadTransactions])
 
     useEffect(() => {
         setSelectedIds([])
@@ -210,15 +182,6 @@ export default function TransactionsPage() {
                                 onDeleteRequest={isCurrentPeriod ? setDeletingId : undefined}
                                 onAddRequest={isCurrentPeriod ? setAddDrawerDate : undefined}
                                 readOnly={!isCurrentPeriod}
-                            />
-                        ) : activeTab === 'analytics' ? (
-                            <PeriodAnalytics
-                                transactions={transactions}
-                                period={selectedPeriod}
-                                periods={allPeriods}
-                                previousSummary={previousSummary}
-                                totalBalance={totalBalance}
-                                totalDebt={totalDebt}
                             />
                         ) : (
                             <TransactionListView

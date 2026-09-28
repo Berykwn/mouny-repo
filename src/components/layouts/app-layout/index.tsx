@@ -12,7 +12,7 @@ import type { PayPeriod } from '@/types'
 import { toast } from 'sonner'
 
 const NAV_ITEMS = [
-    { to: '/', label: 'Today', icon: House, end: true },
+    { to: '/', label: 'Overview', icon: House, end: true },
     { to: '/transactions', label: 'Ledger', icon: List, end: false },
 ]
 
@@ -27,7 +27,7 @@ const SIDEBAR_GROUPS: { label: string | null; items: typeof NAV_ITEMS }[] = [
     {
         label: null,
         items: [
-            { to: '/', label: 'Today', icon: House, end: true },
+            { to: '/', label: 'Overview', icon: House, end: true },
             { to: '/transactions', label: 'Ledger', icon: List, end: false },
             { to: '/accounts', label: 'Accounts', icon: Wallet, end: false },
         ],
@@ -49,7 +49,7 @@ const SIDEBAR_GROUPS: { label: string | null; items: typeof NAV_ITEMS }[] = [
 ]
 
 const ROUTE_LABELS: Record<string, string> = {
-    '/': 'Today',
+    '/': 'Overview',
     '/transactions': 'Ledger',
     '/accounts': 'Accounts',
     '/debts': 'Debts',
@@ -65,7 +65,7 @@ export default function AppLayout() {
     const [activePeriod, setActivePeriod] = useState<PayPeriod | null>(null)
     const [addDrawerOpen, setAddDrawerOpen] = useState(false)
     const [topBarSlotNode, setTopBarSlotNode] = useState<HTMLDivElement | null>(null)
-    const currentLabel = ROUTE_LABELS[location.pathname] ?? 'Today'
+    const currentLabel = ROUTE_LABELS[location.pathname] ?? 'Overview'
 
     useEffect(() => {
         payPeriodsService.getActive().then(({ data }) => setActivePeriod(data))

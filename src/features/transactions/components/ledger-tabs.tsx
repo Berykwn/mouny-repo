@@ -1,6 +1,6 @@
 import { cn } from '@/lib/utils'
 
-export type LedgerTab = 'calendar' | 'analytics' | 'all'
+export type LedgerTab = 'calendar' | 'all'
 
 interface LedgerTabsProps {
     active: LedgerTab
@@ -9,7 +9,6 @@ interface LedgerTabsProps {
 
 const TABS: { key: LedgerTab; label: string }[] = [
     { key: 'calendar', label: 'Calendar' },
-    { key: 'analytics', label: 'Analytics' },
     { key: 'all', label: 'All' },
 ]
 

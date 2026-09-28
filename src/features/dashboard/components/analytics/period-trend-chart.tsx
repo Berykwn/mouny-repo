@@ -2,7 +2,7 @@ import {
   ComposedChart, Bar, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
 } from 'recharts'
 import { formatCurrency, formatShortCurrency } from '@/lib/helpers'
-import type { TrendPoint } from '../hooks/use-period-trend'
+import type { TrendPoint } from '../../hooks/use-period-trend'
 
 interface PeriodTrendChartProps {
   trend: TrendPoint[]

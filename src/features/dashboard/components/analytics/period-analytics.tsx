@@ -3,16 +3,18 @@ import {
   TrendingUp, TrendingDown, CalendarDays, Flame,
   Receipt, ArrowLeftRight, Moon, Wallet, ChevronRight, type LucideProps,
 } from 'lucide-react'
-import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
-import { formatCurrency, formatShortCurrency, formatDateShort, getDaysBetween, toISODate } from '@/lib/helpers'
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
+import { formatCurrency, formatShortCurrency, formatDateShort } from '@/lib/helpers'
 import { cn } from '@/lib/utils'
 import { BottomDrawer } from '@/components/bottom-drawer'
 import { calculateHealthScore } from '@/lib/calculate-health-score'
 import { usePeriodStats } from '@/hooks/use-period-stats'
-import { CategoryIcon } from '@/features/categories/components/category-icon'
 import { categoryBudgetsService } from '@/services/budgets.service'
-import { usePeriodTrend } from '../hooks/use-period-trend'
+import { usePeriodTrend } from '../../hooks/use-period-trend'
 import { PeriodTrendChart } from './period-trend-chart'
+import { groupExpensesByCategory, type CategoryTotal } from '../../lib/group-expenses-by-category'
+import { groupExpensesByWeekday } from '../../lib/group-expenses-by-weekday'
+import { CategoryDonutChart } from './category-donut-chart'
 import type { ElementType } from 'react'
 import type { PayPeriod, TransactionWithDetails } from '@/types'
 
@@ -22,13 +24,7 @@ interface DayEntry {
   txs: TransactionWithDetails[]
 }
 
-interface CatEntry {
-  id: string
-  name: string
-  color: string | null
-  icon?: string | null
-  amount: number
-}
+type CatEntry = CategoryTotal
 
 interface PeriodAnalyticsProps {
   transactions: TransactionWithDetails[]
@@ -53,22 +49,24 @@ function StatTile({ icon: Icon, label, value, sub, valueClassName, onTap, color 
   return (
     <div
       className={cn(
-        'rounded-[12px] border border-[#f0f0ee] bg-[#fbfbfa] p-3',
+        'rounded-[10px] border border-[#f0f0ee] bg-[#fbfbfa] p-2.5',
         onTap && 'cursor-pointer active:bg-[#f4f4f2] transition-colors'
       )}
       onClick={onTap}
     >
-      <div
-        className="flex h-[26px] w-[26px] items-center justify-center rounded-[8px]"
-        style={{ backgroundColor: `${color}1f` }}
-      >
-        <Icon className="h-[14px] w-[14px]" style={{ color }} />
+      <div className="flex items-center gap-1.5">
+        <div
+          className="flex h-[20px] w-[20px] shrink-0 items-center justify-center rounded-[6px]"
+          style={{ backgroundColor: `${color}1f` }}
+        >
+          <Icon className="h-[11px] w-[11px]" style={{ color }} />
+        </div>
+        <p className="text-[10px] text-[#8a8a84] truncate">{label}</p>
       </div>
-      <p className="text-[10.5px] text-[#8a8a84] mt-1.5">{label}</p>
-      <p className={cn('text-[15px] font-medium text-[#252525] mt-1', valueClassName)}>
+      <p className={cn('text-[13.5px] font-medium text-[#252525] mt-1 truncate', valueClassName)}>
         {value}
       </p>
-      {sub && <p className="text-[10.5px] text-[#a3a3a3] mt-0.5">{sub}</p>}
+      {sub && <p className="text-[10px] text-[#a3a3a3] mt-0.5 truncate">{sub}</p>}
     </div>
   )
 }
@@ -184,20 +182,6 @@ function CategoryTransactionList({ transactions }: CategoryTransactionListProps)
   )
 }
 
-function SparkTooltip({ active, payload }: {
-  active?: boolean
-  payload?: { payload: { date: string; total: number } }[]
-}) {
-  if (!active || !payload?.length) return null
-  const d = payload[0].payload
-  return (
-    <div className="rounded-[10px] border border-[#e5e5e5] bg-white px-2.5 py-1.5 shadow-lg">
-      <p className="text-[10.5px] text-[#8a8a84]">{formatDateShort(d.date)}</p>
-      <p className="text-[12px] font-medium text-[#252525]">{formatCurrency(d.total)}</p>
-    </div>
-  )
-}
-
 // Budget progress color: green while comfortably under, amber approaching, red over.
 function budgetColor(ratio: number): string {
   if (ratio >= 1) return '#dc2626'
@@ -205,20 +189,11 @@ function budgetColor(ratio: number): string {
   return '#4d7a1d'
 }
 
-type AnalyticsSubTab = 'overview' | 'trends' | 'categories'
-
-const ANALYTICS_SUB_TABS: { key: AnalyticsSubTab; label: string }[] = [
-  { key: 'overview', label: 'Overview' },
-  { key: 'trends', label: 'Trends' },
-  { key: 'categories', label: 'Categories' },
-]
-
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export function PeriodAnalytics({ transactions, period, periods, previousSummary, totalBalance, totalDebt }: PeriodAnalyticsProps) {
   const [biggestDayOpen, setBiggestDayOpen] = useState(false)
   const [budgets, setBudgets] = useState<Record<string, number>>({})
-  const [activeSubTab, setActiveSubTab] = useState<AnalyticsSubTab>('overview')
   const [expandedCategoryId, setExpandedCategoryId] = useState<string | null>(null)
 
   useEffect(() => {
@@ -238,25 +213,7 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
 
   const net = totalIncome - totalExpense
 
-  const categoriesByAmount = useMemo<CatEntry[]>(() => {
-    const map = new Map<string, CatEntry>()
-    for (const tx of expenses) {
-      if (!tx.category) continue
-      const ex = map.get(tx.category.id)
-      if (ex) {
-        ex.amount += tx.amount
-      } else {
-        map.set(tx.category.id, {
-          id:     tx.category.id,
-          name:   tx.category.name,
-          color:  tx.category.color,
-          icon:   tx.category.icon,
-          amount: tx.amount,
-        })
-      }
-    }
-    return Array.from(map.values()).sort((a, b) => b.amount - a.amount)
-  }, [expenses])
+  const categoriesByAmount = useMemo<CatEntry[]>(() => groupExpensesByCategory(expenses), [expenses])
 
   const expensesByCategoryId = useMemo(() => {
     const map = new Map<string, TransactionWithDetails[]>()
@@ -315,25 +272,6 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
   const stats = usePeriodStats({ period, transactions: statsTransactions })
   const hasPredictive = !!period.end_date && stats.totalIncome > 0 && stats.projectedSpend !== null
 
-  // ─── Net-this-period sparkline (daily expense across the elapsed period) ───
-
-  const netSparkline = useMemo(() => {
-    const daysElapsed = Math.min(62, Math.max(1, getDaysBetween(period.start_date)))
-    const start = new Date(period.start_date + 'T00:00:00')
-    const days: { date: string; total: number }[] = []
-    for (let i = 0; i < daysElapsed; i++) {
-      const d = new Date(start)
-      d.setDate(d.getDate() + i)
-      days.push({ date: toISODate(d), total: 0 })
-    }
-    const byDate = new Map(days.map(d => [d.date, d]))
-    for (const tx of expenses) {
-      const bucket = byDate.get(toISODate(new Date(tx.date)))
-      if (bucket) bucket.total += tx.amount
-    }
-    return days
-  }, [period, expenses])
-
   // ─── Multi-period trend ─────────────────────────────────────────────────────
 
   const { trend } = usePeriodTrend(periods, period, transactions)
@@ -350,15 +288,7 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
       .sort((a, b) => b.amount - a.amount)
   }, [expenses])
 
-  const byWeekday = useMemo(() => {
-    const labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-    const totals = new Array(7).fill(0) as number[]
-    for (const tx of expenses) {
-      const jsDay = new Date(tx.date + 'T00:00:00').getDay() // 0 = Sunday
-      totals[(jsDay + 6) % 7] += tx.amount
-    }
-    return labels.map((day, i) => ({ day, total: totals[i] }))
-  }, [expenses])
+  const byWeekday = useMemo(() => groupExpensesByWeekday(expenses), [expenses])
 
   const periodComparison = useMemo(() => {
     if (trend.length < 2) return null
@@ -398,29 +328,10 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
 
   return (
     <>
-      {/* ── Desktop-only sub-tab nav — lets desktop show one short group at a time instead of one long scroll ── */}
-      <div className="hidden lg:flex items-center gap-1 rounded-xl bg-[#f4f4f2] p-[3px] mt-3 w-fit">
-        {ANALYTICS_SUB_TABS.map(tab => (
-          <button
-            key={tab.key}
-            type="button"
-            onClick={() => setActiveSubTab(tab.key)}
-            className={cn(
-              'px-4 py-1.5 text-[12.5px] rounded-[9px] transition-colors duration-150',
-              activeSubTab === tab.key
-                ? 'bg-white text-[#252525] font-semibold shadow-sm'
-                : 'text-[#8a8a84] font-medium'
-            )}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
     <div className="space-y-2.5 pt-3 lg:grid lg:grid-cols-2 lg:gap-4 lg:space-y-0 lg:items-start">
 
-      {/* ── Financial health card (Overview) ── */}
-      <div className={cn('rounded-[20px] border border-[#e5e5e5] bg-white p-4 lg:col-span-2', activeSubTab !== 'overview' && 'lg:hidden')}>
+      {/* ── Financial health card ── */}
+      <div className="rounded-[20px] border border-[#e5e5e5] bg-white p-4 lg:col-span-2">
         <div className="flex items-center justify-between mb-3">
           <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84]">Financial health</p>
           <span
@@ -460,7 +371,7 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
       </div>
 
       {/* ── Period summary card (Overview) — net + vs last period, so the comparison has context ── */}
-      <div className={cn('rounded-[20px] border border-[#e5e5e5] bg-white p-4 lg:col-span-2', activeSubTab !== 'overview' && 'lg:hidden')}>
+      <div className="rounded-[20px] border border-[#e5e5e5] bg-white p-4 lg:col-span-2">
         <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84] mb-1">Period summary</p>
         <p className={cn(
           'text-[32px] lg:text-[26px] font-medium tracking-[-0.02em] leading-none mb-1',
@@ -479,37 +390,20 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
           </p>
         )}
 
-        <div style={{ width: '100%', height: 44 }}>
-          <ResponsiveContainer>
-            <AreaChart data={netSparkline} margin={{ top: 2, right: 0, left: 0, bottom: 0 }}>
-              <defs>
-                <linearGradient id="netSparkFill" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#252525" stopOpacity={0.22} />
-                  <stop offset="100%" stopColor="#252525" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <Tooltip content={<SparkTooltip />} cursor={{ stroke: '#e5e5e5' }} />
-              <Area
-                type="monotone"
-                dataKey="total"
-                stroke="#252525"
-                strokeWidth={1.5}
-                fill="url(#netSparkFill)"
-                isAnimationActive={false}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-
-        <div className="grid grid-cols-2 gap-0 border-t border-[#f2f2f0] pt-3 mt-3">
-          <div className="pr-4 border-r border-[#f2f2f0]">
-            <p className="text-[10px] text-[#8a8a84] mb-1">In</p>
-            <p className="text-[13px] font-medium text-[#059669]">{formatCurrency(totalIncome)}</p>
-          </div>
-          <div className="pl-4">
-            <p className="text-[10px] text-[#8a8a84] mb-1">Out</p>
-            <p className="text-[13px] font-medium text-[#252525]">{formatCurrency(totalExpense)}</p>
-          </div>
+        <div className="grid grid-cols-2 gap-2 border-t border-[#f2f2f0] pt-3 mt-3">
+          <StatTile
+            icon={TrendingUp}
+            label="Income"
+            value={formatCurrency(totalIncome)}
+            valueClassName="text-[#059669]"
+            color="#059669"
+          />
+          <StatTile
+            icon={Receipt}
+            label="Expense"
+            value={formatCurrency(totalExpense)}
+            color="#dc2626"
+          />
         </div>
 
         {previousSummary && (
@@ -542,8 +436,94 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
         )}
       </div>
 
+      {/* ── Budgets card (Categories) ── */}
+      {sortedCategories.length > 0 && (
+        <div className="rounded-[20px] border border-[#e5e5e5] bg-white overflow-hidden lg:col-span-2">
+          <div className="flex items-center justify-between px-4 pt-4 pb-3">
+            <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84]">Budgets</p>
+            <p className="text-[11px] text-[#a3a3a3]">tap a row for detail</p>
+          </div>
+
+          <div className="px-4 pb-1">
+            <div className="max-w-[220px] mx-auto">
+              <CategoryDonutChart categories={categoriesByAmount} total={totalExpense} />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2">
+            {sortedCategories.map(cat => {
+              const isExpanded = expandedCategoryId === cat.id
+              const pct = totalExpense > 0
+                ? Math.round((cat.amount / totalExpense) * 100)
+                : null
+              const target = budgets[cat.id]
+              const ratio = target ? cat.amount / target : null
+
+              return (
+                <div key={cat.id} className={cn('border-b border-[#f2f2f0]', isExpanded && 'sm:col-span-2')}>
+                  <div
+                    onClick={() => setExpandedCategoryId(id => id === cat.id ? null : cat.id)}
+                    className="px-4 py-2.5 cursor-pointer hover:bg-[#fbfbfa] transition-colors"
+                  >
+                    <div className="flex items-center justify-between mb-1.5">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div
+                          className="h-2 w-2 rounded-full shrink-0"
+                          style={{ backgroundColor: cat.color ?? '#94a3b8' }}
+                        />
+                        <p className="text-[13px] text-[#252525] truncate">{cat.name}</p>
+                        {target !== undefined && ratio !== null && ratio >= 0.7 && (
+                          <span
+                            className="text-[10px] font-medium shrink-0 rounded-full px-1.5 py-[1px]"
+                            style={{ color: budgetColor(ratio), backgroundColor: `${budgetColor(ratio)}1a` }}
+                          >
+                            {ratio >= 1 ? 'Over' : 'Near budget'}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-3 shrink-0">
+                        <span className="text-[12px] text-[#a3a3a3] min-w-[28px] text-right">
+                          {pct !== null ? `${pct}%` : '—'}
+                        </span>
+                        <span className="text-[13px] font-medium text-[#252525] min-w-[82px] text-right">
+                          {formatCurrency(cat.amount)}
+                        </span>
+                        <ChevronRight
+                          className={cn('w-[13px] h-[13px] text-[#c4c4be] shrink-0 transition-transform', isExpanded && 'rotate-90')}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 h-1 rounded-full bg-[#f2f2f0] overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all duration-300"
+                          style={{ width: `${pct ?? 0}%`, backgroundColor: cat.color ?? '#94a3b8' }}
+                        />
+                      </div>
+                      {target !== undefined && (
+                        <span className="text-[10px] text-[#a3a3a3] shrink-0">
+                          {Math.round((ratio ?? 0) * 100)}% of {formatCurrency(target)} budget
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {isExpanded && <CategoryTransactionList transactions={categoryTransactions(cat)} />}
+                </div>
+              )
+            })}
+          </div>
+
+          <div className="flex items-center justify-between px-4 py-2.5 bg-[#f4f4f2]">
+            <p className="text-[12px] text-[#8a8a84]">Total spent</p>
+            <p className="text-[13px] font-medium text-[#252525]">{formatCurrency(totalExpense)}</p>
+          </div>
+        </div>
+      )}
+
       {/* ── Spending trend card (Trends) ── */}
-      <div className={cn('rounded-[20px] border border-[#e5e5e5] bg-white p-4 lg:col-span-2', activeSubTab !== 'trends' && 'lg:hidden')}>
+      <div className="rounded-[20px] border border-[#e5e5e5] bg-white p-4 lg:col-span-2">
         <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84]">Spending trend</p>
         {trend.length >= 2 && (
           <p className="text-[11px] text-[#a3a3a3] mt-0.5 mb-3">Last {trend.length} pay periods</p>
@@ -552,10 +532,10 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
       </div>
 
       {/* ── Stats card (Overview) — this period's stats, plus how it stacks up against past periods ── */}
-      <div className={cn('rounded-[20px] border border-[#e5e5e5] bg-white p-4 lg:col-span-2', activeSubTab !== 'overview' && 'lg:hidden')}>
+      <div className="rounded-[20px] border border-[#e5e5e5] bg-white p-4 lg:col-span-2">
         <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84] mb-3">Stats</p>
 
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
           <StatTile
             icon={CalendarDays}
             label="Daily average"
@@ -655,7 +635,7 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
 
       {/* ── Spending by account (Trends, desktop only) ── */}
       {byAccount.length > 0 && (
-        <div className={cn('hidden rounded-[20px] border border-[#e5e5e5] bg-white overflow-hidden', activeSubTab === 'trends' && 'lg:block')}>
+        <div className="hidden lg:block rounded-[20px] border border-[#e5e5e5] bg-white overflow-hidden">
           <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84] px-4 pt-4">
             Spending by account
           </p>
@@ -679,7 +659,7 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
 
       {/* ── By day of week (Trends, desktop only) ── */}
       {byWeekday.some(d => d.total > 0) && (
-        <div className={cn('hidden rounded-[20px] border border-[#e5e5e5] bg-white p-4', activeSubTab === 'trends' && 'lg:block')}>
+        <div className="hidden lg:block rounded-[20px] border border-[#e5e5e5] bg-white p-4">
           <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84]">By day of week</p>
           <p className="text-[11px] text-[#a3a3a3] mb-3">Total expense per weekday, this period</p>
           <div style={{ width: '100%', height: 140 }}>
@@ -713,85 +693,9 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
         </div>
       )}
 
-      {/* ── Budgets card (Categories) ── */}
-      {sortedCategories.length > 0 && (
-        <div className={cn('rounded-[20px] border border-[#e5e5e5] bg-white overflow-hidden lg:col-span-2', activeSubTab !== 'categories' && 'lg:hidden')}>
-          <div className="flex items-center justify-between px-4 pt-4 pb-3">
-            <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84]">Budgets</p>
-            <p className="text-[11px] text-[#a3a3a3]">tap a row for detail</p>
-          </div>
-
-          {sortedCategories.map(cat => {
-            const isExpanded = expandedCategoryId === cat.id
-            const pct = totalExpense > 0
-              ? Math.round((cat.amount / totalExpense) * 100)
-              : null
-            const target = budgets[cat.id]
-            const ratio = target ? cat.amount / target : null
-
-            return (
-              <div key={cat.id} className="border-b border-[#f2f2f0]">
-                <div
-                  onClick={() => setExpandedCategoryId(id => id === cat.id ? null : cat.id)}
-                  className="px-4 py-3 cursor-pointer hover:bg-[#fbfbfa] transition-colors"
-                >
-                  <div className="flex items-center justify-between mb-1.5">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div
-                        className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-[8px]"
-                        style={{ backgroundColor: `${cat.color ?? '#94a3b8'}1f` }}
-                      >
-                        <CategoryIcon
-                          name={cat.icon}
-                          className="h-[14px] w-[14px]"
-                          style={{ color: cat.color ?? '#94a3b8' }}
-                        />
-                      </div>
-                      <p className="text-[13px] text-[#252525] truncate">{cat.name}</p>
-                    </div>
-                    <div className="flex items-center gap-3 shrink-0">
-                      <span className="text-[12px] text-[#a3a3a3] min-w-[28px] text-right">
-                        {pct !== null ? `${pct}%` : '—'}
-                      </span>
-                      <span className="text-[13px] font-medium text-[#252525] min-w-[82px] text-right">
-                        {formatCurrency(cat.amount)}
-                      </span>
-                      <ChevronRight
-                        className={cn('w-[13px] h-[13px] text-[#c4c4be] shrink-0 transition-transform', isExpanded && 'rotate-90')}
-                      />
-                    </div>
-                  </div>
-
-                  {target !== undefined && ratio !== null && (
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1 h-1.5 rounded-full bg-[#f2f2f0] overflow-hidden">
-                        <div
-                          className="h-full rounded-full transition-all duration-300"
-                          style={{ width: `${Math.min(100, Math.round(ratio * 100))}%`, backgroundColor: budgetColor(ratio) }}
-                        />
-                      </div>
-                      <span className="text-[10.5px] text-[#a3a3a3] shrink-0">
-                        {Math.round(ratio * 100)}% of {formatCurrency(target)}
-                      </span>
-                    </div>
-                  )}
-                </div>
-
-                {isExpanded && <CategoryTransactionList transactions={categoryTransactions(cat)} />}
-              </div>
-            )
-          })}
-
-          <div className="flex items-center justify-between px-4 py-2.5 bg-[#f4f4f2]">
-            <p className="text-[12px] text-[#8a8a84]">Total spent</p>
-            <p className="text-[13px] font-medium text-[#252525]">{formatCurrency(totalExpense)}</p>
-          </div>
-        </div>
-      )}
-
       {/* ── Projection card (Overview) — only when the period has an end date and income > 0 ── */}
       {hasPredictive && stats.projectedSpend !== null && stats.projectedClose !== null && (
-        <div className={cn('rounded-[20px] border border-[#cfdcb8] bg-[#f2f6ea] overflow-hidden lg:col-span-2', activeSubTab !== 'overview' && 'lg:hidden')}>
+        <div className="rounded-[20px] border border-[#cfdcb8] bg-[#f2f6ea] overflow-hidden lg:col-span-2">
           <p className="text-[11px] uppercase tracking-[.14em] text-[#4d7a1d] px-4 pt-4 pb-1">
             Projection
           </p>
