@@ -5,6 +5,8 @@ import type { Category } from '@/types/'
 import { COLORS } from '@/lib/static-colors'
 import { ICON_MAP } from '@/lib/icon-map'
 
+type CategoryInput = Omit<Category, 'id' | 'user_id' | 'created_at' | 'bg_color' | 'is_savings'> & { bg_color?: string | null; is_savings?: boolean }
+
 function needsIconRepair(c: Category): boolean {
     return !c.icon || !(c.icon in ICON_MAP)
 }
@@ -166,7 +168,7 @@ export const categoriesService = {
         }
     },
 
-    async create(input: Omit<Category, 'id' | 'user_id' | 'created_at'>): Promise<ServiceResult<Category>> {
+    async create(input: CategoryInput): Promise<ServiceResult<Category>> {
         try {
             const { data: { user } } = await supabase.auth.getUser()
             if (!user) throw new Error('unauthenticated')
@@ -184,7 +186,7 @@ export const categoriesService = {
         }
     },
 
-    async update(id: string, input: { name: string; type: Category['type']; color: string; icon?: string | null }): Promise<ServiceResult<Category>> {
+    async update(id: string, input: { name: string; type: Category['type']; color: string; bg_color: string | null; icon?: string | null; is_savings?: boolean }): Promise<ServiceResult<Category>> {
         try {
             const { data, error } = await supabase
                 .from('categories')
@@ -211,7 +213,7 @@ export const categoriesService = {
     },
 
     async seedDefaults(): Promise<ServiceResult<Category[]>> {
-        const defaults: Omit<Category, 'id' | 'user_id' | 'created_at'>[] = [
+        const defaults: CategoryInput[] = [
             // INCOME
             { name: 'Salary', type: 'income', color: COLORS[4], icon: 'wallet' },
             { name: 'Freelance', type: 'income', color: COLORS[6], icon: 'briefcase' },

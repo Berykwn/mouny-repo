@@ -1,6 +1,6 @@
 import type { Category } from '@/types'
 import { Trash2, Pencil } from 'lucide-react'
-import { CategoryIcon } from './category-icon'
+import { CategoryTile } from './category-icon'
 import { formatCurrency } from '@/lib/helpers'
 
 interface CategoryListProps {
@@ -36,22 +36,12 @@ export function CategoryList({ categories, budgets, onEdit, onDeleteRequest }: C
                 </p>
                 <div className="card overflow-hidden divide-y divide-line-soft">
                     {items.map((cat) => {
-                        const color = cat.color ?? '#94a3b8'
                         return (
                             <div
                                 key={cat.id}
                                 className="flex items-center gap-3 px-4 py-[9px]"
                             >
-                                <div
-                                    className="w-8 h-8 rounded-[10px] flex items-center justify-center shrink-0"
-                                    style={{ backgroundColor: color + '25' }}
-                                >
-                                    <CategoryIcon
-                                        name={cat.icon}
-                                        className="w-4 h-4"
-                                        style={{ color }}
-                                    />
-                                </div>
+                                <CategoryTile category={cat} />
                                 <div className="flex-1 min-w-0">
                                     <p className="text-[13px] font-medium text-ink truncate">{cat.name}</p>
                                     {cat.type === 'expense' && budgets[cat.id] !== undefined && (

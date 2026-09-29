@@ -8,9 +8,9 @@ import { cn } from '@/lib/utils'
 import { formatCurrencyInput, parseCurrencyInput } from '@/lib/helpers'
 import { toast } from 'sonner'
 import type { Category, CategoryType } from '@/types'
-import { COLORS } from '@/lib/static-colors'
+import { COLORS, SWATCHES } from '@/lib/static-colors'
 import { ICON_MAP } from '@/lib/icon-map'
-import { CategoryIcon } from './category-icon'
+import { CategoryIcon, CategoryTile } from './category-icon'
 import { categoryTypeConfig, CategoryTypePicker } from './category-type-picker'
 
 interface CategoryFormProps {
@@ -27,8 +27,11 @@ export function CategoryForm({ onSuccess, initial, initialBudget }: CategoryForm
     const [type, setType] = useState<CategoryType>((initial?.type as CategoryType) ?? 'expense')
     const [name, setName] = useState(initial?.name ?? '')
     const [color, setColor] = useState<string>(initial?.color ?? COLORS[0])
+    const [bgColor, setBgColor] = useState<string | null>(initial?.bg_color ?? null)
+    const [colorTarget, setColorTarget] = useState<'icon' | 'bg'>('icon')
     const [icon, setIcon] = useState<string>(initial?.icon ?? ICON_KEYS[0])
     const [budget, setBudget] = useState(initialBudget ? String(initialBudget) : '')
+    const [isSavings, setIsSavings] = useState(initial?.is_savings ?? false)
     const [loading, setLoading] = useState(false)
 
     const isEdit = !!initial
@@ -43,7 +46,7 @@ export function CategoryForm({ onSuccess, initial, initialBudget }: CategoryForm
 
         setLoading(true)
 
-        const payload = { name: name.trim(), type, color, icon }
+        const payload = { name: name.trim(), type, color, bg_color: bgColor, icon, is_savings: type === 'expense' && isSavings }
 
         const { data: category, error } = isEdit
             ? await categoriesService.update(initial.id, payload)
@@ -104,6 +107,34 @@ export function CategoryForm({ onSuccess, initial, initialBudget }: CategoryForm
                 </div>
             )}
 
+            {/* Savings flag (expense categories only) */}
+            {type === 'expense' && (
+                <button
+                    type="button"
+                    role="switch"
+                    aria-checked={isSavings}
+                    onClick={() => setIsSavings(v => !v)}
+                    disabled={loading}
+                    className="w-full flex items-center gap-3 rounded-[14px] border border-[#e5e5e5] px-4 py-3 text-left"
+                >
+                    <div className="flex-1 min-w-0">
+                        <p className="text-[13px] font-medium text-[#252525]">Counts as savings</p>
+                        <p className="text-[10.5px] text-[#a3a3a3] mt-0.5">
+                            Money set aside, not spent — left out of daily average, projections and health score.
+                        </p>
+                    </div>
+                    <span className={cn(
+                        'relative h-6 w-10 shrink-0 rounded-full transition-colors',
+                        isSavings ? 'bg-[#6FA82B]' : 'bg-[#e5e5e5]'
+                    )}>
+                        <span className={cn(
+                            'absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform',
+                            isSavings && 'translate-x-4'
+                        )} />
+                    </span>
+                </button>
+            )}
+
             {/* Icon picker */}
             <div className="space-y-2">
                 <Label className={FIELD_LABEL}>Icon</Label>
@@ -116,56 +147,83 @@ export function CategoryForm({ onSuccess, initial, initialBudget }: CategoryForm
                                 type="button"
                                 title={key}
                                 onClick={() => setIcon(key)}
-                                className={cn(
-                                    'aspect-square rounded-[10px] flex items-center justify-center transition-all duration-150',
-                                    selected ? 'scale-105' : 'hover:bg-[#f4f4f2]'
-                                )}
-                                style={selected ? { backgroundColor: color + '25' } : undefined}
+                                className="group aspect-square flex items-center justify-center"
                             >
-                                <CategoryIcon
-                                    name={key}
-                                    className="w-[18px] h-[18px]"
-                                    style={{ color: selected ? color : undefined }}
-                                />
+                                {selected ? (
+                                    <CategoryTile category={{ color, bg_color: bgColor, icon: key }} />
+                                ) : (
+                                    <span className="w-8 h-8 rounded-[10px] flex items-center justify-center transition-colors group-hover:bg-[#f4f4f2]">
+                                        <CategoryIcon name={key} className="w-[18px] h-[18px]" />
+                                    </span>
+                                )}
                             </button>
                         )
                     })}
                 </div>
             </div>
 
-            {/* Color picker */}
+            {/* Color picker: icon color and tile background are chosen separately */}
             <div className="space-y-2">
-                <Label className={FIELD_LABEL}>Color</Label>
+                <div className="flex items-center justify-between">
+                    <Label className={FIELD_LABEL}>Color</Label>
+                    <div className="flex items-center gap-2">
+                        {colorTarget === 'bg' && (
+                            <button
+                                type="button"
+                                title="Soft tint of the icon color"
+                                onClick={() => setBgColor(null)}
+                                className={cn(
+                                    'px-3 h-7 rounded-[8px] text-[11px] font-medium border transition-colors',
+                                    bgColor === null
+                                        ? 'border-[#252525] text-[#252525]'
+                                        : 'border-dashed border-[#d4d4d0] text-[#8a8a84]'
+                                )}
+                                style={{ backgroundColor: color + '20' }}
+                            >
+                                Auto
+                            </button>
+                        )}
+                        <div className="flex p-0.5 rounded-[10px] bg-[#f4f4f2]">
+                            {(['icon', 'bg'] as const).map((target) => (
+                                <button
+                                    key={target}
+                                    type="button"
+                                    onClick={() => setColorTarget(target)}
+                                    className={cn(
+                                        'px-3 h-7 rounded-[8px] text-[11px] font-medium transition-colors',
+                                        colorTarget === target ? 'bg-white text-[#252525] shadow-sm' : 'text-[#8a8a84]'
+                                    )}
+                                >
+                                    {target === 'icon' ? 'Icon' : 'Background'}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                </div>
                 <div className="grid grid-cols-10 gap-2">
-                    {COLORS.map((c) => (
-                        <button
-                            key={c}
-                            type="button"
-                            onClick={() => setColor(c)}
-                            className={cn(
-                                'aspect-square rounded-full transition-all duration-150',
-                                color === c
-                                    ? 'ring-2 ring-offset-2 ring-offset-white ring-[#252525] scale-110'
-                                    : 'hover:scale-105'
-                            )}
-                            style={{ backgroundColor: c }}
-                        />
-                    ))}
+                    {SWATCHES.map((c) => {
+                        const selected = colorTarget === 'icon' ? color === c : bgColor === c
+                        return (
+                            <button
+                                key={c}
+                                type="button"
+                                onClick={() => colorTarget === 'icon' ? setColor(c) : setBgColor(c)}
+                                className={cn(
+                                    'aspect-square rounded-full border border-black/5 transition-all duration-150',
+                                    selected
+                                        ? 'ring-2 ring-offset-2 ring-offset-white ring-[#252525] scale-110'
+                                        : 'hover:scale-105'
+                                )}
+                                style={{ backgroundColor: c }}
+                            />
+                        )
+                    })}
                 </div>
             </div>
 
             {/* Preview */}
             <div className="flex items-center gap-3 p-3 rounded-[14px] bg-[#f4f4f2]">
-                <div
-                    className="w-9 h-9 rounded-[10px] flex items-center justify-center shrink-0"
-                    style={{ backgroundColor: color + '25' }}
-                >
-                    <CategoryIcon
-                        name={icon}
-                        className="w-[18px] h-[18px]"
-                        style={{ color }}
-                    />
-                </div>
+                <CategoryTile category={{ color, bg_color: bgColor, icon }} className="border border-black/5" />
                 <div className="min-w-0 flex-1">
                     <p className="text-[13px] font-medium text-[#252525] truncate leading-tight">
                         {name.trim() || <span className="text-[#8a8a84] italic font-normal">Category name</span>}

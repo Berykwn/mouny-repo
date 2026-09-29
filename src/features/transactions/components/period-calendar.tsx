@@ -3,7 +3,7 @@ import { formatCurrency, formatCompact, heatBarColor } from '@/lib/helpers'
 import type { TransactionWithDetails } from '@/types'
 import { TrendingUp, TrendingDown, Plus } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { CategoryIcon } from '@/features/categories/components/category-icon'
+import { CategoryTile } from '@/features/categories/components/category-icon'
 import { useLongPress } from '@/hooks/use-long-press'
 
 interface PeriodCalendarProps {
@@ -89,26 +89,12 @@ function DayTransactionRow({
             } : undefined}
             {...(deletable ? longPressHandlers : {})}
         >
-            <div
-                className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-                style={{
-                    backgroundColor: `${tx.category?.color ?? '#e5e7eb'}25`,
-                }}
-            >
-                {tx.category ? (
-                    <CategoryIcon
-                        name={tx.category.icon}
-                        className="w-[15px] h-[15px]"
-                        style={{
-                            color: tx.category.color ?? '#6b7280',
-                        }}
-                    />
-                ) : tx.type === 'income' ? (
-                    <TrendingUp className="w-3.5 h-3.5 text-positive" />
-                ) : (
-                    <TrendingDown className="w-3.5 h-3.5 text-negative" />
+            <CategoryTile category={tx.category}>
+                {!tx.category && (tx.type === 'income'
+                    ? <TrendingUp className="w-[18px] h-[18px] text-positive" />
+                    : <TrendingDown className="w-[18px] h-[18px] text-negative" />
                 )}
-            </div>
+            </CategoryTile>
             <div className="flex-1 min-w-0">
                 <p className="text-xs font-medium truncate">{title}</p>
                 {subtitle && (

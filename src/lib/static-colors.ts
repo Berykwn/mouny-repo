@@ -47,3 +47,6 @@ export const COLORS = [
     // GRAY
     '#9ca3af', '#6b7280', '#4b5563',
 ]
+
+// Category icon and tile swatches: deep neutrals first (dark or light plates, white-on-color icons), then the full palette.
+export const SWATCHES = ['#1f1f1f', '#334155', '#ffffff', '#f4f4f2', ...COLORS]

@@ -3,7 +3,7 @@ import { formatCurrency, formatDateShort } from '@/lib/helpers'
 import { toCsv, downloadCsv } from '@/lib/csv'
 import { cn } from '@/lib/utils'
 import { Checkbox } from '@/components/ui/checkbox'
-import { CategoryIcon } from '@/features/categories/components/category-icon'
+import { CategoryTile } from '@/features/categories/components/category-icon'
 import type { TransactionWithDetails, TransactionType } from '@/types'
 
 interface TransactionListViewProps {
@@ -124,22 +124,12 @@ export function TransactionListView({
                                 )}
                                 <p className="hidden lg:block w-[64px] shrink-0 text-[12px] text-muted-ink">{formatDateShort(tx.date)}</p>
                                 <div className="flex-1 min-w-0 flex items-center gap-2.5">
-                                    <div
-                                        className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-                                        style={{ backgroundColor: `${tx.category?.color ?? '#e5e7eb'}25` }}
-                                    >
-                                        {tx.category ? (
-                                            <CategoryIcon
-                                                name={tx.category.icon}
-                                                className="w-[15px] h-[15px]"
-                                                style={{ color: tx.category.color ?? '#6b7280' }}
-                                            />
-                                        ) : tx.type === 'income' ? (
-                                            <TrendingUp className="w-3.5 h-3.5 text-positive" />
-                                        ) : (
-                                            <TrendingDown className="w-3.5 h-3.5 text-negative" />
+                                    <CategoryTile category={tx.category}>
+                                        {!tx.category && (tx.type === 'income'
+                                            ? <TrendingUp className="w-[18px] h-[18px] text-positive" />
+                                            : <TrendingDown className="w-[18px] h-[18px] text-negative" />
                                         )}
-                                    </div>
+                                    </CategoryTile>
                                     <div className="min-w-0">
                                         <p className="text-[13px] font-medium text-ink truncate">{title}</p>
                                         <p className="lg:hidden text-[11px] text-muted-ink truncate">{mobileSubtitle}</p>

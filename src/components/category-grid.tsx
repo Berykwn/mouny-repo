@@ -1,4 +1,4 @@
-import { CategoryIcon } from '@/features/categories/components/category-icon'
+import { CategoryTile } from '@/features/categories/components/category-icon'
 import { cn } from '@/lib/utils'
 import type { Category } from '@/types'
 
@@ -33,12 +33,7 @@ export function CategoryGrid({ categories, selectedId, onSelect, disabled }: Cat
                             selected ? 'border-[#6FA82B] bg-[#f2f6ea]' : 'border-[#e5e5e5] bg-white'
                         )}
                     >
-                        <div
-                            className="w-9 h-9 rounded-[10px] flex items-center justify-center"
-                            style={{ backgroundColor: c.color ? `${c.color}20` : undefined }}
-                        >
-                            <CategoryIcon name={c.icon} className="w-4 h-4" style={{ color: c.color ?? undefined }} />
-                        </div>
+                        <CategoryTile category={c} />
                         <span
                             className={cn(
                                 'text-[11px] text-center leading-tight line-clamp-2 w-full',

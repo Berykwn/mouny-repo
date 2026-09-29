@@ -1,4 +1,4 @@
-import { CategoryIcon } from '@/features/categories/components/category-icon'
+import { CategoryTile } from '@/features/categories/components/category-icon'
 import { cn } from '@/lib/utils'
 import type { Category } from '@/types'
 
@@ -37,12 +37,7 @@ export function CategoryTileRail({ categories, selectedId, onSelect, disabled }:
                             'disabled:opacity-50 disabled:pointer-events-none'
                         )}
                     >
-                        <div
-                            className="w-[34px] h-[34px] rounded-[10px] flex items-center justify-center shrink-0"
-                            style={{ backgroundColor: c.color ? `${c.color}1f` : undefined }}
-                        >
-                            <CategoryIcon name={c.icon} className="w-4 h-4" style={{ color: c.color ?? undefined }} />
-                        </div>
+                        <CategoryTile category={c} />
                         <span
                             className={cn(
                                 'mt-1.5 text-[10px] text-center leading-tight truncate w-full',

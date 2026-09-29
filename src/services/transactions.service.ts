@@ -22,7 +22,7 @@ export const transactionsService = {
                 .select(`
           *,
           account:accounts(id, name, type),
-          category:categories(id, name, color, icon)
+          category:categories(id, name, color, bg_color, icon, is_savings)
         `)
                 .eq('pay_period_id', periodId)
                 .order('date', { ascending: false })

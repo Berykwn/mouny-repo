@@ -78,28 +78,34 @@ export type Database = {
       }
       categories: {
         Row: {
+          bg_color: string | null
           color: string | null
           created_at: string | null
           icon: string | null
           id: string
+          is_savings: boolean
           name: string
           type: string
           user_id: string
         }
         Insert: {
+          bg_color?: string | null
           color?: string | null
           created_at?: string | null
           icon?: string | null
           id?: string
+          is_savings?: boolean
           name: string
           type: string
           user_id: string
         }
         Update: {
+          bg_color?: string | null
           color?: string | null
           created_at?: string | null
           icon?: string | null
           id?: string
+          is_savings?: boolean
           name?: string
           type?: string
           user_id?: string
