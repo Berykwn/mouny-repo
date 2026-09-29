@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { Calendar as CalendarIcon, ChevronDown, Loader2, Pencil, Wallet } from 'lucide-react'
+import { Calendar as CalendarIcon, ChevronDown, Loader2, Pencil } from 'lucide-react'
+import { AccountTypeIcon } from '@/components/account-type-icon'
 import { toast } from 'sonner'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -279,7 +280,7 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
                             onClick={() => setAccountPickerOpen(true)}
                             className="flex items-center gap-2.5 py-[13px] text-left w-full disabled:opacity-50 disabled:pointer-events-none"
                         >
-                            <Wallet className="w-4 h-4 text-[#8a8a84] shrink-0" strokeWidth={2} />
+                            <AccountTypeIcon type={selectedAccount?.type ?? 'cash'} className="w-[18px] h-[18px] shrink-0" />
                             <span className="text-[13px] text-[#8a8a84] shrink-0">Account</span>
                             <span className="ml-auto flex items-center gap-1.5 min-w-0">
                                 <span className="flex flex-col items-end min-w-0">

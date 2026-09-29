@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Loader2, ArrowRight, Building2, Wallet, Check } from 'lucide-react'
+import { Loader2, ArrowRight, Check } from 'lucide-react'
+import { AccountTypeIcon, AccountTypeTile, ACCOUNT_TILE_CLASS } from '@/components/account-type-icon'
 import { accountsService } from '@/services/accounts-categories.service'
 import { formatCurrency, formatCurrencyInput, parseCurrencyInput, parseCurrencyWithSign } from '@/lib/helpers'
 import { cn } from '@/lib/utils'
@@ -122,9 +123,9 @@ export function AccountForm({ onSuccess, initial, allAccounts = [] }: AccountFor
                             >
                                 <div className={cn(
                                     'w-8 h-8 rounded-[10px] flex items-center justify-center shrink-0',
-                                    type === 'bank' ? 'bg-[#6FA82B]/15' : 'bg-[#f4f4f2]'
+                                    type === 'bank' ? ACCOUNT_TILE_CLASS.bank : 'bg-surface-hover'
                                 )}>
-                                    <Building2 className={cn('w-4 h-4', type === 'bank' ? 'text-[#4d7a1d]' : 'text-[#8a8a84]')} />
+                                    <AccountTypeIcon type="bank" className={cn('w-6 h-6 transition-all', type !== 'bank' && 'opacity-60 grayscale')} />
                                 </div>
                                 <div>
                                     <p className="text-[13px] font-semibold leading-none mb-0.5 text-[#252525]">
@@ -153,9 +154,9 @@ export function AccountForm({ onSuccess, initial, allAccounts = [] }: AccountFor
                             >
                                 <div className={cn(
                                     'w-8 h-8 rounded-[10px] flex items-center justify-center shrink-0',
-                                    type === 'cash' ? 'bg-[#6FA82B]/15' : 'bg-[#f4f4f2]'
+                                    type === 'cash' ? ACCOUNT_TILE_CLASS.cash : 'bg-surface-hover'
                                 )}>
-                                    <Wallet className={cn('w-4 h-4', type === 'cash' ? 'text-[#4d7a1d]' : 'text-[#8a8a84]')} />
+                                    <AccountTypeIcon type="cash" className={cn('w-6 h-6 transition-all', type !== 'cash' && 'opacity-60 grayscale')} />
                                 </div>
                                 <div>
                                     <p className="text-[13px] font-semibold leading-none mb-0.5 text-[#252525]">
@@ -292,7 +293,6 @@ export function AccountForm({ onSuccess, initial, allAccounts = [] }: AccountFor
                             : (
                                 <div className="flex flex-col gap-1.5">
                                     {transferTargets.map(acc => {
-                                        const Icon = acc.type === 'bank' ? Building2 : Wallet
                                         const selected = toAccountId === acc.id
                                         return (
                                             <button
@@ -306,12 +306,7 @@ export function AccountForm({ onSuccess, initial, allAccounts = [] }: AccountFor
                                                         : 'border-[#e5e5e5] bg-white hover:border-[#d4d4d4]'
                                                 )}
                                             >
-                                                <div className={cn(
-                                                    'w-8 h-8 rounded-[10px] flex items-center justify-center shrink-0',
-                                                    selected ? 'bg-[#6FA82B]/15' : 'bg-[#f4f4f2]'
-                                                )}>
-                                                    <Icon className={cn('w-4 h-4', selected ? 'text-[#4d7a1d]' : 'text-[#8a8a84]')} />
-                                                </div>
+                                                <AccountTypeTile type={acc.type} className="w-8 h-8" />
                                                 <div className="flex-1 min-w-0">
                                                     <p className={cn('text-[13px] font-semibold truncate', selected ? 'text-[#252525]' : 'text-[#252525]')}>
                                                         {acc.name}

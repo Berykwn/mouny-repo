@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
-import { Plus, Wallet2 } from 'lucide-react'
+import { Plus } from 'lucide-react'
+import { WalletIcon, WALLET_TILE_CLASS } from '@/components/account-type-icon'
 import { BottomDrawer } from '@/components/bottom-drawer'
 import { ConfirmDrawer } from '@/components/confirmation-drawer'
 import { AccountForm } from './components/account-form'
@@ -91,8 +92,8 @@ export function AccountPage() {
                                 onClick={() => setAddAccountDrawer(true)}
                                 className="card w-full p-4 flex items-center gap-3 text-left hover:bg-surface-soft transition-colors"
                             >
-                                <div className="w-9 h-9 rounded-[10px] bg-brand/10 flex items-center justify-center shrink-0">
-                                    <Wallet2 className="w-4 h-4 text-brand" />
+                                <div className={cn('w-9 h-9 rounded-[10px] flex items-center justify-center shrink-0', WALLET_TILE_CLASS)}>
+                                    <WalletIcon className="w-6 h-6" />
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <p className="text-[13px] font-medium text-ink">No accounts yet</p>

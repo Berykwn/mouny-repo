@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { ChevronDown, Wallet } from 'lucide-react'
+import { ChevronDown } from 'lucide-react'
+import { AccountTypeIcon } from '@/components/account-type-icon'
 import { Label } from '@/components/ui/label'
 import { AccountPickerDrawer } from '@/components/account-picker-drawer'
 import { formatCurrency, formatCurrencyInput, parseCurrencyInput } from '@/lib/helpers'
@@ -47,7 +48,7 @@ export function TransferFields({
                     onClick={() => setPickerOpen('from')}
                     className="flex items-center gap-2.5 py-[13px] text-left w-full disabled:opacity-50 disabled:pointer-events-none"
                 >
-                    <Wallet className="w-4 h-4 text-[#8a8a84] shrink-0" strokeWidth={2} />
+                    <AccountTypeIcon type={fromAccount?.type ?? 'cash'} className="w-[18px] h-[18px] shrink-0" />
                     <span className="text-[13px] text-[#8a8a84] shrink-0">From</span>
                     <span className="ml-auto flex items-center gap-1.5 min-w-0">
                         <span className="flex flex-col items-end min-w-0">
@@ -68,7 +69,7 @@ export function TransferFields({
                     onClick={() => setPickerOpen('to')}
                     className="flex items-center gap-2.5 py-[13px] border-t border-[#f2f2f0] text-left w-full disabled:opacity-50 disabled:pointer-events-none"
                 >
-                    <Wallet className="w-4 h-4 text-[#8a8a84] shrink-0" strokeWidth={2} />
+                    <AccountTypeIcon type={toAccount?.type ?? 'cash'} className="w-[18px] h-[18px] shrink-0" />
                     <span className="text-[13px] text-[#8a8a84] shrink-0">To</span>
                     <span className="ml-auto flex items-center gap-1.5 min-w-0">
                         <span className="flex flex-col items-end min-w-0">

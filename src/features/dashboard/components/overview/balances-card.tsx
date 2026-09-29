@@ -1,4 +1,5 @@
-import { ArrowRight, Wallet } from 'lucide-react'
+import { ArrowRight } from 'lucide-react'
+import { WalletIcon, WALLET_TILE_CLASS } from '@/components/account-type-icon'
 import { useNavigate } from 'react-router-dom'
 import { formatCurrency } from '@/lib/helpers'
 import type { Account } from '@/types'
@@ -22,8 +23,8 @@ export function BalancesCard({ accounts, isActivePeriod, closingBalance }: Balan
             className="card flex w-full items-center justify-between px-5 py-4 text-left"
         >
             <div className="flex items-center gap-2.5">
-                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-info/10">
-                    <Wallet className="h-3.5 w-3.5 text-info" />
+                <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${WALLET_TILE_CLASS}`}>
+                    <WalletIcon className="h-5 w-5" />
                 </div>
                 <span className="text-[13.5px] text-ink">
                     {isActivePeriod ? 'Balances' : 'Closing balance'}

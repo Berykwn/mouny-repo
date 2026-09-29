@@ -1,7 +1,7 @@
 import { formatCurrency } from '@/lib/helpers'
 import type { Account, AccountType } from '@/types'
 import { Trash2, Pencil } from 'lucide-react'
-import { AccountTypeIcon } from '@/components/account-type-icon'
+import { AccountTypeTile } from '@/components/account-type-icon'
 import { cn } from '@/lib/utils'
 
 interface AccountListProps {
@@ -23,9 +23,7 @@ export function AccountList({ accounts, onEdit, onDeleteRequest }: AccountListPr
 
                 return (
                     <div key={acc.id} className="flex items-center gap-3 px-4 py-[9px]">
-                        <div className="w-8 h-8 rounded-[10px] bg-info/10 flex items-center justify-center shrink-0">
-                            <AccountTypeIcon type={acc.type} className="w-4 h-4 text-info" />
-                        </div>
+                        <AccountTypeTile type={acc.type} className="w-8 h-8" />
                         <div className="flex-1 min-w-0">
                             <p className="text-[13px] font-medium text-ink truncate">{acc.name}</p>
                             <p className="text-[11px] text-muted-ink">{label}</p>

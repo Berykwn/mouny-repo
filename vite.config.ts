@@ -4,6 +4,8 @@ import tailwindcss from "@tailwindcss/vite"
 import react from "@vitejs/plugin-react"
 import { defineConfig, loadEnv } from "vite"
 import { VitePWA } from 'vite-plugin-pwa'
+import Icons from 'unplugin-icons/vite'
+import { FileSystemIconLoader } from 'unplugin-icons/loaders'
 
 const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf-8'))
 
@@ -15,7 +17,11 @@ export default defineConfig(({ mode }) => {
     define: {
       __APP_VERSION__: JSON.stringify(pkg.version),
     },
-    plugins: [react(), tailwindcss(), VitePWA({
+    plugins: [react(), tailwindcss(), Icons({
+      compiler: 'jsx',
+      jsx: 'react',
+      customCollections: { app: FileSystemIconLoader('./src/assets/icons') },
+    }), VitePWA({
       registerType: 'autoUpdate',
       devOptions: {
         enabled: true,

@@ -1,6 +1,6 @@
 import { Check } from 'lucide-react'
 import { BottomDrawer } from '@/components/bottom-drawer'
-import { AccountTypeIcon } from '@/components/account-type-icon'
+import { AccountTypeTile } from '@/components/account-type-icon'
 import { formatCurrency } from '@/lib/helpers'
 import { cn } from '@/lib/utils'
 import type { Account } from '@/types'
@@ -27,9 +27,7 @@ export function AccountPickerDrawer({ open, onClose, accounts, selectedId, onSel
                             selectedId === a.id ? 'bg-[#f4f4f2]' : 'hover:bg-[#fbfbfa]'
                         )}
                     >
-                        <div className="w-9 h-9 rounded-[10px] bg-[#f4f4f2] flex items-center justify-center shrink-0">
-                            <AccountTypeIcon type={a.type} className="w-4 h-4 text-[#8a8a84]" />
-                        </div>
+                        <AccountTypeTile type={a.type} />
                         <div className="flex-1 min-w-0">
                             <p className="text-[13px] font-medium text-[#252525] truncate">{a.name}</p>
                             <p className="text-[11px] text-[#8a8a84]">{formatCurrency(a.balance ?? 0)}</p>

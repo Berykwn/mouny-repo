@@ -12,7 +12,7 @@ import type { Account } from '@/types'
 import { toast } from 'sonner'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Calendar } from '@/components/ui/calendar'
-import { AccountTypeIcon } from '@/components/account-type-icon'
+import { AccountTypeTile } from '@/components/account-type-icon'
 import { AccountPickerDrawer } from '@/components/account-picker-drawer'
 import { DateQuickPicker } from '@/components/date-quick-picker'
 import { cn } from '@/lib/utils'
@@ -229,9 +229,7 @@ export function DebtForm({ onSuccess, payPeriodId, periodStartDate }: DebtFormPr
                         >
                             {selectedAccount ? (
                                 <div className="flex items-center gap-3 min-w-0">
-                                    <div className="w-9 h-9 rounded-[10px] bg-[#f4f4f2] flex items-center justify-center shrink-0">
-                                        <AccountTypeIcon type={selectedAccount.type} className="w-4 h-4 text-[#8a8a84]" />
-                                    </div>
+                                    <AccountTypeTile type={selectedAccount.type} />
                                     <div className="min-w-0">
                                         <p className="text-[13px] font-medium text-[#252525] truncate">{selectedAccount.name}</p>
                                         <p className="text-[11.5px] text-[#8a8a84]">{formatCurrency(selectedAccount.balance)}</p>
