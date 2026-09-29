@@ -1,6 +1,7 @@
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts'
 import { formatCurrency, formatShortCurrency } from '@/lib/helpers'
 import type { CategoryTotal } from '../../lib/group-expenses-by-category'
+import { categoryChartColor } from '@/features/categories/components/category-icon'
 
 const FALLBACK_COLOR = '#94a3b8'
 
@@ -38,7 +39,7 @@ export function CategoryDonutChart({ categories, total }: { categories: Category
                         isAnimationActive={false}
                     >
                         {categories.map(cat => (
-                            <Cell key={cat.id} fill={cat.color ?? FALLBACK_COLOR} />
+                            <Cell key={cat.id} fill={categoryChartColor(cat, FALLBACK_COLOR)} />
                         ))}
                     </Pie>
                     <Tooltip content={<DonutTooltip total={total} />} />

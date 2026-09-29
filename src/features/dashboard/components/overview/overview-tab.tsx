@@ -40,7 +40,7 @@ async function fetchOverviewData(
     const currentIndex = allList.findIndex(p => p.id === periodId)
     const prevPeriod = allList[currentIndex + 1] ?? null
     const fallbackTotalDays = prevPeriod?.start_date && prevPeriod?.end_date
-        ? getDaysBetween(prevPeriod.start_date, prevPeriod.end_date)
+        ? getDaysBetween(prevPeriod.start_date, prevPeriod.end_date) + 1
         : null
 
     const { data: previousSummary } = prevPeriod

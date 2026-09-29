@@ -23,12 +23,12 @@ export function TodayWeekCard({ transactions, periodStart, periodEnd }: TodayWee
 
     const todayTxs = useMemo(() => {
         const today = toISODate()
-        return transactions.filter(tx => toISODate(new Date(tx.date)) === today)
+        return transactions.filter(tx => tx.date.slice(0, 10) === today)
     }, [transactions])
 
     const weekTxs = useMemo(() => {
         return transactions.filter(tx => {
-            const date = toISODate(new Date(tx.date))
+            const date = tx.date.slice(0, 10)
             return date >= currentWeek.start && date <= currentWeek.end
         })
     }, [transactions, currentWeek])

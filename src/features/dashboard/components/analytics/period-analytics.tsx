@@ -1,12 +1,15 @@
 import { useState, useMemo, useEffect } from 'react'
-import {
-  TrendingUp, TrendingDown, CalendarDays, Flame,
-  Receipt, ArrowLeftRight, Moon, Wallet, ChevronRight, type LucideProps,
-} from 'lucide-react'
+import { ChevronRight } from 'lucide-react'
+import TrendingUp from '~icons/ph/trend-up-duotone'
+import TrendingDown from '~icons/ph/trend-down-duotone'
+import IncomeIcon from '~icons/app/profits'
+import ExpenseIcon from '~icons/app/loss'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import { formatCurrency, formatShortCurrency, formatDateShort } from '@/lib/helpers'
 import { cn } from '@/lib/utils'
 import { BottomDrawer } from '@/components/bottom-drawer'
+import { AccountTypeTile, CashIcon } from '@/components/account-type-icon'
+import { categoryChartColor } from '@/features/categories/components/category-icon'
 import { calculateHealthScore } from '@/lib/calculate-health-score'
 import { usePeriodStats } from '@/hooks/use-period-stats'
 import { categoryBudgetsService } from '@/services/budgets.service'
@@ -15,7 +18,7 @@ import { PeriodTrendChart } from './period-trend-chart'
 import { groupExpensesByCategory, type CategoryTotal } from '../../lib/group-expenses-by-category'
 import { groupExpensesByWeekday } from '../../lib/group-expenses-by-weekday'
 import { CategoryDonutChart } from './category-donut-chart'
-import type { ElementType } from 'react'
+import type { ElementType, ReactNode, SVGProps } from 'react'
 import type { PayPeriod, TransactionWithDetails } from '@/types'
 
 interface DayEntry {
@@ -33,40 +36,163 @@ interface PeriodAnalyticsProps {
   previousSummary: { income: number; expense: number; net: number } | null
   totalBalance: number
   totalDebt: number
+  /** Length of the previous period, used to estimate an open period's end. */
+  fallbackTotalDays?: number | null
 }
 
-interface StatTileProps {
-  icon: ElementType<LucideProps>
+interface StatCellProps {
   label: string
   value: string
-  sub?: string
+  sub?: ReactNode
   valueClassName?: string
   onTap?: () => void
-  color?: string
+  /** A small data visual under the value (progress, split, …) — carries meaning an icon can't. */
+  visual?: ReactNode
 }
 
-function StatTile({ icon: Icon, label, value, sub, valueClassName, onTap, color = '#94a3b8' }: StatTileProps) {
+// One cell of a hairline-divided stat grid: typography does the work, no icon.
+function StatCell({ label, value, sub, valueClassName, onTap, visual, className }: StatCellProps & { className?: string }) {
   return (
     <div
-      className={cn(
-        'rounded-[10px] border border-[#f0f0ee] bg-[#fbfbfa] p-2.5',
-        onTap && 'cursor-pointer active:bg-[#f4f4f2] transition-colors'
-      )}
+      className={cn('bg-white p-3 min-w-0', onTap && 'cursor-pointer hover:bg-[#fbfbfa] active:bg-[#f4f4f2] transition-colors', className)}
       onClick={onTap}
     >
-      <div className="flex items-center gap-1.5">
-        <div
-          className="flex h-[20px] w-[20px] shrink-0 items-center justify-center rounded-[6px]"
-          style={{ backgroundColor: `${color}1f` }}
-        >
-          <Icon className="h-[11px] w-[11px]" style={{ color }} />
-        </div>
-        <p className="text-[10px] text-[#8a8a84] truncate">{label}</p>
+      <div className="flex items-center gap-1">
+        <p className="text-[11px] text-[#8a8a84] truncate">{label}</p>
+        {onTap && <ChevronRight className="w-3 h-3 text-[#c4c4be] shrink-0" />}
       </div>
-      <p className={cn('text-[13.5px] font-medium text-[#252525] mt-1 truncate', valueClassName)}>
+      <p className={cn('text-[15px] sm:text-[17px] font-medium tracking-[-0.01em] text-[#252525] mt-1 truncate tabular-nums', valueClassName)}>
         {value}
       </p>
-      {sub && <p className="text-[10px] text-[#a3a3a3] mt-0.5 truncate">{sub}</p>}
+      {visual && <div className="mt-2">{visual}</div>}
+      {sub && <p className="text-[10.5px] text-[#a3a3a3] mt-1 truncate">{sub}</p>}
+    </div>
+  )
+}
+
+/** Hairline-divided grid: 1px gaps over a line-colored background read as dividers. */
+function StatGrid({ className, children }: { className?: string; children: ReactNode }) {
+  return (
+    <div className={cn('grid gap-px overflow-hidden rounded-[14px] border border-[#f0f0ee] bg-[#f0f0ee]', className)}>
+      {children}
+    </div>
+  )
+}
+
+interface MeterProps {
+  /** 0–1 */
+  value: number
+  color: string
+}
+
+function Meter({ value, color }: MeterProps) {
+  return (
+    <div className="h-1 rounded-full bg-[#f2f2f0] overflow-hidden">
+      <div
+        className="h-full rounded-full transition-all duration-300"
+        style={{ width: `${Math.min(100, Math.max(0, value * 100))}%`, backgroundColor: color }}
+      />
+    </div>
+  )
+}
+
+interface SplitBarProps {
+  left: number
+  right: number
+  leftColor: string
+  rightColor: string
+}
+
+function SplitBar({ left, right, leftColor, rightColor }: SplitBarProps) {
+  const total = left + right
+  if (total === 0) return <div className="h-1 rounded-full bg-[#f2f2f0]" />
+  return (
+    <div className="flex h-1 gap-[2px] overflow-hidden rounded-full">
+      {left > 0 && <div className="h-full" style={{ flexGrow: left, backgroundColor: leftColor }} />}
+      {right > 0 && <div className="h-full" style={{ flexGrow: right, backgroundColor: rightColor }} />}
+    </div>
+  )
+}
+
+interface PeriodRangeProps {
+  worst: number
+  best: number
+  average: number
+  current: number
+}
+
+// Where the average and this period sit between the worst and best period nets.
+function PeriodRange({ worst, best, average, current }: PeriodRangeProps) {
+  const span = best - worst
+  if (span <= 0) return null
+  const frac = (v: number) => Math.min(1, Math.max(0, (v - worst) / span))
+  const pos = (v: number) => `${frac(v) * 100}%`
+  // Keep the "This period" label inside the track near either end.
+  const labelShift = frac(current) < 0.15 ? 'translate-x-0' : frac(current) > 0.85 ? '-translate-x-full' : '-translate-x-1/2'
+
+  return (
+    <div className="px-1 pt-5 pb-1">
+      <div className="relative h-1.5 rounded-full bg-gradient-to-r from-[#dc2626]/35 via-[#e5e5e5] to-[#059669]/35">
+        <div
+          className="absolute top-1/2 h-3 w-[2px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#8a8a84]"
+          style={{ left: pos(average) }}
+        />
+        <div
+          className="absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-[#252525] shadow-sm"
+          style={{ left: pos(current) }}
+        />
+        <span
+          className={cn('absolute -top-5 whitespace-nowrap text-[10px] font-medium text-[#252525]', labelShift)}
+          style={{ left: pos(current) }}
+        >
+          This period
+        </span>
+      </div>
+      <div className="mt-2 flex items-center justify-between text-[10px] text-[#a3a3a3]">
+        <span>Worst</span>
+        <span className="inline-flex items-center gap-1">
+          <span className="inline-block h-2.5 w-[2px] rounded-full bg-[#8a8a84]" /> Average
+        </span>
+        <span>Best</span>
+      </div>
+    </div>
+  )
+}
+
+// The piggy bank has no badge of its own; a tinted circle puts it in step with the income/expense badges.
+function SavedBadge({ className }: SVGProps<SVGSVGElement>) {
+  return (
+    <span className={cn('flex items-center justify-center rounded-full bg-[#f28b8b]/20', className)}>
+      <CashIcon className="h-[62%] w-[62%]" />
+    </span>
+  )
+}
+
+interface SummaryTileProps {
+  /** A self-contained badge icon (it draws its own colored circle), so no tinted plate behind it. */
+  icon: ElementType<SVGProps<SVGSVGElement>>
+  label: string
+  value: string
+  valueClassName?: string
+  diff?: ReactNode
+}
+
+function SummaryTile({ icon: Icon, label, value, valueClassName, diff }: SummaryTileProps) {
+  return (
+    <div className="flex items-center gap-3 rounded-[14px] border border-[#f0f0ee] bg-[#fbfbfa] p-3">
+      <Icon className="h-10 w-10 shrink-0" />
+      <div className="min-w-0 flex-1">
+        <p className="text-[11px] text-[#8a8a84] leading-none">{label}</p>
+        <p className={cn('text-[15px] font-medium text-[#252525] mt-1 truncate', valueClassName)}>
+          {value}
+        </p>
+      </div>
+      {diff && (
+        <div className="shrink-0 text-right">
+          {diff}
+          <p className="text-[10px] text-[#a3a3a3] mt-0.5">vs last</p>
+        </div>
+      )}
     </div>
   )
 }
@@ -74,11 +200,12 @@ function StatTile({ icon: Icon, label, value, sub, valueClassName, onTap, color 
 interface DiffValueProps {
   pct: number | null
   goodWhenUp: boolean
+  className?: string
 }
 
-function DiffValue({ pct, goodWhenUp }: DiffValueProps) {
+function DiffValue({ pct, goodWhenUp, className }: DiffValueProps) {
   if (pct === null) {
-    return <span className="text-[13px] font-medium text-[#a3a3a3]">—</span>
+    return <span className={cn('text-[13px] font-medium text-[#a3a3a3]', className)}>—</span>
   }
   const isUp = pct > 0
   const isGood = pct === 0 ? true : isUp === goodWhenUp
@@ -86,7 +213,7 @@ function DiffValue({ pct, goodWhenUp }: DiffValueProps) {
   const Icon = isUp ? TrendingUp : TrendingDown
 
   return (
-    <span className="inline-flex items-center gap-1 text-[13px] font-medium" style={{ color }}>
+    <span className={cn('inline-flex items-center gap-1 text-[13px] font-medium', className)} style={{ color }}>
       {pct !== 0 && <Icon className="w-[13px] h-[13px]" />}
       {isUp ? '+' : ''}{pct}%
     </span>
@@ -118,7 +245,7 @@ function DaySheet({ date, transactions, onClose }: DaySheetProps) {
               {tx.category?.color && (
                 <div
                   className="w-2 h-2 rounded-full shrink-0"
-                  style={{ backgroundColor: tx.category.color }}
+                  style={{ backgroundColor: categoryChartColor(tx.category) }}
                 />
               )}
               <div>
@@ -161,7 +288,7 @@ function CategoryTransactionList({ transactions }: CategoryTransactionListProps)
               {tx.category?.color && (
                 <div
                   className="w-2 h-2 rounded-full shrink-0"
-                  style={{ backgroundColor: tx.category.color }}
+                  style={{ backgroundColor: categoryChartColor(tx.category) }}
                 />
               )}
               <div className="min-w-0">
@@ -191,7 +318,7 @@ function budgetColor(ratio: number): string {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export function PeriodAnalytics({ transactions, period, periods, previousSummary, totalBalance, totalDebt }: PeriodAnalyticsProps) {
+export function PeriodAnalytics({ transactions, period, periods, previousSummary, totalBalance, totalDebt, fallbackTotalDays = null }: PeriodAnalyticsProps) {
   const [biggestDayOpen, setBiggestDayOpen] = useState(false)
   const [budgets, setBudgets] = useState<Record<string, number>>({})
   const [expandedCategoryId, setExpandedCategoryId] = useState<string | null>(null)
@@ -210,6 +337,11 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
 
   const totalIncome  = useMemo(() => incomes.reduce((s, t) => s + t.amount, 0), [incomes])
   const totalExpense = useMemo(() => expenses.reduce((s, t) => s + t.amount, 0), [expenses])
+
+  // Savings categories leave the account (so they count toward net) but aren't spending.
+  const spending = useMemo(() => expenses.filter(t => !t.category?.is_savings), [expenses])
+  const totalSpending = useMemo(() => spending.reduce((s, t) => s + t.amount, 0), [spending])
+  const totalSavings = totalExpense - totalSpending
 
   const net = totalIncome - totalExpense
 
@@ -241,10 +373,10 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
     return [...budgeted, ...unbudgeted]
   }, [categoriesByAmount, budgets])
 
-  // Biggest day / biggest expense look across all expenses in the period.
+  // Biggest day / biggest expense look across the period's spending (savings aren't a splurge).
   const biggestDayEntry = useMemo<DayEntry | null>(() => {
     const map = new Map<string, TransactionWithDetails[]>()
-    for (const tx of expenses) {
+    for (const tx of spending) {
       const arr = map.get(tx.date) ?? []
       arr.push(tx)
       map.set(tx.date, arr)
@@ -253,13 +385,13 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
       const total = txs.reduce((s, t) => s + t.amount, 0)
       return !best || total > best.total ? { date, total, txs } : best
     }, null)
-  }, [expenses])
+  }, [spending])
 
   const biggestExpense = useMemo(
-    () => expenses.reduce<TransactionWithDetails | null>(
+    () => spending.reduce<TransactionWithDetails | null>(
       (mx, tx) => (!mx || tx.amount > mx.amount ? tx : mx), null
     ),
-    [expenses]
+    [spending]
   )
 
   // ─── Period stats — delegated to the shared hook ───────────────────────────
@@ -269,8 +401,11 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
     [incomes, expenses]
   )
 
-  const stats = usePeriodStats({ period, transactions: statsTransactions })
-  const hasPredictive = !!period.end_date && stats.totalIncome > 0 && stats.projectedSpend !== null
+  const stats = usePeriodStats({ period, transactions: statsTransactions, fallbackTotalDays })
+  const hasPredictive = !stats.isClosed && stats.totalIncome > 0 && stats.projectedSpend !== null
+  const overSafePace = stats.safeDaily !== null && stats.dailyAvg > stats.safeDaily
+  const showDaysLeft = stats.daysRemaining !== null && !stats.isClosed
+  const paceCount = 1 + (stats.safeDaily !== null ? 1 : 0) + (showDaysLeft ? 1 : 0)
 
   // ─── Multi-period trend ─────────────────────────────────────────────────────
 
@@ -279,16 +414,16 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
   // ─── Desktop-only breakdowns (spending by account, by day of week, period comparison) ──
 
   const byAccount = useMemo(() => {
-    const map = new Map<string, number>()
-    for (const tx of expenses) {
-      map.set(tx.account.name, (map.get(tx.account.name) ?? 0) + tx.amount)
+    const map = new Map<string, { name: string; type: string; amount: number }>()
+    for (const tx of spending) {
+      const entry = map.get(tx.account.id) ?? { name: tx.account.name, type: tx.account.type, amount: 0 }
+      entry.amount += tx.amount
+      map.set(tx.account.id, entry)
     }
-    return Array.from(map.entries())
-      .map(([name, amount]) => ({ name, amount }))
-      .sort((a, b) => b.amount - a.amount)
-  }, [expenses])
+    return Array.from(map.values()).sort((a, b) => b.amount - a.amount)
+  }, [spending])
 
-  const byWeekday = useMemo(() => groupExpensesByWeekday(expenses), [expenses])
+  const byWeekday = useMemo(() => groupExpensesByWeekday(spending), [spending])
 
   const periodComparison = useMemo(() => {
     if (trend.length < 2) return null
@@ -300,13 +435,14 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
 
   // ─── Savings rate, trend vs previous period, and health score ──────────────
 
-  const savingsRate = totalIncome > 0 ? (net / totalIncome) * 100 : null
+  // Share of income not spent: what's left plus what went into savings.
+  const savingsRate = totalIncome > 0 ? ((totalIncome - totalSpending) / totalIncome) * 100 : null
 
   const expenseDiffPct = useMemo(() => (
     previousSummary && previousSummary.expense > 0
-      ? Math.round(((totalExpense - previousSummary.expense) / previousSummary.expense) * 100)
+      ? Math.round(((totalSpending - previousSummary.expense) / previousSummary.expense) * 100)
       : null
-  ), [previousSummary, totalExpense])
+  ), [previousSummary, totalSpending])
 
   const incomeDiffPct = useMemo(() => (
     previousSummary && previousSummary.income > 0
@@ -318,11 +454,11 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
 
   const health = useMemo(() => calculateHealthScore({
     totalIncome,
-    totalExpense,
+    totalExpense: totalSpending,
     totalBalance,
     totalDebt,
     expenseDiffPct,
-  }), [totalIncome, totalExpense, totalBalance, totalDebt, expenseDiffPct])
+  }), [totalIncome, totalSpending, totalBalance, totalDebt, expenseDiffPct])
 
   const healthBarColor = health.score >= 80 ? '#059669' : health.score >= 60 ? '#4d7a1d' : health.score >= 40 ? '#d97706' : '#dc2626'
 
@@ -372,68 +508,61 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
 
       {/* ── Period summary card (Overview) — net + vs last period, so the comparison has context ── */}
       <div className="rounded-[20px] border border-[#e5e5e5] bg-white p-4 lg:col-span-2">
-        <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84] mb-1">Period summary</p>
+        <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84] mb-1.5">Period summary</p>
+
+        {/* Net: the plain headline — the income/expense badges below are what it's made of */}
         <p className={cn(
-          'text-[32px] lg:text-[26px] font-medium tracking-[-0.02em] leading-none mb-1',
+          'text-[32px] lg:text-[28px] font-medium tracking-[-0.02em] leading-none truncate',
           net < 0 ? 'text-[#dc2626]' : 'text-[#252525]'
         )}>
           {net >= 0 ? '+' : ''}{formatCurrency(net)}
         </p>
-        {savingsRate !== null && (
-          <p className={cn(
-            'text-[11.5px] mb-3',
-            savingsRate < 0 ? 'text-[#dc2626]' : 'text-[#059669]'
-          )}>
-            {savingsRate >= 0
-              ? `Saved ${Math.round(savingsRate)}% of income`
-              : `Overspent by ${Math.abs(Math.round(savingsRate))}% of income`}
-          </p>
-        )}
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-1.5 text-[11.5px]">
+          {savingsRate !== null && (
+            <span className={savingsRate < 0 ? 'text-[#dc2626]' : 'text-[#059669]'}>
+              {savingsRate >= 0
+                ? `Saved ${Math.round(savingsRate)}% of income`
+                : `Overspent by ${Math.abs(Math.round(savingsRate))}% of income`}
+            </span>
+          )}
+          {netDiffAbs !== null && (
+            <span className="text-[#a3a3a3]">
+              <span className={netDiffAbs < 0 ? 'text-[#dc2626]' : 'text-[#059669]'}>
+                {netDiffAbs >= 0 ? '+' : ''}{formatCurrency(netDiffAbs)}
+              </span>
+              {' '}vs last period
+            </span>
+          )}
+        </div>
 
-        <div className="grid grid-cols-2 gap-2 border-t border-[#f2f2f0] pt-3 mt-3">
-          <StatTile
-            icon={TrendingUp}
+        {/* Income / expense (/ saved): the badge icons carry their own color, so the tiles stay neutral */}
+        <div className={cn(
+          'grid grid-cols-1 gap-2 border-t border-[#f2f2f0] pt-3 mt-4',
+          totalSavings > 0 ? 'sm:grid-cols-3' : 'sm:grid-cols-2'
+        )}>
+          <SummaryTile
+            icon={IncomeIcon}
             label="Income"
             value={formatCurrency(totalIncome)}
             valueClassName="text-[#059669]"
-            color="#059669"
+            diff={previousSummary ? <DiffValue pct={incomeDiffPct} goodWhenUp className="text-[11px]" /> : null}
           />
-          <StatTile
-            icon={Receipt}
-            label="Expense"
-            value={formatCurrency(totalExpense)}
-            color="#dc2626"
+          <SummaryTile
+            icon={ExpenseIcon}
+            label={totalSavings > 0 ? 'Spent' : 'Expense'}
+            value={formatCurrency(totalSpending)}
+            valueClassName="text-[#dc2626]"
+            diff={previousSummary ? <DiffValue pct={expenseDiffPct} goodWhenUp={false} className="text-[11px]" /> : null}
           />
+          {totalSavings > 0 && (
+            <SummaryTile
+              icon={SavedBadge}
+              label="Saved"
+              value={formatCurrency(totalSavings)}
+              valueClassName="text-[#db6a6a]"
+            />
+          )}
         </div>
-
-        {previousSummary && (
-          <div className="-mx-4 mt-3 border-t border-[#f2f2f0]">
-            <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84] px-4 pt-3 pb-1">
-              Vs last period
-            </p>
-
-            <div className="flex items-center justify-between px-4 py-[9px] border-t border-[#f2f2f0]">
-              <p className="text-[13px] text-[#252525]">Income</p>
-              <DiffValue pct={incomeDiffPct} goodWhenUp />
-            </div>
-
-            <div className="flex items-center justify-between px-4 py-[9px] border-t border-[#f2f2f0]">
-              <p className="text-[13px] text-[#252525]">Expense</p>
-              <DiffValue pct={expenseDiffPct} goodWhenUp={false} />
-            </div>
-
-            <div className="flex items-center justify-between px-4 py-[9px] border-t border-[#f2f2f0]">
-              <p className="text-[13px] text-[#252525]">Net</p>
-              <p className={cn(
-                'text-[13px] font-medium',
-                netDiffAbs !== null && netDiffAbs < 0 ? 'text-[#dc2626]' : 'text-[#059669]'
-              )}>
-                {netDiffAbs !== null && netDiffAbs >= 0 ? '+' : ''}
-                {netDiffAbs !== null ? formatCurrency(netDiffAbs) : '—'}
-              </p>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* ── Budgets card (Categories) ── */}
@@ -469,7 +598,7 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
                       <div className="flex items-center gap-2 min-w-0">
                         <div
                           className="h-2 w-2 rounded-full shrink-0"
-                          style={{ backgroundColor: cat.color ?? '#94a3b8' }}
+                          style={{ backgroundColor: categoryChartColor(cat) }}
                         />
                         <p className="text-[13px] text-[#252525] truncate">{cat.name}</p>
                         {target !== undefined && ratio !== null && ratio >= 0.7 && (
@@ -498,7 +627,7 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
                       <div className="flex-1 h-1 rounded-full bg-[#f2f2f0] overflow-hidden">
                         <div
                           className="h-full rounded-full transition-all duration-300"
-                          style={{ width: `${pct ?? 0}%`, backgroundColor: cat.color ?? '#94a3b8' }}
+                          style={{ width: `${pct ?? 0}%`, backgroundColor: categoryChartColor(cat) }}
                         />
                       </div>
                       {target !== undefined && (
@@ -535,100 +664,113 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
       <div className="rounded-[20px] border border-[#e5e5e5] bg-white p-4 lg:col-span-2">
         <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84] mb-3">Stats</p>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
-          <StatTile
-            icon={CalendarDays}
+        {/* Pace: how fast money is going vs how fast it safely can */}
+        <p className="text-[10.5px] font-medium text-[#a3a3a3] mb-1.5">Pace</p>
+        <StatGrid className={paceCount === 3 ? 'grid-cols-2 sm:grid-cols-3' : paceCount === 2 ? 'grid-cols-2' : 'grid-cols-1'}>
+          <StatCell
             label="Daily average"
             value={formatCurrency(stats.dailyAvg)}
-            sub={`over ${stats.daysElapsed} day${stats.daysElapsed !== 1 ? 's' : ''}`}
-            color="#3b82f6"
+            valueClassName={overSafePace ? 'text-[#d97706]' : undefined}
+            sub={
+              <>
+                over {stats.daysElapsed} day{stats.daysElapsed !== 1 ? 's' : ''}
+                {stats.safeDaily !== null && (
+                  <span className={overSafePace ? 'text-[#d97706]' : 'text-[#059669]'}>
+                    {' · '}{overSafePace ? 'above safe pace' : 'within safe pace'}
+                  </span>
+                )}
+              </>
+            }
           />
 
           {stats.safeDaily !== null && (
-            <StatTile
-              icon={Wallet}
+            <StatCell
               label="Safe per day"
               value={formatCurrency(stats.safeDaily)}
               sub="to stay on track"
-              color="#16a34a"
             />
           )}
 
-          {stats.daysRemaining !== null && (
-            <StatTile
-              icon={CalendarDays}
+          {showDaysLeft && (
+            <StatCell
               label="Days left"
               value={`${stats.daysRemaining}`}
-              sub={stats.totalDays !== null ? `of ${stats.totalDays}` : undefined}
-              color="#f59e0b"
+              className={paceCount === 3 ? 'col-span-2 sm:col-span-1' : undefined}
+              visual={stats.totalDays ? <Meter value={stats.daysElapsed / stats.totalDays} color="#4d7a1d" /> : undefined}
+              sub={stats.totalDays !== null ? `day ${Math.min(stats.daysElapsed, stats.totalDays)} of ${stats.totalDays}` : undefined}
             />
           )}
+        </StatGrid>
 
+        {/* Highlights: the standout moments of the period */}
+        <p className="text-[10.5px] font-medium text-[#a3a3a3] mt-4 mb-1.5">Highlights</p>
+        <StatGrid className={cn('grid-cols-2', biggestDayEntry ? 'lg:grid-cols-4' : 'lg:grid-cols-3')}>
           {biggestDayEntry && (
-            <StatTile
-              icon={Flame}
+            <StatCell
               label="Biggest day"
               value={formatCurrency(biggestDayEntry.total)}
               sub={formatDateShort(biggestDayEntry.date)}
               onTap={() => setBiggestDayOpen(true)}
-              color="#f97316"
             />
           )}
 
-          <StatTile
-            icon={Receipt}
+          <StatCell
             label="Biggest expense"
             value={biggestExpense ? formatCurrency(biggestExpense.amount) : '—'}
             sub={biggestExpense?.note ?? biggestExpense?.category?.name}
-            color="#8b5cf6"
           />
 
-          <StatTile
-            icon={ArrowLeftRight}
+          <StatCell
             label="Transactions"
             value={`${expenses.length + incomes.length}`}
-            sub={`${expenses.length} out · ${incomes.length} in`}
-            color="#14b8a6"
+            visual={<SplitBar left={expenses.length} right={incomes.length} leftColor="#dc2626" rightColor="#059669" />}
+            sub={
+              <>
+                <span className="text-[#dc2626]">{expenses.length} out</span>
+                {' · '}
+                <span className="text-[#059669]">{incomes.length} in</span>
+              </>
+            }
           />
 
-          <StatTile
-            icon={Moon}
+          <StatCell
             label="No-spend days"
             value={`${stats.noSpendDays}`}
-            sub={stats.noSpendDays > 0 ? 'nice' : 'none yet'}
-            color="#6366f1"
+            className={!biggestDayEntry ? 'col-span-2 lg:col-span-1' : undefined}
+            visual={<Meter value={stats.noSpendDays / stats.daysElapsed} color="#6366f1" />}
+            sub={`of ${stats.daysElapsed} day${stats.daysElapsed !== 1 ? 's' : ''}${stats.isClosed ? '' : ' so far'}`}
           />
-        </div>
+        </StatGrid>
 
         {periodComparison && (
           <div className="mt-4 pt-3 border-t border-[#f2f2f0]">
             <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84] mb-2">Across your periods</p>
-            <div className="grid grid-cols-3 gap-2">
-              <StatTile
-                icon={TrendingUp}
+            <StatGrid className="grid-cols-3">
+              <StatCell
                 label="Best period"
                 value={formatCurrency(periodComparison.best.net)}
                 sub={periodComparison.best.label}
                 valueClassName="text-[#059669]"
-                color="#059669"
               />
-              <StatTile
-                icon={TrendingDown}
+              <StatCell
                 label="Worst period"
                 value={formatCurrency(periodComparison.worst.net)}
                 sub={periodComparison.worst.label}
                 valueClassName={periodComparison.worst.net < 0 ? 'text-[#dc2626]' : undefined}
-                color="#dc2626"
               />
-              <StatTile
-                icon={ArrowLeftRight}
+              <StatCell
                 label="Average net"
                 value={formatCurrency(periodComparison.average)}
                 sub={`across ${trend.length} periods`}
                 valueClassName={periodComparison.average < 0 ? 'text-[#dc2626]' : undefined}
-                color="#64748b"
               />
-            </div>
+            </StatGrid>
+            <PeriodRange
+              worst={periodComparison.worst.net}
+              best={periodComparison.best.net}
+              average={periodComparison.average}
+              current={net}
+            />
           </div>
         )}
       </div>
@@ -639,17 +781,20 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
           <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84] px-4 pt-4">
             Spending by account
           </p>
-          <p className="text-[11px] text-[#a3a3a3] px-4 pb-3">% of this period's total expense</p>
+          <p className="text-[11px] text-[#a3a3a3] px-4 pb-3">% of this period's spending (savings excluded)</p>
           {byAccount.map(a => {
-            const pct = totalExpense > 0 ? Math.round((a.amount / totalExpense) * 100) : 0
+            const pct = totalSpending > 0 ? Math.round((a.amount / totalSpending) * 100) : 0
             return (
-              <div key={a.name} className="px-4 py-[9px] border-b border-[#f2f2f0] last:border-b-0">
-                <div className="flex items-center justify-between mb-1">
-                  <p className="text-[13px] text-[#252525]">{a.name}</p>
-                  <p className="text-[13px] font-medium text-[#252525]">{formatCurrency(a.amount)}</p>
-                </div>
-                <div className="h-1 rounded-full bg-[#f2f2f0] overflow-hidden">
-                  <div className="h-full rounded-full bg-[#94a3b8]" style={{ width: `${pct}%` }} />
+              <div key={a.name} className="flex items-center gap-3 px-4 py-[9px] border-b border-[#f2f2f0] last:border-b-0">
+                <AccountTypeTile type={a.type} className="w-8 h-8" />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="text-[13px] text-[#252525] truncate">{a.name}</p>
+                    <p className="text-[13px] font-medium text-[#252525]">{formatCurrency(a.amount)}</p>
+                  </div>
+                  <div className="h-1 rounded-full bg-[#f2f2f0] overflow-hidden">
+                    <div className="h-full rounded-full bg-[#94a3b8]" style={{ width: `${pct}%` }} />
+                  </div>
                 </div>
               </div>
             )
@@ -693,51 +838,97 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
         </div>
       )}
 
-      {/* ── Projection card (Overview) — only when the period has an end date and income > 0 ── */}
-      {hasPredictive && stats.projectedSpend !== null && stats.projectedClose !== null && (
-        <div className="rounded-[20px] border border-[#cfdcb8] bg-[#f2f6ea] overflow-hidden lg:col-span-2">
-          <p className="text-[11px] uppercase tracking-[.14em] text-[#4d7a1d] px-4 pt-4 pb-1">
-            Projection
-          </p>
+      {/* ── Projection card (Overview) — open periods only: where this period lands if today's pace holds ── */}
+      {hasPredictive && stats.projectedSpend !== null && stats.projectedClose !== null && stats.totalDays !== null && (() => {
+        const projectedSpend = stats.projectedSpend
+        const projectedClose = stats.projectedClose
+        const overIncome = projectedSpend > totalIncome
+        // One scale for spent-so-far, the projected rest, and income, so the three read against each other.
+        const scale = Math.max(totalIncome, projectedSpend)
+        const spentPct = (totalExpense / scale) * 100
+        const restPct = ((projectedSpend - totalExpense) / scale) * 100
+        const incomePct = (totalIncome / scale) * 100
+        const daysLeft = stats.daysRemaining ?? 0
+        const runway = stats.runwayDays
 
-          <div className="flex items-center justify-between px-4 py-[9px] border-t border-[#dfe8d2]">
-            <p className="text-[13px] text-[#4d7a1d]">Projected spend</p>
-            <div className="text-right">
-              <p className={cn(
-                'text-[13px] font-medium',
-                stats.projectedSpend > totalIncome ? 'text-[#dc2626]' : 'text-[#252525]'
-              )}>
-                {formatCurrency(stats.projectedSpend)}
-              </p>
-              <p className="text-[10px] text-[#4d7a1d] mt-0.5">if daily avg holds</p>
+        return (
+          <div className="rounded-[20px] border border-[#cfdcb8] bg-[#f2f6ea] p-4 lg:col-span-2">
+            <div className="flex items-baseline justify-between gap-3">
+              <p className="text-[11px] uppercase tracking-[.14em] text-[#4d7a1d]">Projection</p>
+              {stats.isEndDateEstimated && (
+                <p className="text-[10.5px] text-[#6b8f45]">assuming a {stats.totalDays}-day period, like the last one</p>
+              )}
             </div>
-          </div>
-
-          <div className="flex items-center justify-between px-4 py-[9px] border-t border-[#dfe8d2]">
-            <p className="text-[13px] text-[#4d7a1d]">Projected close</p>
-            <p className={cn(
-              'text-[13px] font-medium',
-              stats.projectedClose < 0 ? 'text-[#dc2626]' : 'text-[#252525]'
-            )}>
-              {formatCurrency(stats.projectedClose)}
+            <p className="text-[12.5px] text-[#4d7a1d] mt-1.5">
+              If you keep spending <span className="font-semibold text-[#252525]">{formatCurrency(stats.dailyAvg)}/day</span> (your average so far{totalSavings > 0 ? ', savings not counted' : ''}):
             </p>
-          </div>
 
-          {stats.runwayDays !== null && (
-            <div className="flex items-center justify-between px-4 py-[9px] border-t border-[#dfe8d2]">
-              <p className="text-[13px] text-[#4d7a1d]">Runway at this pace</p>
-              <p className={cn(
-                'text-[13px] font-medium',
-                stats.runwayDays <= 0 ? 'text-[#dc2626]' : 'text-[#252525]'
-              )}>
-                {stats.runwayDays <= 0
-                  ? 'Already over'
-                  : `${stats.runwayDays} day${stats.runwayDays !== 1 ? 's' : ''}`}
-              </p>
+            {/* Spent so far → projected rest, against this period's income */}
+            <div className="relative mt-4 h-2.5 rounded-full bg-white/80">
+              <div className="absolute inset-y-0 left-0 flex overflow-hidden rounded-full" style={{ width: `${spentPct + restPct}%` }}>
+                <div className="h-full bg-[#4d7a1d]" style={{ width: `${(spentPct / (spentPct + restPct || 1)) * 100}%` }} />
+                <div
+                  className={cn('h-full flex-1', overIncome ? 'bg-[#dc2626]/45' : 'bg-[#4d7a1d]/35')}
+                />
+              </div>
+              {overIncome && (
+                <div
+                  className="absolute -top-1 -bottom-1 w-[2px] -translate-x-1/2 rounded-full bg-[#252525]"
+                  style={{ left: `${incomePct}%` }}
+                  title="Income"
+                />
+              )}
             </div>
-          )}
-        </div>
-      )}
+            <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[10.5px] text-[#6b8f45]">
+              <span className="inline-flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-[#4d7a1d]" /> {totalSavings > 0 ? 'Spent + saved' : 'Spent'} {formatCurrency(totalExpense)}
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <span className={cn('h-2 w-2 rounded-full', overIncome ? 'bg-[#dc2626]/45' : 'bg-[#4d7a1d]/35')} />
+                Still to come ~{formatCurrency(projectedSpend - totalExpense)}
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                {overIncome ? <span className="h-2.5 w-[2px] rounded-full bg-[#252525]" /> : <span className="h-2 w-2 rounded-full border border-[#cfdcb8] bg-white" />}
+                Income {formatCurrency(totalIncome)}
+              </span>
+            </div>
+
+            <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-px overflow-hidden rounded-[14px] border border-[#dfe8d2] bg-[#dfe8d2]">
+              <div className="bg-[#f7faf2] p-3">
+                <p className="text-[11px] text-[#6b8f45]">You'll spend about</p>
+                <p className={cn('text-[17px] font-medium mt-1 tabular-nums', overIncome ? 'text-[#dc2626]' : 'text-[#252525]')}>
+                  {formatCurrency(projectedSpend)}
+                </p>
+                <p className="text-[10.5px] text-[#8aa56a] mt-1">
+                  {totalSavings > 0 ? `in total, incl. ${formatCurrency(totalSavings)} saved` : 'in total this period'}
+                </p>
+              </div>
+              <div className="bg-[#f7faf2] p-3">
+                <p className="text-[11px] text-[#6b8f45]">You'll end with</p>
+                <p className={cn('text-[17px] font-medium mt-1 tabular-nums', projectedClose < 0 ? 'text-[#dc2626]' : 'text-[#059669]')}>
+                  {projectedClose >= 0 ? '' : '−'}{formatCurrency(Math.abs(projectedClose))}
+                </p>
+                <p className="text-[10.5px] text-[#8aa56a] mt-1">
+                  {projectedClose >= 0 ? "of this period's income left over" : 'more than this period\'s income'}
+                </p>
+              </div>
+              <div className="bg-[#f7faf2] p-3">
+                <p className="text-[11px] text-[#6b8f45]">Money lasts</p>
+                <p className={cn('text-[17px] font-medium mt-1 tabular-nums', runway !== null && runway < daysLeft ? 'text-[#dc2626]' : 'text-[#252525]')}>
+                  {runway === null ? '—' : runway <= 0 ? 'Already out' : `${runway} day${runway !== 1 ? 's' : ''}`}
+                </p>
+                <p className="text-[10.5px] text-[#8aa56a] mt-1">
+                  {runway === null
+                    ? 'no spending yet'
+                    : runway >= daysLeft
+                      ? `past the period end (${daysLeft} day${daysLeft !== 1 ? 's' : ''} left)`
+                      : `runs out ${daysLeft - runway} day${daysLeft - runway !== 1 ? 's' : ''} before the period ends`}
+                </p>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
 
     </div>
 

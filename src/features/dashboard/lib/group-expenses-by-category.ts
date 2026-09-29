@@ -4,6 +4,7 @@ export interface CategoryTotal {
     id: string
     name: string
     color: string | null
+    bg_color?: string | null
     icon?: string | null
     amount: number
 }
@@ -21,6 +22,7 @@ export function groupExpensesByCategory(transactions: TransactionWithDetails[]):
                 id: tx.category.id,
                 name: tx.category.name,
                 color: tx.category.color,
+                bg_color: tx.category.bg_color,
                 icon: tx.category.icon,
                 amount: tx.amount,
             })

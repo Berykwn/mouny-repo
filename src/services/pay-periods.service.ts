@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase'
 import { handleError, type ServiceResult } from './_base'
 import type { PayPeriod } from '@/types/'
+import { toISODate } from '@/lib/helpers'
 
 export const payPeriodsService = {
     async getActive(): Promise<ServiceResult<PayPeriod>> {
@@ -87,7 +88,14 @@ export const payPeriodsService = {
     },
 
     setActive: async (periodId: string) => {
-        // Close all active periods first
+        // Close all active periods first. One that never got an end date ends today,
+        // so its stats stop counting days here instead of running on forever.
+        await supabase
+            .from('pay_periods')
+            .update({ status: 'closed', end_date: toISODate() })
+            .eq('status', 'active')
+            .is('end_date', null)
+
         await supabase
             .from('pay_periods')
             .update({ status: 'closed' })

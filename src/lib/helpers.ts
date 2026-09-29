@@ -58,22 +58,32 @@ export function spentPercent(spent: number, budget: number): number {
     return Math.round((spent / budget) * 100)
 }
 
+/**
+ * The calendar date (YYYY-MM-DD) in the user's local time zone. Not `toISOString()`:
+ * that is UTC, which in WIB turns local midnight into the previous day.
+ */
 export function toISODate(date: Date = new Date()): string {
-    return date.toISOString().split('T')[0]
+    const y = date.getFullYear()
+    const m = String(date.getMonth() + 1).padStart(2, '0')
+    const d = String(date.getDate()).padStart(2, '0')
+    return `${y}-${m}-${d}`
 }
 
+/** Days since the Unix epoch for the YYYY-MM-DD part of a date string, time zone ignored. */
+function toDayNumber(dateStr: string): number {
+    const [y, m, d] = dateStr.slice(0, 10).split('-').map(Number)
+    return Date.UTC(y, m - 1, d) / (1000 * 60 * 60 * 24)
+}
+
+/** Whole calendar days from `startDate` to `endDate` (default: today, local). */
 export function getDaysBetween(
   startDate: string | undefined,
-  endDate: string = new Date().toISOString()
+  endDate: string = toISODate()
 ) {
   if (!startDate) return 0
 
-  const start = new Date(startDate)
-  const end = new Date(endDate)
-
-  if (isNaN(start.getTime()) || isNaN(end.getTime())) return 0
-
-  return Math.floor((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
+  const days = toDayNumber(endDate) - toDayNumber(startDate)
+  return Number.isNaN(days) ? 0 : days
 }
 
 export function formatCompact(value: number): string {
