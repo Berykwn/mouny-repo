@@ -1,17 +1,23 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import { WalletIcon, WALLET_TILE_CLASS } from '@/components/account-type-icon'
 import { BottomDrawer } from '@/components/bottom-drawer'
 import { ConfirmDrawer } from '@/components/confirmation-drawer'
 import { AccountForm } from './components/account-form'
 import { AccountList } from './components/account-list'
+import { AccountsHero } from './components/accounts-hero'
+import { BalanceTrend } from './components/balance-trend'
+import { AccountDetail } from './components/account-detail'
+import {
+    accountInsights, accountShares, balanceTrend, daysIntoPeriod, totalRunwayDays,
+} from './lib/account-insights'
 import { accountsService } from '@/services/accounts-categories.service'
-import type { Account } from '@/types'
-import { formatCurrency } from '@/lib/helpers'
+import { payPeriodsService } from '@/services/pay-periods.service'
+import { transactionsService } from '@/services/transactions.service'
+import type { Account, PayPeriod, TransactionWithDetails } from '@/types'
 import { toast } from 'sonner'
 import { LoadingContent } from '@/components/loading-content'
 import { cn } from '@/lib/utils'
 import { PageHeader } from '@/components/page-header'
-import { HeroGlow, HeroAction } from '@/components/hero'
 
 export function AccountPage() {
     const [accounts, setAccounts] = useState<Account[]>([])
@@ -20,12 +26,30 @@ export function AccountPage() {
     const [addAccountDrawer, setAddAccountDrawer] = useState(false)
     const [deletingAccountId, setDeletingAccountId] = useState<string | null>(null)
     const [deleteLoading, setDeleteLoading] = useState(false)
+    const [openAccount, setOpenAccount] = useState<Account | null>(null)
+    const [editTab, setEditTab] = useState<'edit' | 'transfer'>('edit')
+    const [activePeriod, setActivePeriod] = useState<PayPeriod | null>(null)
+    const [periods, setPeriods] = useState<PayPeriod[]>([])
+    const [periodTxs, setPeriodTxs] = useState<TransactionWithDetails[]>([])
 
     const load = useCallback(async () => {
         setLoading(true)
-        const { data: accs, error } = await accountsService.getAll()
+        const [{ data: accs, error }, { data: active }, { data: allPeriods }] = await Promise.all([
+            accountsService.getAll(),
+            payPeriodsService.getActive(),
+            payPeriodsService.getAll(),
+        ])
         if (error) toast.error(error)
         setAccounts(accs ?? [])
+        // Activity, runway and trend are extras: the list still works if these fail.
+        setActivePeriod(active ?? null)
+        setPeriods(allPeriods ?? [])
+        if (active) {
+            const { data: txs } = await transactionsService.getByPeriod(active.id)
+            setPeriodTxs(txs ?? [])
+        } else {
+            setPeriodTxs([])
+        }
         setLoading(false)
     }, [])
 
@@ -50,33 +74,35 @@ export function AccountPage() {
 
     const totalBalance = accounts.reduce((s, a) => s + a.balance, 0)
 
+    const daysElapsed = daysIntoPeriod(activePeriod)
+    const insights = useMemo(() => accountInsights(accounts, periodTxs, daysElapsed), [accounts, periodTxs, daysElapsed])
+    const shares = useMemo(() => accountShares(accounts), [accounts])
+    const trend = useMemo(() => balanceTrend(periods, totalBalance), [periods, totalBalance])
+    const runwayDays = totalRunwayDays(totalBalance, periodTxs, daysElapsed)
+    let overdrawnCount = 0
+    let lowCount = 0
+    for (const info of insights.values()) {
+        if (info.health === 'overdrawn') overdrawnCount++
+        else if (info.health === 'low') lowCount++
+    }
+
     return (
         <>
             <PageHeader title="Accounts" />
             <section className="px-4 pb-4 lg:px-0 space-y-4">
                 <div className="space-y-4 lg:space-y-0 lg:grid lg:grid-cols-[1fr_360px] lg:gap-4 lg:items-start">
-                    <header className="card p-5 relative overflow-hidden lg:order-2">
-                        <HeroGlow />
-                        <div className="relative flex items-center justify-between mb-4">
-                            <p className="text-[11px] uppercase tracking-[.14em] text-muted-ink">Total balance</p>
-                            <HeroAction onClick={() => setAddAccountDrawer(true)}>Account</HeroAction>
-                        </div>
-                        {accounts.length > 0 ? (
-                            <div className="relative">
-                                <p className={cn(
-                                    'text-[32px] lg:text-[26px] font-medium tracking-[-0.02em] leading-none tabular-nums',
-                                    totalBalance < 0 ? 'text-negative' : 'text-ink'
-                                )}>
-                                    {formatCurrency(totalBalance)}
-                                </p>
-                                <p className="text-[11px] text-muted-ink mt-2">
-                                    across {accounts.length} account{accounts.length > 1 ? 's' : ''}
-                                </p>
-                            </div>
-                        ) : (
-                            <p className="relative text-[13px] text-muted-ink">Add your first account</p>
-                        )}
-                    </header>
+                    <div className="space-y-4 lg:order-2">
+                        <AccountsHero
+                            totalBalance={totalBalance}
+                            accountCount={accounts.length}
+                            shares={shares}
+                            runwayDays={runwayDays}
+                            overdrawnCount={overdrawnCount}
+                            lowCount={lowCount}
+                            onAdd={() => setAddAccountDrawer(true)}
+                        />
+                        {!loading && accounts.length > 0 && <BalanceTrend points={trend} />}
+                    </div>
 
                     <div className="lg:order-1">
                         {loading ? (
@@ -103,8 +129,8 @@ export function AccountPage() {
 
                                 <AccountList
                                     accounts={accounts}
-                                    onEdit={setEditAccount}
-                                    onDeleteRequest={setDeletingAccountId}
+                                    insights={insights}
+                                    onOpen={setOpenAccount}
                                 />
                             </div>
                         )}
@@ -115,10 +141,26 @@ export function AccountPage() {
                 <BottomDrawer open={addAccountDrawer} onClose={() => setAddAccountDrawer(false)} title="Add Account">
                     <AccountForm onSuccess={() => { setAddAccountDrawer(false); load() }} />
                 </BottomDrawer>
-                <BottomDrawer open={!!editAccount} onClose={() => setEditAccount(null)} title="Edit Account">
+                {/* Detail sheet — each action closes it and hands off to its own drawer */}
+                <BottomDrawer open={!!openAccount} onClose={() => setOpenAccount(null)} title={openAccount?.name ?? ''}>
+                    {openAccount && (
+                        <AccountDetail
+                            account={openAccount}
+                            insight={insights.get(openAccount.id)}
+                            canTransfer={accounts.length > 1}
+                            hasActivePeriod={!!activePeriod}
+                            onTransfer={() => { setEditTab('transfer'); setEditAccount(openAccount); setOpenAccount(null) }}
+                            onEdit={() => { setEditTab('edit'); setEditAccount(openAccount); setOpenAccount(null) }}
+                            onDelete={() => { setDeletingAccountId(openAccount.id); setOpenAccount(null) }}
+                        />
+                    )}
+                </BottomDrawer>
+                <BottomDrawer open={!!editAccount} onClose={() => setEditAccount(null)} title={editTab === 'transfer' ? 'Transfer' : 'Edit Account'}>
                     {editAccount &&
                         <AccountForm
+                            key={`${editAccount.id}-${editTab}`}
                             initial={editAccount}
+                            initialTab={editTab}
                             onSuccess={() => {
                                 setEditAccount(null);
                                 load();

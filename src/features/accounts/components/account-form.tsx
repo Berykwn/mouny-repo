@@ -13,6 +13,8 @@ interface AccountFormProps {
     onSuccess: () => void
     initial?: Account
     allAccounts?: Account[]
+    /** Which tab an edit opens on (e.g. Transfer from the account detail sheet). */
+    initialTab?: Tab
 }
 
 type Tab = 'edit' | 'transfer'
@@ -20,10 +22,10 @@ type Tab = 'edit' | 'transfer'
 const FIELD_LABEL = 'text-[11px] font-medium uppercase tracking-[.14em] text-[#8a8a84]'
 const SUBMIT_BUTTON = 'w-full h-12 rounded-[14px] text-[13px] font-semibold text-white bg-[#6FA82B] hover:bg-[#6FA82B]/90 transition-colors disabled:opacity-50 disabled:pointer-events-none'
 
-export function AccountForm({ onSuccess, initial, allAccounts = [] }: AccountFormProps) {
+export function AccountForm({ onSuccess, initial, allAccounts = [], initialTab = 'edit' }: AccountFormProps) {
     const isEdit = !!initial
 
-    const [tab, setTab] = useState<Tab>('edit')
+    const [tab, setTab] = useState<Tab>(initialTab)
     const [name, setName] = useState(initial?.name ?? '')
     const [type, setType] = useState<AccountType>((initial?.type as AccountType) ?? 'bank')
     const [initialBalance, setInitialBalance] = useState('')
