@@ -63,10 +63,12 @@ function generateInsights(transactions: TransactionWithDetails[], stats: PeriodS
     }
 
     if (stats.totalIncome > 0) {
-        const savingsRate = Math.round((stats.remaining / stats.totalIncome) * 100)
-        insights.push(savingsRate < 0
-            ? { id: 'overspent', tone: 'warning', text: `You've overspent this period by ${formatCurrency(Math.abs(stats.remaining))}.` }
-            : { id: 'savings-rate', tone: savingsRate >= 20 ? 'positive' : 'neutral', text: `Saving ${savingsRate}% of income so far this period.` })
+        // Savings transactions aren't spending, so they count toward the rate, not against it.
+        const unspent = stats.totalIncome - stats.totalSpending
+        const savingsRate = Math.round((unspent / stats.totalIncome) * 100)
+        insights.push(unspent < 0
+            ? { id: 'overspent', tone: 'warning', text: `You've overspent this period by ${formatCurrency(Math.abs(unspent))}.` }
+            : { id: 'savings-rate', tone: savingsRate >= 20 ? 'positive' : 'neutral', text: `${savingsRate}% of income unspent so far this period.` })
     }
 
     if (insights.length === 0) {

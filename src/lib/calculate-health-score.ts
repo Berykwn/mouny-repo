@@ -1,12 +1,13 @@
 export function calculateHealthScore({
     totalIncome,
-    totalExpense,
+    totalSpending,
     totalBalance,
     totalDebt,
     expenseDiffPct,
 }: {
     totalIncome: number
-    totalExpense: number
+    /** Expenses minus savings — savings transactions raise the rate, they don't lower it. */
+    totalSpending: number
     totalBalance: number
     totalDebt: number
     expenseDiffPct: number | null
@@ -21,7 +22,7 @@ export function calculateHealthScore({
     const overallReasons: string[] = []
 
     if (totalIncome > 0) {
-        const savingsRate = (totalIncome - totalExpense) / totalIncome
+        const savingsRate = (totalIncome - totalSpending) / totalIncome
         const savingsPct = Math.round(savingsRate * 100)
         if (savingsRate < 0) { score -= 50; periodReasons.push('Overspent budget') }
         else if (savingsRate < 0.1) { score -= 30; periodReasons.push(`Savings rate only ${savingsPct}%`) }

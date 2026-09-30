@@ -2,6 +2,7 @@ import { supabase } from '@/lib/supabase'
 import { handleError, type ServiceResult } from './_base'
 import type { Transaction, TransactionWithDetails, TransactionType, Category } from '@/types/'
 import { COLORS } from '@/lib/static-colors'
+import { summarizeTransactions, type PeriodSummary } from '@/lib/period-summary'
 
 export interface CreateTransactionInput {
     pay_period_id: string
@@ -111,35 +112,16 @@ export const transactionsService = {
         }
     },
 
-    async getPeriodSummary(periodId: string): Promise<ServiceResult<{
-        income: number
-        expense: number
-        net: number
-    }>> {
+    async getPeriodSummary(periodId: string): Promise<ServiceResult<PeriodSummary>> {
         try {
             const { data, error } = await supabase
                 .from('transactions')
-                .select('type, amount')
+                .select('type, amount, category:categories(is_savings)')
                 .eq('pay_period_id', periodId)
 
             if (error) throw error
 
-            const income = (data ?? [])
-                .filter(t => t.type === 'income')
-                .reduce((s, t) => s + t.amount, 0)
-
-            const expense = (data ?? [])
-                .filter(t => t.type === 'expense')
-                .reduce((s, t) => s + t.amount, 0)
-
-            return {
-                data: {
-                    income,
-                    expense,
-                    net: income - expense,
-                },
-                error: null,
-            }
+            return { data: summarizeTransactions(data ?? []), error: null }
         } catch (err) {
             return {
                 data: null,
@@ -148,32 +130,23 @@ export const transactionsService = {
         }
     },
 
-    async getPeriodSummaries(periodIds: string[]): Promise<ServiceResult<Record<string, {
-        income: number
-        expense: number
-        net: number
-    }>>> {
+    async getPeriodSummaries(periodIds: string[]): Promise<ServiceResult<Record<string, PeriodSummary>>> {
         if (periodIds.length === 0) return { data: {}, error: null }
 
         try {
             const { data, error } = await supabase
                 .from('transactions')
-                .select('pay_period_id, type, amount')
+                .select('pay_period_id, type, amount, category:categories(is_savings)')
                 .in('pay_period_id', periodIds)
 
             if (error) throw error
 
-            const summaries: Record<string, { income: number; expense: number; net: number }> = {}
-            for (const id of periodIds) {
-                summaries[id] = { income: 0, expense: 0, net: 0 }
-            }
-            for (const tx of data ?? []) {
-                const summary = summaries[tx.pay_period_id]
-                if (!summary) continue
-                if (tx.type === 'income') summary.income += tx.amount
-                else summary.expense += tx.amount
-                summary.net = summary.income - summary.expense
-            }
+            const rowsByPeriod: Record<string, NonNullable<typeof data>> = {}
+            for (const id of periodIds) rowsByPeriod[id] = []
+            for (const tx of data ?? []) rowsByPeriod[tx.pay_period_id]?.push(tx)
+
+            const summaries: Record<string, PeriodSummary> = {}
+            for (const id of periodIds) summaries[id] = summarizeTransactions(rowsByPeriod[id])
 
             return { data: summaries, error: null }
         } catch (err) {

@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
-import { Plus, CalendarDays, CheckCircle } from 'lucide-react'
+import { Plus, CheckCircle } from 'lucide-react'
+import CalendarIcon from '~icons/app/period-calendar'
 import { BottomDrawer } from '@/components/bottom-drawer'
 import { OpenPeriodForm } from './components/open-period-form'
 import { PeriodHistory } from './components/period-history'
@@ -39,8 +40,8 @@ export function PeriodHistoryPage() {
         <div className="card p-4 space-y-4 lg:order-2">
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
-                    <div className="w-9 h-9 rounded-[10px] bg-brand/10 flex items-center justify-center shrink-0">
-                        <CalendarDays className="w-4 h-4 text-brand" />
+                    <div className="w-9 h-9 rounded-[10px] bg-surface-hover flex items-center justify-center shrink-0">
+                        <CalendarIcon className="w-5 h-5" />
                     </div>
                     <div>
                         <p className="text-[13px] font-semibold text-ink">Active Period</p>

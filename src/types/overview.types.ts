@@ -1,4 +1,5 @@
 import { Account, PayPeriod, TransactionWithDetails } from "."
+import type { PeriodSummary } from "@/lib/period-summary"
 
 export interface OverviewData {
     totalIncome: number
@@ -9,7 +10,7 @@ export interface OverviewData {
     period: PayPeriod
     fallbackTotalDays: number | null
     allPeriods: PayPeriod[]
-    previousSummary: { income: number; expense: number; net: number } | null
+    previousSummary: PeriodSummary | null
     totalBalance: number
     totalDebt: number
 }

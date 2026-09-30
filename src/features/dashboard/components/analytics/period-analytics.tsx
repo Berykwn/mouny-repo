@@ -11,6 +11,7 @@ import { BottomDrawer } from '@/components/bottom-drawer'
 import { AccountTypeTile, CashIcon } from '@/components/account-type-icon'
 import { categoryChartColor } from '@/features/categories/components/category-icon'
 import { calculateHealthScore } from '@/lib/calculate-health-score'
+import type { PeriodSummary } from '@/lib/period-summary'
 import { usePeriodStats } from '@/hooks/use-period-stats'
 import { categoryBudgetsService } from '@/services/budgets.service'
 import { usePeriodTrend } from '../../hooks/use-period-trend'
@@ -33,7 +34,7 @@ interface PeriodAnalyticsProps {
   transactions: TransactionWithDetails[]
   period: PayPeriod
   periods: PayPeriod[]
-  previousSummary: { income: number; expense: number; net: number } | null
+  previousSummary: PeriodSummary | null
   totalBalance: number
   totalDebt: number
   /** Length of the previous period, used to estimate an open period's end. */
@@ -427,20 +428,23 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
 
   const periodComparison = useMemo(() => {
     if (trend.length < 2) return null
-    const best = trend.reduce((mx, t) => t.net > mx.net ? t : mx, trend[0])
-    const worst = trend.reduce((mn, t) => t.net < mn.net ? t : mn, trend[0])
-    const average = trend.reduce((s, t) => s + t.net, 0) / trend.length
+    // Ranked by unspent, so a period that moved money into savings isn't marked down for it.
+    const best = trend.reduce((mx, t) => t.unspent > mx.unspent ? t : mx, trend[0])
+    const worst = trend.reduce((mn, t) => t.unspent < mn.unspent ? t : mn, trend[0])
+    const average = trend.reduce((s, t) => s + t.unspent, 0) / trend.length
     return { best, worst, average }
   }, [trend])
 
   // ─── Savings rate, trend vs previous period, and health score ──────────────
 
   // Share of income not spent: what's left plus what went into savings.
-  const savingsRate = totalIncome > 0 ? ((totalIncome - totalSpending) / totalIncome) * 100 : null
+  const unspent = totalIncome - totalSpending
+  const savingsRate = totalIncome > 0 ? (unspent / totalIncome) * 100 : null
 
+  // Spending vs spending — the previous period's savings mustn't count as its spend.
   const expenseDiffPct = useMemo(() => (
-    previousSummary && previousSummary.expense > 0
-      ? Math.round(((totalSpending - previousSummary.expense) / previousSummary.expense) * 100)
+    previousSummary && previousSummary.spending > 0
+      ? Math.round(((totalSpending - previousSummary.spending) / previousSummary.spending) * 100)
       : null
   ), [previousSummary, totalSpending])
 
@@ -450,11 +454,11 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
       : null
   ), [previousSummary, totalIncome])
 
-  const netDiffAbs = previousSummary ? net - previousSummary.net : null
+  const unspentDiffAbs = previousSummary ? unspent - previousSummary.unspent : null
 
   const health = useMemo(() => calculateHealthScore({
     totalIncome,
-    totalExpense: totalSpending,
+    totalSpending,
     totalBalance,
     totalDebt,
     expenseDiffPct,
@@ -521,16 +525,16 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
           {savingsRate !== null && (
             <span className={savingsRate < 0 ? 'text-[#dc2626]' : 'text-[#059669]'}>
               {savingsRate >= 0
-                ? `Saved ${Math.round(savingsRate)}% of income`
+                ? `${Math.round(savingsRate)}% of income unspent`
                 : `Overspent by ${Math.abs(Math.round(savingsRate))}% of income`}
             </span>
           )}
-          {netDiffAbs !== null && (
+          {unspentDiffAbs !== null && (
             <span className="text-[#a3a3a3]">
-              <span className={netDiffAbs < 0 ? 'text-[#dc2626]' : 'text-[#059669]'}>
-                {netDiffAbs >= 0 ? '+' : ''}{formatCurrency(netDiffAbs)}
+              <span className={unspentDiffAbs < 0 ? 'text-[#dc2626]' : 'text-[#059669]'}>
+                {unspentDiffAbs >= 0 ? '+' : ''}{formatCurrency(unspentDiffAbs)}
               </span>
-              {' '}vs last period
+              {' '}unspent vs last period
             </span>
           )}
         </div>
@@ -557,7 +561,7 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
           {totalSavings > 0 && (
             <SummaryTile
               icon={SavedBadge}
-              label="Saved"
+              label="To savings"
               value={formatCurrency(totalSavings)}
               valueClassName="text-[#db6a6a]"
             />
@@ -748,28 +752,28 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
             <StatGrid className="grid-cols-3">
               <StatCell
                 label="Best period"
-                value={formatCurrency(periodComparison.best.net)}
+                value={formatCurrency(periodComparison.best.unspent)}
                 sub={periodComparison.best.label}
                 valueClassName="text-[#059669]"
               />
               <StatCell
                 label="Worst period"
-                value={formatCurrency(periodComparison.worst.net)}
+                value={formatCurrency(periodComparison.worst.unspent)}
                 sub={periodComparison.worst.label}
-                valueClassName={periodComparison.worst.net < 0 ? 'text-[#dc2626]' : undefined}
+                valueClassName={periodComparison.worst.unspent < 0 ? 'text-[#dc2626]' : undefined}
               />
               <StatCell
-                label="Average net"
+                label="Average unspent"
                 value={formatCurrency(periodComparison.average)}
                 sub={`across ${trend.length} periods`}
                 valueClassName={periodComparison.average < 0 ? 'text-[#dc2626]' : undefined}
               />
             </StatGrid>
             <PeriodRange
-              worst={periodComparison.worst.net}
-              best={periodComparison.best.net}
+              worst={periodComparison.worst.unspent}
+              best={periodComparison.best.unspent}
               average={periodComparison.average}
-              current={net}
+              current={unspent}
             />
           </div>
         )}

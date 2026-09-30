@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { transactionsService } from '@/services/transactions.service'
 import { formatPeriodLabel } from '@/lib/helpers'
+import { summarizeTransactions, EMPTY_PERIOD_SUMMARY, type PeriodSummary } from '@/lib/period-summary'
 import type { PayPeriod, TransactionWithDetails } from '@/types'
 
 export interface TrendPoint {
@@ -9,6 +10,8 @@ export interface TrendPoint {
     income: number
     expense: number
     net: number
+    /** Income minus spending (savings not counted as spent) — what periods are ranked by. */
+    unspent: number
     isCurrent: boolean
 }
 
@@ -25,7 +28,7 @@ export function usePeriodTrend(
     selectedPeriod: PayPeriod | null,
     selectedTransactions: TransactionWithDetails[],
 ): { trend: TrendPoint[]; loading: boolean } {
-    const [otherSummaries, setOtherSummaries] = useState<Record<string, { income: number; expense: number; net: number }>>({})
+    const [otherSummaries, setOtherSummaries] = useState<Record<string, PeriodSummary>>({})
     const [loading, setLoading] = useState(false)
 
     const recentPeriods = [...periods]
@@ -52,14 +55,13 @@ export function usePeriodTrend(
 
     if (!selectedPeriod) return { trend: [], loading: false }
 
-    const selectedIncome = selectedTransactions.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0)
-    const selectedExpense = selectedTransactions.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0)
+    const selectedSummary = summarizeTransactions(selectedTransactions)
 
     const trend: TrendPoint[] = recentPeriods.map(p => {
         const isSelected = p.id === selectedPeriod.id
         const summary = isSelected
-            ? { income: selectedIncome, expense: selectedExpense, net: selectedIncome - selectedExpense }
-            : otherSummaries[p.id] ?? { income: 0, expense: 0, net: 0 }
+            ? selectedSummary
+            : otherSummaries[p.id] ?? EMPTY_PERIOD_SUMMARY
 
         return {
             periodId: p.id,
@@ -67,6 +69,7 @@ export function usePeriodTrend(
             income: summary.income,
             expense: summary.expense,
             net: summary.net,
+            unspent: summary.unspent,
             // Still open (no end_date) — its numbers will keep moving, unlike a closed period.
             isCurrent: p.end_date === null,
         }

@@ -4,29 +4,22 @@ import type { PayPeriod } from '@/types'
 import { History, ChevronDown, Wallet, StickyNote } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { transactionsService } from '@/services/transactions.service'
+import { unspentPct, type PeriodSummary } from '@/lib/period-summary'
 
 interface PeriodHistoryProps {
     periods: PayPeriod[]
 }
 
-type Summary = { income: number; expense: number; net: number }
-
 export function PeriodHistory({ periods }: PeriodHistoryProps) {
     const closed = useMemo(() => periods.filter(p => p.status === 'closed'), [periods])
-    const [summaryMap, setSummaryMap] = useState<Record<string, Summary>>({})
+    const [summaryMap, setSummaryMap] = useState<Record<string, PeriodSummary>>({})
     const [openId, setOpenId] = useState<string | null>(null)
 
     useEffect(() => {
         if (closed.length === 0) return
-        const load = async () => {
-            const results: Record<string, Summary> = {}
-            for (const p of closed) {
-                const { data } = await transactionsService.getPeriodSummary(p.id)
-                results[p.id] = data ?? { income: 0, expense: 0, net: 0 }
-            }
-            setSummaryMap(results)
-        }
-        load()
+        transactionsService.getPeriodSummaries(closed.map(p => p.id)).then(({ data }) => {
+            setSummaryMap(data ?? {})
+        })
     }, [closed])
 
     if (closed.length === 0) return null
@@ -42,6 +35,12 @@ export function PeriodHistory({ periods }: PeriodHistoryProps) {
                 {closed.map((p) => {
                     const summary = summaryMap[p.id]
                     const isOpen = openId === p.id
+                    // Income not spent — savings transactions plus leftover — so it holds whether
+                    // the money was logged in a savings category or moved out by transfer.
+                    const unspent = summary?.unspent ?? null
+                    // Income can include refunds or side money, so salary gives a steadier base across periods.
+                    const incomePct = summary ? unspentPct(summary.unspent, summary.income) : null
+                    const salaryPct = summary ? unspentPct(summary.unspent, p.salary_amount) : null
 
                     return (
                         <div
@@ -60,11 +59,16 @@ export function PeriodHistory({ periods }: PeriodHistoryProps) {
                                         {formatDate(p.start_date)}
                                         {p.end_date && ` — ${formatDate(p.end_date)}`}
                                     </p>
-                                    <p className={cn(
-                                        'text-[11.5px] mt-0.5',
-                                        !summary ? 'text-muted-ink' : summary.net >= 0 ? 'text-positive' : 'text-negative'
-                                    )}>
-                                        {summary ? formatCurrency(summary.net) : '—'}
+                                    <p className="text-[11.5px] mt-0.5">
+                                        <span className={cn(unspent === null ? 'text-muted-ink' : unspent >= 0 ? 'text-positive' : 'text-negative')}>
+                                            {unspent === null ? '—' : `${unspent >= 0 ? 'Unspent' : 'Overspent'} ${formatCurrency(Math.abs(unspent))}`}
+                                        </span>
+                                        {incomePct !== null && (
+                                            <span className="text-muted-ink"> · {Math.abs(incomePct)}% income</span>
+                                        )}
+                                        {salaryPct !== null && (
+                                            <span className="text-muted-ink"> · {Math.abs(salaryPct)}% salary</span>
+                                        )}
                                     </p>
                                 </div>
 
@@ -96,8 +100,8 @@ export function PeriodHistory({ periods }: PeriodHistoryProps) {
                                         )}
                                     </div>
 
-                                    {/* Income / Expense / Net */}
-                                    <div className="grid grid-cols-3 gap-2 text-[11.5px] pt-2 border-t border-line-soft">
+                                    {/* Income / Spending / To savings / Leftover */}
+                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11.5px] pt-2 border-t border-line-soft">
                                         <div className="bg-positive/10 rounded-[10px] px-2.5 py-2">
                                             <p className="text-muted-ink">Income</p>
                                             <p className="font-semibold text-positive mt-0.5">
@@ -105,21 +109,31 @@ export function PeriodHistory({ periods }: PeriodHistoryProps) {
                                             </p>
                                         </div>
                                         <div className="bg-negative/10 rounded-[10px] px-2.5 py-2">
-                                            <p className="text-muted-ink">Expense</p>
+                                            <p className="text-muted-ink">Spending</p>
                                             <p className="font-semibold text-negative mt-0.5">
-                                                {summary ? formatCurrency(summary.expense) : '—'}
+                                                {summary ? formatCurrency(summary.spending) : '—'}
+                                            </p>
+                                        </div>
+                                        <div className="bg-brand/10 rounded-[10px] px-2.5 py-2">
+                                            <p className="text-muted-ink">To savings</p>
+                                            <p className="font-semibold text-brand mt-0.5">
+                                                {summary ? formatCurrency(summary.savings) : '—'}
                                             </p>
                                         </div>
                                         <div className={cn(
                                             'rounded-[10px] px-2.5 py-2',
-                                            summary?.net >= 0 ? 'bg-positive/10' : 'bg-negative/10'
+                                            (summary?.net ?? 0) >= 0 ? 'bg-positive/10' : 'bg-negative/10'
                                         )}>
-                                            <p className="text-muted-ink">Net</p>
-                                            <p className={cn('font-semibold mt-0.5', summary?.net >= 0 ? 'text-positive' : 'text-negative')}>
+                                            <p className="text-muted-ink">Leftover</p>
+                                            <p className={cn('font-semibold mt-0.5', (summary?.net ?? 0) >= 0 ? 'text-positive' : 'text-negative')}>
                                                 {summary ? formatCurrency(summary.net) : '—'}
                                             </p>
                                         </div>
                                     </div>
+
+                                    <p className="text-[11px] text-muted-ink">
+                                        Unspent = To savings + Leftover. Leftover counts as unspent even if it's still in your accounts.
+                                    </p>
 
                                     {/* Notes */}
                                     {p.notes && (
