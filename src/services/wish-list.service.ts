@@ -1,6 +1,10 @@
 import { supabase } from '@/lib/supabase'
 import { handleError, type ServiceResult } from './_base'
 import type { WishListItem } from '@/types/'
+
+export type WishListPurchased = WishListItem & {
+    purchase: { date: string; amount: number } | null
+}
 import { transactionsService } from './transactions.service'
 import { payPeriodsService } from './pay-periods.service'
 
@@ -24,15 +28,39 @@ export const wishListService = {
         }
     },
 
+    /** Wishes already bought, newest first, with the purchase transaction's date and amount. */
+    async getPurchased(limit = 20): Promise<ServiceResult<WishListPurchased[]>> {
+        try {
+            const { data: { user } } = await supabase.auth.getUser()
+            if (!user) throw new Error('Not logged in')
+
+            const { data, error } = await supabase
+                .from('wish_list')
+                // transactions links to wish_list twice, so name the FK to embed through.
+                .select('*, purchase:transactions!wish_list_transaction_id_fkey(date, amount)')
+                .eq('user_id', user.id)
+                .eq('is_purchased', true)
+                .order('created_at', { ascending: false })
+                .limit(limit)
+
+            if (error) throw error
+            return { data: data as WishListPurchased[], error: null }
+        } catch (err) {
+            return { data: null, error: handleError(err) }
+        }
+    },
+
     async create(input: {
         pay_period_id: string
         name: string
-        estimated_price?: number
+        estimated_price?: number | null
         priority?: WishListItem['priority']
-        notes?: string
+        notes?: string | null
         quantity?: number | null
         unit?: string | null
         price_per_unit?: number | null
+        target_date?: string | null
+        icon?: string | null
     }): Promise<ServiceResult<WishListItem>> {
         try {
             const { data: { user } } = await supabase.auth.getUser()
@@ -62,12 +90,14 @@ export const wishListService = {
 
     async update(id: string, input: {
         name?: string
-        estimated_price?: number
+        estimated_price?: number | null
         priority?: WishListItem['priority']
-        notes?: string
+        notes?: string | null
         quantity?: number | null
         unit?: string | null
         price_per_unit?: number | null
+        target_date?: string | null
+        icon?: string | null
     }): Promise<ServiceResult<WishListItem>> {
         try {
             const estimated_price = input.quantity && input.price_per_unit
@@ -132,6 +162,15 @@ export const wishListService = {
         try {
             if (input.quantity <= 0) throw new Error('Quantity must be greater than zero.')
 
+            // Decimal quantities (0.7 + 0.1 gram) drift in floating point and would never
+            // reach the target, so work in a fixed 3-decimal precision.
+            const roundQty = (n: number) => Math.round(n * 1000) / 1000
+            const quantity = roundQty(input.quantity)
+            const savedQuantity = roundQty(item.saved_quantity ?? 0)
+            if (item.quantity && roundQty(savedQuantity + quantity) > roundQty(item.quantity)) {
+                throw new Error(`Only ${roundQty(item.quantity - savedQuantity)} ${item.unit ?? ''} left to reach the target.`)
+            }
+
             const { data: period, error: periodError } =
                 await payPeriodsService.getActive()
 
@@ -139,7 +178,8 @@ export const wishListService = {
                 throw new Error('No active period found')
             }
 
-            const amount = input.quantity * input.price_per_unit
+            // Rupiah has no fractions; 0.5 × an odd price would otherwise be a half rupiah.
+            const amount = Math.round(quantity * input.price_per_unit)
 
             const { data: transaction, error: txError } =
                 await transactionsService.create({
@@ -157,9 +197,9 @@ export const wishListService = {
                 throw new Error(txError ?? 'Failed to create transaction')
             }
 
-            const newSavedQuantity = (item.saved_quantity ?? 0) + input.quantity
+            const newSavedQuantity = roundQty(savedQuantity + quantity)
             const newSavedAmount = (item.saved_amount ?? 0) + amount
-            const isComplete = !!item.quantity && newSavedQuantity >= item.quantity
+            const isComplete = !!item.quantity && newSavedQuantity >= roundQty(item.quantity)
 
             const { data, error } = await supabase
                 .from('wish_list')
@@ -167,6 +207,8 @@ export const wishListService = {
                     saved_quantity: newSavedQuantity,
                     saved_amount: newSavedAmount,
                     is_purchased: isComplete,
+                    // Link the installment that completed the goal, as markAsPurchased does.
+                    ...(isComplete ? { transaction_id: transaction.id } : {}),
                 })
                 .eq('id', item.id)
                 .select()

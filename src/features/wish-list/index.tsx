@@ -1,6 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
-import { Plus, PiggyBank } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import { BottomDrawer } from '@/components/bottom-drawer'
 import { ConfirmDrawer } from '@/components/confirmation-drawer'
 import { WishListItems } from './components/wish-list-items'
@@ -8,10 +6,15 @@ import { WishListForm } from './components/wish-list-form'
 import { BuyItemForm } from './components/buy-item-form'
 import { ContributeForm } from './components/contribute-form'
 import { ContributeQuantityForm } from './components/contribute-quantity-form'
-import { ProgressBar } from '@/components/progress-bar'
-import { wishListService } from '@/services/wish-list.service'
+import { WishHero } from './components/wish-hero'
+import { WishRoadmap } from './components/wish-roadmap'
+import { WishAchieved } from './components/wish-achieved'
+import { WishEmpty } from './components/wish-empty'
+import { WishDetail } from './components/wish-detail'
+import { buildRoadmap, pacePeriods, savingsPace, wishProgress, type SavingsPace } from './lib/wish-analytics'
+import { wishListService, type WishListPurchased } from '@/services/wish-list.service'
 import { payPeriodsService } from '@/services/pay-periods.service'
-import { formatCurrency } from '@/lib/helpers'
+import { transactionsService } from '@/services/transactions.service'
 import type { WishListItem } from '@/types'
 import { toast } from 'sonner'
 import { LoadingContent } from '@/components/loading-content'
@@ -22,7 +25,11 @@ export default function WishListPage() {
     const [periodId, setPeriodId] = useState<string | null>(null)
     const [periodStart, setPeriodStart] = useState<string | null>(null)
     const [loading, setLoading] = useState(true)
+    const [purchased, setPurchased] = useState<WishListPurchased[]>([])
+    const [pace, setPace] = useState<SavingsPace | null>(null)
     const [addDrawerOpen, setAddDrawerOpen] = useState(false)
+    const [addDefaultName, setAddDefaultName] = useState<string | undefined>(undefined)
+    const [openItem, setOpenItem] = useState<WishListItem | null>(null)
     const [buyingItem, setBuyingItem] = useState<WishListItem | null>(null)
     const [contributingItem, setContributingItem] = useState<WishListItem | null>(null)
     const [editingItem, setEditingItem] = useState<WishListItem | null>(null)
@@ -41,8 +48,27 @@ export default function WishListPage() {
         setPeriodId(period.id)
         setPeriodStart(period.start_date)
 
-        const { data: itemsData } = await wishListService.getAll()
+        const [
+            { data: itemsData, error: itemsError },
+            { data: purchasedData },
+            { data: periods },
+        ] = await Promise.all([
+            wishListService.getAll(),
+            wishListService.getPurchased(),
+            payPeriodsService.getAll(),
+        ])
+        if (itemsError) toast.error(itemsError)
         setItems(itemsData ?? [])
+        // The achievements and the pace are extras: if they fail, the list still works.
+        setPurchased(purchasedData ?? [])
+
+        const recent = pacePeriods(periods ?? [])
+        if (recent.length > 0) {
+            const { data: summaries } = await transactionsService.getPeriodSummaries(recent.map(p => p.id))
+            setPace(summaries ? savingsPace(recent, summaries) : null)
+        } else {
+            setPace(null)
+        }
 
         setLoading(false)
     }, [])
@@ -60,42 +86,39 @@ export default function WishListPage() {
         toast.success('Item removed from wish list.')
     }
 
-    const totalSaved = items.reduce((s, i) => s + i.saved_amount, 0)
-    const totalTarget = items.reduce((s, i) => s + (i.estimated_price ?? 0), 0)
-    const savedPercent = totalTarget > 0 ? Math.round((totalSaved / totalTarget) * 100) : 0
+    const openAdd = (name?: string) => {
+        setAddDefaultName(name)
+        setAddDrawerOpen(true)
+    }
 
-    const savingsHero = (
-        <>
-            <div className="flex items-center justify-between mb-2">
-                <p className="text-[11px] uppercase tracking-[.14em] text-muted-ink">Savings progress</p>
-                <Button
-                    variant='outline'
-                    size="sm"
-                    onClick={() => setAddDrawerOpen(true)}
-                    disabled={!periodId}
-                >
-                    <Plus className="w-3.5 h-3.5" /> Wish
-                </Button>
-            </div>
-            <p className="text-[32px] lg:text-[26px] font-medium tracking-[-0.02em] leading-none text-ink tabular-nums">
-                {formatCurrency(totalSaved)}
-            </p>
-            {totalTarget > 0 ? (
-                <>
-                    <ProgressBar percent={savedPercent} className="mt-3" />
-                    <div className="flex items-center justify-between mt-2">
-                        <p className="text-[11px] text-muted-ink">saved</p>
-                        <p className="text-[11px] text-muted-ink">
-                            of {formatCurrency(totalTarget)} across {items.length} goal{items.length === 1 ? '' : 's'}
-                        </p>
-                    </div>
-                </>
-            ) : items.length > 0 ? (
-                <p className="text-[11px] text-muted-ink mt-2">
-                    {items.length} goal{items.length === 1 ? '' : 's'} · set a target price to track progress
-                </p>
-            ) : null}
-        </>
+    const roadmap = useMemo(() => buildRoadmap(items, pace), [items, pace])
+
+    // Totals only over wishes with a price, so the percentage compares like with like.
+    const totals = useMemo(() => {
+        let saved = 0, target = 0, remaining = 0, ready = 0
+        for (const item of items) {
+            const p = wishProgress(item)
+            if (p.target === null) continue
+            saved += Math.min(p.saved, p.target)
+            target += p.target
+            remaining += p.remaining ?? 0
+            if (p.ready) ready++
+        }
+        return { saved, target, remaining, ready }
+    }, [items])
+
+    const hero = (
+        <WishHero
+            saved={totals.saved}
+            target={totals.target}
+            remaining={totals.remaining}
+            goalCount={items.length}
+            readyCount={totals.ready}
+            pace={pace}
+            roadmap={roadmap}
+            canAdd={!!periodId}
+            onAdd={() => openAdd()}
+        />
     )
 
     return (
@@ -106,36 +129,31 @@ export default function WishListPage() {
                     <LoadingContent />
                 ) : periodId ? (
                     <div className="space-y-4 lg:space-y-0 lg:grid lg:grid-cols-[1fr_360px] lg:gap-4 lg:items-start">
-                        <div className="card p-5 lg:order-2">{savingsHero}</div>
+                        <div className="space-y-4 lg:order-2">
+                            {hero}
+                            {items.length > 0 && <WishRoadmap roadmap={roadmap} pace={pace} />}
+                            <div className="hidden lg:block"><WishAchieved items={purchased} /></div>
+                        </div>
 
-                        <div className="lg:order-1">
+                        <div className="space-y-4 lg:order-1">
                             {items.length === 0 ? (
-                                <button
-                                    type="button"
-                                    onClick={() => setAddDrawerOpen(true)}
-                                    className="w-full card p-4 flex items-center gap-3 text-left hover:bg-surface-soft transition-colors"
-                                >
-                                    <div className="w-9 h-9 rounded-[10px] bg-brand/10 flex items-center justify-center shrink-0">
-                                        <PiggyBank className="w-4 h-4 text-brand" />
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-[13px] font-medium text-ink">No savings goals yet</p>
-                                        <p className="text-[11.5px] text-muted-ink mt-0.5">Tap to start saving toward something you want</p>
-                                    </div>
-                                </button>
+                                <WishEmpty onAdd={openAdd} />
                             ) : (
                                 <WishListItems
                                     items={items}
-                                    onDeleteRequest={setDeletingId}
-                                    onBuy={setBuyingItem}
-                                    onContribute={setContributingItem}
-                                    onEdit={setEditingItem}
+                                    roadmap={roadmap}
+                                    pace={pace}
+                                    onOpen={setOpenItem}
                                 />
                             )}
+                            <div className="lg:hidden"><WishAchieved items={purchased} /></div>
                         </div>
                     </div>
                 ) : (
-                    <div className="card p-5 lg:max-w-[360px]">{savingsHero}</div>
+                    <div className="space-y-4 lg:max-w-[360px]">
+                        {hero}
+                        <p className="text-[11.5px] text-muted-ink px-1">Open a pay period to start adding wishes.</p>
+                    </div>
                 )}
 
                 {/* Add drawer */}
@@ -145,12 +163,36 @@ export default function WishListPage() {
                         onClose={() => setAddDrawerOpen(false)}
                         title="Add to Wish List"
                     >
-                        <WishListForm
-                            payPeriodId={periodId}
-                            onSuccess={() => { setAddDrawerOpen(false); load() }}
-                        />
+                        {/* Keyed so each open starts fresh with the chosen suggestion. */}
+                        {addDrawerOpen && (
+                            <WishListForm
+                                key={addDefaultName ?? ''}
+                                payPeriodId={periodId}
+                                defaultName={addDefaultName}
+                                onSuccess={() => { setAddDrawerOpen(false); load() }}
+                            />
+                        )}
                     </BottomDrawer>
                 )}
+
+                {/* Detail sheet — each action closes it and hands off to its own drawer */}
+                <BottomDrawer
+                    open={!!openItem}
+                    onClose={() => setOpenItem(null)}
+                    title={openItem?.name ?? ''}
+                >
+                    {openItem && (
+                        <WishDetail
+                            item={openItem}
+                            stop={roadmap.find(s => s.item.id === openItem.id)}
+                            pace={pace}
+                            onContribute={() => { setContributingItem(openItem); setOpenItem(null) }}
+                            onBuy={() => { setBuyingItem(openItem); setOpenItem(null) }}
+                            onEdit={() => { setEditingItem(openItem); setOpenItem(null) }}
+                            onDelete={() => { setDeletingId(openItem.id); setOpenItem(null) }}
+                        />
+                    )}
+                </BottomDrawer>
 
                 {/* Edit drawer */}
                 <BottomDrawer

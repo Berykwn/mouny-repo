@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useSwipeable } from 'react-swipeable'
 import { ConfirmDrawer } from '@/components/confirmation-drawer'
@@ -9,11 +9,10 @@ import { PeriodChip } from './components/period-chip'
 import { LedgerTabs, type LedgerTab } from './components/ledger-tabs'
 import { TransactionListView } from './components/transaction-list-view'
 import { BulkCategoryDrawer } from './components/bulk-category-drawer'
-import { AddTransactionFlow } from './components/add-transaction-flow'
 import { transactionsService } from '@/services/transactions.service'
 import { payPeriodsService } from '@/services/pay-periods.service'
 import { toISODate } from '@/lib/helpers'
-import { onTransactionsChanged, emitTransactionsChanged } from '@/lib/transactions-bus'
+import { onTransactionsChanged, onPeriodsChanged } from '@/lib/transactions-bus'
 import type { TransactionWithDetails, PayPeriod } from '@/types'
 import { toast } from 'sonner'
 import { LoadingContent } from '@/components/loading-content'
@@ -36,7 +35,6 @@ export default function TransactionsPage() {
     const [bulkDeleteLoading, setBulkDeleteLoading] = useState(false)
     const [bulkCategoryOpen, setBulkCategoryOpen] = useState(false)
     const [bulkCategoryLoading, setBulkCategoryLoading] = useState(false)
-    const [addDrawerDate, setAddDrawerDate] = useState<string | null>(null)
 
     const today = toISODate()
     const topBarSlotNode = useTopBarSlotNode()
@@ -58,12 +56,19 @@ export default function TransactionsPage() {
         delta: 50,
     })
 
+    // Every load bumps this; a response that comes back after a newer request is dropped,
+    // so switching periods quickly can't show one period's transactions under another.
+    const requestIdRef = useRef(0)
+
     const init = useCallback(async () => {
+        const requestId = ++requestIdRef.current
         setLoading(true)
-        const [{ data: active }, { data: all }] = await Promise.all([
+        const [{ data: active }, { data: all, error: allError }] = await Promise.all([
             payPeriodsService.getActive(),
             payPeriodsService.getAll(),
         ])
+        if (requestId !== requestIdRef.current) return
+        if (allError) toast.error(allError)
         setActivePeriod(active)
 
         const periods = all ?? []
@@ -75,24 +80,45 @@ export default function TransactionsPage() {
 
         const defaultPeriod = periods[idx] ?? null
         if (defaultPeriod) {
-            const { data: txs } = await transactionsService.getByPeriod(defaultPeriod.id)
+            const { data: txs, error } = await transactionsService.getByPeriod(defaultPeriod.id)
+            if (requestId !== requestIdRef.current) return
+            if (error) toast.error(error)
             setTransactions(txs ?? [])
+        } else {
+            setTransactions([])
         }
         setLoading(false)
     }, [])
 
     useEffect(() => { init() }, [init])
+    useEffect(() => onPeriodsChanged(() => { init() }), [init])
 
-    const loadTransactions = useCallback(async (period: PayPeriod) => {
-        setTxLoading(true)
-        const { data: txs } = await transactionsService.getByPeriod(period.id)
-        setTransactions(txs ?? [])
+    /**
+     * `background` refreshes (after an add/edit elsewhere) keep the current view mounted,
+     * so the calendar keeps its selected day instead of being rebuilt behind a loader.
+     */
+    const loadTransactions = useCallback(async (period: PayPeriod, { background = false } = {}) => {
+        const requestId = ++requestIdRef.current
+        if (!background) setTxLoading(true)
+        const { data: txs, error } = await transactionsService.getByPeriod(period.id)
+        if (requestId !== requestIdRef.current) return
+        if (error) {
+            toast.error(error)
+            // A failed switch mustn't leave the previous period's rows under the new chip.
+            if (!background) setTransactions([])
+        } else {
+            const list = txs ?? []
+            setTransactions(list)
+            // Drop selections for transactions that no longer exist.
+            const ids = new Set(list.map(t => t.id))
+            setSelectedIds(prev => prev.filter(id => ids.has(id)))
+        }
         setTxLoading(false)
     }, [])
 
     useEffect(() => {
         return onTransactionsChanged(() => {
-            if (isCurrentPeriod && activePeriod) loadTransactions(activePeriod)
+            if (isCurrentPeriod && activePeriod) loadTransactions(activePeriod, { background: true })
         })
     }, [isCurrentPeriod, activePeriod, loadTransactions])
 
@@ -134,7 +160,7 @@ export default function TransactionsPage() {
         if (error) { toast.error(error); return }
         setSelectedIds([])
         setBulkCategoryOpen(false)
-        if (selectedPeriod) await loadTransactions(selectedPeriod)
+        if (selectedPeriod) await loadTransactions(selectedPeriod, { background: true })
         toast.success('Category updated.')
     }
 
@@ -180,7 +206,6 @@ export default function TransactionsPage() {
                                 periodEnd={selectedPeriod.end_date ?? today}
                                 defaultDate={calendarDefaultDate}
                                 onDeleteRequest={isCurrentPeriod ? setDeletingId : undefined}
-                                onAddRequest={isCurrentPeriod ? setAddDrawerDate : undefined}
                                 readOnly={!isCurrentPeriod}
                             />
                         ) : (
@@ -238,19 +263,6 @@ export default function TransactionsPage() {
                 onConfirm={handleBulkCategoryConfirm}
             />
 
-            {addDrawerDate && selectedPeriod && isCurrentPeriod && (
-                <AddTransactionFlow
-                    payPeriodId={selectedPeriod.id}
-                    periodStart={selectedPeriod.start_date}
-                    periodEnd={selectedPeriod.end_date ?? undefined}
-                    defaultDate={addDrawerDate}
-                    onClose={() => setAddDrawerDate(null)}
-                    onSuccess={() => {
-                        setAddDrawerDate(null)
-                        emitTransactionsChanged()
-                    }}
-                />
-            )}
         </>
     )
 }

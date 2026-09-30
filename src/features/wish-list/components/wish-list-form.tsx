@@ -2,9 +2,15 @@ import { useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
-import { Loader2 } from 'lucide-react'
+import { Loader2, CalendarIcon, X } from 'lucide-react'
+import { format } from 'date-fns'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Calendar } from '@/components/ui/calendar'
 import { wishListService } from '@/services/wish-list.service'
-import { formatCurrency, formatCurrencyInput, parseCurrencyInput } from '@/lib/helpers'
+import { formatCurrency, formatCurrencyInput, parseCurrencyInput, toISODate } from '@/lib/helpers'
+import { WishTile } from './wish-tile'
+import { ICON_MAP } from '@/lib/icon-map'
+import { CategoryIcon } from '@/features/categories/components/category-icon'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import { WISH_LIST_UNITS, type WishListItem, type WishListPriority } from '@/types'
@@ -12,10 +18,14 @@ import { WISH_LIST_UNITS, type WishListItem, type WishListPriority } from '@/typ
 interface WishListFormProps {
     payPeriodId: string
     item?: WishListItem
+    /** Prefills the name of a new wish (e.g. from an empty-state suggestion). */
+    defaultName?: string
     onSuccess: () => void
 }
 
 const FIELD_LABEL = 'text-[11px] font-medium uppercase tracking-[.14em] text-[#8a8a84]'
+
+const ICON_KEYS = Object.keys(ICON_MAP)
 
 const PRIORITIES: { value: WishListPriority; label: string; style: string }[] = [
     { value: 'low', label: 'Low', style: 'bg-[#f4f4f2] text-[#8a8a84]' },
@@ -23,15 +33,20 @@ const PRIORITIES: { value: WishListPriority; label: string; style: string }[] = 
     { value: 'high', label: 'High', style: 'bg-[#fef2f2] text-[#dc2626]' },
 ]
 
-export function WishListForm({ payPeriodId, item, onSuccess }: WishListFormProps) {
+export function WishListForm({ payPeriodId, item, defaultName, onSuccess }: WishListFormProps) {
     const isEdit = !!item
     const itemUnit = item?.unit ?? null
     const presetUnit = itemUnit && (WISH_LIST_UNITS as readonly string[]).includes(itemUnit) ? itemUnit : null
 
-    const [name, setName] = useState(item?.name ?? '')
+    const [name, setName] = useState(item?.name ?? defaultName ?? '')
     const [price, setPrice] = useState(item?.estimated_price ? String(item.estimated_price) : '')
     const [priority, setPriority] = useState<WishListPriority>((item?.priority as WishListPriority) ?? 'low')
     const [notes, setNotes] = useState(item?.notes ?? '')
+    const [icon, setIcon] = useState<string | null>(item?.icon ?? null)
+    const [targetDate, setTargetDate] = useState<string | null>(item?.target_date ?? null)
+    const [targetDateOpen, setTargetDateOpen] = useState(false)
+    const startOfToday = new Date()
+    startOfToday.setHours(0, 0, 0, 0)
     const [loading, setLoading] = useState(false)
 
     const [trackByQuantity, setTrackByQuantity] = useState(!!item?.quantity)
@@ -50,12 +65,19 @@ export function WishListForm({ payPeriodId, item, onSuccess }: WishListFormProps
         let payload: {
             name: string
             priority: WishListPriority
-            notes?: string
-            estimated_price?: number
+            notes: string | null
+            estimated_price?: number | null
             quantity?: number | null
             unit?: string | null
             price_per_unit?: number | null
-        } = { name, priority, notes: notes || undefined }
+            target_date?: string | null
+            icon?: string | null
+        } = { name, priority, notes: notes.trim() || null }
+
+        // Only send these once they hold (or held) a value, so saving still works
+        // before the target_date / icon migration has been run.
+        if (targetDate || item?.target_date) payload.target_date = targetDate
+        if (icon || item?.icon) payload.icon = icon
 
         if (trackByQuantity) {
             const resolvedUnit = unit === 'custom' ? customUnit.trim() : unit
@@ -80,7 +102,8 @@ export function WishListForm({ payPeriodId, item, onSuccess }: WishListFormProps
                 price_per_unit: pricePerUnitNum,
             }
         } else {
-            const parsed = price ? parseCurrencyInput(price) : undefined
+            // null (not undefined) so clearing the price on edit actually clears it.
+            const parsed = price ? parseCurrencyInput(price) : null
 
             if (price && (!parsed || parsed <= 0)) {
                 toast.error('Invalid estimated price.')
@@ -146,6 +169,97 @@ export function WishListForm({ payPeriodId, item, onSuccess }: WishListFormProps
                         </button>
                     ))}
                 </div>
+            </div>
+
+            <div className="space-y-2">
+                <Label className={FIELD_LABEL}>
+                    Icon <span className="normal-case tracking-normal font-normal">(optional)</span>
+                </Label>
+                {/* Same icon set and grid as the category picker; "Auto" keeps the name-matched icon. */}
+                <div className="grid grid-cols-8 gap-1 max-h-[184px] overflow-y-auto rounded-[14px] border border-[#e5e5e5] p-1.5">
+                    <button
+                        type="button"
+                        title="Automatic"
+                        onClick={() => setIcon(null)}
+                        className="group aspect-square flex items-center justify-center"
+                    >
+                        <WishTile
+                            name={name}
+                            className={cn('w-8 h-8 rounded-[10px]', icon !== null && 'opacity-50 group-hover:opacity-100')}
+                            iconClassName="w-[18px] h-[18px]"
+                        />
+                    </button>
+                    {ICON_KEYS.map((key) => {
+                        const selected = icon === key
+                        return (
+                            <button
+                                key={key}
+                                type="button"
+                                title={key}
+                                onClick={() => setIcon(key)}
+                                className="group aspect-square flex items-center justify-center"
+                            >
+                                {selected ? (
+                                    <WishTile name={name} icon={key} className="w-8 h-8 rounded-[10px]" iconClassName="w-[18px] h-[18px]" />
+                                ) : (
+                                    <span className="w-8 h-8 rounded-[10px] flex items-center justify-center transition-colors group-hover:bg-[#f4f4f2]">
+                                        <CategoryIcon name={key} className="w-[18px] h-[18px]" />
+                                    </span>
+                                )}
+                            </button>
+                        )
+                    })}
+                </div>
+                <p className="text-[11px] text-[#8a8a84]">
+                    {icon === null ? 'Automatic — picked from the name.' : 'Tap the first tile to go back to automatic.'}
+                </p>
+            </div>
+
+            <div className="space-y-2">
+                <Label className={FIELD_LABEL}>
+                    Want it by <span className="normal-case tracking-normal font-normal">(optional)</span>
+                </Label>
+                <div className="flex gap-2">
+                    <Popover open={targetDateOpen} onOpenChange={setTargetDateOpen}>
+                        <PopoverTrigger asChild>
+                            <button
+                                type="button"
+                                disabled={loading}
+                                className={cn(
+                                    'flex-1 flex items-center h-12 px-3 rounded-[14px] border border-[#e5e5e5] bg-white text-left text-[13px] transition-colors hover:bg-[#fbfbfa] disabled:opacity-50',
+                                    !targetDate && 'text-[#8a8a84]'
+                                )}
+                            >
+                                <CalendarIcon className="mr-2 h-4 w-4 text-[#8a8a84]" />
+                                {targetDate ? format(new Date(targetDate + 'T00:00:00'), 'dd MMM yyyy') : 'No deadline'}
+                            </button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0 rounded-[14px] border-[#e5e5e5]">
+                            <Calendar
+                                mode="single"
+                                selected={targetDate ? new Date(targetDate + 'T00:00:00') : undefined}
+                                defaultMonth={targetDate ? new Date(targetDate + 'T00:00:00') : undefined}
+                                onSelect={(d) => {
+                                    if (!d) return
+                                    setTargetDate(toISODate(d))
+                                    setTargetDateOpen(false)
+                                }}
+                                disabled={(d) => d < startOfToday}
+                            />
+                        </PopoverContent>
+                    </Popover>
+                    {targetDate && (
+                        <button
+                            type="button"
+                            onClick={() => setTargetDate(null)}
+                            aria-label="Clear deadline"
+                            className="w-12 h-12 rounded-[14px] border border-[#e5e5e5] flex items-center justify-center text-[#8a8a84] hover:text-[#252525]"
+                        >
+                            <X className="w-4 h-4" />
+                        </button>
+                    )}
+                </div>
+                <p className="text-[11px] text-[#8a8a84]">We’ll tell you how much to set aside each period to make it.</p>
             </div>
 
             <div className="flex items-center justify-between rounded-[14px] border border-[#e5e5e5] p-3 gap-3">

@@ -1,5 +1,4 @@
 import { useEffect, useState, useCallback } from 'react'
-import { Plus } from 'lucide-react'
 import { WalletIcon, WALLET_TILE_CLASS } from '@/components/account-type-icon'
 import { BottomDrawer } from '@/components/bottom-drawer'
 import { ConfirmDrawer } from '@/components/confirmation-drawer'
@@ -11,8 +10,8 @@ import { formatCurrency } from '@/lib/helpers'
 import { toast } from 'sonner'
 import { LoadingContent } from '@/components/loading-content'
 import { cn } from '@/lib/utils'
-import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/page-header'
+import { HeroGlow, HeroAction } from '@/components/hero'
 
 export function AccountPage() {
     const [accounts, setAccounts] = useState<Account[]>([])
@@ -24,7 +23,8 @@ export function AccountPage() {
 
     const load = useCallback(async () => {
         setLoading(true)
-        const { data: accs } = await accountsService.getAll()
+        const { data: accs, error } = await accountsService.getAll()
+        if (error) toast.error(error)
         setAccounts(accs ?? [])
         setLoading(false)
     }, [])
@@ -55,32 +55,27 @@ export function AccountPage() {
             <PageHeader title="Accounts" />
             <section className="px-4 pb-4 lg:px-0 space-y-4">
                 <div className="space-y-4 lg:space-y-0 lg:grid lg:grid-cols-[1fr_360px] lg:gap-4 lg:items-start">
-                    <header className="card p-4 flex items-center gap-3 lg:order-2">
-                        <div className="flex-1 min-w-0">
+                    <header className="card p-5 relative overflow-hidden lg:order-2">
+                        <HeroGlow />
+                        <div className="relative flex items-center justify-between mb-4">
                             <p className="text-[11px] uppercase tracking-[.14em] text-muted-ink">Total balance</p>
-                            {accounts.length > 0 ? (
-                                <>
-                                    <p className={cn(
-                                        'text-[32px] font-medium tracking-[-0.02em] leading-none mt-1',
-                                        totalBalance < 0 ? 'text-negative' : 'text-ink'
-                                    )}>
-                                        {formatCurrency(totalBalance)}
-                                    </p>
-                                    <p className="text-[11px] text-muted-ink mt-1.5">
-                                        across {accounts.length} account{accounts.length > 1 ? 's' : ''}
-                                    </p>
-                                </>
-                            ) : (
-                                <p className="text-[13px] text-muted-ink mt-0.5">Add your first account</p>
-                            )}
+                            <HeroAction onClick={() => setAddAccountDrawer(true)}>Account</HeroAction>
                         </div>
-                        <Button
-                            onClick={() => setAddAccountDrawer(true)}
-                            size="sm"
-                            variant="outline"
-                        >
-                            <Plus className="w-3.5 h-3.5" /> Account
-                        </Button>
+                        {accounts.length > 0 ? (
+                            <div className="relative">
+                                <p className={cn(
+                                    'text-[32px] lg:text-[26px] font-medium tracking-[-0.02em] leading-none tabular-nums',
+                                    totalBalance < 0 ? 'text-negative' : 'text-ink'
+                                )}>
+                                    {formatCurrency(totalBalance)}
+                                </p>
+                                <p className="text-[11px] text-muted-ink mt-2">
+                                    across {accounts.length} account{accounts.length > 1 ? 's' : ''}
+                                </p>
+                            </div>
+                        ) : (
+                            <p className="relative text-[13px] text-muted-ink">Add your first account</p>
+                        )}
                     </header>
 
                     <div className="lg:order-1">

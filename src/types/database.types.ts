@@ -291,6 +291,7 @@ export type Database = {
         Row: {
           created_at: string | null
           estimated_price: number | null
+          icon: string | null
           id: string
           is_purchased: boolean
           name: string
@@ -301,6 +302,7 @@ export type Database = {
           quantity: number | null
           saved_amount: number
           saved_quantity: number
+          target_date: string | null
           transaction_id: string | null
           unit: string | null
           user_id: string
@@ -308,6 +310,7 @@ export type Database = {
         Insert: {
           created_at?: string | null
           estimated_price?: number | null
+          icon?: string | null
           id?: string
           is_purchased?: boolean
           name: string
@@ -318,6 +321,7 @@ export type Database = {
           quantity?: number | null
           saved_amount?: number
           saved_quantity?: number
+          target_date?: string | null
           transaction_id?: string | null
           unit?: string | null
           user_id: string
@@ -325,6 +329,7 @@ export type Database = {
         Update: {
           created_at?: string | null
           estimated_price?: number | null
+          icon?: string | null
           id?: string
           is_purchased?: boolean
           name?: string
@@ -335,6 +340,7 @@ export type Database = {
           quantity?: number | null
           saved_amount?: number
           saved_quantity?: number
+          target_date?: string | null
           transaction_id?: string | null
           unit?: string | null
           user_id?: string

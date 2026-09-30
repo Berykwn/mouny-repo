@@ -1,6 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
-import { Plus, HandCoins } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { HandCoins } from 'lucide-react'
 import { BottomDrawer } from '@/components/bottom-drawer'
 import { ConfirmDrawer } from '@/components/confirmation-drawer'
 import { DebtList } from './components/debt-list'
@@ -15,6 +14,7 @@ import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import { LoadingContent } from '@/components/loading-content'
 import { PageHeader } from '@/components/page-header'
+import { HeroGlow, HeroAction } from '@/components/hero'
 
 type FilterType = 'all' | 'debt' | 'receivable'
 
@@ -32,10 +32,11 @@ export default function DebtsPage() {
 
     const load = useCallback(async () => {
         setLoading(true)
-        const [{ data: period }, { data: debtData }] = await Promise.all([
+        const [{ data: period }, { data: debtData, error: debtError }] = await Promise.all([
             payPeriodsService.getActive(),
             debtsService.getActive(),
         ])
+        if (debtError) toast.error(debtError)
         setPeriodId(period?.id ?? null)
         setPeriodStartDate(period?.start_date ?? null)
         setDebts(debtData ?? [])
@@ -89,28 +90,20 @@ export default function DebtsPage() {
             <section className="px-4 pb-4 lg:px-0 space-y-4">
                 {loading ? <LoadingContent /> : (
                     <div className="space-y-4 lg:grid lg:grid-cols-[1fr_360px] lg:gap-4 lg:items-start lg:space-y-0">
-                        <div className="card p-4 space-y-3 lg:order-2">
-                            <div className="flex justify-between items-start">
-                                <div>
-                                    <p className="text-[11px] uppercase tracking-[.14em] text-muted-ink">Net position</p>
-                                    <p className={cn(
-                                        'text-[32px] lg:text-[26px] font-medium tracking-[-0.02em] leading-none mt-1',
-                                        net > 0 ? 'text-positive' : net < 0 ? 'text-negative' : 'text-ink'
-                                    )}>
-                                        {net >= 0 ? '+' : ''}{formatCurrency(net)}
-                                    </p>
-                                </div>
-                                <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => setAddDrawerOpen(true)}
-                                    disabled={!periodId}
-                                >
-                                    <Plus className="w-3.5 h-3.5" /> Debt
-                                </Button>
+                        <div className="card p-5 relative overflow-hidden lg:order-2">
+                            <HeroGlow />
+                            <div className="relative flex items-center justify-between mb-4">
+                                <p className="text-[11px] uppercase tracking-[.14em] text-muted-ink">Net position</p>
+                                <HeroAction onClick={() => setAddDrawerOpen(true)} disabled={!periodId}>Debt</HeroAction>
                             </div>
+                            <p className={cn(
+                                'relative text-[32px] lg:text-[26px] font-medium tracking-[-0.02em] leading-none tabular-nums',
+                                net > 0 ? 'text-positive' : net < 0 ? 'text-negative' : 'text-ink'
+                            )}>
+                                {net >= 0 ? '+' : ''}{formatCurrency(net)}
+                            </p>
 
-                            <div className="grid grid-cols-2 gap-3 pt-2 border-t border-line-soft">
+                            <div className="relative grid grid-cols-2 gap-3 mt-4 pt-3 border-t border-line-soft">
                                 <div>
                                     <p className="text-[11px] text-muted-ink">Debt</p>
                                     <p className="text-[13px] font-medium text-negative">{formatCurrency(totalOwed)}</p>

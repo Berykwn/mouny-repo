@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { formatCurrency, formatCompact, heatBarColor } from '@/lib/helpers'
 import type { TransactionWithDetails } from '@/types'
-import { TrendingUp, TrendingDown, Plus } from 'lucide-react'
+import { TrendingUp, TrendingDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { CategoryTile } from '@/features/categories/components/category-icon'
 import { useLongPress } from '@/hooks/use-long-press'
@@ -12,7 +12,6 @@ interface PeriodCalendarProps {
     periodEnd: string
     defaultDate?: string
     onDeleteRequest?: (id: string) => void
-    onAddRequest?: (date: string) => void
     readOnly?: boolean
     onDateSelect?: (date: string) => void
 }
@@ -163,7 +162,6 @@ export function PeriodCalendar({
     periodEnd,
     defaultDate,
     onDeleteRequest,
-    onAddRequest,
     readOnly,
     onDateSelect,
 }: PeriodCalendarProps) {
@@ -373,26 +371,6 @@ export function PeriodCalendar({
                         )}
                     </div>
 
-                    {onAddRequest && (
-                        <button
-                            onClick={() => onAddRequest(validSelected)}
-                            aria-label="Add transaction"
-                            className="shrink-0 -m-2.5 p-2.5"
-                        >
-                            <span
-                                className="flex items-center gap-1 rounded-[10px] border"
-                                style={{
-                                    padding: '7px 11px 7px 9px',
-                                    backgroundColor: '#f7faf2',
-                                    borderColor: '#cfdcb8',
-                                    color: '#4d7a1d',
-                                }}
-                            >
-                                <Plus className="w-[13px] h-[13px]" />
-                                <span className="text-[12px] font-semibold">Add</span>
-                            </span>
-                        </button>
-                    )}
                 </div>
 
                 {selectedTxs.length === 0 ? (
