@@ -222,7 +222,7 @@ export function AccountForm({ onSuccess, initial, allAccounts = [] }: AccountFor
                                     placeholder="e.g. 50.000 or -20.000"
                                     className="pl-10 h-12 rounded-[14px] border-[#e5e5e5] text-[13px] font-mono"
                                     value={formatCurrencyInput(adjustment)}
-                                    onChange={e => setAdjustment(e.target.value.replace(/[^0-9,-]/g, ''))}
+                                    onChange={e => setAdjustment(e.target.value.replace(/[^0-9-]/g, '').replace(/(?!^)-/g, ''))}
                                     disabled={loading}
                                 />
                             </div>

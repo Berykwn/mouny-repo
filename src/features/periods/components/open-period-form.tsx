@@ -36,6 +36,8 @@ export function OpenPeriodForm({ onSuccess }: OpenPeriodFormProps) {
     const [loading, setLoading] = useState(false)
 
     const selectedAccount = accounts.find((a) => a.id === accountId)
+    const endOfToday = new Date()
+    endOfToday.setHours(23, 59, 59, 999)
 
     useEffect(() => {
         accountsService.getAll().then(({ data }) => {
@@ -56,6 +58,11 @@ export function OpenPeriodForm({ onSuccess }: OpenPeriodFormProps) {
         }
         if (!accountId) {
             toast.error('Please select a destination account.')
+            return
+        }
+        // A future start makes every transaction date fall outside the period until then.
+        if (toISODate(startDate) > toISODate()) {
+            toast.error('Pay date cannot be in the future.')
             return
         }
 
@@ -109,6 +116,7 @@ export function OpenPeriodForm({ onSuccess }: OpenPeriodFormProps) {
                                 setStartDate(date)
                                 setDateOpen(false)
                             }}
+                            disabled={(date) => date > endOfToday}
                         />
                     </PopoverContent>
                 </Popover>

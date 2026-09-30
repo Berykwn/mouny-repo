@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { toast } from 'sonner'
 import { formatCurrency, formatDate } from '@/lib/helpers'
 import type { PayPeriod } from '@/types'
 import { History, ChevronDown, Wallet, StickyNote } from 'lucide-react'
@@ -17,9 +18,13 @@ export function PeriodHistory({ periods }: PeriodHistoryProps) {
 
     useEffect(() => {
         if (closed.length === 0) return
-        transactionsService.getPeriodSummaries(closed.map(p => p.id)).then(({ data }) => {
+        let cancelled = false
+        transactionsService.getPeriodSummaries(closed.map(p => p.id)).then(({ data, error }) => {
+            if (cancelled) return
+            if (error) toast.error(error)
             setSummaryMap(data ?? {})
         })
+        return () => { cancelled = true }
     }, [closed])
 
     if (closed.length === 0) return null

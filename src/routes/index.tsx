@@ -1,4 +1,4 @@
-import { createBrowserRouter, RouterProvider } from 'react-router-dom'
+import { createBrowserRouter, createHashRouter, RouterProvider, type RouteObject } from 'react-router-dom'
 import { ProtectedRoute } from './protected-route'
 import { PublicRoute } from './public-route'
 import AppLayout from '@/components/layouts/app-layout'
@@ -21,7 +21,7 @@ import { PeriodHistoryPage } from '@/features/periods'
 import { AccountPage } from '@/features/accounts'
 import MenuPage from '@/features/menu'
 
-const router = createBrowserRouter([
+const routes: RouteObject[] = [
     // Public
     {
         element: <PublicRoute />,
@@ -53,7 +53,13 @@ const router = createBrowserRouter([
     },
 
     { path: '*', element: <NotFoundPage /> },
-])
+]
+
+// GitHub Pages builds (build:gh) serve from a sub-path and can't rewrite deep links,
+// so they use hash routing; every other build routes under the configured base.
+const router = import.meta.env.VITE_USE_HASH_ROUTE === 'true'
+    ? createHashRouter(routes)
+    : createBrowserRouter(routes, { basename: import.meta.env.BASE_URL })
 
 export function AppRouter() {
     return <RouterProvider router={router} />

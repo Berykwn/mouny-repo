@@ -16,7 +16,7 @@ import { usePeriodStats } from '@/hooks/use-period-stats'
 import { categoryBudgetsService } from '@/services/budgets.service'
 import { usePeriodTrend } from '../../hooks/use-period-trend'
 import { PeriodTrendChart } from './period-trend-chart'
-import { groupExpensesByCategory, type CategoryTotal } from '../../lib/group-expenses-by-category'
+import { groupExpensesByCategory, UNCATEGORIZED_ID, type CategoryTotal } from '../../lib/group-expenses-by-category'
 import { groupExpensesByWeekday } from '../../lib/group-expenses-by-weekday'
 import { CategoryDonutChart } from './category-donut-chart'
 import type { ElementType, ReactNode, SVGProps } from 'react'
@@ -351,10 +351,10 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
   const expensesByCategoryId = useMemo(() => {
     const map = new Map<string, TransactionWithDetails[]>()
     for (const tx of expenses) {
-      if (!tx.category) continue
-      const arr = map.get(tx.category.id) ?? []
+      const key = tx.category?.id ?? UNCATEGORIZED_ID
+      const arr = map.get(key) ?? []
       arr.push(tx)
-      map.set(tx.category.id, arr)
+      map.set(key, arr)
     }
     return map
   }, [expenses])

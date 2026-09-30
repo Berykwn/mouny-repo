@@ -17,7 +17,10 @@ const TONE_CLASSES: Record<Tone, string> = {
 }
 
 function generateInsights(transactions: TransactionWithDetails[], stats: PeriodStats): Insight[] {
-    if (stats.totalExpense <= 0) {
+    // Savings are set aside, not spent — keep them out of the spending insights.
+    const spending = transactions.filter(t => t.type === 'expense' && !t.category?.is_savings)
+
+    if (stats.totalSpending <= 0) {
         return [{ id: 'no-spend', tone: 'neutral', text: 'No spending recorded yet this period.' }]
     }
 
@@ -29,9 +32,9 @@ function generateInsights(transactions: TransactionWithDetails[], stats: PeriodS
             : { id: 'pace-good', tone: 'positive', text: 'On track — spending is under your safe daily pace.' })
     }
 
-    const topCategory = getTopExpenseCategory(transactions)
+    const topCategory = getTopExpenseCategory(spending)
     if (topCategory) {
-        const pct = Math.round((topCategory.amount / stats.totalExpense) * 100)
+        const pct = Math.round((topCategory.amount / stats.totalSpending) * 100)
         if (pct >= 40) {
             insights.push({ id: 'top-category', tone: 'info', text: `Most of this period's spending is going to ${topCategory.name} (${pct}%).` })
         }
@@ -41,18 +44,17 @@ function generateInsights(transactions: TransactionWithDetails[], stats: PeriodS
         insights.push({ id: 'no-spend-days', tone: 'positive', text: `${stats.noSpendDays} no-spend day${stats.noSpendDays !== 1 ? 's' : ''} so far this period.` })
     }
 
-    const expenses = transactions.filter(t => t.type === 'expense')
-    const biggest = expenses.reduce<TransactionWithDetails | null>(
+    const biggest = spending.reduce<TransactionWithDetails | null>(
         (mx, tx) => (!mx || tx.amount > mx.amount ? tx : mx), null
     )
     if (biggest) {
-        const pct = Math.round((biggest.amount / stats.totalExpense) * 100)
+        const pct = Math.round((biggest.amount / stats.totalSpending) * 100)
         if (pct >= 15) {
             insights.push({ id: 'biggest-expense', tone: 'neutral', text: `Your biggest single expense was ${formatCurrency(biggest.amount)} on ${biggest.category?.name ?? 'an expense'} (${pct}% of spending).` })
         }
     }
 
-    const weekdayTotals = groupExpensesByWeekday(expenses)
+    const weekdayTotals = groupExpensesByWeekday(spending)
     const weekdaySum = weekdayTotals.reduce((s, d) => s + d.total, 0)
     if (weekdaySum > 0) {
         const topWeekday = weekdayTotals.reduce((mx, d) => (d.total > mx.total ? d : mx), weekdayTotals[0])

@@ -9,14 +9,20 @@ export interface CategoryTotal {
     amount: number
 }
 
+/** Group id for expenses with no category, so they still add up to the period total. */
+export const UNCATEGORIZED_ID = 'uncategorized'
+
 /** Expense transactions grouped and summed by category, sorted by amount desc. */
 export function groupExpensesByCategory(transactions: TransactionWithDetails[]): CategoryTotal[] {
     const map = new Map<string, CategoryTotal>()
     for (const tx of transactions) {
-        if (tx.type !== 'expense' || !tx.category) continue
-        const existing = map.get(tx.category.id)
+        if (tx.type !== 'expense') continue
+        const key = tx.category?.id ?? UNCATEGORIZED_ID
+        const existing = map.get(key)
         if (existing) {
             existing.amount += tx.amount
+        } else if (!tx.category) {
+            map.set(key, { id: UNCATEGORIZED_ID, name: 'Uncategorized', color: null, bg_color: null, icon: null, amount: tx.amount })
         } else {
             map.set(tx.category.id, {
                 id: tx.category.id,

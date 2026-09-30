@@ -34,7 +34,7 @@ export function TodayWeekCard({ transactions, periodStart, periodEnd }: TodayWee
     }, [transactions, currentWeek])
 
     const activeTxs = tab === 'today' ? todayTxs : weekTxs
-    const topCategory = useMemo(() => getTopExpenseCategory(activeTxs), [activeTxs])
+    const topCategory = useMemo(() => getTopExpenseCategory(activeTxs.filter(t => !t.category?.is_savings)), [activeTxs])
 
     return (
         <div className="card overflow-hidden">

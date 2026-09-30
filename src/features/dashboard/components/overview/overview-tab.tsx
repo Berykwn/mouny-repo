@@ -12,14 +12,15 @@ import { PeriodInsights } from './period-insights'
 import { TodayWeekCard } from './today-week-card'
 import { BalancesCard } from './balances-card'
 import { AnalyticsSection } from '../analytics/analytics-section'
+import { onTransactionsChanged } from '@/lib/transactions-bus'
 
 async function fetchOverviewData(
     periodId: string
 ): Promise<OverviewData | null> {
     const [
-        { data: allPeriods },
-        { data: txs },
-        { data: accounts },
+        { data: allPeriods, error: periodsError },
+        { data: txs, error: txsError },
+        { data: accounts, error: accountsError },
         { data: debts },
     ] = await Promise.all([
         payPeriodsService.getAll(),
@@ -27,6 +28,9 @@ async function fetchOverviewData(
         accountsService.getAll(),
         debtsService.getActive(),
     ])
+
+    // Missing data would render as a believable Rp0 period, so treat it as a failed load.
+    if (periodsError || txsError || accountsError) return null
 
     const allList = allPeriods ?? []
     const periodTxs = txs ?? []
@@ -58,7 +62,8 @@ async function fetchOverviewData(
         allPeriods: allList,
         previousSummary: previousSummary ?? null,
         totalBalance: accountsList.reduce((s, a) => s + a.balance, 0),
-        totalDebt: (debts ?? []).reduce((s, d) => s + d.remaining_amount, 0),
+        // Receivables are money owed to the user, not debt.
+        totalDebt: (debts ?? []).filter(d => d.type === 'debt').reduce((s, d) => s + d.remaining_amount, 0),
     }
 }
 
@@ -73,13 +78,20 @@ export function OverviewTransaction({
     const [loading, setLoading] = useState(true)
 
     useEffect(() => {
-        async function load() {
-            setLoading(true)
+        let cancelled = false
+        async function load(background = false) {
+            if (!background) setLoading(true)
             const result = await fetchOverviewData(periodId)
-            setData(result)
+            // Switching periods quickly: only the latest period's response may land.
+            if (cancelled) return
+            // A failed background refresh keeps what's on screen.
+            if (result || !background) setData(result)
             setLoading(false)
         }
         load()
+        // Transactions added from the top-bar button while the dashboard is open.
+        const unsubscribe = onTransactionsChanged(() => { load(true) })
+        return () => { cancelled = true; unsubscribe() }
     }, [periodId])
 
     const stats = usePeriodStats({
@@ -104,7 +116,8 @@ export function OverviewTransaction({
                 <div className="space-y-3">
                     <SafeToSpendCard
                         totalIncome={stats.totalIncome}
-                        totalExpense={stats.totalExpense}
+                        totalSpending={stats.totalSpending}
+                        totalSavings={stats.totalSavings}
                         remaining={stats.remaining}
                         spentPercent={stats.spentPercent}
                     />

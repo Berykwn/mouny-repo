@@ -2,6 +2,7 @@ import { supabase } from '@/lib/supabase'
 import { handleError, type ServiceResult } from './_base'
 import type { PayPeriod } from '@/types/'
 import { toISODate } from '@/lib/helpers'
+import { emitPeriodsChanged } from '@/lib/transactions-bus'
 
 export const payPeriodsService = {
     async getActive(): Promise<ServiceResult<PayPeriod>> {
@@ -50,6 +51,7 @@ export const payPeriodsService = {
                 .single()
 
             if (error) throw error
+            emitPeriodsChanged()
             return { data, error: null }
         } catch (err) {
             return { data: null, error: handleError(err) }
@@ -67,6 +69,7 @@ export const payPeriodsService = {
                 .single()
 
             if (error) throw error
+            emitPeriodsChanged()
             return { data, error: null }
         } catch (err) {
             return { data: null, error: handleError(err) }

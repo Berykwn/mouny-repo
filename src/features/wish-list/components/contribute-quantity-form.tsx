@@ -28,6 +28,8 @@ export function ContributeQuantityForm({ item, periodStart, onSuccess }: Contrib
 
     const target = item.quantity ?? 0
     const savedQuantity = item.saved_quantity ?? 0
+    const unit = item.unit ?? ''
+    const remainingQuantity = target > 0 ? Math.max(0, Math.round((target - savedQuantity) * 1000) / 1000) : null
     const percent = target > 0 ? Math.round((savedQuantity / target) * 100) : 0
 
     const [quantity, setQuantity] = useState('')
@@ -35,7 +37,7 @@ export function ContributeQuantityForm({ item, periodStart, onSuccess }: Contrib
     const [date, setDate] = useState(defaultDate)
     const [accountId, setAccountId] = useState('')
     const [accountPickerOpen, setAccountPickerOpen] = useState(false)
-    const [categoryId, setCategoryId] = useState('none')
+    const [categoryId, setCategoryId] = useState('')
     const [accounts, setAccounts] = useState<Account[]>([])
     const [categories, setCategories] = useState<Category[]>([])
     const [loading, setLoading] = useState(false)
@@ -62,6 +64,10 @@ export function ContributeQuantityForm({ item, periodStart, onSuccess }: Contrib
 
         if (quantityNum <= 0) {
             toast.error('Invalid quantity.')
+            return
+        }
+        if (remainingQuantity !== null && quantityNum > remainingQuantity) {
+            toast.error(`Only ${remainingQuantity} ${unit} left to reach the target.`)
             return
         }
         if (pricePerUnitNum <= 0) {
@@ -104,7 +110,7 @@ export function ContributeQuantityForm({ item, periodStart, onSuccess }: Contrib
 
         toast.success(data?.is_purchased
             ? 'Cicilan tercatat, wish list selesai!'
-            : `Cicilan ${quantityNum} ${item.unit} tercatat`)
+            : `Cicilan ${quantityNum} ${unit} tercatat`)
         onSuccess()
     }
 
@@ -117,11 +123,11 @@ export function ContributeQuantityForm({ item, periodStart, onSuccess }: Contrib
                     <div>
                         <p className="text-[11.5px] text-[#8a8a84]">Terkumpul untuk {item.name}</p>
                         <p className="text-[22px] font-medium tracking-[-0.02em] text-[#252525] mt-0.5 tabular-nums">
-                            {savedQuantity} {item.unit}
+                            {savedQuantity} {unit}
                         </p>
                     </div>
                     {target > 0 && (
-                        <p className="text-[11.5px] text-[#8a8a84] tabular-nums">of {target} {item.unit}</p>
+                        <p className="text-[11.5px] text-[#8a8a84] tabular-nums">of {target} {unit}</p>
                     )}
                 </div>
                 {target > 0 && (
@@ -137,7 +143,7 @@ export function ContributeQuantityForm({ item, periodStart, onSuccess }: Contrib
             {/* Quantity + price per unit */}
             <div className="flex gap-3">
                 <div className="space-y-1.5 flex-1">
-                    <Label className={FIELD_LABEL}>Jumlah {item.unit}</Label>
+                    <Label className={FIELD_LABEL}>Jumlah {unit}</Label>
                     <Input
                         type="text"
                         inputMode="decimal"
@@ -150,7 +156,7 @@ export function ContributeQuantityForm({ item, periodStart, onSuccess }: Contrib
                     />
                 </div>
                 <div className="space-y-1.5 flex-1">
-                    <Label className={FIELD_LABEL}>Harga/{item.unit}</Label>
+                    <Label className={FIELD_LABEL}>Harga/{unit}</Label>
                     <div className="relative">
                         <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[13px] text-[#8a8a84] font-medium">Rp</span>
                         <Input

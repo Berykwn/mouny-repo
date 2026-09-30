@@ -275,13 +275,13 @@ export function DebtForm({ onSuccess, payPeriodId, periodStartDate }: DebtFormPr
                             )}
                         >
                             <CalendarIcon className="mr-2 h-4 w-4 text-[#8a8a84]" />
-                            {dueDate ? format(new Date(dueDate), 'dd MMM yyyy') : 'Pick a date'}
+                            {dueDate ? format(new Date(dueDate + 'T00:00:00'), 'dd MMM yyyy') : 'Pick a date'}
                         </button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0 rounded-[14px] border-[#e5e5e5]">
                         <Calendar
                             mode="single"
-                            selected={dueDate ? new Date(dueDate) : undefined}
+                            selected={dueDate ? new Date(dueDate + 'T00:00:00') : undefined}
                             onSelect={(d) => {
                                 if (!d) return
                                 setDueDate(format(d, 'yyyy-MM-dd'))

@@ -9,12 +9,13 @@ interface PeriodChipProps {
 
 export function PeriodChip({ period, onClick }: PeriodChipProps) {
     const month = new Date(period.start_date + 'T00:00:00').toLocaleDateString('en-GB', { month: 'short' })
+    // Both ends count: a period's first day is day 1 (matches usePeriodStats).
     const totalDays = period.end_date
-        ? Math.max(1, getDaysBetween(period.start_date, period.end_date))
+        ? getDaysBetween(period.start_date, period.end_date) + 1
         : null
     const daysElapsed = period.status === 'closed' && totalDays
         ? totalDays
-        : Math.max(1, getDaysBetween(period.start_date))
+        : Math.max(1, getDaysBetween(period.start_date) + 1)
 
     return (
         <button

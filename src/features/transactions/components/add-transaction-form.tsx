@@ -90,7 +90,10 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
             setCategoryId('')
             return
         }
+        // Toggling type quickly: a late response for the old type mustn't set its categories.
+        let cancelled = false
         categoriesService.getByType(type).then(({ data }) => {
+            if (cancelled) return
             if (data && data.length > 0) {
                 setCategories(data)
                 setCategoryId(data[0].id)
@@ -99,6 +102,7 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
                 setCategoryId('')
             }
         })
+        return () => { cancelled = true }
     }, [type])
 
     // Live "safe to spend" baseline for the consequence strip. Fetched once (and on

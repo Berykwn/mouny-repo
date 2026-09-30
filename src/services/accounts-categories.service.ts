@@ -249,7 +249,7 @@ export const categoriesService = {
 
             // FINANCIAL
             { name: 'Debt Payment', type: 'expense', color: COLORS[18], icon: 'arrow-down-circle' },
-            { name: 'Savings', type: 'expense', color: COLORS[4], icon: 'piggy-bank' },
+            { name: 'Savings', type: 'expense', color: COLORS[4], icon: 'piggy-bank', is_savings: true },
             { name: 'Investments', type: 'expense', color: COLORS[5], icon: 'trending-up' },
 
             // OTHER

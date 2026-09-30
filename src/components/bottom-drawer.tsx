@@ -13,6 +13,9 @@ interface BottomDrawerProps {
     titleClassName?: string
 }
 
+/** Open drawers across the app; the body scroll lock is held while any is open. */
+let openDrawerCount = 0
+
 export function BottomDrawer({
     open,
     onClose,
@@ -22,9 +25,15 @@ export function BottomDrawer({
     titleClassName = 'font-semibold text-[15px] text-[#252525]',
 }: BottomDrawerProps) {
     React.useEffect(() => {
-        if (open) document.body.style.overflow = 'hidden'
-        else document.body.style.overflow = ''
-        return () => { document.body.style.overflow = '' }
+        if (!open) return
+        // Drawers nest (an account picker inside a form drawer): only the last one
+        // to close may unlock the page, or it scrolls behind the drawer still open.
+        openDrawerCount++
+        document.body.style.overflow = 'hidden'
+        return () => {
+            openDrawerCount--
+            if (openDrawerCount === 0) document.body.style.overflow = ''
+        }
     }, [open])
 
     if (!open) return null

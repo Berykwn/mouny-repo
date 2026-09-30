@@ -46,11 +46,15 @@ export function usePeriodTrend(
             setOtherSummaries({})
             return
         }
+        let cancelled = false
         setLoading(true)
         transactionsService.getPeriodSummaries(ids).then(({ data }) => {
+            // A newer selection's request owns the state now.
+            if (cancelled) return
             setOtherSummaries(data ?? {})
             setLoading(false)
         })
+        return () => { cancelled = true }
     }, [otherPeriodIds])
 
     if (!selectedPeriod) return { trend: [], loading: false }

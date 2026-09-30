@@ -18,7 +18,8 @@ export function ForgotPasswordForm() {
 
         try {
             const { error } = await supabase.auth.resetPasswordForEmail(email, {
-                redirectTo: `${window.location.origin}/reset-password`,
+                // Respect the deploy base path (e.g. /mouny/) and hash routing.
+                redirectTo: `${window.location.origin}${import.meta.env.BASE_URL}${import.meta.env.VITE_USE_HASH_ROUTE === 'true' ? '#/' : ''}reset-password`,
             })
 
             if (error) throw error

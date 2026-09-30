@@ -91,8 +91,9 @@ export function usePeriodStats({
 
         const dailyAvg = totalSpending / daysElapsed
 
-        const safeDaily = daysRemaining !== null && daysRemaining > 0
-            ? remaining / daysRemaining
+        // daysRemaining excludes today, but today's budget is still spendable.
+        const safeDaily = !isClosed && daysRemaining !== null
+            ? remaining / (daysRemaining + 1)
             : null
 
         // A day or two of data is too thin to extrapolate — one big purchase would read as the pace.

@@ -14,17 +14,22 @@ export const debtsService = {
             const { data: { user } } = await supabase.auth.getUser()
             if (!user) throw new Error('unauthenticated')
 
+            const meta = DEBT_CATEGORIES[name]
+            // Match on type too, and take the oldest if there are several — a second
+            // category with the same name must not make every debt payment fail.
             const { data: existing, error: findError } = await supabase
                 .from('categories')
                 .select('*')
                 .eq('user_id', user.id)
                 .eq('name', name)
+                .eq('type', meta.type)
+                .order('created_at', { ascending: true })
+                .limit(1)
                 .maybeSingle()
 
             if (findError) throw findError
             if (existing) return { data: existing, error: null }
 
-            const meta = DEBT_CATEGORIES[name]
             const { data, error } = await supabase
                 .from('categories')
                 .insert({ user_id: user.id, name, ...meta })

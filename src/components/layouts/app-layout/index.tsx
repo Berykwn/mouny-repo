@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { AddTransactionFlow } from '@/features/transactions/components/add-transaction-flow'
 import { payPeriodsService } from '@/services/pay-periods.service'
 import { toISODate, getInitials } from '@/lib/helpers'
-import { emitTransactionsChanged } from '@/lib/transactions-bus'
+import { emitTransactionsChanged, onPeriodsChanged } from '@/lib/transactions-bus'
 import { useAuth } from '@/hooks/use-auth'
 import { TopBarSlotContext } from '@/contexts/TopBarSlotContext'
 import type { PayPeriod } from '@/types'
@@ -67,8 +67,16 @@ export default function AppLayout() {
     const [topBarSlotNode, setTopBarSlotNode] = useState<HTMLDivElement | null>(null)
     const currentLabel = ROUTE_LABELS[location.pathname] ?? 'Overview'
 
+    // Refetch whenever a period is opened or closed, so the Add button never
+    // writes into a closed period or misses a newly opened one.
     useEffect(() => {
-        payPeriodsService.getActive().then(({ data }) => setActivePeriod(data))
+        let cancelled = false
+        const load = () => payPeriodsService.getActive().then(({ data }) => {
+            if (!cancelled) setActivePeriod(data)
+        })
+        load()
+        const unsubscribe = onPeriodsChanged(load)
+        return () => { cancelled = true; unsubscribe() }
     }, [])
 
     const handleAddClick = useCallback(() => {
@@ -88,7 +96,7 @@ export default function AppLayout() {
                 'px-4 py-6',
             )}>
                 <div className="flex items-center gap-2 px-1">
-                    <img src="/favicon.svg" alt="" className="w-6 h-6 shrink-0" />
+                    <img src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" className="w-6 h-6 shrink-0" />
                     <span className="text-[20px] font-semibold tracking-[-0.02em] text-ink dark:text-white">Mouny.</span>
                     <span className="ml-auto px-1.5 py-0.5 rounded-md border border-line bg-surface-soft text-[10px] text-muted-ink tabular-nums">
                         v{__APP_VERSION__}

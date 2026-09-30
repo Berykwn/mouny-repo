@@ -1,7 +1,6 @@
 import { supabase } from '@/lib/supabase'
 import { handleError, type ServiceResult } from './_base'
-import type { Transaction, TransactionWithDetails, TransactionType, Category } from '@/types/'
-import { COLORS } from '@/lib/static-colors'
+import type { Transaction, TransactionWithDetails, TransactionType } from '@/types/'
 import { summarizeTransactions, type PeriodSummary } from '@/lib/period-summary'
 
 export interface CreateTransactionInput {
@@ -149,41 +148,6 @@ export const transactionsService = {
             for (const id of periodIds) summaries[id] = summarizeTransactions(rowsByPeriod[id])
 
             return { data: summaries, error: null }
-        } catch (err) {
-            return { data: null, error: handleError(err) }
-        }
-    },
-
-    async findOrCreateDebtPaymentCategory(): Promise<ServiceResult<Category>> {
-        try {
-            const { data: { user } } = await supabase.auth.getUser()
-            if (!user) throw new Error('unauthenticated')
-
-            const { data: existing, error: findError } = await supabase
-                .from('categories')
-                .select('*')
-                .eq('user_id', user.id)
-                .eq('name', 'Debt Payment')
-                .eq('type', 'expense')
-                .maybeSingle()
-
-            if (findError) throw findError
-            if (existing) return { data: existing, error: null }
-
-            const { data, error } = await supabase
-                .from('categories')
-                .insert({
-                    user_id: user.id,
-                    name: 'Debt Payment',
-                    type: 'expense',
-                    color: COLORS[18] ?? '#000000',
-                    icon: 'arrow-down-circle',
-                })
-                .select()
-                .single()
-
-            if (error) throw error
-            return { data, error: null }
         } catch (err) {
             return { data: null, error: handleError(err) }
         }

@@ -15,7 +15,11 @@ export function formatCurrency(amount: number): string {
 
 export function formatCurrencyInput(value: string): string {
     if (!value) return ''
-    return Number(value).toLocaleString('id-ID')
+    // Keep a leading minus (balance adjustments) and ignore stray characters instead of showing NaN.
+    const negative = value.trim().startsWith('-')
+    const digits = value.replace(/\D/g, '')
+    if (!digits) return negative ? '-' : ''
+    return (negative ? '-' : '') + Number(digits).toLocaleString('id-ID')
 }
 
 export function parseCurrencyInput(value: string): number {
@@ -30,25 +34,33 @@ export function parseCurrencyWithSign(value: string): number {
     ) || 0
 }
 
+/**
+ * A bare YYYY-MM-DD string is a local calendar date, but `new Date()` reads it as UTC
+ * midnight — which is the previous day in time zones behind UTC. Timestamps pass through.
+ */
+function parseLocalDate(dateStr: string): Date {
+    return /^\d{4}-\d{2}-\d{2}$/.test(dateStr) ? new Date(dateStr + 'T00:00:00') : new Date(dateStr)
+}
+
 export function formatDate(dateStr: string): string {
     return new Intl.DateTimeFormat('id-ID', {
         day: 'numeric',
         month: 'short',
         year: 'numeric',
-    }).format(new Date(dateStr))
+    }).format(parseLocalDate(dateStr))
 }
 
 export function formatDateShort(dateStr: string): string {
     return new Intl.DateTimeFormat('id-ID', {
         day: 'numeric',
         month: 'short',
-    }).format(new Date(dateStr))
+    }).format(parseLocalDate(dateStr))
 }
 
 export function daysUntil(dateStr: string): number {
     const today = new Date()
     today.setHours(0, 0, 0, 0)
-    const target = new Date(dateStr)
+    const target = parseLocalDate(dateStr)
     target.setHours(0, 0, 0, 0)
     return Math.round((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
 }
@@ -113,6 +125,6 @@ export function getInitials(user: { user_metadata?: { full_name?: string } | nul
 
 export function formatPeriodLabel(startDate: string | null): string {
     if (!startDate) return 'Period'
-    const date = new Date(startDate)
+    const date = parseLocalDate(startDate)
     return date.toLocaleDateString('id-ID', { month: 'short', year: '2-digit' })
 }

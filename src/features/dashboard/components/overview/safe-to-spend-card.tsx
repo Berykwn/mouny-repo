@@ -3,14 +3,17 @@ import { cn } from '@/lib/utils'
 
 interface SafeToSpendCardProps {
     totalIncome: number
-    totalExpense: number
+    /** Expenses minus savings. */
+    totalSpending: number
+    totalSavings: number
     remaining: number
     spentPercent: number
 }
 
 export function SafeToSpendCard({
     totalIncome,
-    totalExpense,
+    totalSpending,
+    totalSavings,
     remaining,
     spentPercent,
 }: SafeToSpendCardProps) {
@@ -40,7 +43,10 @@ export function SafeToSpendCard({
             </div>
 
             <div className="mt-2 flex items-center justify-between text-[11.5px]">
-                <span className="text-muted-ink">Spent {formatCurrency(totalExpense)}</span>
+                <span className="text-muted-ink">
+                    Spent {formatCurrency(totalSpending)}
+                    {totalSavings > 0 && <> · Saved {formatCurrency(totalSavings)}</>}
+                </span>
                 <span className="text-muted-ink">of {formatCurrency(totalIncome)} income</span>
             </div>
         </div>

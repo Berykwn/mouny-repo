@@ -29,17 +29,24 @@ export function calculateHealthScore({
         else if (savingsRate < 0.2) { score -= 15; periodReasons.push(`Savings rate ${savingsPct}%`) }
         else if (savingsRate < 0.3) { score -= 5; periodReasons.push(`Savings rate ${savingsPct}%`) }
         else periodReasons.push(`Savings rate ${savingsPct}%`)
+    } else if (totalSpending > 0) {
+        // Spending with no income to cover it is the worst case, not a skipped check.
+        score -= 50
+        periodReasons.push('Spending with no income')
     }
 
-    if (totalBalance > 0) {
+    if (totalDebt <= 0) {
+        overallReasons.push('No debt')
+    } else if (totalBalance <= 0) {
+        score -= 30
+        overallReasons.push('Debt exceeds balance')
+    } else {
         const debtRatio = totalDebt / totalBalance
         if (debtRatio > 1) { score -= 30; overallReasons.push('Debt exceeds balance') }
         else if (debtRatio > 0.5) { score -= 20; overallReasons.push('High debt load') }
         else if (debtRatio > 0.3) { score -= 10; overallReasons.push('Moderate debt load') }
         else if (debtRatio > 0.1) { score -= 5; overallReasons.push('Low debt load') }
         else overallReasons.push('No significant debt')
-    } else {
-        overallReasons.push('No debt')
     }
 
     if (expenseDiffPct !== null) {

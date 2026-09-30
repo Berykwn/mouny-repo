@@ -58,16 +58,25 @@ export function CategoryForm({ onSuccess, initial, initialBudget }: CategoryForm
             return
         }
 
+        let budgetError: string | null = null
         if (type === 'expense') {
             const budgetAmount = parseCurrencyInput(budget)
             if (budgetAmount > 0) {
-                await categoryBudgetsService.upsert(category.id, budgetAmount)
+                ({ error: budgetError } = await categoryBudgetsService.upsert(category.id, budgetAmount))
             } else if (isEdit && initialBudget) {
-                await categoryBudgetsService.remove(category.id)
+                ({ error: budgetError } = await categoryBudgetsService.remove(category.id))
             }
+        } else if (isEdit && initialBudget) {
+            // Budgets only apply to expenses; don't leave one behind on a category now marked income.
+            ({ error: budgetError } = await categoryBudgetsService.remove(category.id))
         }
 
         setLoading(false)
+        if (budgetError) {
+            toast.error(`Category saved, but the budget wasn't: ${budgetError}`)
+            onSuccess()
+            return
+        }
         toast.success(isEdit ? 'Category updated successfully.' : 'Category created successfully.')
         onSuccess()
     }

@@ -30,9 +30,19 @@ export function ClosePeriodForm({ period, onSuccess }: ClosePeriodFormProps) {
     const [loading, setLoading] = useState(false)
     const [confirmed, setConfirmed] = useState(false)
 
+    // Bare YYYY-MM-DD parses as UTC midnight; compare against local midnight like the calendar does.
+    const periodStart = new Date(period.start_date + 'T00:00:00')
+    const today = new Date()
+    today.setHours(23, 59, 59, 999)
+
     const handleClose = async () => {
-        if (!endDate) {
-            toast.error('Closing date is required.')
+        const closeDate = toISODate(endDate ?? new Date())
+        if (closeDate < period.start_date) {
+            toast.error('Closing date cannot be before the period start.')
+            return
+        }
+        if (closeDate > toISODate()) {
+            toast.error('Closing date cannot be in the future.')
             return
         }
 
@@ -49,7 +59,7 @@ export function ClosePeriodForm({ period, onSuccess }: ClosePeriodFormProps) {
         const { error } = await payPeriodsService.close(
             period.id,
             closingBalance,
-            toISODate(endDate)
+            closeDate
         )
 
         setLoading(false)
@@ -116,9 +126,7 @@ export function ClosePeriodForm({ period, onSuccess }: ClosePeriodFormProps) {
                                         setEndDate(date)
                                         setDateOpen(false)
                                     }}
-                                    disabled={(date) =>
-                                        date < new Date(period.start_date)
-                                    }
+                                    disabled={(date) => date < periodStart || date > today}
                                 />
                             </PopoverContent>
                         </Popover>

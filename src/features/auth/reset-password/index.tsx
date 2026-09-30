@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { AlertCircle } from 'lucide-react'
 import { ResetPasswordForm } from '../components/reset-password-form'
@@ -7,13 +7,21 @@ import AuthLayout from '@/components/layouts/auth-layout'
 import { Skeleton } from '@/components/ui/skeleton'
 
 export default function ResetPasswordPage() {
-  const navigate = useNavigate()
   const [checking, setChecking] = useState(true)
   const [validSession, setValidSession] = useState(false)
 
   useEffect(() => {
     // Supabase redirect from email contains token in URL hash
     // onAuthStateChange will fire 'PASSWORD_RECOVERY' event
+    // The token is removed from the URL once read, so after a reload no
+    // PASSWORD_RECOVERY event comes — an existing session is enough to set a password.
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        setValidSession(true)
+        setChecking(false)
+      }
+    })
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'PASSWORD_RECOVERY') {
         setValidSession(true)
@@ -33,7 +41,7 @@ export default function ResetPasswordPage() {
       subscription.unsubscribe()
       clearTimeout(timeout)
     }
-  }, [navigate])
+  }, [])
 
   return (
     <AuthLayout>
