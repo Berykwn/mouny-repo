@@ -7,6 +7,8 @@ import { VitePWA } from 'vite-plugin-pwa'
 import Icons from 'unplugin-icons/vite'
 import { FileSystemIconLoader } from 'unplugin-icons/loaders'
 
+const CHART_LIBS = /[\\/]node_modules[\\/](recharts|d3-[^\\/]+|victory-vendor|internmap|decimal\.js-light|@reduxjs|redux|redux-thunk|react-redux|reselect|immer|es-toolkit|eventemitter3|tiny-invariant)[\\/]/
+
 const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf-8'))
 
 export default defineConfig(({ mode }) => {
@@ -52,16 +54,19 @@ export default defineConfig(({ mode }) => {
     build: {
       rollupOptions: {
         output: {
-          // Libraries change far less often than app code; in their own chunks they stay
+          // Libraries change far less often than app code; in their own chunk they stay
           // cached across releases instead of re-downloading with every deploy.
+          //
+          // One vendor chunk, not one per library: split ones import each other (radix needs
+          // react, and rollup puts shared helpers in whichever chunk it likes), and a cycle
+          // between chunks leaves a module uninitialised at startup, which is a blank page.
+          //
+          // The charts library and its dependencies stay out, so they ship only with the
+          // pages that draw charts.
           manualChunks(id) {
-            // Recharts is left out on purpose: as a manual chunk, rollup makes the entry import
-            // it for side effects; left alone it ships only with the pages that draw charts.
             if (!id.includes('node_modules')) return
-            if (/[\\/]node_modules[\\/]@supabase[\\/]/.test(id)) return 'supabase'
-            if (/[\\/]node_modules[\\/](@tanstack|zustand)[\\/]/.test(id)) return 'state'
-            if (/[\\/]node_modules[\\/](react|react-dom|scheduler|react-router|react-router-dom)[\\/]/.test(id)) return 'react'
-            if (/[\\/]node_modules[\\/](@radix-ui|radix-ui|@floating-ui)[\\/]/.test(id)) return 'radix'
+            if (CHART_LIBS.test(id)) return
+            return 'vendor'
           },
         },
       },
