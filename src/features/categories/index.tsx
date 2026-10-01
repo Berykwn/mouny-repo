@@ -1,61 +1,45 @@
-import { useEffect, useState, useCallback, useMemo } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { Sparkles, Loader2, Tag } from 'lucide-react'
 import { HeroAction } from '@/components/hero'
 import { BudgetHero } from './components/budget-hero'
-import { payPeriodsService } from '@/services/pay-periods.service'
-import { transactionsService } from '@/services/transactions.service'
+import { useBudgets, useCategories, usePeriods, usePeriodTransactions } from '@/queries'
 import { BottomDrawer } from '@/components/bottom-drawer'
 import { ConfirmDrawer } from '@/components/confirmation-drawer'
 import { CategoryForm } from './components/category-form'
 import { CategoryList } from './components/category-list'
 import { categoriesService } from '@/services/accounts-categories.service'
-import { categoryBudgetsService } from '@/services/budgets.service'
-import type { Category, PayPeriod, TransactionWithDetails } from '@/types'
+import type { Category, TransactionWithDetails } from '@/types'
 import { toast } from 'sonner'
 import { LoadingContent } from '@/components/loading-content'
 import { PageHeader } from '@/components/page-header'
 
+const NO_CATEGORIES: Category[] = []
+const NO_TXS: TransactionWithDetails[] = []
+
 export function CategoriesPage() {
-    const [categories, setCategories] = useState<Category[]>([])
-    const [budgets, setBudgets] = useState<Record<string, number>>({})
-    const [loading, setLoading] = useState(true)
+    const categoriesQuery = useCategories()
+    const budgetsQuery = useBudgets()
+    const categories = categoriesQuery.data ?? NO_CATEGORIES
+    const budgetRows = budgetsQuery.data
+    const budgets = useMemo(() => {
+        const map: Record<string, number> = {}
+        for (const b of budgetRows ?? []) map[b.category_id] = b.amount
+        return map
+    }, [budgetRows])
+    const loading = categoriesQuery.isPending || budgetsQuery.isPending
+    // The hero's budget-vs-income analysis; the page still works without it.
+    const { activePeriod } = usePeriods()
+    const { data: periodTxs = NO_TXS } = usePeriodTransactions(activePeriod?.id)
     const [editCategory, setEditCategory] = useState<Category | null>(null)
     const [addCategoryDrawer, setAddCategoryDrawer] = useState(false)
     const [deletingCategoryId, setDeletingCategoryId] = useState<string | null>(null)
     const [deleteLoading, setDeleteLoading] = useState(false)
     const [seeding, setSeeding] = useState(false)
-    const [activePeriod, setActivePeriod] = useState<PayPeriod | null>(null)
-    const [periodTxs, setPeriodTxs] = useState<TransactionWithDetails[]>([])
 
-    const load = useCallback(async () => {
-        setLoading(true)
-        const [
-            { data: cats, error: catsError },
-            { data: budgetRows, error: budgetsError },
-            { data: active },
-        ] = await Promise.all([
-            categoriesService.getAll(),
-            categoryBudgetsService.getAll(),
-            payPeriodsService.getActive(),
-        ])
-        if (catsError || budgetsError) toast.error(catsError ?? budgetsError)
-        setCategories(cats ?? [])
-        const map: Record<string, number> = {}
-        for (const b of budgetRows ?? []) map[b.category_id] = b.amount
-        setBudgets(map)
-
-        // The hero's budget-vs-income analysis; the page still works without it.
-        setActivePeriod(active ?? null)
-        if (active) {
-            const { data: txs } = await transactionsService.getByPeriod(active.id)
-            setPeriodTxs(txs ?? [])
-        } else {
-            setPeriodTxs([])
-        }
-        setLoading(false)
-    }, [])
-
-    useEffect(() => { load() }, [load])
+    const loadError = categoriesQuery.error ?? budgetsQuery.error
+    useEffect(() => {
+        if (loadError) toast.error(loadError.message)
+    }, [loadError])
 
     const handleDeleteCategory = async () => {
         if (!deletingCategoryId) return
@@ -69,7 +53,6 @@ export function CategoriesPage() {
             setDeletingCategoryId(null)
             return
         }
-        setCategories(prev => prev.filter(c => c.id !== deletingCategoryId))
         setDeletingCategoryId(null)
         toast.success('Category deleted.')
     }
@@ -124,7 +107,6 @@ export function CategoriesPage() {
                                             setSeeding(false)
                                             if (error) { toast.error(error); return }
                                             toast.success('Default categories added.')
-                                            load()
                                         }}
                                         disabled={seeding}
                                         icon={seeding ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
@@ -167,14 +149,14 @@ export function CategoriesPage() {
 
                 {/* Drawers */}
                 <BottomDrawer open={addCategoryDrawer} onClose={() => setAddCategoryDrawer(false)} title="Add Category">
-                    <CategoryForm onSuccess={() => { setAddCategoryDrawer(false); load() }} />
+                    <CategoryForm onSuccess={() => setAddCategoryDrawer(false)} />
                 </BottomDrawer>
                 <BottomDrawer open={!!editCategory} onClose={() => setEditCategory(null)} title="Edit Category">
                     {editCategory && (
                         <CategoryForm
                             initial={editCategory}
                             initialBudget={budgets[editCategory.id] ?? null}
-                            onSuccess={() => { setEditCategory(null); load() }}
+                            onSuccess={() => setEditCategory(null)}
                         />
                     )}
                 </BottomDrawer>

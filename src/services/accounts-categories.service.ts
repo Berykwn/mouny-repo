@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase'
-import { handleError, type ServiceResult } from './_base'
+import { handleError, invalidatesOnWrite, sessionUser, type ServiceResult } from './_base'
 import type { Account } from '@/types/'
 import type { Category } from '@/types/'
 import { COLORS } from '@/lib/static-colors'
@@ -28,7 +28,7 @@ async function repairMissingIcons(categories: Category[]): Promise<Category[]> {
     return categories.map(c => byId.get(c.id) ?? c)
 }
 
-export const accountsService = {
+export const accountsService = invalidatesOnWrite({
     async getAll(): Promise<ServiceResult<Account[]>> {
         try {
             const { data, error } = await supabase
@@ -45,7 +45,7 @@ export const accountsService = {
 
     async create(input: { name: string; type: Account['type']; initial_balance: number }): Promise<ServiceResult<Account>> {
         try {
-            const { data: { user } } = await supabase.auth.getUser()
+            const user = await sessionUser()
             if (!user) throw new Error('Belum login')
 
             const { data, error } = await supabase
@@ -117,14 +117,7 @@ export const accountsService = {
             if (!from || !to) throw new Error('Account not found')
             if (from.balance < amount) throw new Error('Insufficient balance')
 
-            // `transfer_balance` isn't in database.types.ts yet (Functions wasn't regenerated
-            // after this RPC was added in Supabase) — cast narrowly instead of `as any`.
-            const { error } = await (supabase as unknown as {
-                rpc: (
-                    fn: 'transfer_balance',
-                    params: { p_from_id: string; p_to_id: string; p_amount: number }
-                ) => PromiseLike<{ error: { message: string } | null }>
-            }).rpc('transfer_balance', {
+            const { error } = await supabase.rpc('transfer_balance', {
                 p_from_id: fromId,
                 p_to_id: toId,
                 p_amount: amount,
@@ -136,9 +129,9 @@ export const accountsService = {
             return { data: null, error: handleError(err) }
         }
     },
-}
+})
 
-export const categoriesService = {
+export const categoriesService = invalidatesOnWrite({
     async getAll(): Promise<ServiceResult<Category[]>> {
         try {
             const { data, error } = await supabase
@@ -153,24 +146,9 @@ export const categoriesService = {
         }
     },
 
-    async getByType(type: Category['type']): Promise<ServiceResult<Category[]>> {
-        try {
-            const { data, error } = await supabase
-                .from('categories')
-                .select('*')
-                .eq('type', type)
-                .order('name')
-
-            if (error) throw error
-            return { data: await repairMissingIcons(data), error: null }
-        } catch (err) {
-            return { data: null, error: handleError(err) }
-        }
-    },
-
     async create(input: CategoryInput): Promise<ServiceResult<Category>> {
         try {
-            const { data: { user } } = await supabase.auth.getUser()
+            const user = await sessionUser()
             if (!user) throw new Error('unauthenticated')
 
             const { data, error } = await supabase
@@ -257,7 +235,7 @@ export const categoriesService = {
         ]
 
         try {
-            const { data: { user } } = await supabase.auth.getUser()
+            const user = await sessionUser()
             if (!user) throw new Error('unauthenticated')
 
             const { data, error } = await supabase
@@ -271,4 +249,4 @@ export const categoriesService = {
             return { data: null, error: handleError(err) }
         }
     },
-}
+})

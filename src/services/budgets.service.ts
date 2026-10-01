@@ -1,8 +1,8 @@
 import { supabase } from '@/lib/supabase'
-import { handleError, type ServiceResult } from './_base'
+import { handleError, invalidatesOnWrite, sessionUser, type ServiceResult } from './_base'
 import type { CategoryBudget } from '@/types/'
 
-export const categoryBudgetsService = {
+export const categoryBudgetsService = invalidatesOnWrite({
     async getAll(): Promise<ServiceResult<CategoryBudget[]>> {
         try {
             const { data, error } = await supabase
@@ -18,7 +18,7 @@ export const categoryBudgetsService = {
 
     async upsert(categoryId: string, amount: number): Promise<ServiceResult<CategoryBudget>> {
         try {
-            const { data: { user } } = await supabase.auth.getUser()
+            const user = await sessionUser()
             if (!user) throw new Error('Belum login')
 
             const { data, error } = await supabase
@@ -50,4 +50,4 @@ export const categoryBudgetsService = {
             return { data: null, error: handleError(err) }
         }
     },
-}
+})

@@ -1,9 +1,5 @@
-import { useEffect, useState } from 'react'
-import { useLocation } from 'react-router-dom'
-import { onTransactionsChanged } from '@/lib/transactions-bus'
-import { transactionsService } from '@/services/transactions.service'
-import { debtsService } from '@/services/debts.service'
-import { wishListService } from '@/services/wish-list.service'
+import { useMemo } from 'react'
+import { useDebts, usePeriodSummary, useWishes } from '@/queries'
 import { dueStatus } from '@/features/debts/lib/debt-insights'
 import { wishProgress } from '@/features/wish-list/lib/wish-analytics'
 import type { PeriodSummary } from '@/lib/period-summary'
@@ -31,45 +27,30 @@ export interface MoneyGlance {
 
 /**
  * The few numbers worth seeing from anywhere — this period's money, and what needs
- * attention in debts and the wish list. Refreshed on navigation and whenever
- * transactions change; a failed query just leaves its part null.
+ * attention in debts and the wish list. Read from the shared cache, so it follows
+ * every write; a failed query just leaves its part null.
  */
 export function useMoneyGlance(period: PayPeriod | null): MoneyGlance {
-    const location = useLocation()
-    const [glance, setGlance] = useState<MoneyGlance>({ summary: null, debts: null, wishes: null })
-    const [tick, setTick] = useState(0)
+    const { data: summary } = usePeriodSummary(period?.id)
+    const { data: debts } = useDebts({ activeOnly: true })
+    const { data: wishes } = useWishes()
 
-    useEffect(() => onTransactionsChanged(() => setTick(t => t + 1)), [])
+    const debtGlance = useMemo((): DebtGlance | null => {
+        if (!debts) return null
+        const glance = { owed: 0, receivable: 0, open: debts.length, overdue: 0, dueSoon: 0 }
+        for (const d of debts) {
+            if (d.type === 'debt') glance.owed += d.remaining_amount
+            else glance.receivable += d.remaining_amount
+            const s = dueStatus(d)
+            if (s.kind === 'overdue') glance.overdue++
+            else if (s.kind === 'today' || s.kind === 'soon') glance.dueSoon++
+        }
+        return glance
+    }, [debts])
 
-    useEffect(() => {
-        let cancelled = false
-        Promise.all([
-            period ? transactionsService.getPeriodSummary(period.id) : Promise.resolve({ data: null }),
-            debtsService.getActive(),
-            wishListService.getAll(),
-        ]).then(([{ data: summary }, { data: debts }, { data: wishes }]) => {
-            if (cancelled) return
+    const wishGlance = useMemo((): WishGlance | null => (
+        wishes ? { count: wishes.length, ready: wishes.filter(w => wishProgress(w).ready).length } : null
+    ), [wishes])
 
-            let debtGlance: DebtGlance | null = null
-            if (debts) {
-                debtGlance = { owed: 0, receivable: 0, open: debts.length, overdue: 0, dueSoon: 0 }
-                for (const d of debts) {
-                    if (d.type === 'debt') debtGlance.owed += d.remaining_amount
-                    else debtGlance.receivable += d.remaining_amount
-                    const s = dueStatus(d)
-                    if (s.kind === 'overdue') debtGlance.overdue++
-                    else if (s.kind === 'today' || s.kind === 'soon') debtGlance.dueSoon++
-                }
-            }
-
-            setGlance({
-                summary: summary ?? null,
-                debts: debtGlance,
-                wishes: wishes ? { count: wishes.length, ready: wishes.filter(w => wishProgress(w).ready).length } : null,
-            })
-        })
-        return () => { cancelled = true }
-    }, [period, location.pathname, tick])
-
-    return glance
+    return { summary: summary ?? null, debts: debtGlance, wishes: wishGlance }
 }

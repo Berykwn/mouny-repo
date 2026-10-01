@@ -1,13 +1,15 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Loader2, ChevronRight } from 'lucide-react'
 import { wishListService } from '@/services/wish-list.service'
-import { accountsService, categoriesService } from '@/services/accounts-categories.service'
+import { useAccounts, useCategories } from '@/queries'
+import { useSeedOnce } from '@/hooks/use-seed-once'
 import { formatCurrency, formatCurrencyInput, parseCurrencyInput, toISODate } from '@/lib/helpers'
 import { toast } from 'sonner'
 import { ProgressBar } from '@/components/progress-bar'
-import { CategoryIcon, categoryChartColor } from '@/features/categories/components/category-icon'
+import { CategoryIcon } from '@/features/categories/components/category-icon'
+import { categoryChartColor } from '@/features/categories/lib/category-colors'
 import { AccountTypeTile } from '@/components/account-type-icon'
 import { AccountPickerDrawer } from '@/components/account-picker-drawer'
 import { CategoryGrid } from '@/components/category-grid'
@@ -21,6 +23,9 @@ interface ContributeQuantityFormProps {
 }
 
 const FIELD_LABEL = 'text-[11px] font-medium uppercase tracking-[.14em] text-[#8a8a84]'
+
+const NO_ACCOUNTS: Account[] = []
+const NO_CATEGORIES: Category[] = []
 
 export function ContributeQuantityForm({ item, periodStart, onSuccess }: ContributeQuantityFormProps) {
     const today = toISODate()
@@ -38,8 +43,10 @@ export function ContributeQuantityForm({ item, periodStart, onSuccess }: Contrib
     const [accountId, setAccountId] = useState('')
     const [accountPickerOpen, setAccountPickerOpen] = useState(false)
     const [categoryId, setCategoryId] = useState('')
-    const [accounts, setAccounts] = useState<Account[]>([])
-    const [categories, setCategories] = useState<Category[]>([])
+    const { data: accountsData } = useAccounts()
+    const accounts = accountsData ?? NO_ACCOUNTS
+    const { data: categoriesData } = useCategories('expense')
+    const categories = categoriesData ?? NO_CATEGORIES
     const [loading, setLoading] = useState(false)
 
     const selectedAccount = accounts.find((a) => a.id === accountId)
@@ -49,15 +56,8 @@ export function ContributeQuantityForm({ item, periodStart, onSuccess }: Contrib
     const pricePerUnitNum = pricePerUnit ? parseCurrencyInput(pricePerUnit) : 0
     const total = quantityNum * pricePerUnitNum
 
-    useEffect(() => {
-        Promise.all([
-            accountsService.getAll(),
-            categoriesService.getByType('expense'),
-        ]).then(([{ data: accs }, { data: cats }]) => {
-            if (accs) { setAccounts(accs); setAccountId(accs[0]?.id ?? '') }
-            if (cats && cats.length > 0) { setCategories(cats); setCategoryId(cats[0].id) }
-        })
-    }, [])
+    useSeedOnce(accountsData, accs => setAccountId(accs[0]?.id ?? ''))
+    useSeedOnce(categoriesData, cats => setCategoryId(cats[0]?.id ?? ''))
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()

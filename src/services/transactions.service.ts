@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase'
-import { handleError, type ServiceResult } from './_base'
+import { handleError, invalidatesOnWrite, sessionUser, isMissingFunction, type ServiceResult } from './_base'
 import type { Transaction, TransactionWithDetails, TransactionType } from '@/types/'
 import { summarizeTransactions, type PeriodSummary } from '@/lib/period-summary'
 
@@ -31,7 +31,7 @@ function toRow(tx: Transaction): Transaction {
     }
 }
 
-export const transactionsService = {
+export const transactionsService = invalidatesOnWrite({
     async getByPeriod(periodId: string): Promise<ServiceResult<TransactionWithDetails[]>> {
         try {
             const { data, error } = await supabase
@@ -53,7 +53,7 @@ export const transactionsService = {
 
     async create(input: CreateTransactionInput): Promise<ServiceResult<Transaction>> {
         try {
-            const { data: { user } } = await supabase.auth.getUser()
+            const user = await sessionUser()
             if (!user) throw new Error('Belum login')
 
             const { data, error } = await supabase
@@ -106,10 +106,37 @@ export const transactionsService = {
      * Change a transaction's amount, account or type. Balances follow transactions through
      * the insert/delete triggers, so this deletes the original and inserts the new version
      * (keeping its id, created_at and wish link) rather than trusting an UPDATE to move
-     * the money. If the insert fails — e.g. the new amount overdraws the account — the
-     * original is put back so nothing is lost.
+     * the money. The `replace_transaction` RPC does both in one database transaction, so
+     * a failed insert (e.g. the new amount overdraws the account) undoes the delete.
      */
     async replace(original: Transaction, input: CreateTransactionInput): Promise<ServiceResult<Transaction>> {
+        try {
+            const { data, error } = await supabase.rpc('replace_transaction', {
+                p_id: original.id,
+                p_pay_period_id: input.pay_period_id,
+                p_account_id: input.account_id,
+                p_category_id: input.category_id ?? null,
+                p_type: input.type,
+                p_amount: input.amount,
+                p_note: input.note ?? null,
+                p_date: input.date,
+            })
+            if (!isMissingFunction(error)) {
+                if (error) throw error
+                return { data, error: null }
+            }
+            return await this.replaceInSteps(original, input)
+        } catch (err) {
+            return { data: null, error: handleError(err) }
+        }
+    },
+
+    /**
+     * `replace` for databases without the `replace_transaction` RPC yet: delete, insert,
+     * and if the insert fails put the original back. Not atomic — a dropped connection
+     * between the steps can lose the transaction.
+     */
+    async replaceInSteps(original: Transaction, input: CreateTransactionInput): Promise<ServiceResult<Transaction>> {
         try {
             const { error: delError } = await supabase.from('transactions').delete().eq('id', original.id)
             if (delError) throw delError
@@ -190,24 +217,6 @@ export const transactionsService = {
         }
     },
 
-    async getPeriodSummary(periodId: string): Promise<ServiceResult<PeriodSummary>> {
-        try {
-            const { data, error } = await supabase
-                .from('transactions')
-                .select('type, amount, category:categories(is_savings)')
-                .eq('pay_period_id', periodId)
-
-            if (error) throw error
-
-            return { data: summarizeTransactions(data ?? []), error: null }
-        } catch (err) {
-            return {
-                data: null,
-                error: handleError(err),
-            }
-        }
-    },
-
     async getPeriodSummaries(periodIds: string[]): Promise<ServiceResult<Record<string, PeriodSummary>>> {
         if (periodIds.length === 0) return { data: {}, error: null }
 
@@ -231,4 +240,4 @@ export const transactionsService = {
             return { data: null, error: handleError(err) }
         }
     },
-}
+})

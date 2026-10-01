@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Loader2, ChevronRight } from 'lucide-react'
 import { debtsService } from '@/services/debts.service'
-import { accountsService } from '@/services/accounts-categories.service'
+import { useAccounts } from '@/queries'
+import { useSeedOnce } from '@/hooks/use-seed-once'
 import { formatCurrency, formatCurrencyInput, parseCurrencyInput, toISODate } from '@/lib/helpers'
 import type { Account, DebtWithAccount } from '@/types'
 import { toast } from 'sonner'
@@ -25,6 +26,8 @@ interface PayReceivableFormProps {
     onSuccess: () => void
 }
 
+const NO_ACCOUNTS: Account[] = []
+
 export function PayReceivableForm({ debt, periodStartDate, plannedAmount, onSuccess }: PayReceivableFormProps) {
     const today = toISODate()
 
@@ -33,21 +36,15 @@ export function PayReceivableForm({ debt, periodStartDate, plannedAmount, onSucc
     const [loading, setLoading] = useState(false)
     const [accountPickerOpen, setAccountPickerOpen] = useState(false)
 
-    const [accounts, setAccounts] = useState<Account[]>([])
+    const { data: accountsData } = useAccounts()
+    const accounts = accountsData ?? NO_ACCOUNTS
     const [selectedAccountId, setSelectedAccountId] = useState<string>(
         debt.pay_from_account_id ?? ''
     )
 
-    useEffect(() => {
-        accountsService.getAll().then(({ data }) => {
-            if (data) {
-                setAccounts(data)
-                if (!debt.pay_from_account_id) {
-                    setSelectedAccountId(data[0]?.id ?? '')
-                }
-            }
-        })
-    }, [debt.pay_from_account_id])
+    useSeedOnce(accountsData, data => {
+        if (!debt.pay_from_account_id) setSelectedAccountId(data[0]?.id ?? '')
+    })
 
     const selectedAccount = accounts.find(a => a.id === selectedAccountId)
 
@@ -82,27 +79,19 @@ export function PayReceivableForm({ debt, periodStartDate, plannedAmount, onSucc
 
         setLoading(true)
 
-        const { error: accError } = await accountsService.update(selectedAccountId, {
-            name: selectedAccount.name,
-            type: selectedAccount.type,
-            balance_adjustment: parsed,
+        const { error: collectError } = await debtsService.collect({
+            debt_id: debt.id,
+            amount: parsed,
+            account: selectedAccount,
+            date,
         })
 
-        if (accError) {
-            toast.error(String(accError))
+        if (collectError) {
             setLoading(false)
+            toast.error(collectError)
             return
         }
 
-        const { error: debtError } = await debtsService.recordPayment(debt.id, parsed)
-
-        if (debtError) {
-            setLoading(false)
-            toast.error(String(debtError))
-            return
-        }
-
-        await debtsService.logPayment({ debt_id: debt.id, amount: parsed, date, account_id: selectedAccountId })
         setLoading(false)
 
         toast.success('Collection recorded.')

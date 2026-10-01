@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { createPortal } from 'react-dom'
 import { Coins } from 'lucide-react'
@@ -6,8 +6,7 @@ import { BottomDrawer } from '@/components/bottom-drawer'
 import { PeriodPickerDrawer } from '@/components/period-picker-drawer'
 import { OpenPeriodForm } from '@/features/periods/components/open-period-form'
 import { PeriodChip } from '@/features/transactions/components/period-chip'
-import { payPeriodsService } from '@/services/pay-periods.service'
-import type { PayPeriod } from '@/types'
+import { useSelectedPeriod } from '@/stores/period-store'
 import { LoadingContent } from '@/components/loading-content'
 import { useAuth } from '@/hooks/use-auth'
 import { getInitials } from '@/lib/helpers'
@@ -18,34 +17,9 @@ import { TodayEmptyState } from './components/overview/today-empty-state'
 export default function DashboardPage() {
     const navigate = useNavigate()
     const { user } = useAuth()
-    const [activePeriod, setActivePeriod] = useState<PayPeriod | null>(null)
-    const [allPeriods, setAllPeriods] = useState<PayPeriod[]>([])
-    const [selectedPeriod, setSelectedPeriod] = useState<PayPeriod | null>(null)
-    const [periodLoading, setPeriodLoading] = useState(true)
+    const { periods: allPeriods, activePeriod, selectedPeriod, isActivePeriod, isPending: periodLoading, selectPeriod } = useSelectedPeriod()
     const [periodDrawerOpen, setPeriodDrawerOpen] = useState(false)
     const [openPeriodDrawer, setOpenPeriodDrawer] = useState(false)
-
-    const loadPeriods = useCallback(async () => {
-        setPeriodLoading(true)
-        const [{ data: active }, { data: all }] = await Promise.all([
-            payPeriodsService.getActive(),
-            payPeriodsService.getAll(),
-        ])
-        const allList = all ?? []
-        setActivePeriod(active ?? null)
-        setAllPeriods(allList)
-        setSelectedPeriod(prev => {
-            if (prev) return allList.find(p => p.id === prev.id) ?? active ?? allList[0] ?? null
-            return active ?? allList[0] ?? null
-        })
-        setPeriodLoading(false)
-    }, [])
-
-    useEffect(() => {
-        loadPeriods()
-    }, [loadPeriods])
-
-    const isActivePeriod = selectedPeriod?.id === activePeriod?.id
     const closedPeriodsCount = allPeriods.filter(p => p.status === 'closed').length
     const initials = getInitials(user)
     const topBarSlotNode = useTopBarSlotNode()
@@ -109,13 +83,13 @@ export default function DashboardPage() {
                     activePeriodId={activePeriod?.id}
                     selectedPeriodId={selectedPeriod?.id}
                     onSelect={(period) => {
-                        setSelectedPeriod(period)
+                        selectPeriod(period)
                         setPeriodDrawerOpen(false)
                     }}
                 />
 
                 <BottomDrawer open={openPeriodDrawer} onClose={() => setOpenPeriodDrawer(false)} title="Open New Period">
-                    <OpenPeriodForm onSuccess={() => { setOpenPeriodDrawer(false); loadPeriods() }} />
+                    <OpenPeriodForm onSuccess={() => { setOpenPeriodDrawer(false) }} />
                 </BottomDrawer>
             </section>
         </>

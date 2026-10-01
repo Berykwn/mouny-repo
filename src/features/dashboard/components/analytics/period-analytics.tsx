@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo } from 'react'
 import { ChevronRight } from 'lucide-react'
 import TrendingUp from '~icons/ph/trend-up-duotone'
 import TrendingDown from '~icons/ph/trend-down-duotone'
@@ -9,11 +9,12 @@ import { formatCurrency, formatShortCurrency, formatDateShort } from '@/lib/help
 import { cn } from '@/lib/utils'
 import { BottomDrawer } from '@/components/bottom-drawer'
 import { AccountTypeTile, CashIcon } from '@/components/account-type-icon'
-import { CategoryTile, categoryChartColor } from '@/features/categories/components/category-icon'
+import { CategoryTile } from '@/features/categories/components/category-icon'
+import { categoryChartColor } from '@/features/categories/lib/category-colors'
 import { calculateHealthScore } from '@/lib/calculate-health-score'
 import type { PeriodSummary } from '@/lib/period-summary'
 import { usePeriodStats } from '@/hooks/use-period-stats'
-import { categoryBudgetsService } from '@/services/budgets.service'
+import { useBudgets } from '@/queries'
 import { usePeriodTrend } from '../../hooks/use-period-trend'
 import { PeriodTrendChart } from './period-trend-chart'
 import { groupExpensesByCategory, UNCATEGORIZED_ID, type CategoryTotal } from '../../lib/group-expenses-by-category'
@@ -316,17 +317,14 @@ function budgetColor(ratio: number): string {
 
 export function PeriodAnalytics({ transactions, period, periods, previousSummary, totalBalance, totalDebt, fallbackTotalDays = null }: PeriodAnalyticsProps) {
   const [biggestDayOpen, setBiggestDayOpen] = useState(false)
-  const [budgets, setBudgets] = useState<Record<string, number>>({})
   const [expandedCategoryId, setExpandedCategoryId] = useState<string | null>(null)
 
-  useEffect(() => {
-    categoryBudgetsService.getAll().then(({ data }) => {
-      if (!data) return
-      const map: Record<string, number> = {}
-      for (const b of data) map[b.category_id] = b.amount
-      setBudgets(map)
-    })
-  }, [])
+  const { data: budgetRows } = useBudgets()
+  const budgets = useMemo(() => {
+    const map: Record<string, number> = {}
+    for (const b of budgetRows ?? []) map[b.category_id] = b.amount
+    return map
+  }, [budgetRows])
 
   const expenses = useMemo(() => transactions.filter(t => t.type === 'expense'), [transactions])
   const incomes  = useMemo(() => transactions.filter(t => t.type === 'income'),  [transactions])

@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { CreditCard, ShoppingBag, Tag, History, LogOut, ChevronRight, CalendarCheck, CalendarPlus } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
@@ -7,10 +7,7 @@ import { BottomDrawer } from '@/components/bottom-drawer'
 import { HeroGlow } from '@/components/hero'
 import { ClosePeriodForm } from '@/features/periods/components/close-period-form'
 import { OpenPeriodForm } from '@/features/periods/components/open-period-form'
-import { payPeriodsService } from '@/services/pay-periods.service'
-import { categoriesService } from '@/services/accounts-categories.service'
-import { categoryBudgetsService } from '@/services/budgets.service'
-import { onPeriodsChanged } from '@/lib/transactions-bus'
+import { useBudgets, useCategories, usePeriods } from '@/queries'
 import { useAuth } from '@/hooks/use-auth'
 import { useMoneyGlance } from '@/hooks/use-money-glance'
 import { formatCurrency, formatShortCurrency, getDaysBetween, getInitials } from '@/lib/helpers'
@@ -34,31 +31,16 @@ export default function MenuPage() {
     const navigate = useNavigate()
     const { user } = useAuth()
     const [logoutConfirm, setLogoutConfirm] = useState(false)
-    const [activePeriod, setActivePeriod] = useState<PayPeriod | null>(null)
     const [periodDrawer, setPeriodDrawer] = useState<'open' | 'close' | null>(null)
-    const [counts, setCounts] = useState<Counts | null>(null)
+    const { periods, activePeriod, isSuccess: periodsLoaded } = usePeriods()
+    const { data: categories } = useCategories()
+    const { data: budgets } = useBudgets()
+    const counts: Counts | null = periodsLoaded && categories && budgets ? {
+        categories: categories.length,
+        budgets: budgets.length,
+        closedPeriods: periods.filter(p => p.status === 'closed').length,
+    } : null
     const { summary, debts, wishes } = useMoneyGlance(activePeriod)
-
-    useEffect(() => {
-        let cancelled = false
-        const load = () => Promise.all([
-            payPeriodsService.getActive(),
-            payPeriodsService.getAll(),
-            categoriesService.getAll(),
-            categoryBudgetsService.getAll(),
-        ]).then(([{ data: active }, { data: periods }, { data: categories }, { data: budgets }]) => {
-            if (cancelled) return
-            setActivePeriod(active ?? null)
-            setCounts({
-                categories: categories?.length ?? 0,
-                budgets: budgets?.length ?? 0,
-                closedPeriods: periods?.filter(p => p.status === 'closed').length ?? 0,
-            })
-        })
-        load()
-        const unsubscribe = onPeriodsChanged(load)
-        return () => { cancelled = true; unsubscribe() }
-    }, [])
 
     async function handleLogout() {
         setLogoutConfirm(false)

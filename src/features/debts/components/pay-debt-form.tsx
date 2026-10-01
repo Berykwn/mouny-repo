@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Loader2, ChevronRight } from 'lucide-react'
 import { debtsService } from '@/services/debts.service'
-import { transactionsService } from '@/services/transactions.service'
-import { accountsService } from '@/services/accounts-categories.service'
+import { useAccounts } from '@/queries'
+import { useSeedOnce } from '@/hooks/use-seed-once'
 import { formatCurrency, formatCurrencyInput, parseCurrencyInput, toISODate } from '@/lib/helpers'
 import type { Account } from '@/types'
 import type { DebtWithAccount } from '@/types'
@@ -27,6 +27,8 @@ interface PayDebtFormProps {
     onSuccess: () => void
 }
 
+const NO_ACCOUNTS: Account[] = []
+
 export function PayDebtForm({ debt, payPeriodId, periodStartDate, plannedAmount, onSuccess }: PayDebtFormProps) {
     const today = toISODate()
 
@@ -35,21 +37,15 @@ export function PayDebtForm({ debt, payPeriodId, periodStartDate, plannedAmount,
     const [loading, setLoading] = useState(false)
     const [accountPickerOpen, setAccountPickerOpen] = useState(false)
 
-    const [accounts, setAccounts] = useState<Account[]>([])
+    const { data: accountsData } = useAccounts()
+    const accounts = accountsData ?? NO_ACCOUNTS
     const [selectedAccountId, setSelectedAccountId] = useState<string>(
         debt.pay_from_account_id ?? ''
     )
 
-    useEffect(() => {
-        accountsService.getAll().then(({ data }) => {
-            if (data) {
-                setAccounts(data)
-                if (!debt.pay_from_account_id) {
-                    setSelectedAccountId(data[0]?.id ?? '')
-                }
-            }
-        })
-    }, [debt.pay_from_account_id])
+    useSeedOnce(accountsData, data => {
+        if (!debt.pay_from_account_id) setSelectedAccountId(data[0]?.id ?? '')
+    })
 
     const selectedAccount = accounts.find(a => a.id === selectedAccountId)
 
@@ -96,27 +92,22 @@ export function PayDebtForm({ debt, payPeriodId, periodStartDate, plannedAmount,
             return
         }
 
-        const { data: tx, error: txError } = await transactionsService.create({
-            pay_period_id: payPeriodId,
-            account_id: selectedAccountId,
-            type: 'expense',
+        const { error: payError } = await debtsService.pay({
+            debt_id: debt.id,
             amount: parsed,
-            note: `Debt payment — ${debt.counterparty}`,
+            account_id: selectedAccountId,
             date,
+            pay_period_id: payPeriodId,
             category_id: category.id,
+            note: `Debt payment — ${debt.counterparty}`,
         })
 
-        if (txError) {
-            toast.error(/insufficient|balance/i.test(txError) ? `Insufficient balance in ${selectedAccount.name}.` : txError)
+        if (payError) {
+            toast.error(/insufficient|balance/i.test(payError) ? `Insufficient balance in ${selectedAccount.name}.` : payError)
             setLoading(false)
             return
         }
 
-        const { error: debtError } = await debtsService.recordPayment(debt.id, parsed)
-
-        if (debtError) { setLoading(false); toast.error(debtError); return }
-
-        await debtsService.logPayment({ debt_id: debt.id, amount: parsed, date, account_id: selectedAccountId, transaction_id: tx?.id ?? null })
         setLoading(false)
 
         toast.success('Debt payment recorded.')

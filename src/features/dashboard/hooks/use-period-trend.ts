@@ -1,5 +1,4 @@
-import { useEffect, useState } from 'react'
-import { transactionsService } from '@/services/transactions.service'
+import { usePeriodSummaries } from '@/queries'
 import { formatPeriodLabel } from '@/lib/helpers'
 import { summarizeTransactions, EMPTY_PERIOD_SUMMARY, type PeriodSummary } from '@/lib/period-summary'
 import type { PayPeriod, TransactionWithDetails } from '@/types'
@@ -20,42 +19,22 @@ const MAX_PERIODS = 6
 /**
  * Builds a chronological (oldest → newest) trend series across the most recent
  * pay periods. The selected period's numbers come from its already-loaded
- * transactions (no refetch); every other period is fetched in a single batched
- * summary query.
+ * transactions, so it moves as soon as they do; the rest come from one batched,
+ * cached summary query.
  */
 export function usePeriodTrend(
     periods: PayPeriod[],
     selectedPeriod: PayPeriod | null,
     selectedTransactions: TransactionWithDetails[],
 ): { trend: TrendPoint[]; loading: boolean } {
-    const [otherSummaries, setOtherSummaries] = useState<Record<string, PeriodSummary>>({})
-    const [loading, setLoading] = useState(false)
-
     const recentPeriods = [...periods]
         .sort((a, b) => a.start_date.localeCompare(b.start_date))
         .slice(-MAX_PERIODS)
 
-    const otherPeriodIds = recentPeriods
-        .filter(p => p.id !== selectedPeriod?.id)
-        .map(p => p.id)
-        .join(',')
-
-    useEffect(() => {
-        const ids = otherPeriodIds ? otherPeriodIds.split(',') : []
-        if (ids.length === 0) {
-            setOtherSummaries({})
-            return
-        }
-        let cancelled = false
-        setLoading(true)
-        transactionsService.getPeriodSummaries(ids).then(({ data }) => {
-            // A newer selection's request owns the state now.
-            if (cancelled) return
-            setOtherSummaries(data ?? {})
-            setLoading(false)
-        })
-        return () => { cancelled = true }
-    }, [otherPeriodIds])
+    // Summaries for all recent periods at once: the cache key doesn't change when you
+    // pick another period among them, so switching doesn't refetch.
+    const { data: summaries, isLoading: loading } = usePeriodSummaries(recentPeriods.map(p => p.id))
+    const otherSummaries: Record<string, PeriodSummary> = summaries ?? {}
 
     if (!selectedPeriod) return { trend: [], loading: false }
 

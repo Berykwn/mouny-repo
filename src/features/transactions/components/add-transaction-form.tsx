@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Calendar as CalendarIcon, ChevronDown, Loader2, Pencil } from 'lucide-react'
 import { AccountTypeIcon } from '@/components/account-type-icon'
 import { toast } from 'sonner'
@@ -10,14 +10,17 @@ import { CategoryTileRail } from './category-tile-rail'
 import { ConsequenceStrip } from './consequence-strip'
 import { TransferFields } from './transfer-fields'
 import { transactionsService, type CreateTransactionInput } from '@/services/transactions.service'
-import { accountsService, categoriesService } from '@/services/accounts-categories.service'
+import { accountsService } from '@/services/accounts-categories.service'
 import { formatCurrency, formatCurrencyInput, parseCurrencyInput, toISODate } from '@/lib/helpers'
-import { emitTransactionsChanged } from '@/lib/transactions-bus'
 import { cn } from '@/lib/utils'
+import { useAccounts, useCategories, usePeriodTransactions } from '@/queries'
 import type { Account, Category, TransactionWithDetails } from '@/types'
 import { linkedTo } from '../lib/ledger'
 
 type TxType = 'income' | 'expense' | 'transfer'
+
+const NO_ACCOUNTS: Account[] = []
+const NO_CATEGORIES: Category[] = []
 
 const FIELD_LABEL = 'text-[11px] font-medium uppercase tracking-[.14em] text-[#8a8a84]'
 const OUTLINE_BUTTON = 'flex-1 h-[52px] rounded-[14px] border border-[#e5e5e5] text-[14px] font-semibold text-[#5b5b55] transition-colors hover:bg-[#fbfbfa] disabled:opacity-50 disabled:pointer-events-none'
@@ -54,11 +57,16 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
     const [date, setDate] = useState(resolveDate(initial?.date ?? defaultDate))
     const [accountId, setAccountId] = useState(initial?.account_id ?? '')
     const [categoryId, setCategoryId] = useState(initial?.category_id ?? '')
-    const [accounts, setAccounts] = useState<Account[]>([])
-    const [categories, setCategories] = useState<Category[]>([])
     const [accountPickerOpen, setAccountPickerOpen] = useState(false)
     const [loading, setLoading] = useState(false)
-    const [safeToSpend, setSafeToSpend] = useState<number | null>(null)
+
+    // From the shared cache (prefetched by the layout), so the form opens filled in, and
+    // balances update by themselves after a transfer.
+    const { data: accountsData } = useAccounts()
+    const accounts = accountsData ?? NO_ACCOUNTS
+    const { data: typeCategories } = useCategories(type === 'transfer' ? null : type)
+    const categories = type === 'transfer' ? NO_CATEGORIES : typeCategories ?? NO_CATEGORIES
+    const { data: periodTxs } = usePeriodTransactions(payPeriodId)
 
     // Transfer-only state
     const [fromAccountId, setFromAccountId] = useState('')
@@ -81,60 +89,46 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
         return () => window.removeEventListener('keydown', handleKeyDown)
     }, [onClose])
 
+    // Default accounts once they're known; later refetches mustn't undo the user's pick.
+    const accountsSeeded = useRef(false)
     useEffect(() => {
-        accountsService.getAll().then(({ data }) => {
-            if (data) {
-                setAccounts(data)
-                if (!initial) setAccountId(data[0]?.id ?? '')
-                setFromAccountId(data[0]?.id ?? '')
-                setToAccountId(data[1]?.id ?? data[0]?.id ?? '')
-            }
-        })
+        if (!accountsData || accountsSeeded.current) return
+        accountsSeeded.current = true
+        if (!initial) setAccountId(accountsData[0]?.id ?? '')
+        setFromAccountId(accountsData[0]?.id ?? '')
+        setToAccountId(accountsData[1]?.id ?? accountsData[0]?.id ?? '')
         // The form is keyed per transaction, so `initial` never changes under it.
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [])
+    }, [accountsData])
 
+    // Default the category when the type changes (or its categories first arrive), but
+    // not on a refetch of the same type, which would undo the user's pick.
+    const categoriesSeededFor = useRef<TxType | null>(null)
     useEffect(() => {
         if (type === 'transfer') {
-            setCategories([])
+            categoriesSeededFor.current = type
             setCategoryId('')
             return
         }
-        // Toggling type quickly: a late response for the old type mustn't set its categories.
-        let cancelled = false
-        categoriesService.getByType(type).then(({ data }) => {
-            if (cancelled) return
-            if (data && data.length > 0) {
-                setCategories(data)
-                // Editing: keep the transaction's own category while its type is unchanged.
-                const keep = initial && type === initial.type && data.some(c => c.id === initial.category_id)
-                setCategoryId(keep ? initial.category_id! : data[0].id)
-            } else {
-                setCategories([])
-                setCategoryId('')
-            }
-        })
-        return () => { cancelled = true }
+        if (!typeCategories || categoriesSeededFor.current === type) return
+        categoriesSeededFor.current = type
+        // Editing: keep the transaction's own category while its type is unchanged.
+        const keep = initial && type === initial.type && typeCategories.some(c => c.id === initial.category_id)
+        setCategoryId(keep ? initial.category_id! : typeCategories[0]?.id ?? '')
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [type])
+    }, [type, typeCategories])
 
-    // Live "safe to spend" baseline for the consequence strip. Fetched once (and on
-    // period change) rather than per keystroke — the strip itself recomputes the
-    // "after" value cheaply from this baseline + the in-progress amount.
-    useEffect(() => {
-        let cancelled = false
-        transactionsService.getByPeriod(payPeriodId).then(({ data }) => {
-            if (cancelled || !data) return
-            const totalIncome = data.filter((t) => t.type === 'income').reduce((s, t) => s + t.amount, 0)
-            const totalExpense = data.filter((t) => t.type === 'expense').reduce((s, t) => s + t.amount, 0)
-            // Editing: the baseline is the period without this transaction, so the strip
-            // shows where the edited version leaves you.
-            const own = initial ? (initial.type === 'income' ? -initial.amount : initial.amount) : 0
-            setSafeToSpend(totalIncome - totalExpense + own)
-        })
-        return () => { cancelled = true }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [payPeriodId])
+    // "Safe to spend" baseline for the consequence strip, from the period's cached
+    // transactions; the strip itself adds the in-progress amount.
+    const safeToSpend = useMemo(() => {
+        if (!periodTxs) return null
+        const totalIncome = periodTxs.filter((t) => t.type === 'income').reduce((s, t) => s + t.amount, 0)
+        const totalExpense = periodTxs.filter((t) => t.type === 'expense').reduce((s, t) => s + t.amount, 0)
+        // Editing: the baseline is the period without this transaction, so the strip
+        // shows where the edited version leaves you.
+        const own = initial ? (initial.type === 'income' ? -initial.amount : initial.amount) : 0
+        return totalIncome - totalExpense + own
+    }, [periodTxs, initial])
 
     const selectedAccount = accounts.find((a) => a.id === accountId)
     const parsedAmount = parseCurrencyInput(amount)
@@ -166,12 +160,6 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
             }
 
             setTransferAmount('')
-            setAccounts((prev) => prev.map((a) => {
-                if (a.id === fromAccountId) return { ...a, balance: a.balance - parsedTransfer }
-                if (a.id === toAccountId) return { ...a, balance: a.balance + parsedTransfer }
-                return a
-            }))
-            emitTransactionsChanged()
             return
         }
 
@@ -244,15 +232,8 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
             return
         }
 
-        const submittedType = type
-        const submittedAmount = parsedAmount
         setAmount('')
         setNote('')
-        setSafeToSpend((prev) => prev === null
-            ? prev
-            : (submittedType === 'expense' ? prev - submittedAmount : prev + submittedAmount)
-        )
-        emitTransactionsChanged()
         amountInputRef.current?.focus()
     }
 

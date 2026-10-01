@@ -436,7 +436,48 @@ export type Database = {
       }
     }
     Functions: {
-      [_ in never]: never
+      collect_receivable: {
+        Args: {
+          p_account_id: string
+          p_amount: number
+          p_date: string
+          p_debt_id: string
+        }
+        Returns: Database["public"]["Tables"]["debts"]["Row"]
+      }
+      contribute_wish: {
+        Args: { p_amount: number; p_id: string }
+        Returns: Database["public"]["Tables"]["wish_list"]["Row"]
+      }
+      pay_debt: {
+        Args: {
+          p_account_id: string
+          p_amount: number
+          p_category_id: string
+          p_date: string
+          p_debt_id: string
+          p_note: string
+          p_pay_period_id: string
+        }
+        Returns: Database["public"]["Tables"]["debts"]["Row"]
+      }
+      replace_transaction: {
+        Args: {
+          p_account_id: string
+          p_amount: number
+          p_category_id: string | null
+          p_date: string
+          p_id: string
+          p_note: string | null
+          p_pay_period_id: string
+          p_type: string
+        }
+        Returns: Database["public"]["Tables"]["transactions"]["Row"]
+      }
+      transfer_balance: {
+        Args: { p_amount: number; p_from_id: string; p_to_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never

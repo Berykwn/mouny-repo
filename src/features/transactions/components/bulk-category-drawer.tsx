@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react'
 import { Loader2 } from 'lucide-react'
 import { BottomDrawer } from '@/components/bottom-drawer'
 import { CategoryGrid } from '@/components/category-grid'
-import { categoriesService } from '@/services/accounts-categories.service'
+import { useCategories } from '@/queries'
 import type { Category, TransactionType } from '@/types'
+
+const NO_CATEGORIES: Category[] = []
 
 interface BulkCategoryDrawerProps {
     open: boolean
@@ -14,13 +16,12 @@ interface BulkCategoryDrawerProps {
 }
 
 export function BulkCategoryDrawer({ open, onClose, type, loading, onConfirm }: BulkCategoryDrawerProps) {
-    const [categories, setCategories] = useState<Category[]>([])
+    const { data } = useCategories(type)
+    const categories = (type && data) || NO_CATEGORIES
     const [selectedCategoryId, setSelectedCategoryId] = useState('')
 
     useEffect(() => {
-        if (!open || !type) return
-        setSelectedCategoryId('')
-        categoriesService.getByType(type).then(({ data }) => setCategories(data ?? []))
+        if (open) setSelectedCategoryId('')
     }, [open, type])
 
     return (

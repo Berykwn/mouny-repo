@@ -25,4 +25,10 @@ export default tseslint.config(
       ],
     },
   },
+  {
+    // shadcn/ui files export their variants next to the component, and a context file
+    // exports its provider with its hook; both are the libraries' own conventions.
+    files: ['src/components/ui/**/*.tsx', 'src/contexts/**/*.tsx'],
+    rules: { 'react-refresh/only-export-components': 'off' },
+  },
 )

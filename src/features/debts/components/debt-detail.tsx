@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react'
 import { DollarSign, HandCoins, Pencil, Trash2 } from 'lucide-react'
 import ShareIcon from '~icons/ph/whatsapp-logo-duotone'
 import HistoryIcon from '~icons/ph/clock-counter-clockwise-duotone'
@@ -6,7 +5,8 @@ import { formatCurrency, formatDate, formatDateShort } from '@/lib/helpers'
 import { cn } from '@/lib/utils'
 import { ProgressBar } from '@/components/progress-bar'
 import type { DebtWithAccount } from '@/types'
-import { debtsService, type DebtPaymentWithAccount } from '@/services/debts.service'
+import type { DebtPaymentWithAccount } from '@/services/debts.service'
+import { useDebtPayments } from '@/queries'
 import { formatMonthYear } from '@/features/wish-list/lib/wish-analytics'
 import { debtProgress, dueStatus, type DueStatus, type PayoffStop } from '../lib/debt-insights'
 import { DebtAvatar } from './debt-avatar'
@@ -62,13 +62,10 @@ export function DebtDetail({ debt, stop, hasActivePeriod, onSettle, onEdit, onDe
     const status = dueStatus(debt)
     const due = dueText(status, debt.due_date)
 
-    const [payments, setPayments] = useState<DebtPaymentWithAccount[] | null>(null)
+    const paymentsQuery = useDebtPayments(debt.id)
+    // A failed load (e.g. the history table isn't there yet) reads as no history.
+    const payments: DebtPaymentWithAccount[] | null = paymentsQuery.isPending ? null : paymentsQuery.data ?? []
     const logged = payments?.reduce((s, p) => s + p.amount, 0) ?? 0
-    useEffect(() => {
-        let stale = false
-        debtsService.getPayments(debt.id).then(({ data }) => { if (!stale) setPayments(data ?? []) })
-        return () => { stale = true }
-    }, [debt.id])
 
     let note: { text: string; className: string } | null = null
     if (settled) {

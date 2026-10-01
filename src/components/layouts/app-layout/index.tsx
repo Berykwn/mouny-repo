@@ -3,12 +3,11 @@ import { House, List, Wallet, Ellipsis, Plus, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useState, useEffect, useCallback } from 'react'
 import { AddTransactionFlow } from '@/features/transactions/components/add-transaction-flow'
-import { payPeriodsService } from '@/services/pay-periods.service'
 import { toISODate, getInitials } from '@/lib/helpers'
-import { emitTransactionsChanged, onPeriodsChanged } from '@/lib/transactions-bus'
+import { queryClient } from '@/lib/query-client'
+import { accountsQuery, categoriesQuery, usePeriods } from '@/queries'
 import { useAuth } from '@/hooks/use-auth'
 import { TopBarSlotContext } from '@/contexts/TopBarSlotContext'
-import type { PayPeriod } from '@/types'
 import { Sidebar } from './sidebar'
 import { toast } from 'sonner'
 
@@ -36,21 +35,17 @@ const ROUTE_LABELS: Record<string, string> = {
 export default function AppLayout() {
     const location = useLocation()
     const { user } = useAuth()
-    const [activePeriod, setActivePeriod] = useState<PayPeriod | null>(null)
+    // From the shared cache, which refreshes when a period is opened or closed, so the
+    // Add button never writes into a closed period or misses a newly opened one.
+    const { activePeriod } = usePeriods()
     const [addDrawerOpen, setAddDrawerOpen] = useState(false)
     const [topBarSlotNode, setTopBarSlotNode] = useState<HTMLDivElement | null>(null)
     const currentLabel = ROUTE_LABELS[location.pathname] ?? 'Overview'
 
-    // Refetch whenever a period is opened or closed, so the Add button never
-    // writes into a closed period or misses a newly opened one.
+    // What the add-transaction and other forms need, fetched up front so they open filled in.
     useEffect(() => {
-        let cancelled = false
-        const load = () => payPeriodsService.getActive().then(({ data }) => {
-            if (!cancelled) setActivePeriod(data)
-        })
-        load()
-        const unsubscribe = onPeriodsChanged(load)
-        return () => { cancelled = true; unsubscribe() }
+        void queryClient.prefetchQuery(accountsQuery)
+        void queryClient.prefetchQuery(categoriesQuery)
     }, [])
 
     const handleAddClick = useCallback(() => {
@@ -103,10 +98,7 @@ export default function AppLayout() {
                         periodEnd={activePeriod.end_date ?? undefined}
                         defaultDate={toISODate()}
                         onClose={() => setAddDrawerOpen(false)}
-                        onSuccess={() => {
-                            setAddDrawerOpen(false)
-                            emitTransactionsChanged()
-                        }}
+                        onSuccess={() => setAddDrawerOpen(false)}
                     />
                 )}
             </main>

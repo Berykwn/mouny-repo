@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useMemo } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { BottomDrawer } from '@/components/bottom-drawer'
 import { ConfirmDrawer } from '@/components/confirmation-drawer'
 import { WishListItems } from './components/wish-list-items'
@@ -11,22 +11,28 @@ import { WishRoadmap } from './components/wish-roadmap'
 import { WishAchieved } from './components/wish-achieved'
 import { WishEmpty } from './components/wish-empty'
 import { WishDetail } from './components/wish-detail'
-import { buildRoadmap, pacePeriods, savingsPace, wishProgress, type SavingsPace } from './lib/wish-analytics'
+import { buildRoadmap, wishProgress } from './lib/wish-analytics'
 import { wishListService, type WishListPurchased } from '@/services/wish-list.service'
-import { payPeriodsService } from '@/services/pay-periods.service'
-import { transactionsService } from '@/services/transactions.service'
+import { usePeriods, usePurchasedWishes, useSavingsPace, useWishes } from '@/queries'
 import type { WishListItem } from '@/types'
 import { toast } from 'sonner'
 import { LoadingContent } from '@/components/loading-content'
 import { PageHeader } from '@/components/page-header'
 
+const NO_WISHES: WishListItem[] = []
+const NO_PURCHASED: WishListPurchased[] = []
+
 export default function WishListPage() {
-    const [items, setItems] = useState<WishListItem[]>([])
-    const [periodId, setPeriodId] = useState<string | null>(null)
-    const [periodStart, setPeriodStart] = useState<string | null>(null)
-    const [loading, setLoading] = useState(true)
-    const [purchased, setPurchased] = useState<WishListPurchased[]>([])
-    const [pace, setPace] = useState<SavingsPace | null>(null)
+    const { activePeriod, isPending: periodsPending } = usePeriods()
+    const periodId = activePeriod?.id ?? null
+    const periodStart = activePeriod?.start_date ?? null
+    const wishesQuery = useWishes()
+    // Wishes are saved toward within a period; without an open one there's nothing to show.
+    const items = (activePeriod && wishesQuery.data) || NO_WISHES
+    const loading = periodsPending || (!!activePeriod && wishesQuery.isPending)
+    // The achievements and the pace are extras: if they fail, the list still works.
+    const { data: purchased = NO_PURCHASED } = usePurchasedWishes()
+    const pace = useSavingsPace()
     const [addDrawerOpen, setAddDrawerOpen] = useState(false)
     const [addDefaultName, setAddDefaultName] = useState<string | undefined>(undefined)
     const [openItem, setOpenItem] = useState<WishListItem | null>(null)
@@ -36,44 +42,9 @@ export default function WishListPage() {
     const [deletingId, setDeletingId] = useState<string | null>(null)
     const [deleteLoading, setDeleteLoading] = useState(false)
 
-    const load = useCallback(async () => {
-        setLoading(true)
-        const { data: period } = await payPeriodsService.getActive()
-        if (!period) {
-            setPeriodId(null)
-            setPeriodStart(null)
-            setLoading(false)
-            return
-        }
-        setPeriodId(period.id)
-        setPeriodStart(period.start_date)
-
-        const [
-            { data: itemsData, error: itemsError },
-            { data: purchasedData },
-            { data: periods },
-        ] = await Promise.all([
-            wishListService.getAll(),
-            wishListService.getPurchased(),
-            payPeriodsService.getAll(),
-        ])
-        if (itemsError) toast.error(itemsError)
-        setItems(itemsData ?? [])
-        // The achievements and the pace are extras: if they fail, the list still works.
-        setPurchased(purchasedData ?? [])
-
-        const recent = pacePeriods(periods ?? [])
-        if (recent.length > 0) {
-            const { data: summaries } = await transactionsService.getPeriodSummaries(recent.map(p => p.id))
-            setPace(summaries ? savingsPace(recent, summaries) : null)
-        } else {
-            setPace(null)
-        }
-
-        setLoading(false)
-    }, [])
-
-    useEffect(() => { load() }, [load])
+    useEffect(() => {
+        if (wishesQuery.error) toast.error(wishesQuery.error.message)
+    }, [wishesQuery.error])
 
     const handleDeleteConfirm = async () => {
         if (!deletingId) return
@@ -81,7 +52,6 @@ export default function WishListPage() {
         const { error } = await wishListService.remove(deletingId)
         setDeleteLoading(false)
         if (error) { toast.error(error); return }
-        setItems(prev => prev.filter(i => i.id !== deletingId))
         setDeletingId(null)
         toast.success('Item removed from wish list.')
     }
@@ -169,7 +139,7 @@ export default function WishListPage() {
                                 key={addDefaultName ?? ''}
                                 payPeriodId={periodId}
                                 defaultName={addDefaultName}
-                                onSuccess={() => { setAddDrawerOpen(false); load() }}
+                                onSuccess={() => setAddDrawerOpen(false)}
                             />
                         )}
                     </BottomDrawer>
@@ -204,7 +174,7 @@ export default function WishListPage() {
                         <WishListForm
                             payPeriodId={periodId}
                             item={editingItem}
-                            onSuccess={() => { setEditingItem(null); load() }}
+                            onSuccess={() => setEditingItem(null)}
                         />
                     )}
                 </BottomDrawer>
@@ -220,12 +190,12 @@ export default function WishListPage() {
                             <ContributeQuantityForm
                                 item={contributingItem}
                                 periodStart={periodStart}
-                                onSuccess={() => { setContributingItem(null); load() }}
+                                onSuccess={() => setContributingItem(null)}
                             />
                         ) : (
                             <ContributeForm
                                 item={contributingItem}
-                                onSuccess={() => { setContributingItem(null); load() }}
+                                onSuccess={() => setContributingItem(null)}
                             />
                         )
                     )}
@@ -241,7 +211,7 @@ export default function WishListPage() {
                         <BuyItemForm
                             item={buyingItem}
                             periodStart={periodStart}
-                            onSuccess={() => { setBuyingItem(null); load() }}
+                            onSuccess={() => setBuyingItem(null)}
                         />
                     )}
                 </BottomDrawer>

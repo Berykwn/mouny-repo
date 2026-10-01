@@ -1,7 +1,7 @@
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts'
 import { formatCurrency, formatShortCurrency } from '@/lib/helpers'
 import type { CategoryTotal } from '../../lib/group-expenses-by-category'
-import { categoryChartColor } from '@/features/categories/components/category-icon'
+import { categoryChartColor } from '@/features/categories/lib/category-colors'
 
 const FALLBACK_COLOR = '#94a3b8'
 

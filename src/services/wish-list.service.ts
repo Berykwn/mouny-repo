@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase'
-import { handleError, type ServiceResult } from './_base'
+import { handleError, invalidatesOnWrite, sessionUser, isMissingFunction, type ServiceResult } from './_base'
 import type { WishListItem } from '@/types/'
 
 export type WishListPurchased = WishListItem & {
@@ -8,10 +8,10 @@ export type WishListPurchased = WishListItem & {
 import { transactionsService } from './transactions.service'
 import { payPeriodsService } from './pay-periods.service'
 
-export const wishListService = {
+export const wishListService = invalidatesOnWrite({
     async getAll(): Promise<ServiceResult<WishListItem[]>> {
         try {
-            const { data: { user } } = await supabase.auth.getUser()
+            const user = await sessionUser()
             if (!user) throw new Error('Not logged in')
 
             const { data, error } = await supabase
@@ -31,7 +31,7 @@ export const wishListService = {
     /** Wishes already bought, newest first, with the purchase transaction's date and amount. */
     async getPurchased(limit = 20): Promise<ServiceResult<WishListPurchased[]>> {
         try {
-            const { data: { user } } = await supabase.auth.getUser()
+            const user = await sessionUser()
             if (!user) throw new Error('Not logged in')
 
             const { data, error } = await supabase
@@ -63,7 +63,7 @@ export const wishListService = {
         icon?: string | null
     }): Promise<ServiceResult<WishListItem>> {
         try {
-            const { data: { user } } = await supabase.auth.getUser()
+            const user = await sessionUser()
             if (!user) throw new Error('Not logged in')
 
             const estimated_price = input.quantity && input.price_per_unit
@@ -125,6 +125,14 @@ export const wishListService = {
         try {
             if (amount <= 0) throw new Error('Amount must be greater than zero.')
 
+            // One UPDATE in the database, so two contributions at once both count.
+            const { data: updated, error: rpcError } = await supabase.rpc('contribute_wish', { p_id: id, p_amount: amount })
+            if (!isMissingFunction(rpcError)) {
+                if (rpcError) throw rpcError
+                return { data: updated, error: null }
+            }
+
+            // No RPC yet: read, add, write.
             const { data: item, error: fetchError } = await supabase
                 .from('wish_list')
                 .select('saved_amount')
@@ -284,4 +292,4 @@ export const wishListService = {
             return { data: null, error: handleError(err) }
         }
     },
-}
+})

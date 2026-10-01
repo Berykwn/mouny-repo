@@ -1,8 +1,5 @@
-import { useEffect, useState } from 'react'
-import { payPeriodsService } from '@/services/pay-periods.service'
-import { transactionsService } from '@/services/transactions.service'
-import { accountsService } from '@/services/accounts-categories.service'
-import { debtsService } from '@/services/debts.service'
+import { useMemo } from 'react'
+import { useAccounts, useDebts, usePeriods, usePeriodSummary, usePeriodTransactions } from '@/queries'
 import { getDaysBetween } from '@/lib/helpers'
 import { LoadingContent } from '@/components/loading-content'
 import { OverviewData } from '@/types/overview.types'
@@ -12,59 +9,54 @@ import { PeriodInsights } from './period-insights'
 import { TodayWeekCard } from './today-week-card'
 import { BalancesCard } from './balances-card'
 import { AnalyticsSection } from '../analytics/analytics-section'
-import { onTransactionsChanged } from '@/lib/transactions-bus'
 
-async function fetchOverviewData(
-    periodId: string
-): Promise<OverviewData | null> {
-    const [
-        { data: allPeriods, error: periodsError },
-        { data: txs, error: txsError },
-        { data: accounts, error: accountsError },
-        { data: debts },
-    ] = await Promise.all([
-        payPeriodsService.getAll(),
-        transactionsService.getByPeriod(periodId),
-        accountsService.getAll(),
-        debtsService.getActive(),
-    ])
+/**
+ * Everything the overview shows for one period, put together from the shared cache.
+ * Each part refetches on its own after a write, and a failed background refetch keeps
+ * the last data on screen.
+ */
+function useOverviewData(periodId: string): { data: OverviewData | null; loading: boolean } {
+    const periodsQuery = usePeriods()
+    const txsQuery = usePeriodTransactions(periodId)
+    const accountsQuery = useAccounts()
+    const debtsQuery = useDebts({ activeOnly: true })
 
-    // Missing data would render as a believable Rp0 period, so treat it as a failed load.
-    if (periodsError || txsError || accountsError) return null
-
-    const allList = allPeriods ?? []
-    const periodTxs = txs ?? []
-    const accountsList = accounts ?? []
-
-    const currentPeriod = allList.find(p => p.id === periodId)
-    if (!currentPeriod) return null
-
+    const allList = periodsQuery.periods
     // Periods are sorted by start_date descending, so the period immediately
-    // before this one (chronologically) is the previous entry in the list.
+    // before this one (chronologically) is the next entry in the list.
     const currentIndex = allList.findIndex(p => p.id === periodId)
-    const prevPeriod = allList[currentIndex + 1] ?? null
-    const fallbackTotalDays = prevPeriod?.start_date && prevPeriod?.end_date
-        ? getDaysBetween(prevPeriod.start_date, prevPeriod.end_date) + 1
-        : null
+    const currentPeriod = allList[currentIndex] ?? null
+    const prevPeriod = currentIndex >= 0 ? allList[currentIndex + 1] ?? null : null
+    const previousQuery = usePeriodSummary(prevPeriod?.id)
 
-    const { data: previousSummary } = prevPeriod
-        ? await transactionsService.getPeriodSummary(prevPeriod.id)
-        : { data: null }
+    const data = useMemo((): OverviewData | null => {
+        const periodTxs = txsQuery.data
+        const accountsList = accountsQuery.data
+        // Missing data would render as a believable Rp0 period, so treat it as a failed load.
+        if (!currentPeriod || !periodTxs || !accountsList) return null
 
-    return {
-        totalIncome: periodTxs.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0),
-        totalExpense: periodTxs.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0),
-        transactions: periodTxs,
-        accounts: accountsList,
-        closingBalance: currentPeriod.closing_balance ?? null,
-        period: currentPeriod,
-        fallbackTotalDays,
-        allPeriods: allList,
-        previousSummary: previousSummary ?? null,
-        totalBalance: accountsList.reduce((s, a) => s + a.balance, 0),
-        // Receivables are money owed to the user, not debt.
-        totalDebt: (debts ?? []).filter(d => d.type === 'debt').reduce((s, d) => s + d.remaining_amount, 0),
-    }
+        const fallbackTotalDays = prevPeriod?.start_date && prevPeriod?.end_date
+            ? getDaysBetween(prevPeriod.start_date, prevPeriod.end_date) + 1
+            : null
+
+        return {
+            totalIncome: periodTxs.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0),
+            totalExpense: periodTxs.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0),
+            transactions: periodTxs,
+            accounts: accountsList,
+            closingBalance: currentPeriod.closing_balance ?? null,
+            period: currentPeriod,
+            fallbackTotalDays,
+            allPeriods: allList,
+            previousSummary: previousQuery.data ?? null,
+            totalBalance: accountsList.reduce((s, a) => s + a.balance, 0),
+            // Receivables are money owed to the user, not debt.
+            totalDebt: (debtsQuery.data ?? []).filter(d => d.type === 'debt').reduce((s, d) => s + d.remaining_amount, 0),
+        }
+    }, [txsQuery.data, accountsQuery.data, debtsQuery.data, previousQuery.data, currentPeriod, prevPeriod, allList])
+
+    const loading = periodsQuery.isPending || txsQuery.isPending || accountsQuery.isPending
+    return { data, loading }
 }
 
 export function OverviewTransaction({
@@ -74,25 +66,7 @@ export function OverviewTransaction({
     periodId: string
     isActivePeriod: boolean
 }) {
-    const [data, setData] = useState<OverviewData | null>(null)
-    const [loading, setLoading] = useState(true)
-
-    useEffect(() => {
-        let cancelled = false
-        async function load(background = false) {
-            if (!background) setLoading(true)
-            const result = await fetchOverviewData(periodId)
-            // Switching periods quickly: only the latest period's response may land.
-            if (cancelled) return
-            // A failed background refresh keeps what's on screen.
-            if (result || !background) setData(result)
-            setLoading(false)
-        }
-        load()
-        // Transactions added from the top-bar button while the dashboard is open.
-        const unsubscribe = onTransactionsChanged(() => { load(true) })
-        return () => { cancelled = true; unsubscribe() }
-    }, [periodId])
+    const { data, loading } = useOverviewData(periodId)
 
     const stats = usePeriodStats({
         period: data?.period ?? { start_date: '', end_date: null },

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { format } from 'date-fns'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -12,7 +12,9 @@ import {
 import { cn } from '@/lib/utils'
 
 import { payPeriodsService } from '@/services/pay-periods.service'
-import { accountsService } from '@/services/accounts-categories.service'
+import { useAccounts } from '@/queries'
+import { useSeedOnce } from '@/hooks/use-seed-once'
+import { usePeriodStore } from '@/stores/period-store'
 import { formatCurrency, formatCurrencyInput, parseCurrencyInput, toISODate } from '@/lib/helpers'
 import { toast } from 'sonner'
 import type { Account } from '@/types'
@@ -25,13 +27,16 @@ interface OpenPeriodFormProps {
 
 const FIELD_LABEL = 'text-[11px] font-medium uppercase tracking-[.14em] text-[#8a8a84]'
 
+const NO_ACCOUNTS: Account[] = []
+
 export function OpenPeriodForm({ onSuccess }: OpenPeriodFormProps) {
     const [startDate, setStartDate] = useState<Date | undefined>(new Date())
     const [dateOpen, setDateOpen] = useState(false)
     const [salary, setSalary] = useState('')
     const [accountId, setAccountId] = useState('')
     const [accountPickerOpen, setAccountPickerOpen] = useState(false)
-    const [accounts, setAccounts] = useState<Account[]>([])
+    const { data: accountsData } = useAccounts()
+    const accounts = accountsData ?? NO_ACCOUNTS
     const [notes, setNotes] = useState('')
     const [loading, setLoading] = useState(false)
 
@@ -39,14 +44,7 @@ export function OpenPeriodForm({ onSuccess }: OpenPeriodFormProps) {
     const endOfToday = new Date()
     endOfToday.setHours(23, 59, 59, 999)
 
-    useEffect(() => {
-        accountsService.getAll().then(({ data }) => {
-            if (data) {
-                setAccounts(data)
-                setAccountId(data[0]?.id ?? '')
-            }
-        })
-    }, [])
+    useSeedOnce(accountsData, data => setAccountId(data[0]?.id ?? ''))
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -82,6 +80,8 @@ export function OpenPeriodForm({ onSuccess }: OpenPeriodFormProps) {
             return
         }
 
+        // Overview and Ledger move to the new period rather than staying on an old pick.
+        usePeriodStore.getState().setSelectedPeriodId(null)
         toast.success('Pay period opened successfully.')
         onSuccess()
     }

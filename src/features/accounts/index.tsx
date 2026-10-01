@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useMemo } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { WalletIcon, WALLET_TILE_CLASS } from '@/components/account-type-icon'
 import { BottomDrawer } from '@/components/bottom-drawer'
 import { ConfirmDrawer } from '@/components/confirmation-drawer'
@@ -11,49 +11,33 @@ import {
     accountInsights, accountShares, balanceTrend, daysIntoPeriod, totalRunwayDays,
 } from './lib/account-insights'
 import { accountsService } from '@/services/accounts-categories.service'
-import { payPeriodsService } from '@/services/pay-periods.service'
-import { transactionsService } from '@/services/transactions.service'
-import type { Account, PayPeriod, TransactionWithDetails } from '@/types'
+import { useAccounts, usePeriods, usePeriodTransactions } from '@/queries'
+import type { Account, TransactionWithDetails } from '@/types'
 import { toast } from 'sonner'
 import { LoadingContent } from '@/components/loading-content'
 import { cn } from '@/lib/utils'
 import { PageHeader } from '@/components/page-header'
 
+const NO_ACCOUNTS: Account[] = []
+const NO_TXS: TransactionWithDetails[] = []
+
 export function AccountPage() {
-    const [accounts, setAccounts] = useState<Account[]>([])
-    const [loading, setLoading] = useState(true)
+    const accountsQuery = useAccounts()
+    const accounts = accountsQuery.data ?? NO_ACCOUNTS
+    const loading = accountsQuery.isPending
+    // Activity, runway and trend are extras: the list still works if these fail.
+    const { periods, activePeriod } = usePeriods()
+    const { data: periodTxs = NO_TXS } = usePeriodTransactions(activePeriod?.id)
     const [editAccount, setEditAccount] = useState<Account | null>(null)
     const [addAccountDrawer, setAddAccountDrawer] = useState(false)
     const [deletingAccountId, setDeletingAccountId] = useState<string | null>(null)
     const [deleteLoading, setDeleteLoading] = useState(false)
     const [openAccount, setOpenAccount] = useState<Account | null>(null)
     const [editTab, setEditTab] = useState<'edit' | 'transfer'>('edit')
-    const [activePeriod, setActivePeriod] = useState<PayPeriod | null>(null)
-    const [periods, setPeriods] = useState<PayPeriod[]>([])
-    const [periodTxs, setPeriodTxs] = useState<TransactionWithDetails[]>([])
 
-    const load = useCallback(async () => {
-        setLoading(true)
-        const [{ data: accs, error }, { data: active }, { data: allPeriods }] = await Promise.all([
-            accountsService.getAll(),
-            payPeriodsService.getActive(),
-            payPeriodsService.getAll(),
-        ])
-        if (error) toast.error(error)
-        setAccounts(accs ?? [])
-        // Activity, runway and trend are extras: the list still works if these fail.
-        setActivePeriod(active ?? null)
-        setPeriods(allPeriods ?? [])
-        if (active) {
-            const { data: txs } = await transactionsService.getByPeriod(active.id)
-            setPeriodTxs(txs ?? [])
-        } else {
-            setPeriodTxs([])
-        }
-        setLoading(false)
-    }, [])
-
-    useEffect(() => { load() }, [load])
+    useEffect(() => {
+        if (accountsQuery.error) toast.error(accountsQuery.error.message)
+    }, [accountsQuery.error])
 
     const handleDeleteAccount = async () => {
         if (!deletingAccountId) return
@@ -67,7 +51,6 @@ export function AccountPage() {
             setDeletingAccountId(null)
             return
         }
-        setAccounts(prev => prev.filter(a => a.id !== deletingAccountId))
         setDeletingAccountId(null)
         toast.success('Account deleted.')
     }
@@ -139,7 +122,7 @@ export function AccountPage() {
 
                 {/* Drawers */}
                 <BottomDrawer open={addAccountDrawer} onClose={() => setAddAccountDrawer(false)} title="Add Account">
-                    <AccountForm onSuccess={() => { setAddAccountDrawer(false); load() }} />
+                    <AccountForm onSuccess={() => setAddAccountDrawer(false)} />
                 </BottomDrawer>
                 {/* Detail sheet — each action closes it and hands off to its own drawer */}
                 <BottomDrawer open={!!openAccount} onClose={() => setOpenAccount(null)} title={openAccount?.name ?? ''}>
@@ -161,10 +144,7 @@ export function AccountPage() {
                             key={`${editAccount.id}-${editTab}`}
                             initial={editAccount}
                             initialTab={editTab}
-                            onSuccess={() => {
-                                setEditAccount(null);
-                                load();
-                            }}
+                            onSuccess={() => setEditAccount(null)}
                             allAccounts={accounts}
                         />}
                 </BottomDrawer>

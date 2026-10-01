@@ -1,11 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { format } from 'date-fns'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Loader2, CalendarIcon, ChevronRight } from 'lucide-react'
 import { debtsService } from '@/services/debts.service'
 import { transactionsService } from '@/services/transactions.service'
-import { accountsService } from '@/services/accounts-categories.service'
+import { useAccounts } from '@/queries'
 import { Switch } from '@/components/ui/switch'
 import { formatCurrency, formatCurrencyInput, parseCurrencyInput, toISODate } from '@/lib/helpers'
 import type { Account } from '@/types'
@@ -30,6 +30,8 @@ type DebtType = 'debt' | 'receivable'
 const FIELD_LABEL = 'text-[11px] font-medium uppercase tracking-[.14em] text-[#8a8a84]'
 const SUBMIT_BUTTON = 'w-full h-12 rounded-[14px] text-[13px] font-semibold text-white bg-[#6FA82B] hover:bg-[#6FA82B]/90 transition-colors disabled:opacity-50 disabled:pointer-events-none'
 
+const NO_ACCOUNTS: Account[] = []
+
 export function DebtForm({ onSuccess, payPeriodId, periodStartDate, initialType = 'debt' }: DebtFormProps) {
     const today = toISODate()
 
@@ -42,18 +44,13 @@ export function DebtForm({ onSuccess, payPeriodId, periodStartDate, initialType 
     const [accountId, setAccountId] = useState('')
     const [accountPickerOpen, setAccountPickerOpen] = useState(false)
     const [notes, setNotes] = useState('')
-    const [accounts, setAccounts] = useState<Account[]>([])
+    const { data: accounts = NO_ACCOUNTS } = useAccounts()
     const [loading, setLoading] = useState(false)
     // Whether this debt/receivable actually moved money in/out of the account
     const [affectsBalance, setAffectsBalance] = useState(false)
 
     const selectedAccount = accounts.find((a) => a.id === accountId)
 
-    useEffect(() => {
-        accountsService.getAll().then(({ data }) => {
-            if (data) setAccounts(data)
-        })
-    }, [])
 
     // Reset affectsBalance when type changes so user consciously opts in
     const handleTypeChange = (val: DebtType) => {

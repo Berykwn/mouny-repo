@@ -1,37 +1,21 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useState } from 'react'
 import { CheckCircle } from 'lucide-react'
 import { BottomDrawer } from '@/components/bottom-drawer'
 import { HeroGlow, HeroAction } from '@/components/hero'
 import { OpenPeriodForm } from './components/open-period-form'
 import { PeriodHistory } from './components/period-history'
 import { ClosePeriodForm } from './components/close-period-form'
-import { payPeriodsService } from '@/services/pay-periods.service'
-import type { PayPeriod } from '@/types'
+import { usePeriods } from '@/queries'
 import { formatCurrency, formatDate, getDaysBetween } from '@/lib/helpers'
 import { LoadingContent } from '@/components/loading-content'
 import { PageHeader } from '@/components/page-header'
 
 export function PeriodHistoryPage() {
-    const [activePeriod, setActivePeriod] = useState<PayPeriod | null>(null)
-    const [allPeriods, setAllPeriods] = useState<PayPeriod[]>([])
-    const [loading, setLoading] = useState(true)
+    const { periods: allPeriods, activePeriod, isPending: loading } = usePeriods()
     const [openPeriodDrawer, setOpenPeriodDrawer] = useState(false)
     const [closePeriodDrawer, setClosePeriodDrawer] = useState(false)
 
     const dayNumber = Math.max(1, getDaysBetween(activePeriod?.start_date) + 1)
-
-    const load = useCallback(async () => {
-        setLoading(true)
-        const [{ data: active }, { data: all }] = await Promise.all([
-            payPeriodsService.getActive(),
-            payPeriodsService.getAll(),
-        ])
-        setActivePeriod(active)
-        setAllPeriods(all ?? [])
-        setLoading(false)
-    }, [])
-
-    useEffect(() => { load() }, [load])
 
     const closedPeriods = allPeriods.filter(p => p.status === 'closed')
 
@@ -109,13 +93,13 @@ export function PeriodHistoryPage() {
 
                 {/* Drawers */}
                 <BottomDrawer open={openPeriodDrawer} onClose={() => setOpenPeriodDrawer(false)} title="Open New Period">
-                    <OpenPeriodForm onSuccess={() => { setOpenPeriodDrawer(false); load() }} />
+                    <OpenPeriodForm onSuccess={() => setOpenPeriodDrawer(false)} />
                 </BottomDrawer>
                 <BottomDrawer open={closePeriodDrawer} onClose={() => setClosePeriodDrawer(false)} title="Close Period">
                     {activePeriod && (
                         <ClosePeriodForm
                             period={activePeriod}
-                            onSuccess={() => { setClosePeriodDrawer(false); setActivePeriod(null); load() }}
+                            onSuccess={() => setClosePeriodDrawer(false)}
                         />
                     )}
                 </BottomDrawer>

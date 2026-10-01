@@ -11,7 +11,8 @@ import type { Category, CategoryType } from '@/types'
 import { COLORS, SWATCHES } from '@/lib/static-colors'
 import { ICON_MAP } from '@/lib/icon-map'
 import { CategoryIcon, CategoryTile } from './category-icon'
-import { categoryTypeConfig, CategoryTypePicker } from './category-type-picker'
+import { CategoryTypePicker } from './category-type-picker'
+import { categoryTypeConfig } from '../lib/category-types'
 
 interface CategoryFormProps {
     onSuccess: () => void

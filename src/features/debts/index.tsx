@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useMemo } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { BottomDrawer } from '@/components/bottom-drawer'
 import { ConfirmDrawer } from '@/components/confirmation-drawer'
 import { DebtList } from './components/debt-list'
@@ -13,58 +13,39 @@ import { EditDebtForm } from './components/edit-debt-form'
 import { PayDebtForm } from './components/pay-debt-form'
 import { PayReceivableForm } from './components/pay-receivable-form'
 import { payoffPlan, summarize, upcoming } from './lib/debt-insights'
-import { pacePeriods, savingsPace, type SavingsPace } from '@/features/wish-list/lib/wish-analytics'
 import { debtsService } from '@/services/debts.service'
-import { payPeriodsService } from '@/services/pay-periods.service'
-import { accountsService } from '@/services/accounts-categories.service'
-import { transactionsService } from '@/services/transactions.service'
+import { useAccounts, useDebts, usePeriods, useSavingsPace } from '@/queries'
 import { formatCurrency } from '@/lib/helpers'
 import type { DebtType, DebtWithAccount } from '@/types'
 import { toast } from 'sonner'
 import { LoadingContent } from '@/components/loading-content'
 import { PageHeader } from '@/components/page-header'
 
+const NO_DEBTS: DebtWithAccount[] = []
+
 export default function DebtsPage() {
-    const [debts, setDebts] = useState<DebtWithAccount[]>([])
-    const [totalBalance, setTotalBalance] = useState<number | null>(null)
-    const [periodId, setPeriodId] = useState<string | null>(null)
-    const [periodStartDate, setPeriodStartDate] = useState<string | null>(null)
-    const [loading, setLoading] = useState(true)
+    const debtsQuery = useDebts()
+    const debts = debtsQuery.data ?? NO_DEBTS
+    const loading = debtsQuery.isPending
+    const { activePeriod } = usePeriods()
+    const periodId = activePeriod?.id ?? null
+    const periodStartDate = activePeriod?.start_date ?? null
+    // Coverage is an extra: the page still works without account balances.
+    const { data: accounts } = useAccounts()
+    const totalBalance = accounts ? accounts.reduce((s, a) => s + a.balance, 0) : null
+    // So is the payoff pace — the same leftover-per-period the wish list plans with.
+    const pace = useSavingsPace()
     const [addType, setAddType] = useState<DebtType | null>(null)
     const [openDebt, setOpenDebt] = useState<DebtWithAccount | null>(null)
     const [editingDebt, setEditingDebt] = useState<DebtWithAccount | null>(null)
-    const [pace, setPace] = useState<SavingsPace | null>(null)
     const [payingDebt, setPayingDebt] = useState<DebtWithAccount | null>(null)
     const [collectingDebt, setCollectingDebt] = useState<DebtWithAccount | null>(null)
     const [deletingDebt, setDeletingDebt] = useState<DebtWithAccount | null>(null)
     const [deleteLoading, setDeleteLoading] = useState(false)
 
-    const load = useCallback(async () => {
-        setLoading(true)
-        const [{ data: period }, { data: debtData, error: debtError }, { data: accounts }, { data: periods }] = await Promise.all([
-            payPeriodsService.getActive(),
-            debtsService.getAll(),
-            accountsService.getAll(),
-            payPeriodsService.getAll(),
-        ])
-        if (debtError) toast.error(debtError)
-        setPeriodId(period?.id ?? null)
-        setPeriodStartDate(period?.start_date ?? null)
-        setDebts(debtData ?? [])
-        // Coverage is an extra: the page still works without account balances.
-        setTotalBalance(accounts ? accounts.reduce((s, a) => s + a.balance, 0) : null)
-        // So is the payoff pace — the same leftover-per-period the wish list plans with.
-        const recent = pacePeriods(periods ?? [])
-        if (recent.length > 0) {
-            const { data: summaries } = await transactionsService.getPeriodSummaries(recent.map(p => p.id))
-            setPace(summaries ? savingsPace(recent, summaries) : null)
-        } else {
-            setPace(null)
-        }
-        setLoading(false)
-    }, [])
-
-    useEffect(() => { load() }, [load])
+    useEffect(() => {
+        if (debtsQuery.error) toast.error(debtsQuery.error.message)
+    }, [debtsQuery.error])
 
     const handleDeleteConfirm = async () => {
         if (!deletingDebt) return
@@ -72,7 +53,6 @@ export default function DebtsPage() {
         const { error } = await debtsService.remove(deletingDebt.id)
         setDeleteLoading(false)
         if (error) { toast.error(error); return }
-        setDebts((prev) => prev.filter((d) => d.id !== deletingDebt.id))
         setDeletingDebt(null)
         toast.success('Debt record deleted.')
     }
@@ -151,7 +131,7 @@ export default function DebtsPage() {
                             initialType={addType}
                             payPeriodId={periodId}
                             periodStartDate={periodStartDate}
-                            onSuccess={() => { setAddType(null); load() }}
+                            onSuccess={() => setAddType(null)}
                         />
                     )}
                 </BottomDrawer>
@@ -187,7 +167,7 @@ export default function DebtsPage() {
                         <EditDebtForm
                             key={editingDebt.id}
                             debt={editingDebt}
-                            onSuccess={() => { setEditingDebt(null); load() }}
+                            onSuccess={() => setEditingDebt(null)}
                         />
                     )}
                 </BottomDrawer>
@@ -203,7 +183,7 @@ export default function DebtsPage() {
                             plannedAmount={stopFor(payingDebt)?.perPeriodNeeded}
                             payPeriodId={periodId}
                             periodStartDate={periodStartDate}
-                            onSuccess={() => { setPayingDebt(null); load() }}
+                            onSuccess={() => setPayingDebt(null)}
                         />
                     )}
                 </BottomDrawer>
@@ -218,7 +198,7 @@ export default function DebtsPage() {
                             debt={collectingDebt}
                             payPeriodId={periodId}
                             periodStartDate={periodStartDate}
-                            onSuccess={() => { setCollectingDebt(null); load() }}
+                            onSuccess={() => setCollectingDebt(null)}
                         />
                     )}
                 </BottomDrawer>

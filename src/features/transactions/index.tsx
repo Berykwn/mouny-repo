@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from 'react'
+import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useSwipeable } from 'react-swipeable'
 import { ConfirmDrawer } from '@/components/confirmation-drawer'
@@ -15,23 +15,31 @@ import { AddTransactionFlow } from './components/add-transaction-flow'
 import { BottomDrawer } from '@/components/bottom-drawer'
 import { usePeriodStats } from '@/hooks/use-period-stats'
 import { transactionsService } from '@/services/transactions.service'
-import { payPeriodsService } from '@/services/pay-periods.service'
 import { getDaysBetween, toISODate } from '@/lib/helpers'
-import { onTransactionsChanged, onPeriodsChanged, emitTransactionsChanged } from '@/lib/transactions-bus'
-import type { TransactionWithDetails, PayPeriod } from '@/types'
+import { queryClient } from '@/lib/query-client'
+import { queryKeys, usePeriodTransactions } from '@/queries'
+import { useSelectedPeriod } from '@/stores/period-store'
+import type { TransactionWithDetails } from '@/types'
 import { toast } from 'sonner'
 import { LoadingContent } from '@/components/loading-content'
 
 const TABS: LedgerTab[] = ['calendar', 'all']
+const EMPTY_TXS: TransactionWithDetails[] = []
 
 export default function TransactionsPage() {
     const [activeTab, setActiveTab] = useState<LedgerTab>('calendar')
-    const [allPeriods, setAllPeriods] = useState<PayPeriod[]>([])
-    const [activePeriod, setActivePeriod] = useState<PayPeriod | null>(null)
-    const [selectedPeriodIndex, setSelectedPeriodIndex] = useState<number>(0)
-    const [transactions, setTransactions] = useState<TransactionWithDetails[]>([])
-    const [loading, setLoading] = useState(true)
-    const [txLoading, setTxLoading] = useState(false)
+    // Shared with Overview: the period picked there is the one shown here, and back.
+    const {
+        periods: allPeriods,
+        activePeriod,
+        selectedPeriod,
+        isActivePeriod: isCurrentPeriod,
+        isPending: loading,
+        error: periodsError,
+        selectPeriod,
+    } = useSelectedPeriod()
+    const txQuery = usePeriodTransactions(selectedPeriod?.id)
+    const transactions = txQuery.data ?? EMPTY_TXS
     const [periodPickerOpen, setPeriodPickerOpen] = useState(false)
     const [openTx, setOpenTx] = useState<TransactionWithDetails | null>(null)
     const [editingTx, setEditingTx] = useState<TransactionWithDetails | null>(null)
@@ -46,12 +54,10 @@ export default function TransactionsPage() {
     const today = toISODate()
     const topBarSlotNode = useTopBarSlotNode()
 
-    const selectedPeriod = allPeriods[selectedPeriodIndex] ?? null
-    const isCurrentPeriod = selectedPeriod?.id === activePeriod?.id
-
     // An open period has no end date yet, so its length is estimated from the one before
     // (periods are sorted newest first) — the same estimate the dashboard uses.
-    const prevPeriod = allPeriods[selectedPeriodIndex + 1] ?? null
+    const selectedPeriodIndex = selectedPeriod ? allPeriods.findIndex(p => p.id === selectedPeriod.id) : -1
+    const prevPeriod = selectedPeriodIndex >= 0 ? allPeriods[selectedPeriodIndex + 1] ?? null : null
     const fallbackTotalDays = prevPeriod?.end_date
         ? getDaysBetween(prevPeriod.start_date, prevPeriod.end_date) + 1
         : null
@@ -77,75 +83,31 @@ export default function TransactionsPage() {
         delta: 50,
     })
 
-    // Every load bumps this; a response that comes back after a newer request is dropped,
-    // so switching periods quickly can't show one period's transactions under another.
-    const requestIdRef = useRef(0)
-
-    const init = useCallback(async () => {
-        const requestId = ++requestIdRef.current
-        setLoading(true)
-        const [{ data: active }, { data: all, error: allError }] = await Promise.all([
-            payPeriodsService.getActive(),
-            payPeriodsService.getAll(),
-        ])
-        if (requestId !== requestIdRef.current) return
-        if (allError) toast.error(allError)
-        setActivePeriod(active)
-
-        const periods = all ?? []
-        setAllPeriods(periods)
-
-        const defaultIndex = active ? periods.findIndex(p => p.id === active.id) : 0
-        const idx = defaultIndex >= 0 ? defaultIndex : 0
-        setSelectedPeriodIndex(idx)
-
-        const defaultPeriod = periods[idx] ?? null
-        if (defaultPeriod) {
-            const { data: txs, error } = await transactionsService.getByPeriod(defaultPeriod.id)
-            if (requestId !== requestIdRef.current) return
-            if (error) toast.error(error)
-            setTransactions(txs ?? [])
-        } else {
-            setTransactions([])
-        }
-        setLoading(false)
-    }, [])
-
-    useEffect(() => { init() }, [init])
-    useEffect(() => onPeriodsChanged(() => { init() }), [init])
-
-    /**
-     * `background` refreshes (after an add/edit elsewhere) keep the current view mounted,
-     * so the calendar keeps its selected day instead of being rebuilt behind a loader.
-     */
-    const loadTransactions = useCallback(async (period: PayPeriod, { background = false } = {}) => {
-        const requestId = ++requestIdRef.current
-        if (!background) setTxLoading(true)
-        const { data: txs, error } = await transactionsService.getByPeriod(period.id)
-        if (requestId !== requestIdRef.current) return
-        if (error) {
-            toast.error(error)
-            // A failed switch mustn't leave the previous period's rows under the new chip.
-            if (!background) setTransactions([])
-        } else {
-            const list = txs ?? []
-            setTransactions(list)
-            // Drop selections for transactions that no longer exist.
-            const ids = new Set(list.map(t => t.id))
-            setSelectedIds(prev => prev.filter(id => ids.has(id)))
-        }
-        setTxLoading(false)
-    }, [])
+    // Refetches after a write keep the current view mounted (no loader), so the calendar
+    // keeps its selected day. Only a period with nothing cached yet shows a loader.
+    const txLoading = !!selectedPeriod && txQuery.isPending
 
     useEffect(() => {
-        return onTransactionsChanged(() => {
-            if (isCurrentPeriod && activePeriod) loadTransactions(activePeriod, { background: true })
-        })
-    }, [isCurrentPeriod, activePeriod, loadTransactions])
-
+        if (periodsError) toast.error(periodsError.message)
+    }, [periodsError])
     useEffect(() => {
-        setSelectedIds([])
-    }, [selectedPeriodIndex])
+        if (txQuery.error) toast.error(txQuery.error.message)
+    }, [txQuery.error])
+
+    // A new period, or rows that are gone after a refetch: drop their selections.
+    useEffect(() => {
+        const ids = new Set(transactions.map(t => t.id))
+        setSelectedIds(prev => prev.some(id => !ids.has(id)) ? prev.filter(id => ids.has(id)) : prev)
+    }, [transactions])
+
+    /** Take rows off screen now; the refetch that follows the delete confirms it. */
+    const removeFromCache = (ids: string[]) => {
+        if (!selectedPeriod) return
+        queryClient.setQueryData<TransactionWithDetails[]>(
+            queryKeys.transactions(selectedPeriod.id),
+            prev => prev?.filter(t => !ids.includes(t.id)),
+        )
+    }
 
     const handleDeleteConfirm = async () => {
         if (!deletingId) return
@@ -154,17 +116,14 @@ export default function TransactionsPage() {
         const { error } = await transactionsService.remove(deletingId)
         setDeleteLoading(false)
         if (error) { toast.error(error); return }
-        setTransactions(prev => prev.filter(t => t.id !== deletingId))
+        removeFromCache([deletingId])
         setDeletingId(null)
-        emitTransactionsChanged()
         toast.success('Transaction deleted.', removed ? {
             action: {
                 label: 'Undo',
                 onClick: async () => {
                     const { error: restoreError } = await transactionsService.restore(removed)
                     if (restoreError) { toast.error(restoreError); return }
-                    emitTransactionsChanged()
-                    if (selectedPeriod) loadTransactions(selectedPeriod, { background: true })
                     toast.success('Transaction restored.')
                 },
             },
@@ -181,7 +140,7 @@ export default function TransactionsPage() {
         const { error } = await transactionsService.removeMany(selectedIds)
         setBulkDeleteLoading(false)
         if (error) { toast.error(error); return }
-        setTransactions(prev => prev.filter(t => !selectedIds.includes(t.id)))
+        removeFromCache(selectedIds)
         setSelectedIds([])
         setBulkDeleteOpen(false)
         toast.success(`${selectedIds.length} transaction(s) deleted.`)
@@ -194,7 +153,6 @@ export default function TransactionsPage() {
         if (error) { toast.error(error); return }
         setSelectedIds([])
         setBulkCategoryOpen(false)
-        if (selectedPeriod) await loadTransactions(selectedPeriod, { background: true })
         toast.success('Category updated.')
     }
 
@@ -267,9 +225,9 @@ export default function TransactionsPage() {
                 activePeriodId={activePeriod?.id}
                 selectedPeriodId={selectedPeriod?.id}
                 onSelect={(period) => {
-                    setSelectedPeriodIndex(allPeriods.findIndex(p => p.id === period.id))
+                    selectPeriod(period)
+                    setSelectedIds([])
                     setPeriodPickerOpen(false)
-                    loadTransactions(period)
                 }}
             />
 
@@ -292,10 +250,7 @@ export default function TransactionsPage() {
                     periodEnd={selectedPeriod.end_date ?? undefined}
                     initial={editingTx}
                     onClose={() => setEditingTx(null)}
-                    onSuccess={() => {
-                        setEditingTx(null)
-                        emitTransactionsChanged()
-                    }}
+                    onSuccess={() => setEditingTx(null)}
                 />
             )}
 

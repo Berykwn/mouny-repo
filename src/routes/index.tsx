@@ -1,3 +1,4 @@
+import type { ComponentType } from 'react'
 import { createBrowserRouter, createHashRouter, RouterProvider, type RouteObject } from 'react-router-dom'
 import { ProtectedRoute } from './protected-route'
 import { PublicRoute } from './public-route'
@@ -8,18 +9,13 @@ import LoginPage from '@/features/auth/login'
 import ForgotPasswordPage from '@/features/auth/forgot-password'
 import ResetPasswordPage from '@/features/auth/reset-password'
 
-// Features
-import DashboardPage from '@/features/dashboard'
-import TransactionsPage from '@/features/transactions'
-import DebtsPage from '@/features/debts'
-import WishListPage from '@/features/wish-list'
-
 // Static
 import NotFoundPage from '@/features/static/not-found'
-import { CategoriesPage } from '@/features/categories'
-import { PeriodHistoryPage } from '@/features/periods'
-import { AccountPage } from '@/features/accounts'
-import MenuPage from '@/features/menu'
+
+// Feature pages load on first visit, so the first screen doesn't wait for every page
+// (and the charts library) to download.
+const page = (load: () => Promise<{ default: ComponentType }>): RouteObject['lazy'] =>
+    () => load().then(m => ({ Component: m.default }))
 
 const routes: RouteObject[] = [
     // Public
@@ -39,14 +35,14 @@ const routes: RouteObject[] = [
             {
                 element: <AppLayout />,
                 children: [
-                    { path: '/', element: <DashboardPage /> },
-                    { path: '/transactions', element: <TransactionsPage /> },
-                    { path: '/debts', element: <DebtsPage /> },
-                    { path: '/wish-list', element: <WishListPage /> },
-                    { path: '/category', element: <CategoriesPage /> },
-                    { path: '/period-history', element: <PeriodHistoryPage /> },
-                    { path: '/accounts', element: <AccountPage /> },
-                    { path: '/menu', element: <MenuPage /> },
+                    { path: '/', lazy: page(() => import('@/features/dashboard')) },
+                    { path: '/transactions', lazy: page(() => import('@/features/transactions')) },
+                    { path: '/debts', lazy: page(() => import('@/features/debts')) },
+                    { path: '/wish-list', lazy: page(() => import('@/features/wish-list')) },
+                    { path: '/category', lazy: page(() => import('@/features/categories').then(m => ({ default: m.CategoriesPage }))) },
+                    { path: '/period-history', lazy: page(() => import('@/features/periods').then(m => ({ default: m.PeriodHistoryPage }))) },
+                    { path: '/accounts', lazy: page(() => import('@/features/accounts').then(m => ({ default: m.AccountPage }))) },
+                    { path: '/menu', lazy: page(() => import('@/features/menu')) },
                 ],
             },
         ],

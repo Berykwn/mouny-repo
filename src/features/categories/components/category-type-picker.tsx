@@ -1,39 +1,18 @@
-import { Check, LucideIcon, TrendingDown, TrendingUp } from 'lucide-react'
+import { Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { CategoryType } from '@/types'
+import { categoryTypeConfig } from '../lib/category-types'
 
 interface CategoryTypePickerProps {
     value: CategoryType
     onChange: (type: CategoryType) => void
 }
 
-const typeConfig: Record<CategoryType, {
-    label: string
-    sub: string
-    icon: LucideIcon
-    tone: 'positive' | 'negative'
-}> = {
-    expense: {
-        label: 'Expense',
-        sub: 'Food, transport...',
-        icon: TrendingDown,
-        tone: 'negative',
-    },
-    income: {
-        label: 'Income',
-        sub: 'Salary, freelance...',
-        icon: TrendingUp,
-        tone: 'positive',
-    },
-}
-
-export const categoryTypeConfig = typeConfig
-
 export function CategoryTypePicker({ value, onChange }: CategoryTypePickerProps) {
     return (
         <div className="flex gap-2.5">
             {(['expense', 'income'] as CategoryType[]).map((t) => {
-                const config = typeConfig[t]
+                const config = categoryTypeConfig[t]
                 const Icon = config.icon
                 const isSelected = value === t
                 const positive = config.tone === 'positive'

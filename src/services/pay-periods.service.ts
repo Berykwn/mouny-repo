@@ -1,17 +1,16 @@
 import { supabase } from '@/lib/supabase'
-import { handleError, type ServiceResult } from './_base'
+import { handleError, invalidatesOnWrite, sessionUser, type ServiceResult } from './_base'
 import type { PayPeriod } from '@/types/'
-import { toISODate } from '@/lib/helpers'
-import { emitPeriodsChanged } from '@/lib/transactions-bus'
 
-export const payPeriodsService = {
+export const payPeriodsService = invalidatesOnWrite({
     async getActive(): Promise<ServiceResult<PayPeriod>> {
         try {
             const { data, error } = await supabase
                 .from('pay_periods')
                 .select('*')
                 .eq('status', 'active')
-                .single()
+                // No active period is a normal state (between pay periods), not an error.
+                .maybeSingle()
 
             if (error) throw error
             return { data, error: null }
@@ -41,7 +40,7 @@ export const payPeriodsService = {
         notes?: string
     }): Promise<ServiceResult<PayPeriod>> {
         try {
-            const { data: { user } } = await supabase.auth.getUser()
+            const user = await sessionUser()
             if (!user) throw new Error('Belum login')
 
             const { data, error } = await supabase
@@ -51,7 +50,6 @@ export const payPeriodsService = {
                 .single()
 
             if (error) throw error
-            emitPeriodsChanged()
             return { data, error: null }
         } catch (err) {
             return { data: null, error: handleError(err) }
@@ -69,45 +67,10 @@ export const payPeriodsService = {
                 .single()
 
             if (error) throw error
-            emitPeriodsChanged()
             return { data, error: null }
         } catch (err) {
             return { data: null, error: handleError(err) }
         }
     },
 
-    async getActiveSummary() {
-        try {
-            const { data, error } = await supabase
-                .from('active_period_summary')
-                .select('*')
-                .single()
-
-            if (error) throw error
-            return { data, error: null }
-        } catch (err) {
-            return { data: null, error: handleError(err) }
-        }
-    },
-
-    setActive: async (periodId: string) => {
-        // Close all active periods first. One that never got an end date ends today,
-        // so its stats stop counting days here instead of running on forever.
-        await supabase
-            .from('pay_periods')
-            .update({ status: 'closed', end_date: toISODate() })
-            .eq('status', 'active')
-            .is('end_date', null)
-
-        await supabase
-            .from('pay_periods')
-            .update({ status: 'closed' })
-            .eq('status', 'active')
-
-        // Set new active period
-        return supabase
-            .from('pay_periods')
-            .update({ status: 'active' })
-            .eq('id', periodId)
-    }
-}
+})

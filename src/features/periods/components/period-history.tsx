@@ -4,7 +4,7 @@ import { formatCurrency, formatDate } from '@/lib/helpers'
 import type { PayPeriod } from '@/types'
 import { History, ChevronDown, Wallet, StickyNote } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { transactionsService } from '@/services/transactions.service'
+import { usePeriodSummaries } from '@/queries'
 import { unspentPct, type PeriodSummary } from '@/lib/period-summary'
 
 interface PeriodHistoryProps {
@@ -13,19 +13,13 @@ interface PeriodHistoryProps {
 
 export function PeriodHistory({ periods }: PeriodHistoryProps) {
     const closed = useMemo(() => periods.filter(p => p.status === 'closed'), [periods])
-    const [summaryMap, setSummaryMap] = useState<Record<string, PeriodSummary>>({})
     const [openId, setOpenId] = useState<string | null>(null)
+    const { data, error } = usePeriodSummaries(closed.map(p => p.id))
+    const summaryMap: Record<string, PeriodSummary> = data ?? {}
 
     useEffect(() => {
-        if (closed.length === 0) return
-        let cancelled = false
-        transactionsService.getPeriodSummaries(closed.map(p => p.id)).then(({ data, error }) => {
-            if (cancelled) return
-            if (error) toast.error(error)
-            setSummaryMap(data ?? {})
-        })
-        return () => { cancelled = true }
-    }, [closed])
+        if (error) toast.error(error.message)
+    }, [error])
 
     if (closed.length === 0) return null
 
