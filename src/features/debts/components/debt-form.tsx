@@ -21,6 +21,8 @@ interface DebtFormProps {
     onSuccess: () => void
     payPeriodId: string
     periodStartDate: string
+    /** Which side the form opens on (e.g. from the empty state's choice). */
+    initialType?: DebtType
 }
 
 type DebtType = 'debt' | 'receivable'
@@ -28,10 +30,10 @@ type DebtType = 'debt' | 'receivable'
 const FIELD_LABEL = 'text-[11px] font-medium uppercase tracking-[.14em] text-[#8a8a84]'
 const SUBMIT_BUTTON = 'w-full h-12 rounded-[14px] text-[13px] font-semibold text-white bg-[#6FA82B] hover:bg-[#6FA82B]/90 transition-colors disabled:opacity-50 disabled:pointer-events-none'
 
-export function DebtForm({ onSuccess, payPeriodId, periodStartDate }: DebtFormProps) {
+export function DebtForm({ onSuccess, payPeriodId, periodStartDate, initialType = 'debt' }: DebtFormProps) {
     const today = toISODate()
 
-    const [type, setType] = useState<DebtType>('debt')
+    const [type, setType] = useState<DebtType>(initialType)
     const [counterparty, setCounterparty] = useState('')
     const [amount, setAmount] = useState('')
     const [dueDate, setDueDate] = useState('')

@@ -21,6 +21,7 @@ export type TransactionUpdate = Database['public']['Tables']['transactions']['Up
 export type Debt = Database['public']['Tables']['debts']['Row']
 export type DebtInsert = Database['public']['Tables']['debts']['Insert']
 export type DebtUpdate = Database['public']['Tables']['debts']['Update']
+export type DebtPayment = Database['public']['Tables']['debt_payments']['Row']
 
 export type WishListItem = Database['public']['Tables']['wish_list']['Row']
 export type WishListInsert = Database['public']['Tables']['wish_list']['Insert']

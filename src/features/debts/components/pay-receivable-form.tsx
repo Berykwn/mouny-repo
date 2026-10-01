@@ -11,6 +11,7 @@ import { AccountTypeTile } from '@/components/account-type-icon'
 import { AccountPickerDrawer } from '@/components/account-picker-drawer'
 import { DateQuickPicker } from '@/components/date-quick-picker'
 import { ProgressBar } from '@/components/progress-bar'
+import { AmountChips } from './amount-chips'
 
 const FIELD_LABEL = 'text-[11px] font-medium uppercase tracking-[.14em] text-[#8a8a84]'
 const SUBMIT_BUTTON = 'w-full h-12 rounded-[14px] text-[13px] font-semibold text-white bg-[#6FA82B] hover:bg-[#6FA82B]/90 transition-colors disabled:opacity-50 disabled:pointer-events-none'
@@ -19,10 +20,12 @@ interface PayReceivableFormProps {
     debt: DebtWithAccount
     payPeriodId: string
     periodStartDate: string
+    /** The payoff plan's amount for this period, offered as a quick pick. */
+    plannedAmount?: number | null
     onSuccess: () => void
 }
 
-export function PayReceivableForm({ debt, periodStartDate, onSuccess }: PayReceivableFormProps) {
+export function PayReceivableForm({ debt, periodStartDate, plannedAmount, onSuccess }: PayReceivableFormProps) {
     const today = toISODate()
 
     const [amount, setAmount] = useState(String(debt.remaining_amount))
@@ -92,12 +95,15 @@ export function PayReceivableForm({ debt, periodStartDate, onSuccess }: PayRecei
         }
 
         const { error: debtError } = await debtsService.recordPayment(debt.id, parsed)
-        setLoading(false)
 
         if (debtError) {
+            setLoading(false)
             toast.error(String(debtError))
             return
         }
+
+        await debtsService.logPayment({ debt_id: debt.id, amount: parsed, date, account_id: selectedAccountId })
+        setLoading(false)
 
         toast.success('Collection recorded.')
         onSuccess()
@@ -138,6 +144,13 @@ export function PayReceivableForm({ debt, periodStartDate, onSuccess }: PayRecei
                         disabled={loading}
                     />
                 </div>
+                <AmountChips
+                    remaining={debt.remaining_amount}
+                    planned={plannedAmount}
+                    value={parseCurrencyInput(amount)}
+                    onPick={(n) => setAmount(String(n))}
+                    disabled={loading}
+                />
             </div>
 
             <div className="space-y-1.5">

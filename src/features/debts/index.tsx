@@ -1,45 +1,66 @@
-import { useEffect, useState, useCallback } from 'react'
-import { HandCoins } from 'lucide-react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import { BottomDrawer } from '@/components/bottom-drawer'
 import { ConfirmDrawer } from '@/components/confirmation-drawer'
 import { DebtList } from './components/debt-list'
 import { DebtForm } from './components/debt-form'
+import { DebtsHero } from './components/debts-hero'
+import { DebtDetail } from './components/debt-detail'
+import { DebtEmpty } from './components/debt-empty'
+import { DebtSettled } from './components/debt-settled'
+import { DebtPlan } from './components/debt-plan'
+import { DebtUpcoming } from './components/debt-upcoming'
+import { EditDebtForm } from './components/edit-debt-form'
 import { PayDebtForm } from './components/pay-debt-form'
 import { PayReceivableForm } from './components/pay-receivable-form'
+import { payoffPlan, summarize, upcoming } from './lib/debt-insights'
+import { pacePeriods, savingsPace, type SavingsPace } from '@/features/wish-list/lib/wish-analytics'
 import { debtsService } from '@/services/debts.service'
 import { payPeriodsService } from '@/services/pay-periods.service'
+import { accountsService } from '@/services/accounts-categories.service'
+import { transactionsService } from '@/services/transactions.service'
 import { formatCurrency } from '@/lib/helpers'
-import type { DebtWithAccount } from '@/types'
-import { cn } from '@/lib/utils'
+import type { DebtType, DebtWithAccount } from '@/types'
 import { toast } from 'sonner'
 import { LoadingContent } from '@/components/loading-content'
 import { PageHeader } from '@/components/page-header'
-import { HeroGlow, HeroAction } from '@/components/hero'
-
-type FilterType = 'all' | 'debt' | 'receivable'
 
 export default function DebtsPage() {
     const [debts, setDebts] = useState<DebtWithAccount[]>([])
+    const [totalBalance, setTotalBalance] = useState<number | null>(null)
     const [periodId, setPeriodId] = useState<string | null>(null)
     const [periodStartDate, setPeriodStartDate] = useState<string | null>(null)
     const [loading, setLoading] = useState(true)
-    const [addDrawerOpen, setAddDrawerOpen] = useState(false)
+    const [addType, setAddType] = useState<DebtType | null>(null)
+    const [openDebt, setOpenDebt] = useState<DebtWithAccount | null>(null)
+    const [editingDebt, setEditingDebt] = useState<DebtWithAccount | null>(null)
+    const [pace, setPace] = useState<SavingsPace | null>(null)
     const [payingDebt, setPayingDebt] = useState<DebtWithAccount | null>(null)
     const [collectingDebt, setCollectingDebt] = useState<DebtWithAccount | null>(null)
-    const [filter, setFilter] = useState<FilterType>('all')
     const [deletingDebt, setDeletingDebt] = useState<DebtWithAccount | null>(null)
     const [deleteLoading, setDeleteLoading] = useState(false)
 
     const load = useCallback(async () => {
         setLoading(true)
-        const [{ data: period }, { data: debtData, error: debtError }] = await Promise.all([
+        const [{ data: period }, { data: debtData, error: debtError }, { data: accounts }, { data: periods }] = await Promise.all([
             payPeriodsService.getActive(),
-            debtsService.getActive(),
+            debtsService.getAll(),
+            accountsService.getAll(),
+            payPeriodsService.getAll(),
         ])
         if (debtError) toast.error(debtError)
         setPeriodId(period?.id ?? null)
         setPeriodStartDate(period?.start_date ?? null)
         setDebts(debtData ?? [])
+        // Coverage is an extra: the page still works without account balances.
+        setTotalBalance(accounts ? accounts.reduce((s, a) => s + a.balance, 0) : null)
+        // So is the payoff pace — the same leftover-per-period the wish list plans with.
+        const recent = pacePeriods(periods ?? [])
+        if (recent.length > 0) {
+            const { data: summaries } = await transactionsService.getPeriodSummaries(recent.map(p => p.id))
+            setPace(summaries ? savingsPace(recent, summaries) : null)
+        } else {
+            setPace(null)
+        }
         setLoading(false)
     }, [])
 
@@ -66,23 +87,31 @@ export default function DebtsPage() {
         return `${formatCurrency(paidAmount)} of this debt has already been recorded as paid. Deleting will remove the debt record, but those transactions will remain in your history.`
     })()
 
-    const myDebts = debts.filter(d => d.type === 'debt')
-    const receivables = debts.filter(d => d.type === 'receivable')
-    const totalOwed = myDebts.reduce((s, d) => s + d.remaining_amount, 0)
-    const totalReceivable = receivables.reduce((s, d) => s + d.remaining_amount, 0)
-    const net = totalReceivable - totalOwed
+    const active = useMemo(() => debts.filter(d => d.status === 'active'), [debts])
+    const settled = useMemo(
+        () => debts
+            .filter(d => d.status !== 'active')
+            .sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? '')),
+        [debts]
+    )
+    const summary = useMemo(() => summarize(active), [active])
+    const plan = useMemo(() => payoffPlan(active, pace), [active, pace])
+    const comingUp = useMemo(() => upcoming(active), [active])
+    const stopFor = (debt: DebtWithAccount) => plan.stops.find(s => s.debt.id === debt.id)
+    const myDebts = active.filter(d => d.type === 'debt')
+    const receivables = active.filter(d => d.type === 'receivable')
+    const canAdd = !!periodId && !!periodStartDate
 
-    const filterCounts: Record<FilterType, number> = {
-        all: debts.length,
-        debt: myDebts.length,
-        receivable: receivables.length,
-    }
-    const filteredDebts = filter === 'all' ? debts : debts.filter(d => d.type === filter)
-    const filterLabels: Record<FilterType, string> = {
-        all: `All (${filterCounts.all})`,
-        debt: `Debt (${filterCounts.debt})`,
-        receivable: `Receivable (${filterCounts.receivable})`,
-    }
+    const hero = (
+        <DebtsHero
+            summary={summary}
+            totalBalance={totalBalance}
+            canAdd={canAdd}
+            onAdd={() => setAddType('debt')}
+        />
+    )
+    const settledCard = <DebtSettled debts={settled} onOpen={setOpenDebt} />
+    const planCard = <DebtPlan plan={plan} pace={pace} onOpen={setOpenDebt} />
 
     return (
         <>
@@ -90,87 +119,75 @@ export default function DebtsPage() {
             <section className="px-4 pb-4 lg:px-0 space-y-4">
                 {loading ? <LoadingContent /> : (
                     <div className="space-y-4 lg:grid lg:grid-cols-[1fr_360px] lg:gap-4 lg:items-start lg:space-y-0">
-                        <div className="card p-5 relative overflow-hidden lg:order-2">
-                            <HeroGlow />
-                            <div className="relative flex items-center justify-between mb-4">
-                                <p className="text-[11px] uppercase tracking-[.14em] text-muted-ink">Net position</p>
-                                <HeroAction onClick={() => setAddDrawerOpen(true)} disabled={!periodId}>Debt</HeroAction>
-                            </div>
-                            <p className={cn(
-                                'relative text-[32px] lg:text-[26px] font-medium tracking-[-0.02em] leading-none tabular-nums',
-                                net > 0 ? 'text-positive' : net < 0 ? 'text-negative' : 'text-ink'
-                            )}>
-                                {net >= 0 ? '+' : ''}{formatCurrency(net)}
-                            </p>
-
-                            <div className="relative grid grid-cols-2 gap-3 mt-4 pt-3 border-t border-line-soft">
-                                <div>
-                                    <p className="text-[11px] text-muted-ink">Debt</p>
-                                    <p className="text-[13px] font-medium text-negative">{formatCurrency(totalOwed)}</p>
-                                </div>
-                                <div>
-                                    <p className="text-[11px] text-muted-ink">Receivable</p>
-                                    <p className="text-[13px] font-medium text-positive">{formatCurrency(totalReceivable)}</p>
-                                </div>
-                            </div>
+                        <div className="space-y-4 lg:order-2">
+                            {hero}
+                            <div className="hidden lg:block space-y-4">{planCard}{settledCard}</div>
                         </div>
 
                         <div className="space-y-4 lg:order-1">
-                            {debts.length > 0 && (
-                                <div className="flex gap-2 flex-wrap">
-                                    {(Object.keys(filterLabels) as FilterType[]).map((f) => (
-                                        <button
-                                            key={f}
-                                            onClick={() => setFilter(f)}
-                                            className={cn(
-                                                'px-3 py-1.5 rounded-full text-[12px] font-medium border transition-colors',
-                                                filter === f
-                                                    ? 'bg-surface-hover text-ink border-line'
-                                                    : 'bg-white text-muted-ink border-line hover:text-ink'
-                                            )}
-                                        >
-                                            {filterLabels[f]}
-                                        </button>
-                                    ))}
-                                </div>
-                            )}
-
-                            {debts.length === 0 ? (
-                                <button
-                                    type="button"
-                                    onClick={() => setAddDrawerOpen(true)}
-                                    className="card w-full p-4 flex items-center gap-3 text-left hover:bg-surface-soft transition-colors"
-                                >
-                                    <div className="w-9 h-9 rounded-full bg-info/10 flex items-center justify-center shrink-0">
-                                        <HandCoins className="w-4 h-4 text-info" />
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-[13px] font-medium text-ink">No debts yet</p>
-                                        <p className="text-[11.5px] text-muted-ink mt-0.5">Tap to track money you owe or are owed</p>
-                                    </div>
-                                </button>
+                            {active.length === 0 ? (
+                                <DebtEmpty onAdd={setAddType} disabled={!canAdd} />
                             ) : (
-                                <DebtList
-                                    debts={filteredDebts}
-                                    onDelete={setDeletingDebt}
-                                    onPay={setPayingDebt}
-                                    onCollect={setCollectingDebt}
-                                />
+                                <>
+                                    <DebtUpcoming debts={comingUp} onOpen={setOpenDebt} />
+                                    <DebtList title="You owe" debts={myDebts} onOpen={setOpenDebt} />
+                                    <DebtList title="Owed to you" debts={receivables} onOpen={setOpenDebt} />
+                                </>
                             )}
+                            <div className="lg:hidden space-y-4">{planCard}{settledCard}</div>
                         </div>
                     </div>
                 )}
 
                 <BottomDrawer
-                    open={addDrawerOpen}
-                    onClose={() => setAddDrawerOpen(false)}
+                    open={!!addType}
+                    onClose={() => setAddType(null)}
                     title="Add Debt"
                 >
-                    {periodId && periodStartDate && (
+                    {/* Keyed so each open starts fresh on the chosen side. */}
+                    {addType && periodId && periodStartDate && (
                         <DebtForm
+                            key={addType}
+                            initialType={addType}
                             payPeriodId={periodId}
                             periodStartDate={periodStartDate}
-                            onSuccess={() => { setAddDrawerOpen(false); load() }}
+                            onSuccess={() => { setAddType(null); load() }}
+                        />
+                    )}
+                </BottomDrawer>
+
+                {/* Detail sheet — each action closes it and hands off to its own drawer */}
+                <BottomDrawer
+                    open={!!openDebt}
+                    onClose={() => setOpenDebt(null)}
+                    title={openDebt?.counterparty ?? ''}
+                >
+                    {openDebt && (
+                        <DebtDetail
+                            debt={openDebt}
+                            stop={stopFor(openDebt)}
+                            hasActivePeriod={canAdd}
+                            onSettle={() => {
+                                if (openDebt.type === 'debt') setPayingDebt(openDebt)
+                                else setCollectingDebt(openDebt)
+                                setOpenDebt(null)
+                            }}
+                            onEdit={() => { setEditingDebt(openDebt); setOpenDebt(null) }}
+                            onDelete={() => { setDeletingDebt(openDebt); setOpenDebt(null) }}
+                        />
+                    )}
+                </BottomDrawer>
+
+                <BottomDrawer
+                    open={!!editingDebt}
+                    onClose={() => setEditingDebt(null)}
+                    title="Edit Debt"
+                >
+                    {editingDebt && (
+                        <EditDebtForm
+                            key={editingDebt.id}
+                            debt={editingDebt}
+                            onSuccess={() => { setEditingDebt(null); load() }}
                         />
                     )}
                 </BottomDrawer>
@@ -183,6 +200,7 @@ export default function DebtsPage() {
                     {payingDebt && periodId && periodStartDate && (
                         <PayDebtForm
                             debt={payingDebt}
+                            plannedAmount={stopFor(payingDebt)?.perPeriodNeeded}
                             payPeriodId={periodId}
                             periodStartDate={periodStartDate}
                             onSuccess={() => { setPayingDebt(null); load() }}

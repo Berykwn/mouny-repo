@@ -112,6 +112,54 @@ export type Database = {
         }
         Relationships: []
       }
+      debt_payments: {
+        Row: {
+          account_id: string | null
+          amount: number
+          created_at: string
+          date: string
+          debt_id: string
+          id: string
+          transaction_id: string | null
+          user_id: string
+        }
+        Insert: {
+          account_id?: string | null
+          amount: number
+          created_at?: string
+          date: string
+          debt_id: string
+          id?: string
+          transaction_id?: string | null
+          user_id: string
+        }
+        Update: {
+          account_id?: string | null
+          amount?: number
+          created_at?: string
+          date?: string
+          debt_id?: string
+          id?: string
+          transaction_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "debt_payments_debt_id_fkey"
+            columns: ["debt_id"]
+            isOneToOne: false
+            referencedRelation: "debts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "debt_payments_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       debts: {
         Row: {
           counterparty: string
