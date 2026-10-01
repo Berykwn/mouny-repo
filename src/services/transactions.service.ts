@@ -14,6 +14,23 @@ export interface CreateTransactionInput {
     wish_list_item_id?: string
 }
 
+/** Just the table's own columns — a TransactionWithDetails also carries joined account/category. */
+function toRow(tx: Transaction): Transaction {
+    return {
+        id: tx.id,
+        user_id: tx.user_id,
+        pay_period_id: tx.pay_period_id,
+        account_id: tx.account_id,
+        category_id: tx.category_id,
+        type: tx.type,
+        amount: tx.amount,
+        note: tx.note,
+        date: tx.date,
+        created_at: tx.created_at,
+        wish_list_item_id: tx.wish_list_item_id,
+    }
+}
+
 export const transactionsService = {
     async getByPeriod(periodId: string): Promise<ServiceResult<TransactionWithDetails[]>> {
         try {
@@ -63,6 +80,68 @@ export const transactionsService = {
 
             if (error) throw error
             return { data, error: null }
+        } catch (err) {
+            return { data: null, error: handleError(err) }
+        }
+    },
+
+    /** Edits that don't move money: category, note and date (cleared values saved as null). */
+    async updateDetails(id: string, input: { category_id: string | null; note: string | null; date: string }): Promise<ServiceResult<Transaction>> {
+        try {
+            const { data, error } = await supabase
+                .from('transactions')
+                .update(input)
+                .eq('id', id)
+                .select()
+                .single()
+
+            if (error) throw error
+            return { data, error: null }
+        } catch (err) {
+            return { data: null, error: handleError(err) }
+        }
+    },
+
+    /**
+     * Change a transaction's amount, account or type. Balances follow transactions through
+     * the insert/delete triggers, so this deletes the original and inserts the new version
+     * (keeping its id, created_at and wish link) rather than trusting an UPDATE to move
+     * the money. If the insert fails — e.g. the new amount overdraws the account — the
+     * original is put back so nothing is lost.
+     */
+    async replace(original: Transaction, input: CreateTransactionInput): Promise<ServiceResult<Transaction>> {
+        try {
+            const { error: delError } = await supabase.from('transactions').delete().eq('id', original.id)
+            if (delError) throw delError
+
+            const { data, error } = await supabase
+                .from('transactions')
+                .insert({
+                    ...input,
+                    id: original.id,
+                    user_id: original.user_id,
+                    created_at: original.created_at,
+                    wish_list_item_id: original.wish_list_item_id,
+                })
+                .select()
+                .single()
+
+            if (error) {
+                await supabase.from('transactions').insert(toRow(original))
+                throw error
+            }
+            return { data, error: null }
+        } catch (err) {
+            return { data: null, error: handleError(err) }
+        }
+    },
+
+    /** Put a deleted transaction back exactly as it was (the delete's undo). */
+    async restore(original: Transaction): Promise<ServiceResult<null>> {
+        try {
+            const { error } = await supabase.from('transactions').insert(toRow(original))
+            if (error) throw error
+            return { data: null, error: null }
         } catch (err) {
             return { data: null, error: handleError(err) }
         }

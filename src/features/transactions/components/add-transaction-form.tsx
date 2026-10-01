@@ -14,7 +14,8 @@ import { accountsService, categoriesService } from '@/services/accounts-categori
 import { formatCurrency, formatCurrencyInput, parseCurrencyInput, toISODate } from '@/lib/helpers'
 import { emitTransactionsChanged } from '@/lib/transactions-bus'
 import { cn } from '@/lib/utils'
-import type { Account, Category } from '@/types'
+import type { Account, Category, TransactionWithDetails } from '@/types'
+import { linkedTo } from '../lib/ledger'
 
 type TxType = 'income' | 'expense' | 'transfer'
 
@@ -29,9 +30,15 @@ interface AddTransactionFormProps {
     defaultDate?: string
     onClose: () => void
     onSuccess: () => void
+    /** Edit this transaction instead of adding a new one. */
+    initial?: TransactionWithDetails
 }
 
-export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultDate, onClose, onSuccess }: AddTransactionFormProps) {
+export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultDate, onClose, onSuccess, initial }: AddTransactionFormProps) {
+    // A wish or debt payment's amount, account and type belong to that record; only the
+    // note, date and category can change here without the two falling out of step.
+    const linked = initial ? linkedTo(initial) : null
+    const moneyLocked = !!linked
     const today = toISODate()
 
     const resolveDate = (d?: string) => {
@@ -41,12 +48,12 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
         return target
     }
 
-    const [type, setType] = useState<TxType>('expense')
-    const [amount, setAmount] = useState('')
-    const [note, setNote] = useState('')
-    const [date, setDate] = useState(resolveDate(defaultDate))
-    const [accountId, setAccountId] = useState('')
-    const [categoryId, setCategoryId] = useState('')
+    const [type, setType] = useState<TxType>((initial?.type as TxType | undefined) ?? 'expense')
+    const [amount, setAmount] = useState(initial ? String(initial.amount) : '')
+    const [note, setNote] = useState(initial?.note ?? '')
+    const [date, setDate] = useState(resolveDate(initial?.date ?? defaultDate))
+    const [accountId, setAccountId] = useState(initial?.account_id ?? '')
+    const [categoryId, setCategoryId] = useState(initial?.category_id ?? '')
     const [accounts, setAccounts] = useState<Account[]>([])
     const [categories, setCategories] = useState<Category[]>([])
     const [accountPickerOpen, setAccountPickerOpen] = useState(false)
@@ -61,6 +68,7 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
     const amountInputRef = useRef<HTMLInputElement>(null)
 
     useEffect(() => {
+        if (initial) return
         setDate(resolveDate(defaultDate))
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [defaultDate, periodStart, maxDate])
@@ -77,11 +85,13 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
         accountsService.getAll().then(({ data }) => {
             if (data) {
                 setAccounts(data)
-                setAccountId(data[0]?.id ?? '')
+                if (!initial) setAccountId(data[0]?.id ?? '')
                 setFromAccountId(data[0]?.id ?? '')
                 setToAccountId(data[1]?.id ?? data[0]?.id ?? '')
             }
         })
+        // The form is keyed per transaction, so `initial` never changes under it.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
     useEffect(() => {
@@ -96,13 +106,16 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
             if (cancelled) return
             if (data && data.length > 0) {
                 setCategories(data)
-                setCategoryId(data[0].id)
+                // Editing: keep the transaction's own category while its type is unchanged.
+                const keep = initial && type === initial.type && data.some(c => c.id === initial.category_id)
+                setCategoryId(keep ? initial.category_id! : data[0].id)
             } else {
                 setCategories([])
                 setCategoryId('')
             }
         })
         return () => { cancelled = true }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [type])
 
     // Live "safe to spend" baseline for the consequence strip. Fetched once (and on
@@ -114,9 +127,13 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
             if (cancelled || !data) return
             const totalIncome = data.filter((t) => t.type === 'income').reduce((s, t) => s + t.amount, 0)
             const totalExpense = data.filter((t) => t.type === 'expense').reduce((s, t) => s + t.amount, 0)
-            setSafeToSpend(totalIncome - totalExpense)
+            // Editing: the baseline is the period without this transaction, so the strip
+            // shows where the edited version leaves you.
+            const own = initial ? (initial.type === 'income' ? -initial.amount : initial.amount) : 0
+            setSafeToSpend(totalIncome - totalExpense + own)
         })
         return () => { cancelled = true }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [payPeriodId])
 
     const selectedAccount = accounts.find((a) => a.id === accountId)
@@ -191,6 +208,27 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
             date,
         }
 
+        if (initial) {
+            const moneyChanged = parsedAmount !== initial.amount
+                || accountId !== initial.account_id
+                || type !== initial.type
+            const { error } = moneyChanged
+                ? await transactionsService.replace(initial, input)
+                : await transactionsService.updateDetails(initial.id, {
+                    category_id: input.category_id ?? null,
+                    note: note || null,
+                    date,
+                })
+            setLoading(false)
+            if (error) {
+                toast.error(/insufficient|balance/i.test(error) ? `Insufficient balance in ${selectedAccount?.name ?? 'that account'}.` : error)
+                return
+            }
+            toast.success('Transaction updated.')
+            onSuccess()
+            return
+        }
+
         const { error } = await transactionsService.create(input)
         setLoading(false)
 
@@ -224,16 +262,17 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
             <div className="relative flex w-full rounded-xl bg-[#f4f4f2] p-[3px] gap-1">
                 <div
                     className={cn(
-                        'absolute top-[3px] bottom-[3px] w-[calc((100%-8px)/3)] rounded-[9px] bg-white shadow-sm transition-transform duration-200 ease-out',
+                        'absolute top-[3px] bottom-[3px] rounded-[9px] bg-white shadow-sm transition-transform duration-200 ease-out',
+                        initial ? 'w-[calc((100%-4px)/2)]' : 'w-[calc((100%-8px)/3)]',
                         type === 'income' && 'translate-x-[calc(100%+4px)]',
                         type === 'transfer' && 'translate-x-[calc(200%+8px)]',
                     )}
                 />
-                {(['expense', 'income', 'transfer'] as TxType[]).map((t) => (
+                {((initial ? ['expense', 'income'] : ['expense', 'income', 'transfer']) as TxType[]).map((t) => (
                     <button
                         key={t}
                         type="button"
-                        disabled={loading}
+                        disabled={loading || moneyLocked}
                         onClick={() => setType(t)}
                         className={cn(
                             'relative z-10 flex-1 py-2 text-[13px] rounded-[9px] transition-colors duration-150',
@@ -259,7 +298,7 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
                                 value={formatCurrencyInput(amount)}
                                 onChange={(e) => setAmount(e.target.value.replace(/\D/g, '').slice(0, 12))}
                                 placeholder="0"
-                                disabled={loading}
+                                disabled={loading || moneyLocked}
                                 className="flex-1 min-w-0 bg-transparent outline-none text-[34px] font-medium tracking-[-0.02em] text-[#252525] placeholder:text-[#b0b0aa]"
                             />
                         </div>
@@ -280,7 +319,7 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
                     <div className="flex flex-col">
                         <button
                             type="button"
-                            disabled={loading}
+                            disabled={loading || moneyLocked}
                             onClick={() => setAccountPickerOpen(true)}
                             className="flex items-center gap-2.5 py-[13px] text-left w-full disabled:opacity-50 disabled:pointer-events-none"
                         >
@@ -347,23 +386,32 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
                 />
             )}
 
+            {linked && (
+                <p className="rounded-xl bg-surface-soft border border-line-soft px-3.5 py-3 text-[12px] text-muted-ink leading-relaxed">
+                    This is a {linked === 'wish' ? 'wish list' : 'debt'} payment, so its amount and account stay in step with that record.
+                    You can still change the note, date and category.
+                </p>
+            )}
+
             {/* Actions */}
             <div className="flex gap-2.5">
-                <button
-                    type="button"
-                    disabled={loading}
-                    onClick={() => handleSubmit('save-and-add-another')}
-                    className={OUTLINE_BUTTON}
-                >
-                    Save &amp; add another
-                </button>
+                {!initial && (
+                    <button
+                        type="button"
+                        disabled={loading}
+                        onClick={() => handleSubmit('save-and-add-another')}
+                        className={OUTLINE_BUTTON}
+                    >
+                        Save &amp; add another
+                    </button>
+                )}
                 <button
                     type="button"
                     disabled={loading}
                     onClick={() => handleSubmit('save')}
                     className={FILLED_BUTTON}
                 >
-                    {loading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : 'Save'}
+                    {loading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : initial ? 'Save changes' : 'Save'}
                 </button>
             </div>
 

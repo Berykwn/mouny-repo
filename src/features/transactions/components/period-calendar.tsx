@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
-import { formatCurrency, formatCompact, heatBarColor } from '@/lib/helpers'
+import { formatCurrency, formatCompact, formatShortCurrency, heatBarColor } from '@/lib/helpers'
 import type { TransactionWithDetails } from '@/types'
 import { TrendingUp, TrendingDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { CategoryTile } from '@/features/categories/components/category-icon'
 import { useLongPress } from '@/hooks/use-long-press'
+import { dailySpending, txTitle } from '../lib/ledger'
 
 interface PeriodCalendarProps {
     transactions: TransactionWithDetails[]
@@ -14,6 +15,10 @@ interface PeriodCalendarProps {
     onDeleteRequest?: (id: string) => void
     readOnly?: boolean
     onDateSelect?: (date: string) => void
+    /** Tapping a transaction opens its detail sheet. */
+    onOpen?: (tx: TransactionWithDetails) => void
+    /** The even daily share of the period's income; days spending past it get a mark. */
+    dailyLimit?: number | null
 }
 
 type CalendarMode = 'month' | 'days'
@@ -59,15 +64,18 @@ function barHeight(expense: number, maxExpense: number): number {
 function DayTransactionRow({
     tx,
     onDeleteRequest,
+    onOpen,
     deletable,
 }: {
     tx: TransactionWithDetails
     onDeleteRequest?: (id: string) => void
+    onOpen?: (tx: TransactionWithDetails) => void
     deletable: boolean
 }) {
-    const longPressHandlers = useLongPress(() => onDeleteRequest?.(tx.id))
+    // Long-press stays as a shortcut to delete; a plain tap opens the detail sheet.
+    const longPressHandlers = useLongPress(() => onDeleteRequest?.(tx.id), { onTap: () => onOpen?.(tx) })
 
-    const title = tx.note || tx.category?.name || (tx.type === 'income' ? 'Income' : 'Expense')
+    const title = txTitle(tx)
     const subtitle = [
         tx.category?.name && tx.note ? tx.category.name : null,
         tx.account.name,
@@ -75,18 +83,16 @@ function DayTransactionRow({
 
     return (
         <div
-            className={cn(
-                'flex items-center gap-3 px-4 py-2.5 border-b border-line last:border-b-0 select-none',
-                deletable && 'active:bg-[#f7f7f5] transition-colors',
-            )}
-            tabIndex={deletable ? 0 : undefined}
-            onKeyDown={deletable ? (event) => {
+            role="button"
+            tabIndex={0}
+            className="flex items-center gap-3 px-4 py-2.5 border-b border-line-soft last:border-b-0 select-none cursor-pointer hover:bg-surface-soft active:bg-surface-hover transition-colors"
+            onKeyDown={(event) => {
                 if (event.key === 'Enter' || event.key === ' ') {
-                    if (event.key === ' ') event.preventDefault()
-                    onDeleteRequest?.(tx.id)
+                    event.preventDefault()
+                    onOpen?.(tx)
                 }
-            } : undefined}
-            {...(deletable ? longPressHandlers : {})}
+            }}
+            {...(deletable ? longPressHandlers : { onClick: () => onOpen?.(tx) })}
         >
             <CategoryTile category={tx.category}>
                 {!tx.category && (tx.type === 'income'
@@ -95,16 +101,16 @@ function DayTransactionRow({
                 )}
             </CategoryTile>
             <div className="flex-1 min-w-0">
-                <p className="text-xs font-medium truncate">{title}</p>
+                <p className="text-[13px] font-medium text-ink truncate">{title}</p>
                 {subtitle && (
-                    <p className="text-[10px] text-muted-foreground truncate">{subtitle}</p>
+                    <p className="text-[11px] text-muted-ink truncate">{subtitle}</p>
                 )}
             </div>
             <p className={cn(
-                'text-xs font-bold shrink-0',
-                tx.type === 'income' ? 'text-positive' : 'text-foreground'
+                'text-[13px] font-medium tabular-nums shrink-0',
+                tx.type === 'income' ? 'text-positive' : 'text-ink'
             )}>
-                {tx.type === 'income' ? '+' : '-'}{formatCurrency(tx.amount)}
+                {tx.type === 'income' ? '+' : '−'}{formatCurrency(tx.amount)}
             </p>
         </div>
     )
@@ -113,21 +119,24 @@ function DayTransactionRow({
 function DayTransactions({
     txs,
     onDeleteRequest,
+    onOpen,
     readOnly,
 }: {
     txs: TransactionWithDetails[]
     onDeleteRequest?: (id: string) => void
+    onOpen?: (tx: TransactionWithDetails) => void
     readOnly?: boolean
 }) {
     const deletable = !readOnly && !!onDeleteRequest
 
     return (
-        <div className="border-t border-line">
+        <div className="border-t border-line-soft">
             {txs.map(tx => (
                 <DayTransactionRow
                     key={tx.id}
                     tx={tx}
                     onDeleteRequest={onDeleteRequest}
+                    onOpen={onOpen}
                     deletable={deletable}
                 />
             ))}
@@ -164,6 +173,8 @@ export function PeriodCalendar({
     onDeleteRequest,
     readOnly,
     onDateSelect,
+    onOpen,
+    dailyLimit = null,
 }: PeriodCalendarProps) {
     const [mode, setMode] = useState<CalendarMode>(() => {
         if (typeof localStorage === 'undefined') return 'month'
@@ -197,6 +208,11 @@ export function PeriodCalendar({
         dailyExpense.set(date, txs.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0))
     }
     const maxExpense = Math.max(0, ...dailyExpense.values())
+
+    // Days whose spending (savings excluded) went past the even daily share of income.
+    const spendingByDay = dailySpending(transactions)
+    const isOverDay = (date: string) => dailyLimit !== null && dailyLimit > 0 && (spendingByDay.get(date) ?? 0) > dailyLimit
+    const overDays = dailyLimit ? [...spendingByDay.keys()].filter(isOverDay).length : 0
 
     const dates = getDatesInRange(periodStart, periodEnd)
     const firstDayOfWeek = new Date(periodStart + 'T00:00:00').getDay()
@@ -244,9 +260,13 @@ export function PeriodCalendar({
                     <div>
                         <p className="text-[11px] tracking-[.14em] uppercase text-muted-ink">{rangeCaption}</p>
                         <p className="mt-0.5 text-[11px] text-subtle-ink">
-                            {mode === 'month'
-                                ? `tallest day ${formatCompact(maxExpense)}`
-                                : 'swipe the rail, tap a day'}
+                            {dailyLimit && dailyLimit > 0
+                                ? overDays > 0
+                                    ? <><span className="text-negative">{overDays} day{overDays === 1 ? '' : 's'}</span> over {formatShortCurrency(Math.round(dailyLimit))}/day</>
+                                    : `every day under ${formatShortCurrency(Math.round(dailyLimit))}/day`
+                                : mode === 'month'
+                                    ? `tallest day ${formatCompact(maxExpense)}`
+                                    : 'swipe the rail, tap a day'}
                         </p>
                     </div>
                     <ModeSwitch mode={mode} onChange={handleModeChange} />
@@ -290,11 +310,14 @@ export function PeriodCalendar({
                                     >
                                         <span
                                             className={cn(
-                                                'text-[9.5px] tabular-nums',
+                                                'relative text-[9.5px] tabular-nums',
                                                 highlighted ? 'font-semibold text-[#4d7a1d]' : isFuture ? 'text-[#d4d4ce]' : 'text-ink',
                                             )}
                                         >
                                             {dayNum}
+                                            {isOverDay(date) && (
+                                                <span aria-label="over daily allowance" className="absolute -top-0.5 -right-1.5 w-1 h-1 rounded-full bg-negative" />
+                                            )}
                                         </span>
                                         <div
                                             className="w-[70%] rounded-[2px_2px_1px_1px]"
@@ -330,8 +353,11 @@ export function PeriodCalendar({
                                     <span className={cn('text-[9.5px]', isSelected ? 'text-[rgba(250,250,250,.6)]' : 'text-[#b0b0aa]')}>
                                         {d.toLocaleDateString('en-GB', { weekday: 'short' }).charAt(0)}
                                     </span>
-                                    <span className={cn('text-[16px] font-semibold tabular-nums', isSelected ? 'text-[#fafafa]' : 'text-ink')}>
+                                    <span className={cn('relative text-[16px] font-semibold tabular-nums', isSelected ? 'text-[#fafafa]' : 'text-ink')}>
                                         {d.getDate()}
+                                        {isOverDay(date) && (
+                                            <span aria-label="over daily allowance" className="absolute -top-0.5 -right-2 w-1.5 h-1.5 rounded-full bg-negative" />
+                                        )}
                                     </span>
                                     <div className="w-[14px] h-[26px] flex items-end justify-center">
                                         <div
@@ -363,7 +389,7 @@ export function PeriodCalendar({
                                 <span className="text-muted-ink">
                                     {selectedTxs.length} transaction{selectedTxs.length === 1 ? '' : 's'} ·{' '}
                                 </span>
-                                <span className="text-negative">−{formatCurrency(dailyExpenseSummary)}</span>
+                                <span className="text-ink">−{formatCurrency(dailyExpenseSummary)}</span>
                                 {dailyIncomeSummary > 0 && (
                                     <span className="text-positive"> · +{formatCurrency(dailyIncomeSummary)}</span>
                                 )}
@@ -373,16 +399,43 @@ export function PeriodCalendar({
 
                 </div>
 
+                {dailyLimit !== null && dailyLimit > 0 && validSelected <= today && (
+                    <DayAllowance spent={spendingByDay.get(validSelected) ?? 0} limit={dailyLimit} />
+                )}
+
                 {selectedTxs.length === 0 ? (
-                    <p className="text-xs text-muted-foreground px-4 pb-4">No transactions this day.</p>
+                    <p className="text-[12px] text-muted-ink px-5 pb-4">
+                        {validSelected > today ? 'This day hasn’t happened yet.' : 'No transactions this day.'}
+                    </p>
                 ) : (
                     <DayTransactions
                         txs={selectedTxs}
                         onDeleteRequest={onDeleteRequest}
+                        onOpen={onOpen}
                         readOnly={readOnly}
                     />
                 )}
             </div>
+        </div>
+    )
+}
+
+/** The selected day's spending against the even daily share — a bar that turns red past it. */
+function DayAllowance({ spent, limit }: { spent: number; limit: number }) {
+    const over = spent > limit
+    const pct = Math.min(100, Math.round((spent / limit) * 100))
+    return (
+        <div className="px-5 pb-3.5">
+            <div className="h-1 rounded-full bg-line-soft overflow-hidden">
+                <div className={cn('h-full rounded-full', over ? 'bg-negative' : 'bg-brand')} style={{ width: `${pct}%` }} />
+            </div>
+            <p className={cn('mt-1.5 text-[11px] tabular-nums', over ? 'text-negative' : 'text-muted-ink')}>
+                {over
+                    ? `${formatShortCurrency(spent - limit)} over the ${formatShortCurrency(Math.round(limit))} daily share`
+                    : spent === 0
+                        ? `No spending — ${formatShortCurrency(Math.round(limit))} daily share untouched`
+                        : `${formatShortCurrency(Math.round(limit - spent))} under the ${formatShortCurrency(Math.round(limit))} daily share`}
+            </p>
         </div>
     )
 }

@@ -9,10 +9,15 @@ import { PeriodChip } from './components/period-chip'
 import { LedgerTabs, type LedgerTab } from './components/ledger-tabs'
 import { TransactionListView } from './components/transaction-list-view'
 import { BulkCategoryDrawer } from './components/bulk-category-drawer'
+import { LedgerHero } from './components/ledger-hero'
+import { TransactionDetail } from './components/transaction-detail'
+import { AddTransactionFlow } from './components/add-transaction-flow'
+import { BottomDrawer } from '@/components/bottom-drawer'
+import { usePeriodStats } from '@/hooks/use-period-stats'
 import { transactionsService } from '@/services/transactions.service'
 import { payPeriodsService } from '@/services/pay-periods.service'
-import { toISODate } from '@/lib/helpers'
-import { onTransactionsChanged, onPeriodsChanged } from '@/lib/transactions-bus'
+import { getDaysBetween, toISODate } from '@/lib/helpers'
+import { onTransactionsChanged, onPeriodsChanged, emitTransactionsChanged } from '@/lib/transactions-bus'
 import type { TransactionWithDetails, PayPeriod } from '@/types'
 import { toast } from 'sonner'
 import { LoadingContent } from '@/components/loading-content'
@@ -28,6 +33,8 @@ export default function TransactionsPage() {
     const [loading, setLoading] = useState(true)
     const [txLoading, setTxLoading] = useState(false)
     const [periodPickerOpen, setPeriodPickerOpen] = useState(false)
+    const [openTx, setOpenTx] = useState<TransactionWithDetails | null>(null)
+    const [editingTx, setEditingTx] = useState<TransactionWithDetails | null>(null)
     const [deletingId, setDeletingId] = useState<string | null>(null)
     const [deleteLoading, setDeleteLoading] = useState(false)
     const [selectedIds, setSelectedIds] = useState<string[]>([])
@@ -41,6 +48,20 @@ export default function TransactionsPage() {
 
     const selectedPeriod = allPeriods[selectedPeriodIndex] ?? null
     const isCurrentPeriod = selectedPeriod?.id === activePeriod?.id
+
+    // An open period has no end date yet, so its length is estimated from the one before
+    // (periods are sorted newest first) — the same estimate the dashboard uses.
+    const prevPeriod = allPeriods[selectedPeriodIndex + 1] ?? null
+    const fallbackTotalDays = prevPeriod?.end_date
+        ? getDaysBetween(prevPeriod.start_date, prevPeriod.end_date) + 1
+        : null
+    const stats = usePeriodStats({
+        period: selectedPeriod ?? { start_date: today, end_date: null },
+        transactions,
+        fallbackTotalDays,
+    })
+    // The even daily share of what came in: the bar each day's spending is held against.
+    const dailyLimit = stats.totalIncome > 0 && stats.totalDays ? stats.totalIncome / stats.totalDays : null
 
     const swipeHandlers = useSwipeable({
         onSwipedLeft: () => {
@@ -128,13 +149,26 @@ export default function TransactionsPage() {
 
     const handleDeleteConfirm = async () => {
         if (!deletingId) return
+        const removed = transactions.find(t => t.id === deletingId)
         setDeleteLoading(true)
         const { error } = await transactionsService.remove(deletingId)
         setDeleteLoading(false)
         if (error) { toast.error(error); return }
         setTransactions(prev => prev.filter(t => t.id !== deletingId))
         setDeletingId(null)
-        toast.success('Transaction deleted.')
+        emitTransactionsChanged()
+        toast.success('Transaction deleted.', removed ? {
+            action: {
+                label: 'Undo',
+                onClick: async () => {
+                    const { error: restoreError } = await transactionsService.restore(removed)
+                    if (restoreError) { toast.error(restoreError); return }
+                    emitTransactionsChanged()
+                    if (selectedPeriod) loadTransactions(selectedPeriod, { background: true })
+                    toast.success('Transaction restored.')
+                },
+            },
+        } : undefined)
     }
 
     const selectedTxs = transactions.filter(t => selectedIds.includes(t.id))
@@ -180,25 +214,26 @@ export default function TransactionsPage() {
                         <PeriodChip period={selectedPeriod} onClick={() => setPeriodPickerOpen(true)} />
                     )}
                 </div>
-                {!loading && selectedPeriod && (
-                    <LedgerTabs active={activeTab} onChange={setActiveTab} />
-                )}
             </header>
 
             <section className="px-4 pb-4 pt-3.5 lg:px-0 space-y-4">
                 {loading ? (
                     <LoadingContent />
                 ) : !selectedPeriod ? (
-                    <section className="rounded-2xl border border-neutral-200 bg-card p-4 flex items-center gap-3">
-                        <div className="flex-1">
-                            <h2 className="text-lg font-semibold">No active periods</h2>
-                            <p className="text-sm text-muted-foreground">Start by creating a pay period to track your transactions.</p>
-                        </div>
-                    </section>
+                    <div className="card p-6 text-center">
+                        <p className="text-[16px] font-medium tracking-[-0.01em] text-ink">No pay period yet</p>
+                        <p className="mt-1 text-[12px] text-muted-ink leading-relaxed max-w-[300px] mx-auto">
+                            Start a pay period when your salary comes in. Every transaction you add lands in it, and Mouny tracks what’s left each day.
+                        </p>
+                    </div>
                 ) : txLoading ? (
                     <LoadingContent />
                 ) : (
-                    <section {...swipeHandlers}>
+                    <section {...swipeHandlers} className="space-y-4">
+                        <div className="lg:max-w-[856px]">
+                            <LedgerHero stats={stats} />
+                        </div>
+                        <LedgerTabs active={activeTab} onChange={setActiveTab} />
                         {activeTab === 'calendar' ? (
                             <PeriodCalendar
                                 transactions={transactions}
@@ -206,6 +241,8 @@ export default function TransactionsPage() {
                                 periodEnd={selectedPeriod.end_date ?? today}
                                 defaultDate={calendarDefaultDate}
                                 onDeleteRequest={isCurrentPeriod ? setDeletingId : undefined}
+                                onOpen={setOpenTx}
+                                dailyLimit={dailyLimit}
                                 readOnly={!isCurrentPeriod}
                             />
                         ) : (
@@ -214,6 +251,7 @@ export default function TransactionsPage() {
                                 selectedIds={selectedIds}
                                 onSelectedIdsChange={setSelectedIds}
                                 readOnly={!isCurrentPeriod}
+                                onOpen={setOpenTx}
                                 onBulkDeleteRequest={() => setBulkDeleteOpen(true)}
                                 onBulkCategoryRequest={() => setBulkCategoryOpen(true)}
                             />
@@ -234,6 +272,32 @@ export default function TransactionsPage() {
                     loadTransactions(period)
                 }}
             />
+
+            {/* Detail sheet — each action closes it and hands off */}
+            <BottomDrawer open={!!openTx} onClose={() => setOpenTx(null)} title="Transaction">
+                {openTx && (
+                    <TransactionDetail
+                        tx={openTx}
+                        readOnly={!isCurrentPeriod}
+                        onEdit={() => { setEditingTx(openTx); setOpenTx(null) }}
+                        onDelete={() => { setDeletingId(openTx.id); setOpenTx(null) }}
+                    />
+                )}
+            </BottomDrawer>
+
+            {editingTx && selectedPeriod && (
+                <AddTransactionFlow
+                    payPeriodId={selectedPeriod.id}
+                    periodStart={selectedPeriod.start_date}
+                    periodEnd={selectedPeriod.end_date ?? undefined}
+                    initial={editingTx}
+                    onClose={() => setEditingTx(null)}
+                    onSuccess={() => {
+                        setEditingTx(null)
+                        emitTransactionsChanged()
+                    }}
+                />
+            )}
 
             <ConfirmDrawer
                 open={!!deletingId}
