@@ -9,7 +9,7 @@ import { formatCurrency, formatShortCurrency, formatDateShort } from '@/lib/help
 import { cn } from '@/lib/utils'
 import { BottomDrawer } from '@/components/bottom-drawer'
 import { AccountTypeTile, CashIcon } from '@/components/account-type-icon'
-import { categoryChartColor } from '@/features/categories/components/category-icon'
+import { CategoryTile, categoryChartColor } from '@/features/categories/components/category-icon'
 import { calculateHealthScore } from '@/lib/calculate-health-score'
 import type { PeriodSummary } from '@/lib/period-summary'
 import { usePeriodStats } from '@/hooks/use-period-stats'
@@ -242,23 +242,18 @@ function DaySheet({ date, transactions, onClose }: DaySheetProps) {
             key={tx.id}
             className="flex items-center justify-between px-5 py-3"
           >
-            <div className="flex items-center gap-3">
-              {tx.category?.color && (
-                <div
-                  className="w-2 h-2 rounded-full shrink-0"
-                  style={{ backgroundColor: categoryChartColor(tx.category) }}
-                />
-              )}
-              <div>
-                <p className="text-[13px] font-medium text-[#252525]">
+            <div className="flex items-center gap-3 min-w-0">
+              <CategoryTile category={tx.category} />
+              <div className="min-w-0">
+                <p className="text-[13px] font-medium text-[#252525] truncate">
                   {tx.note ?? tx.category?.name ?? 'Expense'}
                 </p>
                 {tx.category && tx.note && (
-                  <p className="text-[11px] text-[#a3a3a3]">{tx.category.name}</p>
+                  <p className="text-[11px] text-[#a3a3a3] truncate">{tx.category.name}</p>
                 )}
               </div>
             </div>
-            <p className="text-[13px] font-medium text-[#252525]">{formatCurrency(tx.amount)}</p>
+            <p className="text-[13px] font-medium text-[#252525] tabular-nums shrink-0 pl-3">{formatCurrency(tx.amount)}</p>
           </div>
         ))}
       </div>
