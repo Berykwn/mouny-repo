@@ -1,4 +1,5 @@
 import { getDaysBetween } from '@/lib/helpers'
+import { isEverydaySpending } from '@/lib/spending-pace'
 import type { Account, PayPeriod, TransactionWithDetails } from '@/types'
 
 /** Days of data needed before a spending pace means anything (matches usePeriodStats). */
@@ -22,6 +23,8 @@ export interface AccountActivity {
     moneyOut: number
     /** Recent transactions, newest first. */
     recent: TransactionWithDetails[]
+    /** Everyday spending out of it (no savings, bills or one-offs) — what sets its pace. */
+    everydayOut: number
 }
 
 export type AccountHealth = 'ok' | 'low' | 'overdrawn'
@@ -43,7 +46,8 @@ export function accountInsights(
     daysElapsed: number,
 ): Map<string, AccountInsight> {
     const byAccount = new Map<string, AccountActivity>()
-    for (const a of accounts) byAccount.set(a.id, { moneyIn: 0, moneyOut: 0, recent: [] })
+    for (const a of accounts) byAccount.set(a.id, { moneyIn: 0, moneyOut: 0, recent: [], everydayOut: 0 })
+    const periodIncome = periodTxs.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0)
 
     const newestFirst = periodTxs.slice().sort((a, b) =>
         b.date.localeCompare(a.date) || (b.created_at ?? '').localeCompare(a.created_at ?? ''))
@@ -51,7 +55,10 @@ export function accountInsights(
         const act = byAccount.get(t.account_id)
         if (!act) continue
         if (t.type === 'income') act.moneyIn += t.amount
-        else if (t.type === 'expense') act.moneyOut += t.amount
+        else if (t.type === 'expense') {
+            act.moneyOut += t.amount
+            if (isEverydaySpending(t, periodIncome)) act.everydayOut += t.amount
+        }
         act.recent.push(t)
     }
 
@@ -59,7 +66,8 @@ export function accountInsights(
     const result = new Map<string, AccountInsight>()
     for (const a of accounts) {
         const act = byAccount.get(a.id)!
-        const dailyOut = canPace ? act.moneyOut / daysElapsed : 0
+        // Rent leaving on day 2 mustn't make the account look like it's draining daily.
+        const dailyOut = canPace ? act.everydayOut / daysElapsed : 0
         const runwayDays = dailyOut > 0 && a.balance > 0 ? Math.floor(a.balance / dailyOut) : null
         const health: AccountHealth = a.balance < 0
             ? 'overdrawn'
@@ -70,13 +78,14 @@ export function accountInsights(
 }
 
 /**
- * Days the total balance covers at this period's spending pace. Savings are left out —
- * they're money set aside, not money the user is burning through.
+ * Days the total balance covers at this period's everyday spending pace. Savings, bills
+ * and other one-offs are left out — they're paid once, not burned through daily.
  */
 export function totalRunwayDays(totalBalance: number, periodTxs: TransactionWithDetails[], daysElapsed: number): number | null {
     if (daysElapsed < MIN_PACE_DAYS || totalBalance <= 0) return null
+    const periodIncome = periodTxs.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0)
     const spending = periodTxs
-        .filter(t => t.type === 'expense' && !t.category?.is_savings)
+        .filter(t => isEverydaySpending(t, periodIncome))
         .reduce((s, t) => s + t.amount, 0)
     if (spending <= 0) return null
     return Math.floor(totalBalance / (spending / daysElapsed))

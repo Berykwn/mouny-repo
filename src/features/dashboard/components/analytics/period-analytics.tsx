@@ -677,7 +677,7 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
             valueClassName={overSafePace ? 'text-[#d97706]' : undefined}
             sub={
               <>
-                over {stats.daysElapsed} day{stats.daysElapsed !== 1 ? 's' : ''}
+                everyday, over {stats.daysElapsed} day{stats.daysElapsed !== 1 ? 's' : ''}
                 {stats.safeDaily !== null && (
                   <span className={overSafePace ? 'text-[#d97706]' : 'text-[#059669]'}>
                     {' · '}{overSafePace ? 'above safe pace' : 'within safe pace'}
@@ -864,7 +864,8 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
               )}
             </div>
             <p className="text-[12.5px] text-[#4d7a1d] mt-1.5">
-              If you keep spending <span className="font-semibold text-[#252525]">{formatCurrency(stats.dailyAvg)}/day</span> (your average so far{totalSavings > 0 ? ', savings not counted' : ''}):
+              If you keep spending <span className="font-semibold text-[#252525]">{formatCurrency(stats.dailyAvg)}/day</span> on everyday things
+              {stats.oneOffSpending > 0 ? <> (the {formatCurrency(stats.oneOffSpending)} in bills &amp; one-offs so far counts once{totalSavings > 0 ? ', savings not counted' : ''})</> : totalSavings > 0 ? ' (savings not counted)' : ''}:
             </p>
 
             {/* Spent so far → projected rest, against this period's income */}

@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { getDaysBetween } from '@/lib/helpers'
+import { isEverydaySpending } from '@/lib/spending-pace'
 import type { TransactionWithDetails } from '@/types'
 
 interface UsePeriodStatsParams {
@@ -14,13 +15,16 @@ export interface PeriodStats {
     totalExpense: number
     /** Expenses in savings categories: set aside, not spent. */
     totalSavings: number
-    /** Expenses minus savings — the base for pace, projections and no-spend days. */
+    /** Expenses minus savings — the base for no-spend days. */
     totalSpending: number
+    /** Bills and other one-offs within totalSpending: counted once, never extrapolated. */
+    oneOffSpending: number
     remaining: number
     spentPercent: number
     daysElapsed: number
     totalDays: number | null
     daysRemaining: number | null
+    /** Everyday spending per day so far (savings and one-offs left out) — the pace. */
     dailyAvg: number
     safeDaily: number | null
     projectedSpend: number | null
@@ -61,6 +65,11 @@ export function usePeriodStats({
         const spending = expenses.filter(t => !t.category?.is_savings)
         const totalSpending = spending.reduce((s, t) => s + t.amount, 0)
         const totalSavings = totalExpense - totalSpending
+        // Rent paid on day 2 isn't a daily habit: only everyday spending sets the pace.
+        const everydaySpending = expenses
+            .filter(t => isEverydaySpending(t, totalIncome))
+            .reduce((s, t) => s + t.amount, 0)
+        const oneOffSpending = totalSpending - everydaySpending
 
         const remaining = totalIncome - totalExpense
         const spentPercent = totalIncome > 0
@@ -89,7 +98,7 @@ export function usePeriodStats({
 
         const daysRemaining = isClosed ? 0 : totalDays !== null ? Math.max(0, totalDays - daysElapsed) : null
 
-        const dailyAvg = totalSpending / daysElapsed
+        const dailyAvg = everydaySpending / daysElapsed
 
         // daysRemaining excludes today, but today's budget is still spendable.
         const safeDaily = !isClosed && daysRemaining !== null
@@ -98,7 +107,7 @@ export function usePeriodStats({
 
         // A day or two of data is too thin to extrapolate — one big purchase would read as the pace.
         const canProject = !isClosed && daysElapsed >= MIN_PROJECTION_DAYS
-        // Savings already made stay as they are; only spending is assumed to keep its pace.
+        // Savings and one-offs already paid stay as they are; only everyday spending keeps its pace.
         const projectedSpend = canProject && totalDays !== null && daysRemaining !== null
             ? totalExpense + dailyAvg * daysRemaining
             : null
@@ -116,6 +125,7 @@ export function usePeriodStats({
             totalExpense,
             totalSavings,
             totalSpending,
+            oneOffSpending,
             remaining,
             spentPercent,
             daysElapsed,
