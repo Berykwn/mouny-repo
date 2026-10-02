@@ -3,6 +3,7 @@ import { createBrowserRouter, createHashRouter, RouterProvider, type RouteObject
 import { ProtectedRoute } from './protected-route'
 import { PublicRoute } from './public-route'
 import AppLayout from '@/components/layouts/app-layout'
+import { RouteError } from '@/components/route-error'
 
 // Auth
 import LoginPage from '@/features/auth/login'
@@ -17,7 +18,7 @@ import NotFoundPage from '@/features/static/not-found'
 const page = (load: () => Promise<{ default: ComponentType }>): RouteObject['lazy'] =>
     () => load().then(m => ({ Component: m.default }))
 
-const routes: RouteObject[] = [
+const appRoutes: RouteObject[] = [
     // Public
     {
         element: <PublicRoute />,
@@ -50,6 +51,9 @@ const routes: RouteObject[] = [
 
     { path: '*', element: <NotFoundPage /> },
 ]
+
+// Any page that throws or fails to load shows a message with a reload button.
+const routes: RouteObject[] = [{ errorElement: <RouteError />, children: appRoutes }]
 
 // GitHub Pages builds (build:gh) serve from a sub-path and can't rewrite deep links,
 // so they use hash routing; every other build routes under the configured base.
