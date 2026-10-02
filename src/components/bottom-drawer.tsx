@@ -48,7 +48,7 @@ export function BottomDrawer({
             {/* Drawer */}
             <div className={cn(
                 'fixed inset-x-0 bottom-0 z-50 bg-white rounded-t-[20px] border-t border-[#e5e5e5] shadow-xl',
-                'flex flex-col',
+                'flex flex-col pb-[env(safe-area-inset-bottom)] lg:pb-0',
                 maxHeightClassName,
                 // Desktop: center as modal
                 'lg:inset-auto lg:left-1/2 lg:-translate-x-1/2 lg:bottom-auto lg:top-1/2 lg:-translate-y-1/2',

@@ -5,7 +5,7 @@ const invalidateAll = vi.fn()
 vi.mock('@/lib/query-client', () => ({ invalidateAll }))
 vi.mock('@/lib/supabase', () => ({ supabase: {} }))
 
-const { fetchAllPages, invalidatesOnWrite, isMissingFunction } = await import('./_base')
+const { OFFLINE_MESSAGE, fetchAllPages, handleError, invalidatesOnWrite, isMissingFunction } = await import('./_base')
 
 beforeEach(() => invalidateAll.mockClear())
 
@@ -37,6 +37,26 @@ describe('invalidatesOnWrite', () => {
 
     it('keeps `this` working for methods that call each other', async () => {
         await expect(make().pay()).resolves.toEqual({ data: 1, error: null })
+    })
+
+    it('refuses a write while offline without sending it, but still reads', async () => {
+        vi.stubGlobal('navigator', { onLine: false })
+        try {
+            const service = make()
+            await expect(service.create()).resolves.toEqual({ data: null, error: OFFLINE_MESSAGE })
+            await expect(service.getAll()).resolves.toEqual({ data: [1], error: null })
+            expect(invalidateAll).not.toHaveBeenCalled()
+        } finally {
+            vi.unstubAllGlobals()
+        }
+    })
+})
+
+describe('handleError', () => {
+    it('words a request that never reached the server as being offline', () => {
+        expect(handleError(new TypeError('Failed to fetch'))).toBe(OFFLINE_MESSAGE)
+        expect(handleError(new TypeError('Load failed'))).toBe(OFFLINE_MESSAGE)
+        expect(handleError(new Error('duplicate key'))).toBe('duplicate key')
     })
 })
 

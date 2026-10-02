@@ -16,6 +16,8 @@ export function isMissingFunction(error: { code?: string } | null): boolean {
 }
 
 export function handleError(error: PostgrestError | Error | unknown): string {
+    // What fetch throws when the request never reaches the server.
+    if (error instanceof TypeError && /fetch|network|load failed/i.test(error.message)) return OFFLINE_MESSAGE
     if (error instanceof Error) return error.message
     if (typeof error === 'object' && error !== null && 'message' in error) {
         return (error as PostgrestError).message
@@ -55,12 +57,15 @@ export async function sessionUser() {
 /**
  * Every method that isn't a `get…` read writes data, so once it succeeds the cached
  * queries are refreshed. Doing it here means no caller can forget to.
+ * Offline, a write is refused up front: nothing queues it for later, and failing at once
+ * beats a save that hangs until the request times out.
  */
 export function invalidatesOnWrite<T extends object>(service: T): T {
     const methods = service as Record<string, unknown>
     for (const [name, fn] of Object.entries(methods)) {
         if (typeof fn !== 'function' || name.startsWith('get')) continue
         methods[name] = async function (this: unknown, ...args: unknown[]) {
+            if (navigator.onLine === false) return { data: null, error: OFFLINE_MESSAGE }
             const result = await fn.apply(this, args)
             const failed = typeof result === 'object' && result !== null && 'error' in result && result.error
             if (!failed) void invalidateAll()
@@ -72,3 +77,6 @@ export function invalidatesOnWrite<T extends object>(service: T): T {
 
 /** What a write says when the session is gone, worded for the user who'll see it. */
 export const SIGNED_OUT_MESSAGE = 'You’re signed out. Please log in again.'
+
+/** What a write says when there's no connection. */
+export const OFFLINE_MESSAGE = 'You’re offline. Connect to the internet and try again.'

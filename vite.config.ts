@@ -25,16 +25,26 @@ export default defineConfig(({ mode }) => {
       jsx: 'react',
       customCollections: { app: FileSystemIconLoader('./src/assets/icons') },
     }), VitePWA({
-      registerType: 'autoUpdate',
+      // A new version waits for the user's Reload (src/lib/register-sw.ts), not mid-form.
+      registerType: 'prompt',
+      // Off in dev: a service worker there serves cached files and hides your edits.
       devOptions: {
-        enabled: true,
+        enabled: false,
+      },
+      // The glob below already precaches the manifest icons.
+      includeManifestIcons: false,
+      workbox: {
+        // The default leaves out fonts, so offline the app would fall back to a system font.
+        globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
       },
       manifest: {
         name: 'Mouny',
         short_name: 'Mouny',
         description: 'Personal finance app',
-        theme_color: '#000000',
-        background_color: '#ffffff',
+        // The app's light background (neutral-50), so the title bar and the launch screen
+        // blend in. A manifest can't vary by theme; index.html and ThemeContext do that.
+        theme_color: '#fafafa',
+        background_color: '#fafafa',
         display: 'standalone',
         icons: [
           {
@@ -46,6 +56,13 @@ export default defineConfig(({ mode }) => {
             src: 'icon-512.png',
             sizes: '512x512',
             type: 'image/png',
+          },
+          // Android crops icons to its own shape; this one has room around the logo for it.
+          {
+            src: 'maskable-icon-512x512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'maskable',
           },
         ],
       },

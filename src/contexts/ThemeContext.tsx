@@ -7,6 +7,18 @@ type ThemeType = {
 
 export const ThemeContext = createContext<ThemeType | null>(null)
 
+/** The page background per theme (neutral-50 / neutral-950), used for the status bar. */
+const THEME_COLORS = { light: '#fafafa', dark: '#0a0a0a' }
+
+/**
+ * index.html picks the status bar colour from the system theme; when the app's own theme
+ * differs (or follows the system), every theme-color tag gets the one in use.
+ */
+function applyThemeColor(theme: keyof typeof THEME_COLORS) {
+    document.querySelectorAll('meta[name="theme-color"]')
+        .forEach(meta => meta.setAttribute('content', THEME_COLORS[theme]))
+}
+
 export function ThemeProvider({
     children,
     defaultTheme = "system",
@@ -33,11 +45,13 @@ export function ThemeProvider({
 
             root.classList.add(systemTheme)
             root.style.colorScheme = systemTheme
+            applyThemeColor(systemTheme)
             return
         }
 
         root.classList.add(theme)
         root.style.colorScheme = theme
+        applyThemeColor(theme === 'dark' ? 'dark' : 'light')
     }, [theme])
 
     return (

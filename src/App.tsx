@@ -1,18 +1,20 @@
 import { useEffect } from 'react'
-import { QueryClientProvider } from '@tanstack/react-query'
+import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client'
 import { Toaster } from './components/ui/sonner'
 import { ThemeProvider } from './contexts/ThemeContext'
 import { AppRouter } from '@/routes/index'
-import { queryClient } from '@/lib/query-client'
+import { OfflineBanner } from '@/components/offline-banner'
+import { clearQueryCache, persistOptions, queryClient } from '@/lib/query-client'
 import { supabase } from '@/lib/supabase'
 import { usePeriodStore } from '@/stores/period-store'
 
 export default function App() {
-    // Signing out (or in as someone else) must not show the previous user's cached data.
+    // Signing out (or in as someone else) must not show the previous user's cached data,
+    // in memory or in the copy saved on the device.
     useEffect(() => {
         const { data: { subscription } } = supabase.auth.onAuthStateChange(event => {
             if (event === 'SIGNED_OUT') {
-                queryClient.clear()
+                void clearQueryCache()
                 usePeriodStore.getState().setSelectedPeriodId(null)
             }
         })
@@ -20,11 +22,12 @@ export default function App() {
     }, [])
 
     return (
-        <QueryClientProvider client={queryClient}>
+        <PersistQueryClientProvider client={queryClient} persistOptions={persistOptions}>
             <ThemeProvider>
+                <OfflineBanner />
                 <AppRouter />
                 <Toaster richColors position='top-right'/>
             </ThemeProvider>
-        </QueryClientProvider>
+        </PersistQueryClientProvider>
     )
 }
