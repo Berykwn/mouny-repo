@@ -9,6 +9,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",
+    "smoke": "node ci/smoke-test.mjs",
     "build:gh": "tsc -b && cross-env VITE_BASE_URL=/mouny/ VITE_USE_HASH_ROUTE=true vite build"
   },
   "dependencies": {
