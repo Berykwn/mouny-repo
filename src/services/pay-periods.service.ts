@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase'
-import { handleError, invalidatesOnWrite, sessionUser, type ServiceResult } from './_base'
+import { handleError, invalidatesOnWrite, sessionUser, type ServiceResult, SIGNED_OUT_MESSAGE } from './_base'
 import type { PayPeriod } from '@/types/'
 
 export const payPeriodsService = invalidatesOnWrite({
@@ -41,7 +41,7 @@ export const payPeriodsService = invalidatesOnWrite({
     }): Promise<ServiceResult<PayPeriod>> {
         try {
             const user = await sessionUser()
-            if (!user) throw new Error('Belum login')
+            if (!user) throw new Error(SIGNED_OUT_MESSAGE)
 
             const { data, error } = await supabase
                 .from('pay_periods')
@@ -56,7 +56,7 @@ export const payPeriodsService = invalidatesOnWrite({
         }
     },
 
-    // Tutup buku periode aktif
+    // Close the active period: its closing balance and end date are fixed from here on.
     async close(id: string, closingBalance: number, endDate: string): Promise<ServiceResult<PayPeriod>> {
         try {
             const { data, error } = await supabase

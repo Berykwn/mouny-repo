@@ -31,6 +31,11 @@ export function summarizeTransactions(rows: SummaryRow[]): PeriodSummary {
             if (t.category?.is_savings) savings += t.amount
         }
     }
+    return summaryFromTotals(income, expense, savings)
+}
+
+/** The full summary from the three sums (also what the database totals arrive as). */
+export function summaryFromTotals(income: number, expense: number, savings: number): PeriodSummary {
     const spending = expense - savings
     return { income, expense, savings, spending, net: income - expense, unspent: income - spending }
 }

@@ -1,7 +1,7 @@
 import { supabase } from '@/lib/supabase'
-import { handleError, invalidatesOnWrite, sessionUser, isMissingFunction, type ServiceResult } from './_base'
+import { fetchAllPages, handleError, invalidatesOnWrite, sessionUser, isMissingFunction, type ServiceResult, SIGNED_OUT_MESSAGE } from './_base'
 import type { Transaction, TransactionWithDetails, TransactionType } from '@/types/'
-import { summarizeTransactions, type PeriodSummary } from '@/lib/period-summary'
+import { EMPTY_PERIOD_SUMMARY, summarizeTransactions, summaryFromTotals, type PeriodSummary } from '@/lib/period-summary'
 
 export interface CreateTransactionInput {
     pay_period_id: string
@@ -34,7 +34,7 @@ function toRow(tx: Transaction): Transaction {
 export const transactionsService = invalidatesOnWrite({
     async getByPeriod(periodId: string): Promise<ServiceResult<TransactionWithDetails[]>> {
         try {
-            const { data, error } = await supabase
+            const data = await fetchAllPages((from, to) => supabase
                 .from('transactions')
                 .select(`
           *,
@@ -43,8 +43,9 @@ export const transactionsService = invalidatesOnWrite({
         `)
                 .eq('pay_period_id', periodId)
                 .order('date', { ascending: false })
+                .order('id')
+                .range(from, to))
 
-            if (error) throw error
             return { data, error: null }
         } catch (err) {
             return { data: null, error: handleError(err) }
@@ -54,7 +55,7 @@ export const transactionsService = invalidatesOnWrite({
     async create(input: CreateTransactionInput): Promise<ServiceResult<Transaction>> {
         try {
             const user = await sessionUser()
-            if (!user) throw new Error('Belum login')
+            if (!user) throw new Error(SIGNED_OUT_MESSAGE)
 
             const { data, error } = await supabase
                 .from('transactions')
@@ -221,16 +222,29 @@ export const transactionsService = invalidatesOnWrite({
         if (periodIds.length === 0) return { data: {}, error: null }
 
         try {
-            const { data, error } = await supabase
+            // Summed in the database: one row per period however many transactions there are.
+            const { data: totals, error: rpcError } = await supabase.rpc('period_summaries', { p_period_ids: periodIds })
+            if (!isMissingFunction(rpcError)) {
+                if (rpcError) throw rpcError
+                const summaries: Record<string, PeriodSummary> = {}
+                for (const id of periodIds) summaries[id] = EMPTY_PERIOD_SUMMARY
+                for (const t of totals ?? []) {
+                    summaries[t.pay_period_id] = summaryFromTotals(Number(t.income), Number(t.expense), Number(t.savings))
+                }
+                return { data: summaries, error: null }
+            }
+
+            // No RPC yet: every row, a page at a time, summed here.
+            const data = await fetchAllPages((from, to) => supabase
                 .from('transactions')
-                .select('pay_period_id, type, amount, category:categories(is_savings)')
+                .select('id, pay_period_id, type, amount, category:categories(is_savings)')
                 .in('pay_period_id', periodIds)
+                .order('id')
+                .range(from, to))
 
-            if (error) throw error
-
-            const rowsByPeriod: Record<string, NonNullable<typeof data>> = {}
+            const rowsByPeriod: Record<string, typeof data> = {}
             for (const id of periodIds) rowsByPeriod[id] = []
-            for (const tx of data ?? []) rowsByPeriod[tx.pay_period_id]?.push(tx)
+            for (const tx of data) rowsByPeriod[tx.pay_period_id]?.push(tx)
 
             const summaries: Record<string, PeriodSummary> = {}
             for (const id of periodIds) summaries[id] = summarizeTransactions(rowsByPeriod[id])

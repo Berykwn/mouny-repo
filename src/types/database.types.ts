@@ -436,6 +436,40 @@ export type Database = {
       }
     }
     Functions: {
+      buy_wish: {
+        Args: {
+          p_account_id: string
+          p_amount: number
+          p_category_id: string | null
+          p_date: string
+          p_note: string
+          p_pay_period_id: string
+          p_wish_id: string
+        }
+        Returns: Database["public"]["Tables"]["wish_list"]["Row"]
+      }
+      contribute_wish_quantity: {
+        Args: {
+          p_account_id: string
+          p_amount: number
+          p_category_id: string | null
+          p_date: string
+          p_note: string
+          p_pay_period_id: string
+          p_quantity: number
+          p_wish_id: string
+        }
+        Returns: Database["public"]["Tables"]["wish_list"]["Row"]
+      }
+      period_summaries: {
+        Args: { p_period_ids: string[] }
+        Returns: {
+          expense: number
+          income: number
+          pay_period_id: string
+          savings: number
+        }[]
+      }
       collect_receivable: {
         Args: {
           p_account_id: string

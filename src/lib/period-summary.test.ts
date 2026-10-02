@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { summarizeTransactions, unspentPct } from './period-summary'
+import { summarizeTransactions, summaryFromTotals, unspentPct } from './period-summary'
 
 describe('summarizeTransactions', () => {
     it('counts savings as expense but not as spending', () => {
@@ -38,5 +38,16 @@ describe('unspentPct', () => {
         expect(unspentPct(100, 0)).toBeNull()
         expect(unspentPct(100, null)).toBeNull()
         expect(unspentPct(100, -1)).toBeNull()
+    })
+})
+
+describe('summaryFromTotals', () => {
+    it('gives the same summary as adding up the rows', () => {
+        const rows = [
+            { type: 'income', amount: 10_000_000 },
+            { type: 'expense', amount: 3_000_000, category: { is_savings: false } },
+            { type: 'expense', amount: 2_000_000, category: { is_savings: true } },
+        ]
+        expect(summaryFromTotals(10_000_000, 5_000_000, 2_000_000)).toEqual(summarizeTransactions(rows))
     })
 })

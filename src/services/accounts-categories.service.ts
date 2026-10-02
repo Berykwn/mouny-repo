@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase'
-import { handleError, invalidatesOnWrite, sessionUser, type ServiceResult } from './_base'
+import { handleError, invalidatesOnWrite, sessionUser, type ServiceResult, SIGNED_OUT_MESSAGE } from './_base'
 import type { Account } from '@/types/'
 import type { Category } from '@/types/'
 import { COLORS } from '@/lib/static-colors'
@@ -46,7 +46,7 @@ export const accountsService = invalidatesOnWrite({
     async create(input: { name: string; type: Account['type']; initial_balance: number }): Promise<ServiceResult<Account>> {
         try {
             const user = await sessionUser()
-            if (!user) throw new Error('Belum login')
+            if (!user) throw new Error(SIGNED_OUT_MESSAGE)
 
             const { data, error } = await supabase
                 .from('accounts')
@@ -149,7 +149,7 @@ export const categoriesService = invalidatesOnWrite({
     async create(input: CategoryInput): Promise<ServiceResult<Category>> {
         try {
             const user = await sessionUser()
-            if (!user) throw new Error('unauthenticated')
+            if (!user) throw new Error(SIGNED_OUT_MESSAGE)
 
             const { data, error } = await supabase
                 .from('categories')
@@ -236,7 +236,7 @@ export const categoriesService = invalidatesOnWrite({
 
         try {
             const user = await sessionUser()
-            if (!user) throw new Error('unauthenticated')
+            if (!user) throw new Error(SIGNED_OUT_MESSAGE)
 
             const { data, error } = await supabase
                 .from('categories')

@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase'
-import { handleError, invalidatesOnWrite, sessionUser, isMissingFunction, type ServiceResult } from './_base'
+import { handleError, invalidatesOnWrite, sessionUser, isMissingFunction, type ServiceResult, SIGNED_OUT_MESSAGE } from './_base'
 import type { Account, Debt, DebtPayment, DebtWithAccount, Category } from '@/types/'
 import { accountsService } from './accounts-categories.service'
 import { transactionsService } from './transactions.service'
@@ -25,7 +25,7 @@ export const debtsService = invalidatesOnWrite({
     async findOrCreateCategory(name: 'Debt Payment' | 'Receivable'): Promise<ServiceResult<Category>> {
         try {
             const user = await sessionUser()
-            if (!user) throw new Error('unauthenticated')
+            if (!user) throw new Error(SIGNED_OUT_MESSAGE)
 
             const meta = DEBT_CATEGORIES[name]
             // Match on type too, and take the oldest if there are several — a second
@@ -82,7 +82,7 @@ export const debtsService = invalidatesOnWrite({
     async create(input: Omit<Debt, 'id' | 'user_id' | 'created_at'>): Promise<ServiceResult<Debt>> {
         try {
             const user = await sessionUser()
-            if (!user) throw new Error('Belum login')
+            if (!user) throw new Error(SIGNED_OUT_MESSAGE)
 
             const { data, error } = await supabase
                 .from('debts')

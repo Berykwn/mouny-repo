@@ -23,6 +23,26 @@ export function handleError(error: PostgrestError | Error | unknown): string {
     return 'Something went wrong. Please try again.'
 }
 
+/** Supabase's API returns at most this many rows per request (its default "max rows"). */
+const PAGE_SIZE = 1000
+
+/**
+ * Every row of a query, fetched a page at a time. A plain select stops silently at
+ * PAGE_SIZE rows, which would make a long period or a year of history add up short.
+ * The query must have a stable order (end it on a unique column) so pages don't overlap.
+ */
+export async function fetchAllPages<T>(
+    page: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: PostgrestError | null }>,
+): Promise<T[]> {
+    const rows: T[] = []
+    for (let from = 0; ; from += PAGE_SIZE) {
+        const { data, error } = await page(from, from + PAGE_SIZE - 1)
+        if (error) throw error
+        rows.push(...(data ?? []))
+        if (!data || data.length < PAGE_SIZE) return rows
+    }
+}
+
 /**
  * The signed-in user from the locally stored session. Not `auth.getUser()`: that is a
  * round trip to the auth server on every call, and RLS checks the user on every query anyway.
@@ -49,3 +69,6 @@ export function invalidatesOnWrite<T extends object>(service: T): T {
     }
     return service
 }
+
+/** What a write says when the session is gone, worded for the user who'll see it. */
+export const SIGNED_OUT_MESSAGE = 'You’re signed out. Please log in again.'

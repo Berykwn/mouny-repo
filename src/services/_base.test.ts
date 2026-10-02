@@ -1,10 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type { PostgrestError } from '@supabase/supabase-js'
 
 const invalidateAll = vi.fn()
 vi.mock('@/lib/query-client', () => ({ invalidateAll }))
 vi.mock('@/lib/supabase', () => ({ supabase: {} }))
 
-const { invalidatesOnWrite, isMissingFunction } = await import('./_base')
+const { fetchAllPages, invalidatesOnWrite, isMissingFunction } = await import('./_base')
 
 beforeEach(() => invalidateAll.mockClear())
 
@@ -44,5 +45,36 @@ describe('isMissingFunction', () => {
         expect(isMissingFunction({ code: 'PGRST202' })).toBe(true)
         expect(isMissingFunction({ code: '23514' })).toBe(false)
         expect(isMissingFunction(null)).toBe(false)
+    })
+})
+
+describe('fetchAllPages', () => {
+    const table = (n: number) => Array.from({ length: n }, (_, i) => i)
+    const pagesOf = (rows: number[]) => {
+        const requested: [number, number][] = []
+        const page = async (from: number, to: number) => {
+            requested.push([from, to])
+            return { data: rows.slice(from, to + 1), error: null }
+        }
+        return { page, requested }
+    }
+
+    it('keeps going past the 1000-row cap until a short page', async () => {
+        const { page, requested } = pagesOf(table(2500))
+        const rows = await fetchAllPages(page)
+        expect(rows).toHaveLength(2500)
+        expect(rows.at(-1)).toBe(2499)
+        expect(requested).toEqual([[0, 999], [1000, 1999], [2000, 2999]])
+    })
+
+    it('asks once more after an exactly full page', async () => {
+        const { page, requested } = pagesOf(table(1000))
+        expect(await fetchAllPages(page)).toHaveLength(1000)
+        expect(requested).toHaveLength(2)
+    })
+
+    it('throws the first error', async () => {
+        const error = { message: 'boom', details: '', hint: '', code: 'X', name: 'PostgrestError' } as PostgrestError
+        await expect(fetchAllPages(async () => ({ data: null as number[] | null, error }))).rejects.toBe(error)
     })
 })

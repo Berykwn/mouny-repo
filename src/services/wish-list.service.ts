@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase'
-import { handleError, invalidatesOnWrite, sessionUser, isMissingFunction, type ServiceResult } from './_base'
+import { handleError, invalidatesOnWrite, sessionUser, isMissingFunction, type ServiceResult, SIGNED_OUT_MESSAGE } from './_base'
 import type { WishListItem } from '@/types/'
 
 export type WishListPurchased = WishListItem & {
@@ -12,7 +12,7 @@ export const wishListService = invalidatesOnWrite({
     async getAll(): Promise<ServiceResult<WishListItem[]>> {
         try {
             const user = await sessionUser()
-            if (!user) throw new Error('Not logged in')
+            if (!user) throw new Error(SIGNED_OUT_MESSAGE)
 
             const { data, error } = await supabase
                 .from('wish_list')
@@ -32,7 +32,7 @@ export const wishListService = invalidatesOnWrite({
     async getPurchased(limit = 20): Promise<ServiceResult<WishListPurchased[]>> {
         try {
             const user = await sessionUser()
-            if (!user) throw new Error('Not logged in')
+            if (!user) throw new Error(SIGNED_OUT_MESSAGE)
 
             const { data, error } = await supabase
                 .from('wish_list')
@@ -64,7 +64,7 @@ export const wishListService = invalidatesOnWrite({
     }): Promise<ServiceResult<WishListItem>> {
         try {
             const user = await sessionUser()
-            if (!user) throw new Error('Not logged in')
+            if (!user) throw new Error(SIGNED_OUT_MESSAGE)
 
             const estimated_price = input.quantity && input.price_per_unit
                 ? input.quantity * input.price_per_unit
@@ -188,7 +188,25 @@ export const wishListService = invalidatesOnWrite({
 
             // Rupiah has no fractions; 0.5 × an odd price would otherwise be a half rupiah.
             const amount = Math.round(quantity * input.price_per_unit)
+            const note = `Cicilan: ${item.name}`
 
+            // The installment and the wish's progress in one database transaction.
+            const { data: updated, error: rpcError } = await supabase.rpc('contribute_wish_quantity', {
+                p_wish_id: item.id,
+                p_quantity: quantity,
+                p_amount: amount,
+                p_account_id: input.account_id,
+                p_category_id: input.category_id ?? null,
+                p_date: input.date,
+                p_pay_period_id: period.id,
+                p_note: note,
+            })
+            if (!isMissingFunction(rpcError)) {
+                if (rpcError) throw rpcError
+                return { data: updated, error: null }
+            }
+
+            // No RPC yet: the transaction, then the wish.
             const { data: transaction, error: txError } =
                 await transactionsService.create({
                     pay_period_id: period.id,
@@ -196,7 +214,7 @@ export const wishListService = invalidatesOnWrite({
                     category_id: input.category_id,
                     type: 'expense',
                     amount,
-                    note: `Cicilan: ${item.name}`,
+                    note,
                     date: input.date,
                     wish_list_item_id: item.id,
                 })
@@ -245,7 +263,24 @@ export const wishListService = invalidatesOnWrite({
             if (periodError || !period) {
                 throw new Error('No active period found')
             }
+            const note = `Buy from wishlist: ${item.name}`
 
+            // The purchase and marking the wish bought in one database transaction.
+            const { data: updated, error: rpcError } = await supabase.rpc('buy_wish', {
+                p_wish_id: item.id,
+                p_amount: input.actual_price,
+                p_account_id: input.account_id,
+                p_category_id: input.category_id ?? null,
+                p_date: input.date,
+                p_pay_period_id: period.id,
+                p_note: note,
+            })
+            if (!isMissingFunction(rpcError)) {
+                if (rpcError) throw rpcError
+                return { data: updated, error: null }
+            }
+
+            // No RPC yet: the transaction, then the wish.
             const { data: transaction, error: txError } =
                 await transactionsService.create({
                     pay_period_id: period.id,
@@ -253,7 +288,7 @@ export const wishListService = invalidatesOnWrite({
                     category_id: input.category_id,
                     type: 'expense',
                     amount: input.actual_price,
-                    note: `Buy from wishlist: ${item.name}`,
+                    note,
                     date: input.date,
                     wish_list_item_id: item.id,
                 })
