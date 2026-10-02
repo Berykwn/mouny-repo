@@ -13,6 +13,8 @@ import { ICON_MAP } from '@/lib/icon-map'
 import { CategoryIcon, CategoryTile } from './category-icon'
 import { CategoryTypePicker } from './category-type-picker'
 import { categoryTypeConfig } from '../lib/category-types'
+import { CategoryKindPicker } from './category-kind-picker'
+import { CATEGORY_KIND_META, guessCategoryKind, resolveCategoryKind, type CategoryKind } from '@/lib/category-kind'
 
 interface CategoryFormProps {
     onSuccess: () => void
@@ -32,7 +34,9 @@ export function CategoryForm({ onSuccess, initial, initialBudget }: CategoryForm
     const [colorTarget, setColorTarget] = useState<'icon' | 'bg'>('icon')
     const [icon, setIcon] = useState<string>(initial?.icon ?? ICON_KEYS[0])
     const [budget, setBudget] = useState(initialBudget ? String(initialBudget) : '')
-    const [isSavings, setIsSavings] = useState(initial?.is_savings ?? false)
+    const [kind, setKind] = useState<CategoryKind>(initial ? resolveCategoryKind(initial) : 'daily')
+    // A new category's kind follows its name until it's picked by hand.
+    const [kindPicked, setKindPicked] = useState(!!initial)
     const [loading, setLoading] = useState(false)
 
     const isEdit = !!initial
@@ -47,7 +51,8 @@ export function CategoryForm({ onSuccess, initial, initialBudget }: CategoryForm
 
         setLoading(true)
 
-        const payload = { name: name.trim(), type, color, bg_color: bgColor, icon, is_savings: type === 'expense' && isSavings }
+        const isExpense = type === 'expense'
+        const payload = { name: name.trim(), type, color, bg_color: bgColor, icon, kind: isExpense ? kind : null, is_savings: isExpense && kind === 'savings' }
 
         const { data: category, error } = isEdit
             ? await categoriesService.update(initial.id, payload)
@@ -92,7 +97,10 @@ export function CategoryForm({ onSuccess, initial, initialBudget }: CategoryForm
                 <Input
                     placeholder={categoryTypeConfig[type].sub}
                     value={name}
-                    onChange={(e) => setName(e.target.value)}
+                    onChange={(e) => {
+                        setName(e.target.value)
+                        if (!kindPicked) setKind(guessCategoryKind(e.target.value))
+                    }}
                     disabled={loading}
                     className="h-12 rounded-[14px] border-[#e5e5e5] text-[13px]"
                 />
@@ -117,32 +125,16 @@ export function CategoryForm({ onSuccess, initial, initialBudget }: CategoryForm
                 </div>
             )}
 
-            {/* Savings flag (expense categories only) */}
+            {/* What the category is for (expense categories only) — drives pace and the needs/wants split */}
             {type === 'expense' && (
-                <button
-                    type="button"
-                    role="switch"
-                    aria-checked={isSavings}
-                    onClick={() => setIsSavings(v => !v)}
-                    disabled={loading}
-                    className="w-full flex items-center gap-3 rounded-[14px] border border-[#e5e5e5] px-4 py-3 text-left"
-                >
-                    <div className="flex-1 min-w-0">
-                        <p className="text-[13px] font-medium text-[#252525]">Counts as savings</p>
-                        <p className="text-[10.5px] text-[#a3a3a3] mt-0.5">
-                            Money set aside, not spent — left out of daily average, projections and health score.
-                        </p>
-                    </div>
-                    <span className={cn(
-                        'relative h-6 w-10 shrink-0 rounded-full transition-colors',
-                        isSavings ? 'bg-[#6FA82B]' : 'bg-[#e5e5e5]'
-                    )}>
-                        <span className={cn(
-                            'absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform',
-                            isSavings && 'translate-x-4'
-                        )} />
-                    </span>
-                </button>
+                <div className="space-y-1.5">
+                    <Label className={FIELD_LABEL}>Kind</Label>
+                    <CategoryKindPicker
+                        value={kind}
+                        onChange={(k) => { setKind(k); setKindPicked(true) }}
+                        disabled={loading}
+                    />
+                </div>
             )}
 
             {/* Icon picker */}
@@ -238,7 +230,9 @@ export function CategoryForm({ onSuccess, initial, initialBudget }: CategoryForm
                     <p className="text-[13px] font-medium text-[#252525] truncate leading-tight">
                         {name.trim() || <span className="text-[#8a8a84] italic font-normal">Category name</span>}
                     </p>
-                    <p className="text-[11px] text-[#8a8a84] capitalize mt-0.5">{type}</p>
+                    <p className="text-[11px] text-[#8a8a84] mt-0.5">
+                        {type === 'expense' ? `Expense · ${CATEGORY_KIND_META[kind].label}` : 'Income'}
+                    </p>
                 </div>
             </div>
 

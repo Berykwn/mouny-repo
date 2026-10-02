@@ -84,6 +84,7 @@ export type Database = {
           icon: string | null
           id: string
           is_savings: boolean
+          kind: string | null
           name: string
           type: string
           user_id: string
@@ -95,6 +96,7 @@ export type Database = {
           icon?: string | null
           id?: string
           is_savings?: boolean
+          kind?: string | null
           name: string
           type: string
           user_id: string
@@ -106,6 +108,7 @@ export type Database = {
           icon?: string | null
           id?: string
           is_savings?: boolean
+          kind?: string | null
           name?: string
           type?: string
           user_id?: string

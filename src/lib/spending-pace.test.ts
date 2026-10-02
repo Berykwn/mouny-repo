@@ -23,6 +23,12 @@ describe('isOneOff', () => {
         expect(isOneOff({ type: 'income', amount: 1, category: { name: 'Rent' } }, INCOME)).toBe(false)
     })
 
+    it('follows the category kind over its name', () => {
+        // "Kos" set as a bill, a "Rent a bike" set as lifestyle: the kind decides, not the words.
+        expect(isOneOff({ type: 'expense', amount: 1, category: { name: 'Netflix', kind: 'fixed' } }, INCOME)).toBe(true)
+        expect(isOneOff({ type: 'expense', amount: 1, category: { name: 'Rent a bike', kind: 'lifestyle' } }, INCOME)).toBe(false)
+    })
+
     it('matches on word starts, not inside words', () => {
         // "Parent gift" contains "rent" but isn't rent.
         expect(isOneOff({ type: 'expense', amount: 1, category: { name: 'Parent gift' } }, INCOME)).toBe(false)

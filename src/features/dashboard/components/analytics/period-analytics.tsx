@@ -20,6 +20,7 @@ import { PeriodTrendChart } from './period-trend-chart'
 import { groupExpensesByCategory, UNCATEGORIZED_ID, type CategoryTotal } from '../../lib/group-expenses-by-category'
 import { groupExpensesByWeekday } from '../../lib/group-expenses-by-weekday'
 import { CategoryDonutChart } from './category-donut-chart'
+import { KindSplitCard } from './kind-split-card'
 import type { ElementType, ReactNode, SVGProps } from 'react'
 import type { PayPeriod, TransactionWithDetails } from '@/types'
 
@@ -561,6 +562,9 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
           )}
         </div>
       </div>
+
+      {/* ── Needs / wants / savings split (Categories) ── */}
+      <KindSplitCard expenses={expenses} totalIncome={totalIncome} isClosed={stats.isClosed} />
 
       {/* ── Budgets card (Categories) ── */}
       {sortedCategories.length > 0 && (

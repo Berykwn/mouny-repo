@@ -5,9 +5,10 @@ import { accountsService } from './accounts-categories.service'
 import { transactionsService } from './transactions.service'
 import { COLORS } from '@/lib/static-colors'
 
-const DEBT_CATEGORIES: Record<string, { type: 'income' | 'expense'; color: string; icon: string }> = {
-    'Debt Payment': { type: 'expense', color: COLORS[18] ?? '#6b7280', icon: 'arrow-down-circle' },
-    'Receivable': { type: 'expense', color: COLORS[9] ?? '#6b7280', icon: 'arrow-up-circle' },
+// Both are bills for the pace: paid once, never a daily habit.
+const DEBT_CATEGORIES: Record<string, { type: 'income' | 'expense'; color: string; icon: string; kind: 'fixed' }> = {
+    'Debt Payment': { type: 'expense', color: COLORS[18] ?? '#6b7280', icon: 'arrow-down-circle', kind: 'fixed' },
+    'Receivable': { type: 'expense', color: COLORS[9] ?? '#6b7280', icon: 'arrow-up-circle', kind: 'fixed' },
 }
 
 export type DebtPaymentWithAccount = DebtPayment & {

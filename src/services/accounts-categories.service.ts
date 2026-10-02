@@ -4,8 +4,9 @@ import type { Account } from '@/types/'
 import type { Category } from '@/types/'
 import { COLORS } from '@/lib/static-colors'
 import { ICON_MAP } from '@/lib/icon-map'
+import type { CategoryKind } from '@/lib/category-kind'
 
-type CategoryInput = Omit<Category, 'id' | 'user_id' | 'created_at' | 'bg_color' | 'is_savings'> & { bg_color?: string | null; is_savings?: boolean }
+type CategoryInput = Omit<Category, 'id' | 'user_id' | 'created_at' | 'bg_color' | 'is_savings' | 'kind'> & { bg_color?: string | null; is_savings?: boolean; kind?: CategoryKind | null }
 
 function needsIconRepair(c: Category): boolean {
     return !c.icon || !(c.icon in ICON_MAP)
@@ -164,7 +165,7 @@ export const categoriesService = invalidatesOnWrite({
         }
     },
 
-    async update(id: string, input: { name: string; type: Category['type']; color: string; bg_color: string | null; icon?: string | null; is_savings?: boolean }): Promise<ServiceResult<Category>> {
+    async update(id: string, input: { name: string; type: Category['type']; color: string; bg_color: string | null; icon?: string | null; is_savings?: boolean; kind?: CategoryKind | null }): Promise<ServiceResult<Category>> {
         try {
             const { data, error } = await supabase
                 .from('categories')
@@ -202,36 +203,36 @@ export const categoriesService = invalidatesOnWrite({
             { name: 'Other Income', type: 'income', color: COLORS[2], icon: 'more-horizontal' },
 
             // FIXED EXPENSE
-            { name: 'Rent', type: 'expense', color: COLORS[0], icon: 'home' },
-            { name: 'Utilities', type: 'expense', color: COLORS[1], icon: 'zap' },
-            { name: 'Internet', type: 'expense', color: COLORS[2], icon: 'wifi' },
-            { name: 'Insurance', type: 'expense', color: COLORS[0], icon: 'shield' },
-            { name: 'Loan Payment', type: 'expense', color: COLORS[0], icon: 'credit-card' },
+            { name: 'Rent', type: 'expense', color: COLORS[0], icon: 'home', kind: 'fixed' },
+            { name: 'Utilities', type: 'expense', color: COLORS[1], icon: 'zap', kind: 'fixed' },
+            { name: 'Internet', type: 'expense', color: COLORS[2], icon: 'wifi', kind: 'fixed' },
+            { name: 'Insurance', type: 'expense', color: COLORS[0], icon: 'shield', kind: 'fixed' },
+            { name: 'Loan Payment', type: 'expense', color: COLORS[0], icon: 'credit-card', kind: 'fixed' },
 
             // DAILY EXPENSE
-            { name: 'Food & Drinks', type: 'expense', color: COLORS[3], icon: 'utensils' },
-            { name: 'Groceries', type: 'expense', color: COLORS[3], icon: 'shopping-cart' },
-            { name: 'Transportation', type: 'expense', color: COLORS[10], icon: 'car' },
-            { name: 'Fuel', type: 'expense', color: COLORS[12], icon: 'truck' },
+            { name: 'Food & Drinks', type: 'expense', color: COLORS[3], icon: 'utensils', kind: 'daily' },
+            { name: 'Groceries', type: 'expense', color: COLORS[3], icon: 'shopping-cart', kind: 'daily' },
+            { name: 'Transportation', type: 'expense', color: COLORS[10], icon: 'car', kind: 'daily' },
+            { name: 'Fuel', type: 'expense', color: COLORS[12], icon: 'truck', kind: 'daily' },
 
             // LIFESTYLE
-            { name: 'Shopping', type: 'expense', color: COLORS[13], icon: 'shopping-bag' },
-            { name: 'Entertainment', type: 'expense', color: COLORS[15], icon: 'film' },
-            { name: 'Travel', type: 'expense', color: COLORS[11], icon: 'plane' },
-            { name: 'Subscriptions', type: 'expense', color: COLORS[14], icon: 'repeat' },
+            { name: 'Shopping', type: 'expense', color: COLORS[13], icon: 'shopping-bag', kind: 'lifestyle' },
+            { name: 'Entertainment', type: 'expense', color: COLORS[15], icon: 'film', kind: 'lifestyle' },
+            { name: 'Travel', type: 'expense', color: COLORS[11], icon: 'plane', kind: 'lifestyle' },
+            { name: 'Subscriptions', type: 'expense', color: COLORS[14], icon: 'repeat', kind: 'fixed' },
 
             // PERSONAL
-            { name: 'Health', type: 'expense', color: COLORS[16], icon: 'heart' },
-            { name: 'Education', type: 'expense', color: COLORS[9], icon: 'book' },
-            { name: 'Gifts & Donations', type: 'expense', color: COLORS[16], icon: 'gift' },
+            { name: 'Health', type: 'expense', color: COLORS[16], icon: 'heart', kind: 'daily' },
+            { name: 'Education', type: 'expense', color: COLORS[9], icon: 'book', kind: 'fixed' },
+            { name: 'Gifts & Donations', type: 'expense', color: COLORS[16], icon: 'gift', kind: 'lifestyle' },
 
             // FINANCIAL
-            { name: 'Debt Payment', type: 'expense', color: COLORS[18], icon: 'arrow-down-circle' },
-            { name: 'Savings', type: 'expense', color: COLORS[4], icon: 'piggy-bank', is_savings: true },
-            { name: 'Investments', type: 'expense', color: COLORS[5], icon: 'trending-up' },
+            { name: 'Debt Payment', type: 'expense', color: COLORS[18], icon: 'arrow-down-circle', kind: 'fixed' },
+            { name: 'Savings', type: 'expense', color: COLORS[4], icon: 'piggy-bank', is_savings: true, kind: 'savings' },
+            { name: 'Investments', type: 'expense', color: COLORS[5], icon: 'trending-up', is_savings: true, kind: 'savings' },
 
             // OTHER
-            { name: 'Miscellaneous', type: 'expense', color: COLORS[19], icon: 'more-horizontal' },
+            { name: 'Miscellaneous', type: 'expense', color: COLORS[19], icon: 'more-horizontal', kind: 'daily' },
         ]
 
         try {

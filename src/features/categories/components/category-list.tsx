@@ -1,16 +1,19 @@
 import type { Category } from '@/types'
-import { Trash2, Pencil } from 'lucide-react'
 import { CategoryTile } from './category-icon'
-import { formatCurrency } from '@/lib/helpers'
+import { cn } from '@/lib/utils'
+import { formatCurrency, formatShortCurrency } from '@/lib/helpers'
+import { CATEGORY_KINDS, CATEGORY_KIND_META, resolveCategoryKind } from '@/lib/category-kind'
 
 interface CategoryListProps {
     categories: Category[]
     budgets: Record<string, number>
-    onEdit: (category: Category) => void
-    onDeleteRequest: (id: string) => void
+    /** What each category has moved in the active period, by category id. */
+    periodTotals: Map<string, number>
+    /** Tapping a row opens its detail sheet, where edit / delete live. */
+    onOpen: (category: Category) => void
 }
 
-export function CategoryList({ categories, budgets, onEdit, onDeleteRequest }: CategoryListProps) {
+export function CategoryList({ categories, budgets, periodTotals, onOpen }: CategoryListProps) {
     const expense = categories
         .filter(c => c.type === 'expense')
         .sort(
@@ -27,44 +30,48 @@ export function CategoryList({ categories, budgets, onEdit, onDeleteRequest }: C
                 new Date(a.created_at ?? 0).getTime()
         )
 
-    const Section = ({ label, items }: { label: string; items: Category[] }) => {
+    const Section = ({ label, sub, items }: { label: string; sub?: string; items: Category[] }) => {
         if (items.length === 0) return null
         return (
             <div className="space-y-1.5">
-                <p className="text-[11px] uppercase tracking-[.14em] text-muted-ink px-1">
-                    {label} <span className="text-subtle-ink">· {items.length}</span>
-                </p>
+                <div className="px-1">
+                    <p className="text-[11px] uppercase tracking-[.14em] text-muted-ink">
+                        {label} <span className="text-subtle-ink">· {items.length}</span>
+                    </p>
+                    {sub && <p className="text-[11px] text-subtle-ink">{sub}</p>}
+                </div>
                 <div className="card overflow-hidden divide-y divide-line-soft">
                     {items.map((cat) => {
+                        const spent = periodTotals.get(cat.id) ?? 0
+                        const budget = cat.type === 'expense' ? budgets[cat.id] : undefined
                         return (
-                            <div
+                            <button
                                 key={cat.id}
-                                className="flex items-center gap-3 px-4 py-[9px]"
+                                type="button"
+                                onClick={() => onOpen(cat)}
+                                className="w-full flex items-center gap-3 px-4 py-[9px] text-left transition-colors hover:bg-surface-soft active:bg-surface-hover"
                             >
                                 <CategoryTile category={cat} />
                                 <div className="flex-1 min-w-0">
                                     <p className="text-[13px] font-medium text-ink truncate">{cat.name}</p>
-                                    {cat.type === 'expense' && budgets[cat.id] !== undefined && (
+                                    {budget !== undefined && (
                                         <p className="text-[11px] text-muted-ink truncate">
-                                            {formatCurrency(budgets[cat.id])}/period
+                                            {formatCurrency(budget)}/period
                                         </p>
                                     )}
                                 </div>
-                                <div className="flex items-center shrink-0">
-                                    <button
-                                        onClick={() => onEdit(cat)}
-                                        className="w-7 h-7 rounded-full flex items-center justify-center text-muted-ink hover:text-ink hover:bg-surface-hover transition-colors"
-                                    >
-                                        <Pencil className="w-3.5 h-3.5" />
-                                    </button>
-                                    <button
-                                        onClick={() => onDeleteRequest(cat.id)}
-                                        className="w-7 h-7 rounded-full flex items-center justify-center text-muted-ink hover:text-negative hover:bg-surface-hover transition-colors"
-                                    >
-                                        <Trash2 className="w-3.5 h-3.5" />
-                                    </button>
-                                </div>
-                            </div>
+                                {spent > 0 && (
+                                    <div className="text-right shrink-0">
+                                        <p className={cn(
+                                            'text-[13px] font-medium tabular-nums',
+                                            budget !== undefined && spent > budget ? 'text-negative' : 'text-ink'
+                                        )}>
+                                            {formatShortCurrency(spent)}
+                                        </p>
+                                        <p className="text-[10.5px] text-subtle-ink">this period</p>
+                                    </div>
+                                )}
+                            </button>
                         )
                     })}
                 </div>
@@ -74,7 +81,15 @@ export function CategoryList({ categories, budgets, onEdit, onDeleteRequest }: C
 
     return (
         <div className="space-y-4">
-            <Section label="Expenses" items={expense} />
+            {/* Expenses by what they're for — the grouping analytics splits spending by */}
+            {CATEGORY_KINDS.map(kind => (
+                <Section
+                    key={kind}
+                    label={CATEGORY_KIND_META[kind].label}
+                    sub={CATEGORY_KIND_META[kind].sub}
+                    items={expense.filter(c => resolveCategoryKind(c) === kind)}
+                />
+            ))}
             <Section label="Income" items={income} />
         </div>
     )

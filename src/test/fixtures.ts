@@ -23,7 +23,7 @@ export function tx({ category, ...overrides }: TxOverrides = {}): TransactionWit
         wish_list_item_id: null,
         account: { id: 'acc-1', name: 'BCA', type: 'bank' },
         category: category
-            ? { id: 'cat-1', name: 'Food', color: null, bg_color: null, icon: null, is_savings: false, ...category }
+            ? { id: 'cat-1', name: 'Food', color: null, bg_color: null, icon: null, is_savings: false, kind: null, ...category }
             : null,
         ...overrides,
     }

@@ -7,6 +7,7 @@ import { BottomDrawer } from '@/components/bottom-drawer'
 import { ConfirmDrawer } from '@/components/confirmation-drawer'
 import { CategoryForm } from './components/category-form'
 import { CategoryList } from './components/category-list'
+import { CategoryDetail } from './components/category-detail'
 import { categoriesService } from '@/services/accounts-categories.service'
 import type { Category, TransactionWithDetails } from '@/types'
 import { toast } from 'sonner'
@@ -30,6 +31,7 @@ export function CategoriesPage() {
     // The hero's budget-vs-income analysis; the page still works without it.
     const { activePeriod } = usePeriods()
     const { data: periodTxs = NO_TXS } = usePeriodTransactions(activePeriod?.id)
+    const [openCategory, setOpenCategory] = useState<Category | null>(null)
     const [editCategory, setEditCategory] = useState<Category | null>(null)
     const [addCategoryDrawer, setAddCategoryDrawer] = useState(false)
     const [deletingCategoryId, setDeletingCategoryId] = useState<string | null>(null)
@@ -56,6 +58,23 @@ export function CategoriesPage() {
         setDeletingCategoryId(null)
         toast.success('Category deleted.')
     }
+
+    // Each category's transactions this period: the list's totals and the detail sheet's activity.
+    const periodTxsByCategory = useMemo(() => {
+        const map = new Map<string, TransactionWithDetails[]>()
+        for (const t of periodTxs) {
+            if (!t.category_id) continue
+            const arr = map.get(t.category_id) ?? []
+            arr.push(t)
+            map.set(t.category_id, arr)
+        }
+        return map
+    }, [periodTxs])
+    const periodTotals = useMemo(() => {
+        const map = new Map<string, number>()
+        for (const [id, txs] of periodTxsByCategory) map.set(id, txs.reduce((s, t) => s + t.amount, 0))
+        return map
+    }, [periodTxsByCategory])
 
     const expenseCount = categories.filter(c => c.type === 'expense').length
     const incomeCount = categories.filter(c => c.type === 'income').length
@@ -140,8 +159,8 @@ export function CategoriesPage() {
                             <CategoryList
                                 categories={categories}
                                 budgets={budgets}
-                                onEdit={setEditCategory}
-                                onDeleteRequest={setDeletingCategoryId}
+                                periodTotals={periodTotals}
+                                onOpen={setOpenCategory}
                             />
                         )}
                     </div>
@@ -150,6 +169,19 @@ export function CategoriesPage() {
                 {/* Drawers */}
                 <BottomDrawer open={addCategoryDrawer} onClose={() => setAddCategoryDrawer(false)} title="Add Category">
                     <CategoryForm onSuccess={() => setAddCategoryDrawer(false)} />
+                </BottomDrawer>
+                {/* Detail sheet — each action closes it and hands off to its own drawer */}
+                <BottomDrawer open={!!openCategory} onClose={() => setOpenCategory(null)} title={openCategory?.name ?? ''}>
+                    {openCategory && (
+                        <CategoryDetail
+                            category={openCategory}
+                            transactions={periodTxsByCategory.get(openCategory.id) ?? NO_TXS}
+                            budget={openCategory.type === 'expense' ? budgets[openCategory.id] : undefined}
+                            hasActivePeriod={!!activePeriod}
+                            onEdit={() => { setEditCategory(openCategory); setOpenCategory(null) }}
+                            onDelete={() => { setDeletingCategoryId(openCategory.id); setOpenCategory(null) }}
+                        />
+                    )}
                 </BottomDrawer>
                 <BottomDrawer open={!!editCategory} onClose={() => setEditCategory(null)} title="Edit Category">
                     {editCategory && (

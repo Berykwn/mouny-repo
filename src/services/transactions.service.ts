@@ -39,7 +39,7 @@ export const transactionsService = invalidatesOnWrite({
                 .select(`
           *,
           account:accounts(id, name, type),
-          category:categories(id, name, color, bg_color, icon, is_savings)
+          category:categories(id, name, color, bg_color, icon, is_savings, kind)
         `)
                 .eq('pay_period_id', periodId)
                 .order('date', { ascending: false })
