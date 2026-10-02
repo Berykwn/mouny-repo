@@ -1,11 +1,11 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
-import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
+import { FIELD_INPUT, FIELD_LABEL, SUBMIT_BUTTON } from './auth-styles'
 
 export function ResetPasswordForm() {
     const navigate = useNavigate()
@@ -46,8 +46,8 @@ export function ResetPasswordForm() {
 
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-                <Label htmlFor="password" className="text-[13px] font-medium text-[#252525]">New Password</Label>
+            <div className="space-y-1.5">
+                <Label htmlFor="password" className={FIELD_LABEL}>New password</Label>
                 <Input
                     id="password"
                     type="password"
@@ -58,11 +58,12 @@ export function ResetPasswordForm() {
                     autoComplete="new-password"
                     disabled={loading}
                     minLength={6}
+                    className={FIELD_INPUT}
                 />
             </div>
 
-            <div className="space-y-2">
-                <Label htmlFor="confirm" className="text-[13px] font-medium text-[#252525]">Confirm Password</Label>
+            <div className="space-y-1.5">
+                <Label htmlFor="confirm" className={FIELD_LABEL}>Confirm password</Label>
                 <Input
                     id="confirm"
                     type="password"
@@ -73,16 +74,13 @@ export function ResetPasswordForm() {
                     autoComplete="new-password"
                     disabled={loading}
                     minLength={6}
+                    className={FIELD_INPUT}
                 />
             </div>
 
-            <Button
-                type="submit"
-                className="w-full bg-[#6FA82B] hover:bg-[#6FA82B]/90 text-white"
-                disabled={loading}
-            >
+            <button type="submit" className={SUBMIT_BUTTON} disabled={loading}>
                 {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save new password'}
-            </Button>
+            </button>
         </form>
     )
 }

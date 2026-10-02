@@ -1,11 +1,11 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
-import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
+import { FIELD_INPUT, FIELD_LABEL, SUBMIT_BUTTON } from './auth-styles'
 
 export function LoginForm() {
     const navigate = useNavigate()
@@ -42,8 +42,8 @@ export function LoginForm() {
 
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-                <Label htmlFor="email" className="text-[13px] font-medium text-[#252525]">Email</Label>
+            <div className="space-y-1.5">
+                <Label htmlFor="email" className={FIELD_LABEL}>Email</Label>
                 <Input
                     id="email"
                     type="email"
@@ -53,15 +53,16 @@ export function LoginForm() {
                     required
                     autoComplete="email"
                     disabled={loading}
+                    className={FIELD_INPUT}
                 />
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
-                    <Label htmlFor="password" className="text-[13px] font-medium text-[#252525]">Password</Label>
+                    <Label htmlFor="password" className={FIELD_LABEL}>Password</Label>
                     <Link
                         to="/forgot-password"
-                        className="text-[11.5px] text-[#8a8a84] hover:text-[#252525] transition-colors"
+                        className="text-[11.5px] text-muted-ink hover:text-ink transition-colors"
                     >
                         Forgot password?
                     </Link>
@@ -76,16 +77,13 @@ export function LoginForm() {
                     autoComplete="current-password"
                     disabled={loading}
                     minLength={6}
+                    className={FIELD_INPUT}
                 />
             </div>
 
-            <Button
-                type="submit"
-                className="w-full bg-[#6FA82B] hover:bg-[#6FA82B]/90 text-white"
-                disabled={loading}
-            >
+            <button type="submit" className={SUBMIT_BUTTON} disabled={loading}>
                 {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Sign in'}
-            </Button>
+            </button>
         </form>
     )
 }

@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
-import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ArrowLeft, Loader2, MailCheck } from 'lucide-react'
 import { toast } from 'sonner'
+import { AuthNotice } from '@/components/layouts/auth-layout'
+import { FIELD_INPUT, FIELD_LABEL, QUIET_LINK, SUBMIT_BUTTON } from './auth-styles'
 
 export function ForgotPasswordForm() {
     const [email, setEmail] = useState('')
@@ -37,30 +38,23 @@ export function ForgotPasswordForm() {
     if (sent) {
         return (
             <div className="space-y-4">
-                <div className="rounded-[20px] border border-[#cfdcb8] bg-[#f2f6ea] p-4 flex items-start gap-3">
-                    <MailCheck className="w-4 h-4 mt-0.5 shrink-0 text-[#4d7a1d]" />
-                    <div className="min-w-0">
-                        <p className="text-[13px] font-medium text-[#252525]">Check your email</p>
-                        <p className="text-[11.5px] text-[#4d7a1d] mt-0.5 leading-relaxed">
-                            A reset link has been sent to <span className="font-medium">{email}</span>.
-                        </p>
-                    </div>
+                <AuthNotice icon={MailCheck} tone="positive" title="Check your email">
+                    A reset link has been sent to <span className="font-medium text-ink">{email}</span>.
+                </AuthNotice>
+                <div className="text-center">
+                    <Link to="/login" className={QUIET_LINK}>
+                        <ArrowLeft className="w-3 h-3" />
+                        Back to login
+                    </Link>
                 </div>
-                <Link
-                    to="/login"
-                    className="flex items-center justify-center gap-1 text-[12px] text-[#8a8a84] hover:text-[#252525] transition-colors"
-                >
-                    <ArrowLeft className="w-3 h-3" />
-                    Back to login
-                </Link>
             </div>
         )
     }
 
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-                <Label htmlFor="email" className="text-[13px] font-medium text-[#252525]">Email</Label>
+            <div className="space-y-1.5">
+                <Label htmlFor="email" className={FIELD_LABEL}>Email</Label>
                 <Input
                     id="email"
                     type="email"
@@ -70,22 +64,16 @@ export function ForgotPasswordForm() {
                     required
                     autoComplete="email"
                     disabled={loading}
+                    className={FIELD_INPUT}
                 />
             </div>
 
-            <Button
-                type="submit"
-                className="w-full bg-[#6FA82B] hover:bg-[#6FA82B]/90 text-white"
-                disabled={loading}
-            >
+            <button type="submit" className={SUBMIT_BUTTON} disabled={loading}>
                 {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Send reset link'}
-            </Button>
+            </button>
 
             <div className="text-center">
-                <Link
-                    to="/login"
-                    className="inline-flex items-center gap-1 text-[12px] text-[#8a8a84] hover:text-[#252525] transition-colors"
-                >
+                <Link to="/login" className={QUIET_LINK}>
                     <ArrowLeft className="w-3 h-3" />
                     Back to login
                 </Link>

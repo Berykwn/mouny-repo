@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { AlertCircle } from 'lucide-react'
 import { ResetPasswordForm } from '../components/reset-password-form'
-import AuthLayout from '@/components/layouts/auth-layout'
+import AuthLayout, { AuthHeading, AuthNotice } from '@/components/layouts/auth-layout'
+import { QUIET_LINK } from '../components/auth-styles'
 import { Skeleton } from '@/components/ui/skeleton'
 
 export default function ResetPasswordPage() {
@@ -52,32 +53,23 @@ export default function ResetPasswordPage() {
         </div>
       ) : validSession ? (
         <>
-          <div className="space-y-1.5">
-            <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84]">Password reset</p>
-            <h1 className="text-[20px] font-semibold tracking-[-0.02em] text-[#252525]">Create a new password</h1>
-            <p className="text-[13px] text-[#8a8a84] leading-relaxed">
-              Enter a new password for your account.
-            </p>
-          </div>
+          <AuthHeading
+            eyebrow="Password reset"
+            title="Create a new password"
+            description="Enter a new password for your account."
+          />
           <ResetPasswordForm />
         </>
       ) : (
         <div className="space-y-4">
-          <div className="rounded-[20px] border border-[#f3c5c5] bg-[#fef2f2] p-4 flex items-start gap-3">
-            <AlertCircle className="w-4 h-4 mt-0.5 shrink-0 text-[#dc2626]" />
-            <div className="min-w-0">
-              <p className="text-[13px] font-medium text-[#252525]">Invalid or expired link</p>
-              <p className="text-[11.5px] text-[#dc2626] mt-0.5 leading-relaxed">
-                Request a new password reset link from the forgot password page.
-              </p>
-            </div>
+          <AuthNotice icon={AlertCircle} tone="negative" title="Invalid or expired link">
+            Request a new password reset link from the forgot password page.
+          </AuthNotice>
+          <div className="text-center">
+            <Link to="/forgot-password" className={QUIET_LINK}>
+              Request a new link
+            </Link>
           </div>
-          <Link
-            to="/forgot-password"
-            className="flex items-center justify-center text-[12px] text-[#8a8a84] hover:text-[#252525] underline-offset-4 hover:underline transition-colors"
-          >
-            Request a new link
-          </Link>
         </div>
       )}
     </AuthLayout>
