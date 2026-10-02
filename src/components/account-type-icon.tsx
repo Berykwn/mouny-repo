@@ -3,15 +3,9 @@ import CashIcon from '~icons/app/piggy-bank-alt'
 import WalletIcon from '~icons/app/wallet'
 import type { SVGProps } from 'react'
 import { cn } from '@/lib/utils'
+import { ACCOUNT_TILE_CLASS } from '@/lib/account-tiles'
 
 export { BankIcon, CashIcon, WalletIcon }
-
-// Tile tints derived from each icon's main color (card teal, piggy pink, wallet teal).
-export const ACCOUNT_TILE_CLASS: Record<string, string> = {
-    bank: 'bg-[#61C2AB]/20',
-    cash: 'bg-[#f28b8b]/20',
-}
-export const WALLET_TILE_CLASS = 'bg-[#45AAB8]/20'
 
 interface AccountTypeIconProps extends SVGProps<SVGSVGElement> {
     type: string

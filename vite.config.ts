@@ -52,6 +52,9 @@ export default defineConfig(({ mode }) => {
     })],
     resolve: { alias: { '@': path.resolve(__dirname, './src') } },
     build: {
+      // The single vendor chunk below is ~720 kB (~215 kB gzip) on purpose; warn only if it
+      // grows well past that.
+      chunkSizeWarningLimit: 900,
       rollupOptions: {
         output: {
           // Libraries change far less often than app code; in their own chunk they stay

@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo } from 'react'
-import { WalletIcon, WALLET_TILE_CLASS } from '@/components/account-type-icon'
+import { WalletIcon } from '@/components/account-type-icon'
+import { WALLET_TILE_CLASS } from '@/lib/account-tiles'
 import { BottomDrawer } from '@/components/bottom-drawer'
 import { ConfirmDrawer } from '@/components/confirmation-drawer'
 import { AccountForm } from './components/account-form'

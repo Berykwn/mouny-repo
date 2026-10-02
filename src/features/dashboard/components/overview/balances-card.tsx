@@ -1,5 +1,6 @@
 import { ArrowRight } from 'lucide-react'
-import { WalletIcon, WALLET_TILE_CLASS } from '@/components/account-type-icon'
+import { WalletIcon } from '@/components/account-type-icon'
+import { WALLET_TILE_CLASS } from '@/lib/account-tiles'
 import { useNavigate } from 'react-router-dom'
 import { formatCurrency } from '@/lib/helpers'
 import type { Account } from '@/types'
