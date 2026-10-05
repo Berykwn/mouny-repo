@@ -12,6 +12,7 @@ export interface CreateTransactionInput {
     note?: string
     date: string
     wish_list_item_id?: string
+    debt_id?: string
 }
 
 /** Just the table's own columns — a TransactionWithDetails also carries joined account/category. */
@@ -28,6 +29,9 @@ function toRow(tx: Transaction): Transaction {
         date: tx.date,
         created_at: tx.created_at,
         wish_list_item_id: tx.wish_list_item_id,
+        transfer_id: tx.transfer_id,
+        debt_id: tx.debt_id,
+        wish_quantity: tx.wish_quantity,
     }
 }
 
@@ -104,11 +108,9 @@ export const transactionsService = invalidatesOnWrite({
     },
 
     /**
-     * Change a transaction's amount, account or type. Balances follow transactions through
-     * the insert/delete triggers, so this deletes the original and inserts the new version
-     * (keeping its id, created_at and wish link) rather than trusting an UPDATE to move
-     * the money. The `replace_transaction` RPC does both in one database transaction, so
-     * a failed insert (e.g. the new amount overdraws the account) undoes the delete.
+     * Change a transaction's amount, account or type. The balance trigger moves the
+     * difference, and refuses the change if it overdraws the account; a transfer, debt
+     * or wish transaction's money can't be changed this way at all.
      */
     async replace(original: Transaction, input: CreateTransactionInput): Promise<ServiceResult<Transaction>> {
         try {
@@ -122,42 +124,7 @@ export const transactionsService = invalidatesOnWrite({
                 p_note: input.note ?? null,
                 p_date: input.date,
             })
-            if (!isMissingFunction(error)) {
-                if (error) throw error
-                return { data, error: null }
-            }
-            return await this.replaceInSteps(original, input)
-        } catch (err) {
-            return { data: null, error: handleError(err) }
-        }
-    },
-
-    /**
-     * `replace` for databases without the `replace_transaction` RPC yet: delete, insert,
-     * and if the insert fails put the original back. Not atomic — a dropped connection
-     * between the steps can lose the transaction.
-     */
-    async replaceInSteps(original: Transaction, input: CreateTransactionInput): Promise<ServiceResult<Transaction>> {
-        try {
-            const { error: delError } = await supabase.from('transactions').delete().eq('id', original.id)
-            if (delError) throw delError
-
-            const { data, error } = await supabase
-                .from('transactions')
-                .insert({
-                    ...input,
-                    id: original.id,
-                    user_id: original.user_id,
-                    created_at: original.created_at,
-                    wish_list_item_id: original.wish_list_item_id,
-                })
-                .select()
-                .single()
-
-            if (error) {
-                await supabase.from('transactions').insert(toRow(original))
-                throw error
-            }
+            if (error) throw error
             return { data, error: null }
         } catch (err) {
             return { data: null, error: handleError(err) }
@@ -244,7 +211,7 @@ export const transactionsService = invalidatesOnWrite({
 
             const rowsByPeriod: Record<string, typeof data> = {}
             for (const id of periodIds) rowsByPeriod[id] = []
-            for (const tx of data) rowsByPeriod[tx.pay_period_id]?.push(tx)
+            for (const tx of data) if (tx.pay_period_id) rowsByPeriod[tx.pay_period_id]?.push(tx)
 
             const summaries: Record<string, PeriodSummary> = {}
             for (const id of periodIds) summaries[id] = summarizeTransactions(rowsByPeriod[id])

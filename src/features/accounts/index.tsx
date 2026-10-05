@@ -13,11 +13,13 @@ import {
 } from './lib/account-insights'
 import { accountsService } from '@/services/accounts-categories.service'
 import { IN_USE_MESSAGE } from '@/services/_base'
-import { useAccounts, usePeriods, usePeriodTransactions } from '@/queries'
+import { useAccounts, useArchivedAccounts, usePeriods, usePeriodTransactions } from '@/queries'
 import type { Account, TransactionWithDetails } from '@/types'
 import { toast } from 'sonner'
 import { LoadingContent } from '@/components/loading-content'
+import { formatCurrency } from '@/lib/helpers'
 import { cn } from '@/lib/utils'
+import { ArchivedAccounts } from './components/archived-accounts'
 import { PageHeader } from '@/components/page-header'
 
 const NO_ACCOUNTS: Account[] = []
@@ -36,21 +38,44 @@ export function AccountPage() {
     const [deleteLoading, setDeleteLoading] = useState(false)
     const [openAccount, setOpenAccount] = useState<Account | null>(null)
     const [editTab, setEditTab] = useState<'edit' | 'transfer'>('edit')
+    const [archivingAccount, setArchivingAccount] = useState<Account | null>(null)
+    const [archiveLoading, setArchiveLoading] = useState(false)
+    const { data: archived = NO_ACCOUNTS } = useArchivedAccounts()
 
     const handleDeleteAccount = async () => {
         if (!deletingAccountId) return
+        const account = accounts.find(a => a.id === deletingAccountId)
         setDeleteLoading(true)
         const { error } = await accountsService.remove(deletingAccountId)
         setDeleteLoading(false)
-        if (error) {
-            toast.error(error === IN_USE_MESSAGE
-                ? 'Cannot delete — account has linked transactions.'
-                : error)
-            setDeletingAccountId(null)
+        setDeletingAccountId(null)
+        if (error === IN_USE_MESSAGE && account) {
+            // It has history, so it can only be archived, and only once it's empty.
+            if (account.balance !== 0) {
+                toast.error(`${account.name} has transactions, so it can’t be deleted. Move its ${formatCurrency(account.balance)} out, then archive it.`)
+            } else {
+                setArchivingAccount(account)
+            }
             return
         }
-        setDeletingAccountId(null)
+        if (error) { toast.error(error); return }
         toast.success('Account deleted.')
+    }
+
+    const handleArchiveAccount = async () => {
+        if (!archivingAccount) return
+        setArchiveLoading(true)
+        const { error } = await accountsService.archive(archivingAccount.id)
+        setArchiveLoading(false)
+        if (error) { toast.error(error); return }
+        toast.success(`${archivingAccount.name} archived.`)
+        setArchivingAccount(null)
+    }
+
+    const handleRestoreAccount = async (account: Account) => {
+        const { error } = await accountsService.restore(account.id)
+        if (error) { toast.error(error); return }
+        toast.success(`${account.name} restored.`)
     }
 
     const totalBalance = accounts.reduce((s, a) => s + a.balance, 0)
@@ -115,6 +140,9 @@ export function AccountPage() {
                                 />
                             </div>
                         )}
+                        {archived.length > 0 && (
+                            <ArchivedAccounts accounts={archived} onRestore={handleRestoreAccount} />
+                        )}
                     </div>
                 </div>
 
@@ -150,11 +178,20 @@ export function AccountPage() {
                 <ConfirmDrawer
                     open={!!deletingAccountId}
                     title="Delete Account"
-                    description="Delete this account? This cannot be undone. Accounts with existing transactions cannot be deleted."
+                    description="Delete this account? This cannot be undone. An account with transactions can be archived instead."
                     confirmLabel="Delete Account"
                     loading={deleteLoading}
                     onConfirm={handleDeleteAccount}
                     onClose={() => setDeletingAccountId(null)}
+                />
+                <ConfirmDrawer
+                    open={!!archivingAccount}
+                    title="Archive Account"
+                    description={`${archivingAccount?.name ?? 'This account'} has transactions, so it can’t be deleted. Archive it instead? It disappears from your accounts and pickers, its transactions stay in your history, and you can restore it any time.`}
+                    confirmLabel="Archive Account"
+                    loading={archiveLoading}
+                    onConfirm={handleArchiveAccount}
+                    onClose={() => setArchivingAccount(null)}
                 />
             </section>
         </>

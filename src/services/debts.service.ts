@@ -1,14 +1,12 @@
 import { supabase } from '@/lib/supabase'
-import { handleError, invalidatesOnWrite, sessionUser, isMissingFunction, type ServiceResult, SIGNED_OUT_MESSAGE } from './_base'
+import { handleError, invalidatesOnWrite, sessionUser, type ServiceResult, SIGNED_OUT_MESSAGE } from './_base'
 import type { Account, Debt, DebtPayment, DebtWithAccount, Category } from '@/types/'
-import { accountsService } from './accounts-categories.service'
-import { transactionsService } from './transactions.service'
 import { COLORS } from '@/lib/static-colors'
 
-// Both are bills for the pace: paid once, never a daily habit.
+// A bill for the pace: paid once a period, never a daily habit. Money lent, borrowed and
+// collected has no category: it's a transfer, not spending or income.
 const DEBT_CATEGORIES: Record<string, { type: 'income' | 'expense'; color: string; icon: string; kind: 'fixed' }> = {
     'Debt Payment': { type: 'expense', color: COLORS[18] ?? '#6b7280', icon: 'arrow-down-circle', kind: 'fixed' },
-    'Receivable': { type: 'expense', color: COLORS[9] ?? '#6b7280', icon: 'arrow-up-circle', kind: 'fixed' },
 }
 
 export type DebtPaymentWithAccount = DebtPayment & {
@@ -23,7 +21,7 @@ export interface DebtEditInput {
 }
 
 export const debtsService = invalidatesOnWrite({
-    async findOrCreateCategory(name: 'Debt Payment' | 'Receivable'): Promise<ServiceResult<Category>> {
+    async findOrCreateCategory(name: 'Debt Payment'): Promise<ServiceResult<Category>> {
         try {
             const user = await sessionUser()
             if (!user) throw new Error(SIGNED_OUT_MESSAGE)
@@ -99,8 +97,9 @@ export const debtsService = invalidatesOnWrite({
     },
 
     /**
-     * Pay a debt from an account: the expense transaction, the lower remaining amount and
-     * the history row. The `pay_debt` RPC does all three in one database transaction.
+     * Pay a debt from an account: an expense linked to the debt and the history row, in
+     * one database transaction. The database lowers the remaining amount from the
+     * history row, and puts it back if the expense is deleted later.
      */
     async pay(input: {
         debt_id: string
@@ -121,37 +120,16 @@ export const debtsService = invalidatesOnWrite({
                 p_category_id: input.category_id,
                 p_note: input.note,
             })
-            if (!isMissingFunction(error)) {
-                if (error) throw error
-                return { data, error: null }
-            }
-
-            // No RPC yet: the same steps one request at a time.
-            const { data: tx, error: txError } = await transactionsService.create({
-                pay_period_id: input.pay_period_id,
-                account_id: input.account_id,
-                type: 'expense',
-                amount: input.amount,
-                note: input.note,
-                date: input.date,
-                category_id: input.category_id,
-            })
-            if (txError) throw new Error(txError)
-
-            const result = await this.recordPayment(input.debt_id, input.amount)
-            if (result.error) return result
-
-            await this.logPayment({ debt_id: input.debt_id, amount: input.amount, date: input.date, account_id: input.account_id, transaction_id: tx?.id ?? null })
-            return result
+            if (error) throw error
+            return { data, error: null }
         } catch (err) {
             return { data: null, error: handleError(err) }
         }
     },
 
     /**
-     * Collect on a receivable into an account: the balance goes up, the remaining amount
-     * goes down and the history row is written, in one database transaction via the
-     * `collect_receivable` RPC.
+     * Collect on a receivable into an account: money back in (a transfer, not income)
+     * linked to the debt, and the history row, in one database transaction.
      */
     async collect(input: { debt_id: string; amount: number; account: Account; date: string }): Promise<ServiceResult<Debt>> {
         try {
@@ -161,49 +139,6 @@ export const debtsService = invalidatesOnWrite({
                 p_account_id: input.account.id,
                 p_date: input.date,
             })
-            if (!isMissingFunction(error)) {
-                if (error) throw error
-                return { data, error: null }
-            }
-
-            // No RPC yet: the same steps one request at a time.
-            const { error: accError } = await accountsService.update(input.account.id, {
-                name: input.account.name,
-                type: input.account.type,
-                balance_adjustment: input.amount,
-            })
-            if (accError) throw new Error(accError)
-
-            const result = await this.recordPayment(input.debt_id, input.amount)
-            if (result.error) return result
-
-            await this.logPayment({ debt_id: input.debt_id, amount: input.amount, date: input.date, account_id: input.account.id })
-            return result
-        } catch (err) {
-            return { data: null, error: handleError(err) }
-        }
-    },
-
-    async recordPayment(id: string, amountPaid: number): Promise<ServiceResult<Debt>> {
-        try {
-            const { data: debt, error: fetchError } = await supabase
-                .from('debts')
-                .select('remaining_amount, total_amount')
-                .eq('id', id)
-                .single()
-
-            if (fetchError) throw fetchError
-
-            const newRemaining = Math.max(0, debt.remaining_amount - amountPaid)
-            const newStatus = newRemaining === 0 ? 'paid' : 'active'
-
-            const { data, error } = await supabase
-                .from('debts')
-                .update({ remaining_amount: newRemaining, status: newStatus })
-                .eq('id', id)
-                .select()
-                .single()
-
             if (error) throw error
             return { data, error: null }
         } catch (err) {
@@ -239,21 +174,6 @@ export const debtsService = invalidatesOnWrite({
             return { data, error: null }
         } catch (err) {
             return { data: null, error: handleError(err) }
-        }
-    },
-
-    /**
-     * Note a payment or collection in the debt's history. Best-effort: the money has
-     * already moved by the time this runs, so a failure (e.g. the debt_payments
-     * migration hasn't been run yet) must not undo or block anything.
-     */
-    async logPayment(input: { debt_id: string; amount: number; date: string; account_id: string | null; transaction_id?: string | null }): Promise<void> {
-        try {
-            const user = await sessionUser()
-            if (!user) return
-            await supabase.from('debt_payments').insert({ ...input, user_id: user.id })
-        } catch {
-            // History is an extra; ignore.
         }
     },
 

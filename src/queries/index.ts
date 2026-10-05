@@ -19,6 +19,7 @@ import type { Category, PayPeriod } from '@/types'
 export const queryKeys = {
     periods: ['periods'] as const,
     accounts: ['accounts'] as const,
+    archivedAccounts: ['accounts', 'archived'] as const,
     categories: ['categories'] as const,
     budgets: ['budgets'] as const,
     debts: ['debts'] as const,
@@ -59,6 +60,13 @@ export const accountsQuery = queryOptions({
 
 export function useAccounts() {
     return useQuery(accountsQuery)
+}
+
+export function useArchivedAccounts() {
+    return useQuery({
+        queryKey: queryKeys.archivedAccounts,
+        queryFn: () => unwrap(accountsService.getArchived()),
+    })
 }
 
 export const categoriesQuery = queryOptions({

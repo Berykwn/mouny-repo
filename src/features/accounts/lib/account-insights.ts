@@ -1,5 +1,6 @@
 import { getDaysBetween } from '@/lib/helpers'
 import { isEverydaySpending } from '@/lib/spending-pace'
+import { isInflow } from '@/lib/transaction-type'
 import type { Account, PayPeriod, TransactionWithDetails } from '@/types'
 
 /** Days of data needed before a spending pace means anything (matches usePeriodStats). */
@@ -54,10 +55,11 @@ export function accountInsights(
     for (const t of newestFirst) {
         const act = byAccount.get(t.account_id)
         if (!act) continue
-        if (t.type === 'income') act.moneyIn += t.amount
-        else if (t.type === 'expense') {
+        // Transfers count as money in and out of this account, but not towards its pace.
+        if (isInflow(t.type)) act.moneyIn += t.amount
+        else {
             act.moneyOut += t.amount
-            if (isEverydaySpending(t, periodIncome)) act.everydayOut += t.amount
+            if (t.type === 'expense' && isEverydaySpending(t, periodIncome)) act.everydayOut += t.amount
         }
         act.recent.push(t)
     }

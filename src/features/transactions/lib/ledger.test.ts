@@ -3,11 +3,18 @@ import { tx } from '@/test/fixtures'
 import { applyFilter, categoryFacets, dailySpending, groupByDate, linkedTo, txTitle } from './ledger'
 
 describe('linkedTo', () => {
-    it('recognises wish and debt transactions', () => {
+    it('recognises transfer, wish and debt transactions', () => {
+        expect(linkedTo(tx({ type: 'transfer_out', transfer_id: 't1' }))).toBe('transfer')
         expect(linkedTo(tx({ wish_list_item_id: 'w1' }))).toBe('wish')
+        expect(linkedTo(tx({ debt_id: 'd1' }))).toBe('debt')
+        expect(linkedTo(tx({ type: 'transfer_in', debt_id: 'd1', note: 'Collected from — Andi' }))).toBe('debt')
+        expect(linkedTo(tx({ type: 'transfer_in', note: 'Balance adjustment' }))).toBeNull()
+        expect(linkedTo(tx({ note: 'Lunch', category: { name: 'Food' } }))).toBeNull()
+    })
+
+    it('still recognises debt rows written before debt_id existed', () => {
         expect(linkedTo(tx({ category: { name: 'Debt Payment' } }))).toBe('debt')
         expect(linkedTo(tx({ note: 'Lent to — Andi' }))).toBe('debt')
-        expect(linkedTo(tx({ note: 'Lunch', category: { name: 'Food' } }))).toBeNull()
     })
 })
 
@@ -16,6 +23,7 @@ describe('txTitle', () => {
         expect(txTitle(tx({ note: 'Kopi', category: { name: 'Food' } }))).toBe('Kopi')
         expect(txTitle(tx({ category: { name: 'Food' } }))).toBe('Food')
         expect(txTitle(tx({ type: 'income' }))).toBe('Income')
+        expect(txTitle(tx({ type: 'transfer_in' }))).toBe('Transfer')
     })
 })
 
@@ -26,6 +34,7 @@ describe('groupByDate', () => {
             tx({ id: 'early', date: '2026-09-15', amount: 10_000, created_at: '2026-09-15T01:00:00Z' }),
             tx({ id: 'late', date: '2026-09-15', amount: 20_000, created_at: '2026-09-15T09:00:00Z' }),
             tx({ id: 'pay', date: '2026-09-15', type: 'income', amount: 100_000 }),
+            tx({ id: 'xfer', date: '2026-09-15', type: 'transfer_out', amount: 500_000 }),
         ])
         expect(groups.map(g => g.date)).toEqual(['2026-09-15', '2026-09-14'])
         expect(groups[0]).toMatchObject({ income: 100_000, expense: 30_000 })

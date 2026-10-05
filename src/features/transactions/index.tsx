@@ -12,6 +12,7 @@ import { BulkCategoryDrawer } from './components/bulk-category-drawer'
 import { LedgerHero } from './components/ledger-hero'
 import { TransactionDetail } from './components/transaction-detail'
 import { AddTransactionFlow } from './components/add-transaction-flow'
+import { linkedTo } from './lib/ledger'
 import { BottomDrawer } from '@/components/bottom-drawer'
 import { usePeriodStats } from '@/hooks/use-period-stats'
 import { transactionsService } from '@/services/transactions.service'
@@ -111,7 +112,9 @@ export default function TransactionsPage() {
         if (error) { toast.error(error); return }
         removeFromCache([deletingId])
         setDeletingId(null)
-        toast.success('Transaction deleted.', removed ? {
+        // Deleting a linked row also changed its transfer, debt or wish, and putting the
+        // row back wouldn't undo that, so only plain transactions get an Undo.
+        toast.success('Transaction deleted.', removed && !linkedTo(removed) ? {
             action: {
                 label: 'Undo',
                 onClick: async () => {
@@ -124,9 +127,9 @@ export default function TransactionsPage() {
     }
 
     const selectedTxs = transactions.filter(t => selectedIds.includes(t.id))
-    const commonSelectedType = (new Set(selectedTxs.map(t => t.type)).size === 1
-        ? selectedTxs[0]?.type ?? null
-        : null) as 'income' | 'expense' | null
+    // Categories belong to income or expenses; transfers have none to change.
+    const commonType = new Set(selectedTxs.map(t => t.type)).size === 1 ? selectedTxs[0]?.type ?? null : null
+    const commonSelectedType = commonType === 'income' || commonType === 'expense' ? commonType : null
 
     const handleBulkDeleteConfirm = async () => {
         setBulkDeleteLoading(true)

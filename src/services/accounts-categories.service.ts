@@ -4,6 +4,7 @@ import type { Account } from '@/types/'
 import type { Category } from '@/types/'
 import { COLORS } from '@/lib/static-colors'
 import { ICON_MAP } from '@/lib/icon-map'
+import { toISODate } from '@/lib/helpers'
 import type { CategoryKind } from '@/lib/category-kind'
 
 type CategoryInput = Omit<Category, 'id' | 'user_id' | 'created_at' | 'bg_color' | 'is_savings' | 'kind'> & { bg_color?: string | null; is_savings?: boolean; kind?: CategoryKind | null }
@@ -30,15 +31,56 @@ async function repairMissingIcons(categories: Category[]): Promise<Category[]> {
 }
 
 export const accountsService = invalidatesOnWrite({
+    /** Accounts in use. Archived ones are always empty, so leaving them out hides no money. */
     async getAll(): Promise<ServiceResult<Account[]>> {
         try {
             const { data, error } = await supabase
                 .from('accounts')
                 .select('*')
+                .is('archived_at', null)
                 .order('name')
 
             if (error) throw error
             return { data, error: null }
+        } catch (err) {
+            return { data: null, error: handleError(err) }
+        }
+    },
+
+    async getArchived(): Promise<ServiceResult<Account[]>> {
+        try {
+            const { data, error } = await supabase
+                .from('accounts')
+                .select('*')
+                .not('archived_at', 'is', null)
+                .order('name')
+
+            if (error) throw error
+            return { data, error: null }
+        } catch (err) {
+            return { data: null, error: handleError(err) }
+        }
+    },
+
+    /**
+     * Hide an account that has history and can't be deleted. Only an empty account can
+     * be archived; its transactions stay, locked, until it's restored.
+     */
+    async archive(id: string): Promise<ServiceResult<null>> {
+        try {
+            const { error } = await supabase.from('accounts').update({ archived_at: new Date().toISOString() }).eq('id', id)
+            if (error) throw error
+            return { data: null, error: null }
+        } catch (err) {
+            return { data: null, error: handleError(err) }
+        }
+    },
+
+    async restore(id: string): Promise<ServiceResult<null>> {
+        try {
+            const { error } = await supabase.from('accounts').update({ archived_at: null }).eq('id', id)
+            if (error) throw error
+            return { data: null, error: null }
         } catch (err) {
             return { data: null, error: handleError(err) }
         }
@@ -62,30 +104,35 @@ export const accountsService = invalidatesOnWrite({
         }
     },
 
-    async update(id: string, input: { name: string; type: Account['type']; balance_adjustment?: number }): Promise<ServiceResult<Account>> {
+    /** Name and type only: a balance changes through transactions (see adjustBalance). */
+    async update(id: string, input: { name: string; type: Account['type'] }): Promise<ServiceResult<Account>> {
         try {
-            const { data: current, error: fetchError } = await supabase
-                .from('accounts')
-                .select('balance')
-                .eq('id', id)
-                .single()
-
-            if (fetchError) throw fetchError
-
             const { data, error } = await supabase
                 .from('accounts')
-                .update({
-                    name: input.name,
-                    type: input.type,
-                    ...(input.balance_adjustment !== undefined && input.balance_adjustment !== 0
-                        ? { balance: current.balance + input.balance_adjustment }
-                        : {}
-                    ),
-                })
+                .update({ name: input.name, type: input.type })
                 .eq('id', id)
                 .select()
                 .single()
 
+            if (error) throw error
+            return { data, error: null }
+        } catch (err) {
+            return { data: null, error: handleError(err) }
+        }
+    },
+
+    /**
+     * Correct a balance by a signed amount. Recorded as a "Balance adjustment" transfer
+     * in the active period, so it shows in the ledger without counting as income or
+     * spending; with no active period yet it corrects the opening balance instead.
+     */
+    async adjustBalance(id: string, amount: number): Promise<ServiceResult<Account>> {
+        try {
+            const { data, error } = await supabase.rpc('adjust_balance', {
+                p_account_id: id,
+                p_amount: amount,
+                p_date: toISODate(),
+            })
             if (error) throw error
             return { data, error: null }
         } catch (err) {
@@ -118,10 +165,12 @@ export const accountsService = invalidatesOnWrite({
             if (!from || !to) throw new Error('Account not found')
             if (from.balance < amount) throw new Error('Insufficient balance')
 
+            // Dated in the user's own time zone; the database's "today" is UTC.
             const { error } = await supabase.rpc('transfer_balance', {
                 p_from_id: fromId,
                 p_to_id: toId,
                 p_amount: amount,
+                p_date: toISODate(),
             })
 
             if (error) throw error

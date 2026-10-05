@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { formatCurrency, formatCompact, formatShortCurrency, heatBarColor } from '@/lib/helpers'
 import type { TransactionWithDetails } from '@/types'
-import { TrendingUp, TrendingDown } from 'lucide-react'
+import { amountColor, amountSign } from '@/lib/transaction-type'
 import { cn } from '@/lib/utils'
+import { TypeIcon } from './type-icon'
 import { CategoryTile } from '@/features/categories/components/category-icon'
 import { useLongPress } from '@/hooks/use-long-press'
 import { dailySpending, txTitle } from '../lib/ledger'
@@ -95,10 +96,7 @@ function DayTransactionRow({
             {...(deletable ? longPressHandlers : { onClick: () => onOpen?.(tx) })}
         >
             <CategoryTile category={tx.category}>
-                {!tx.category && (tx.type === 'income'
-                    ? <TrendingUp className="w-[18px] h-[18px] text-positive" />
-                    : <TrendingDown className="w-[18px] h-[18px] text-negative" />
-                )}
+                {!tx.category && <TypeIcon type={tx.type} />}
             </CategoryTile>
             <div className="flex-1 min-w-0">
                 <p className="text-[13px] font-medium text-ink truncate">{title}</p>
@@ -106,11 +104,8 @@ function DayTransactionRow({
                     <p className="text-[11px] text-muted-ink truncate">{subtitle}</p>
                 )}
             </div>
-            <p className={cn(
-                'text-[13px] font-medium tabular-nums shrink-0',
-                tx.type === 'income' ? 'text-positive' : 'text-ink'
-            )}>
-                {tx.type === 'income' ? '+' : '−'}{formatCurrency(tx.amount)}
+            <p className={cn('text-[13px] font-medium tabular-nums shrink-0', amountColor(tx.type))}>
+                {amountSign(tx.type)}{formatCurrency(tx.amount)}
             </p>
         </div>
     )

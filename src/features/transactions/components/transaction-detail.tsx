@@ -1,9 +1,26 @@
-import { Pencil, Trash2, TrendingDown, TrendingUp } from 'lucide-react'
+import { Pencil, Trash2 } from 'lucide-react'
 import { formatCurrency, formatDate } from '@/lib/helpers'
+import { amountColor, amountSign, isTransfer } from '@/lib/transaction-type'
 import { cn } from '@/lib/utils'
 import { CategoryTile } from '@/features/categories/components/category-icon'
 import type { TransactionWithDetails } from '@/types'
-import { linkedTo } from '../lib/ledger'
+import { linkedTo, type TransactionLink } from '../lib/ledger'
+import { TypeIcon } from './type-icon'
+
+/** What deleting a linked transaction also does, in the words the sheet shows. */
+function linkNote(link: TransactionLink, tx: TransactionWithDetails): string {
+    if (link === 'transfer') return 'Part of a transfer. Deleting it removes both sides.'
+    if (link === 'wish') return 'Made from your wish list. Deleting it also takes it off the wish.'
+    return tx.type === 'expense'
+        ? 'A debt payment. Deleting it puts the amount back on the debt.'
+        : 'Made from your debts. Deleting it won’t change the debt.'
+}
+
+function typeLabel(tx: TransactionWithDetails): string {
+    if (isTransfer(tx.type)) return tx.type === 'transfer_in' ? 'Money in · not income' : 'Money out · not spending'
+    if (tx.type === 'income') return 'Income'
+    return tx.category?.is_savings ? 'Saved' : 'Expense'
+}
 
 const PRIMARY_BTN = 'w-full h-12 rounded-[14px] text-[13px] font-semibold text-white bg-[#6FA82B] hover:bg-[#6FA82B]/90 transition-colors flex items-center justify-center gap-2'
 
@@ -24,12 +41,14 @@ function addedAt(createdAt: string | null): string | null {
 
 /** One transaction in full — tapping a row lands here instead of a hidden gesture. */
 export function TransactionDetail({ tx, readOnly, onEdit, onDelete }: TransactionDetailProps) {
-    const isIncome = tx.type === 'income'
     const linked = linkedTo(tx)
     const added = addedAt(tx.created_at)
+    // A transfer row has no category and its money belongs to the transfer or debt, so
+    // there's nothing the edit form could change; delete it and record it again instead.
+    const editable = !isTransfer(tx.type)
 
     const facts: { label: string; value: string }[] = [
-        { label: 'Category', value: tx.category?.name ?? 'Uncategorised' },
+        ...(isTransfer(tx.type) ? [] : [{ label: 'Category', value: tx.category?.name ?? 'Uncategorised' }]),
         { label: 'Account', value: tx.account.name },
         { label: 'Date', value: formatDate(tx.date) },
         ...(added ? [{ label: 'Added', value: added }] : []),
@@ -39,19 +58,15 @@ export function TransactionDetail({ tx, readOnly, onEdit, onDelete }: Transactio
         <div className="space-y-4 pb-2">
             <div className="flex items-center gap-3">
                 <CategoryTile category={tx.category} className="w-12 h-12 rounded-[14px]">
-                    {!tx.category && (isIncome
-                        ? <TrendingUp className="w-5 h-5 text-positive" />
-                        : <TrendingDown className="w-5 h-5 text-negative" />)}
+                    {!tx.category && <TypeIcon type={tx.type} className="w-5 h-5" />}
                 </CategoryTile>
                 <div className="min-w-0">
-                    <p className="text-[11px] text-muted-ink">
-                        {isIncome ? 'Income' : tx.category?.is_savings ? 'Saved' : 'Expense'}
-                    </p>
+                    <p className="text-[11px] text-muted-ink">{typeLabel(tx)}</p>
                     <p className={cn(
                         'text-[24px] font-medium tracking-[-0.02em] leading-tight tabular-nums',
-                        isIncome ? 'text-positive' : 'text-ink'
+                        amountColor(tx.type)
                     )}>
-                        {isIncome ? '+' : '−'}{formatCurrency(tx.amount)}
+                        {amountSign(tx.type)}{formatCurrency(tx.amount)}
                     </p>
                 </div>
             </div>
@@ -71,10 +86,7 @@ export function TransactionDetail({ tx, readOnly, onEdit, onDelete }: Transactio
 
             {linked && (
                 <p className="rounded-[14px] bg-info/10 text-info px-3 py-2.5 text-[12px] leading-relaxed">
-                    Made from your {linked === 'wish' ? 'wish list' : 'debts'}.{' '}
-                    {linked === 'wish'
-                        ? 'Deleting it here won’t change what the wish shows as saved.'
-                        : 'Deleting it here won’t change the debt’s remaining amount.'}
+                    {linkNote(linked, tx)}
                 </p>
             )}
 
@@ -82,9 +94,11 @@ export function TransactionDetail({ tx, readOnly, onEdit, onDelete }: Transactio
                 <p className="text-center text-[11.5px] text-muted-ink pt-1">This period is closed, so its transactions are read-only.</p>
             ) : (
                 <div className="space-y-2 pt-1">
-                    <button type="button" onClick={onEdit} className={PRIMARY_BTN}>
-                        <Pencil className="w-4 h-4" /> Edit
-                    </button>
+                    {editable && (
+                        <button type="button" onClick={onEdit} className={PRIMARY_BTN}>
+                            <Pencil className="w-4 h-4" /> Edit
+                        </button>
+                    )}
                     <div className="flex items-center justify-center pt-1">
                         <button type="button" onClick={onDelete} className="flex items-center gap-1.5 text-[12px] font-medium text-muted-ink hover:text-negative py-2">
                             <Trash2 className="w-3.5 h-3.5" /> Delete

@@ -1,8 +1,11 @@
 import { ArrowLeftRight, Pencil, Trash2 } from 'lucide-react'
 import { formatCurrency, formatDateShort } from '@/lib/helpers'
+import { amountColor, amountSign } from '@/lib/transaction-type'
 import { cn } from '@/lib/utils'
 import { AccountTypeTile } from '@/components/account-type-icon'
 import { CategoryTile } from '@/features/categories/components/category-icon'
+import { TypeIcon } from '@/features/transactions/components/type-icon'
+import { txTitle } from '@/features/transactions/lib/ledger'
 import type { Account, AccountType } from '@/types'
 import { LOW_RUNWAY_DAYS, type AccountInsight } from '../lib/account-insights'
 
@@ -77,15 +80,15 @@ export function AccountDetail({ account, insight, canTransfer, hasActivePeriod, 
                     <ul className="divide-y divide-line-soft border-t border-line-soft">
                         {recent.map(tx => (
                             <li key={tx.id} className="flex items-center gap-2.5 px-4 py-2">
-                                <CategoryTile category={tx.category} />
+                                <CategoryTile category={tx.category}>
+                                    {!tx.category && <TypeIcon type={tx.type} />}
+                                </CategoryTile>
                                 <div className="min-w-0 flex-1">
-                                    <p className="truncate text-[12.5px] font-medium text-ink">
-                                        {tx.note || tx.category?.name || (tx.type === 'income' ? 'Income' : 'Expense')}
-                                    </p>
+                                    <p className="truncate text-[12.5px] font-medium text-ink">{txTitle(tx)}</p>
                                     <p className="text-[10.5px] text-subtle-ink">{formatDateShort(tx.date)}</p>
                                 </div>
-                                <p className={cn('text-[12.5px] tabular-nums shrink-0', tx.type === 'income' ? 'text-positive' : 'text-ink')}>
-                                    {tx.type === 'income' ? '+' : '−'}{formatCurrency(tx.amount)}
+                                <p className={cn('text-[12.5px] tabular-nums shrink-0', amountColor(tx.type))}>
+                                    {amountSign(tx.type)}{formatCurrency(tx.amount)}
                                 </p>
                             </li>
                         ))}

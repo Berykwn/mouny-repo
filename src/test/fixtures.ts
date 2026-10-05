@@ -21,6 +21,9 @@ export function tx({ category, ...overrides }: TxOverrides = {}): TransactionWit
         date: '2026-09-15',
         created_at: '2026-09-15T08:00:00Z',
         wish_list_item_id: null,
+        transfer_id: null,
+        debt_id: null,
+        wish_quantity: null,
         account: { id: 'acc-1', name: 'BCA', type: 'bank' },
         category: category
             ? { id: 'cat-1', name: 'Food', color: null, bg_color: null, icon: null, is_savings: false, kind: null, ...category }

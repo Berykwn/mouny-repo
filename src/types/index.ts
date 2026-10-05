@@ -29,7 +29,8 @@ export type WishListUpdate = Database['public']['Tables']['wish_list']['Update']
 
 export type AccountType = 'bank' | 'cash'
 export type CategoryType = 'income' | 'expense'
-export type TransactionType = 'income' | 'expense'
+/** transfer_in / transfer_out: money changing hands, not income or spending (see lib/transaction-type). */
+export type TransactionType = 'income' | 'expense' | 'transfer_in' | 'transfer_out'
 export type PayPeriodStatus = 'active' | 'closed'
 export type DebtType = 'debt' | 'receivable'
 export type DebtStatus = 'active' | 'paid'

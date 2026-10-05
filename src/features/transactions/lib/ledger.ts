@@ -1,21 +1,29 @@
 import type { TransactionWithDetails } from '@/types'
+import { isTransfer } from '@/lib/transaction-type'
 
-/** Categories the debts feature creates for its own transactions (see debts.service). */
+/** Rows the debts feature wrote before transactions carried debt_id (see debts.service). */
 const DEBT_CATEGORY_NAMES = new Set(['Debt Payment', 'Receivable'])
-const DEBT_NOTE = /^(Debt payment|Debt received|Lent to) —/
+const DEBT_NOTE = /^(Debt payment|Debt received|Lent to|Collected from) —/
+
+export type TransactionLink = 'wish' | 'debt' | 'transfer'
 
 /**
- * The record a transaction belongs to, when another feature made it. Its money then has
- * to stay in step with that record (a wish's saved amount, a debt's remaining amount).
+ * The record a transaction belongs to, when another feature made it. Its money belongs
+ * to that record: the database refuses edits to it, deleting it updates the record
+ * (or, for a transfer, deletes the other side), and an undo can't put it back.
  */
-export function linkedTo(tx: TransactionWithDetails): 'wish' | 'debt' | null {
+export function linkedTo(tx: Pick<TransactionWithDetails, 'wish_list_item_id' | 'transfer_id' | 'debt_id' | 'category' | 'note'>): TransactionLink | null {
+    if (tx.transfer_id) return 'transfer'
     if (tx.wish_list_item_id) return 'wish'
+    if (tx.debt_id) return 'debt'
     if ((tx.category && DEBT_CATEGORY_NAMES.has(tx.category.name)) || (tx.note && DEBT_NOTE.test(tx.note))) return 'debt'
     return null
 }
 
 export function txTitle(tx: TransactionWithDetails): string {
-    return tx.note || tx.category?.name || (tx.type === 'income' ? 'Income' : 'Expense')
+    if (tx.note || tx.category?.name) return (tx.note || tx.category?.name)!
+    if (isTransfer(tx.type)) return 'Transfer'
+    return tx.type === 'income' ? 'Income' : 'Expense'
 }
 
 export interface DayGroup {
@@ -33,7 +41,7 @@ export function groupByDate(txs: TransactionWithDetails[]): DayGroup[] {
         if (!g) { g = { date: tx.date, txs: [], income: 0, expense: 0 }; byDate.set(tx.date, g) }
         g.txs.push(tx)
         if (tx.type === 'income') g.income += tx.amount
-        else g.expense += tx.amount
+        else if (tx.type === 'expense') g.expense += tx.amount
     }
     const groups = [...byDate.values()].sort((a, b) => b.date.localeCompare(a.date))
     for (const g of groups) g.txs.sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''))

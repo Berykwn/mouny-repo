@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react'
-import { TrendingUp, TrendingDown, Trash2, Tag, Download, X, Search, ListChecks } from 'lucide-react'
+import { Trash2, Tag, Download, X, Search, ListChecks } from 'lucide-react'
 import { formatCurrency, formatShortCurrency } from '@/lib/helpers'
+import { amountColor, amountSign } from '@/lib/transaction-type'
+import { TypeIcon } from './type-icon'
 import { toCsv, downloadCsv } from '@/lib/csv'
 import { cn } from '@/lib/utils'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -256,10 +258,7 @@ export function TransactionListView({
                                                 <Checkbox checked={selected} tabIndex={-1} className="pointer-events-none" />
                                             )}
                                             <CategoryTile category={tx.category}>
-                                                {!tx.category && (tx.type === 'income'
-                                                    ? <TrendingUp className="w-[18px] h-[18px] text-positive" />
-                                                    : <TrendingDown className="w-[18px] h-[18px] text-negative" />
-                                                )}
+                                                {!tx.category && <TypeIcon type={tx.type} />}
                                             </CategoryTile>
                                             <div className="flex-1 min-w-0">
                                                 <p className="text-[13px] font-medium text-ink truncate">{title}</p>
@@ -267,9 +266,9 @@ export function TransactionListView({
                                             </div>
                                             <p className={cn(
                                                 'shrink-0 text-right text-[13px] font-medium tabular-nums',
-                                                tx.type === 'income' ? 'text-positive' : 'text-ink'
+                                                amountColor(tx.type)
                                             )}>
-                                                {tx.type === 'income' ? '+' : '−'}{formatCurrency(tx.amount)}
+                                                {amountSign(tx.type)}{formatCurrency(tx.amount)}
                                             </p>
                                         </button>
                                     )

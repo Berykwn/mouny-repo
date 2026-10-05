@@ -16,8 +16,9 @@ export type Database = {
     Tables: {
       accounts: {
         Row: {
+          archived_at: string | null
           balance: number
-          created_at: string | null
+          created_at: string
           id: string
           initial_balance: number
           name: string
@@ -25,8 +26,9 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          archived_at?: string | null
           balance?: number
-          created_at?: string | null
+          created_at?: string
           id?: string
           initial_balance?: number
           name: string
@@ -34,8 +36,9 @@ export type Database = {
           user_id: string
         }
         Update: {
+          archived_at?: string | null
           balance?: number
-          created_at?: string | null
+          created_at?: string
           id?: string
           initial_balance?: number
           name?: string
@@ -48,21 +51,21 @@ export type Database = {
         Row: {
           amount: number
           category_id: string
-          created_at: string | null
+          created_at: string
           id: string
           user_id: string
         }
         Insert: {
           amount: number
           category_id: string
-          created_at?: string | null
+          created_at?: string
           id?: string
           user_id: string
         }
         Update: {
           amount?: number
           category_id?: string
-          created_at?: string | null
+          created_at?: string
           id?: string
           user_id?: string
         }
@@ -80,7 +83,7 @@ export type Database = {
         Row: {
           bg_color: string | null
           color: string | null
-          created_at: string | null
+          created_at: string
           icon: string | null
           id: string
           is_savings: boolean
@@ -92,7 +95,7 @@ export type Database = {
         Insert: {
           bg_color?: string | null
           color?: string | null
-          created_at?: string | null
+          created_at?: string
           icon?: string | null
           id?: string
           is_savings?: boolean
@@ -104,7 +107,7 @@ export type Database = {
         Update: {
           bg_color?: string | null
           color?: string | null
-          created_at?: string | null
+          created_at?: string
           icon?: string | null
           id?: string
           is_savings?: boolean
@@ -166,7 +169,7 @@ export type Database = {
       debts: {
         Row: {
           counterparty: string
-          created_at: string | null
+          created_at: string
           due_date: string | null
           id: string
           notes: string | null
@@ -179,7 +182,7 @@ export type Database = {
         }
         Insert: {
           counterparty: string
-          created_at?: string | null
+          created_at?: string
           due_date?: string | null
           id?: string
           notes?: string | null
@@ -192,7 +195,7 @@ export type Database = {
         }
         Update: {
           counterparty?: string
-          created_at?: string | null
+          created_at?: string
           due_date?: string | null
           id?: string
           notes?: string | null
@@ -216,7 +219,7 @@ export type Database = {
       pay_periods: {
         Row: {
           closing_balance: number | null
-          created_at: string | null
+          created_at: string
           end_date: string | null
           id: string
           notes: string | null
@@ -228,7 +231,7 @@ export type Database = {
         }
         Insert: {
           closing_balance?: number | null
-          created_at?: string | null
+          created_at?: string
           end_date?: string | null
           id?: string
           notes?: string | null
@@ -240,7 +243,7 @@ export type Database = {
         }
         Update: {
           closing_balance?: number | null
-          created_at?: string | null
+          created_at?: string
           end_date?: string | null
           id?: string
           notes?: string | null
@@ -265,42 +268,58 @@ export type Database = {
           account_id: string
           amount: number
           category_id: string | null
-          created_at: string | null
+          created_at: string
           date: string
+          debt_id: string | null
           id: string
           note: string | null
-          pay_period_id: string
+          pay_period_id: string | null
+          transfer_id: string | null
           type: string
           user_id: string
           wish_list_item_id: string | null
+          wish_quantity: number | null
         }
         Insert: {
           account_id: string
           amount: number
           category_id?: string | null
-          created_at?: string | null
+          created_at?: string
           date?: string
+          debt_id?: string | null
           id?: string
           note?: string | null
-          pay_period_id: string
+          pay_period_id?: string | null
+          transfer_id?: string | null
           type: string
           user_id: string
           wish_list_item_id?: string | null
+          wish_quantity?: number | null
         }
         Update: {
           account_id?: string
           amount?: number
           category_id?: string | null
-          created_at?: string | null
+          created_at?: string
           date?: string
+          debt_id?: string | null
           id?: string
           note?: string | null
-          pay_period_id?: string
+          pay_period_id?: string | null
+          transfer_id?: string | null
           type?: string
           user_id?: string
           wish_list_item_id?: string | null
+          wish_quantity?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "transactions_debt_id_fkey"
+            columns: ["debt_id"]
+            isOneToOne: false
+            referencedRelation: "debts"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "transactions_account_id_fkey"
             columns: ["account_id"]
@@ -314,13 +333,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "categories"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "transactions_pay_period_id_fkey"
-            columns: ["pay_period_id"]
-            isOneToOne: false
-            referencedRelation: "active_period_summary"
-            referencedColumns: ["period_id"]
           },
           {
             foreignKeyName: "transactions_pay_period_id_fkey"
@@ -340,7 +352,7 @@ export type Database = {
       }
       wish_list: {
         Row: {
-          created_at: string | null
+          created_at: string
           estimated_price: number | null
           icon: string | null
           id: string
@@ -359,7 +371,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
-          created_at?: string | null
+          created_at?: string
           estimated_price?: number | null
           icon?: string | null
           id?: string
@@ -378,7 +390,7 @@ export type Database = {
           user_id: string
         }
         Update: {
-          created_at?: string | null
+          created_at?: string
           estimated_price?: number | null
           icon?: string | null
           id?: string
@@ -401,13 +413,6 @@ export type Database = {
             foreignKeyName: "wish_list_pay_period_id_fkey"
             columns: ["pay_period_id"]
             isOneToOne: false
-            referencedRelation: "active_period_summary"
-            referencedColumns: ["period_id"]
-          },
-          {
-            foreignKeyName: "wish_list_pay_period_id_fkey"
-            columns: ["pay_period_id"]
-            isOneToOne: false
             referencedRelation: "pay_periods"
             referencedColumns: ["id"]
           },
@@ -422,21 +427,7 @@ export type Database = {
       }
     }
     Views: {
-      active_period_summary: {
-        Row: {
-          end_date: string | null
-          estimated_remaining: number | null
-          period_id: string | null
-          salary_amount: number | null
-          start_date: string | null
-          status: string | null
-          total_expense: number | null
-          total_income: number | null
-          transaction_count: number | null
-          user_id: string | null
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Functions: {
       buy_wish: {
@@ -512,8 +503,16 @@ export type Database = {
         Returns: Database["public"]["Tables"]["transactions"]["Row"]
       }
       transfer_balance: {
-        Args: { p_amount: number; p_from_id: string; p_to_id: string }
-        Returns: undefined
+        Args: { p_amount: number; p_date?: string; p_from_id: string; p_to_id: string }
+        Returns: string
+      }
+      adjust_balance: {
+        Args: { p_account_id: string; p_amount: number; p_date?: string }
+        Returns: Database["public"]["Tables"]["accounts"]["Row"]
+      }
+      period_for_date: {
+        Args: { p_date: string }
+        Returns: string
       }
     }
     Enums: {

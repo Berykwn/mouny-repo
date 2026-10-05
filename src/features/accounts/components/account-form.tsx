@@ -51,9 +51,12 @@ export function AccountForm({ onSuccess, initial, allAccounts = [], initialTab =
         if (isEdit) {
             if (adjustment !== '' && isNaN(parsedAdj)) { toast.error('Invalid adjustment value.'); return }
             setLoading(true)
-            const { error } = await accountsService.update(initial.id, { name, type, balance_adjustment: parsedAdj })
+            const { error } = await accountsService.update(initial.id, { name, type })
+            const { error: adjError } = !error && adjustment !== '' && parsedAdj !== 0
+                ? await accountsService.adjustBalance(initial.id, parsedAdj)
+                : { error: null }
             setLoading(false)
-            if (error) { toast.error(error); return }
+            if (error || adjError) { toast.error((error || adjError)!); return }
             toast.success('Account updated.')
         } else {
             if (isNaN(parsedInitial) || parsedInitial < 0) { toast.error('Invalid balance.'); return }

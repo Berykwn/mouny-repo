@@ -110,29 +110,19 @@ export function DebtForm({ onSuccess, payPeriodId, periodStartDate, initialType 
             return
         }
 
-        // Only create a transaction if this debt actually moved money
+        // Only create a transaction if this debt actually moved money. Borrowed money in
+        // and lent money out only change hands, so they're transfers, not income or spending.
         if (affectsBalance && accountId) {
-            const categoryName = type === 'debt' ? 'Debt Payment' : 'Receivable'
-            const { data: category, error: catError } = await debtsService.findOrCreateCategory(categoryName)
-
-            if (catError || !category) {
-                toast.error('Failed to resolve category.')
-                setLoading(false)
-                return
-            }
-
-            // debt → income (received cash from lender)
-            // receivable → expense (lent cash out)
             const { error: txError } = await transactionsService.create({
                 pay_period_id: payPeriodId,
                 account_id: accountId,
-                type: type === 'debt' ? 'income' : 'expense',
+                type: type === 'debt' ? 'transfer_in' : 'transfer_out',
                 amount: parsed,
                 note: type === 'debt'
                     ? `Debt received — ${counterparty.trim()}`
                     : `Lent to — ${counterparty.trim()}`,
                 date,
-                category_id: category.id,
+                debt_id: debt.id,
             })
 
             if (txError) { toast.error(txError); setLoading(false); return }
