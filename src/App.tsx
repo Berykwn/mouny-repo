@@ -26,7 +26,7 @@ export default function App() {
             <ThemeProvider>
                 <OfflineBanner />
                 <AppRouter />
-                <Toaster richColors position='top-right'/>
+                <Toaster />
             </ThemeProvider>
         </PersistQueryClientProvider>
     )
