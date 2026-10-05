@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import { BottomDrawer } from '@/components/bottom-drawer'
 import { ConfirmDrawer } from '@/components/confirmation-drawer'
 import { WishListItems } from './components/wish-list-items'
@@ -41,10 +41,6 @@ export default function WishListPage() {
     const [editingItem, setEditingItem] = useState<WishListItem | null>(null)
     const [deletingId, setDeletingId] = useState<string | null>(null)
     const [deleteLoading, setDeleteLoading] = useState(false)
-
-    useEffect(() => {
-        if (wishesQuery.error) toast.error(wishesQuery.error.message)
-    }, [wishesQuery.error])
 
     const handleDeleteConfirm = async () => {
         if (!deletingId) return

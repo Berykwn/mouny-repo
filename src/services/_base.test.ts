@@ -5,7 +5,10 @@ const invalidateAll = vi.fn()
 vi.mock('@/lib/query-client', () => ({ invalidateAll }))
 vi.mock('@/lib/supabase', () => ({ supabase: {} }))
 
-const { OFFLINE_MESSAGE, fetchAllPages, handleError, invalidatesOnWrite, isMissingFunction } = await import('./_base')
+const {
+    IN_USE_MESSAGE, OFFLINE_MESSAGE, SIGNED_OUT_MESSAGE,
+    fetchAllPages, handleError, invalidatesOnWrite, isMissingFunction,
+} = await import('./_base')
 
 beforeEach(() => invalidateAll.mockClear())
 
@@ -56,7 +59,28 @@ describe('handleError', () => {
     it('words a request that never reached the server as being offline', () => {
         expect(handleError(new TypeError('Failed to fetch'))).toBe(OFFLINE_MESSAGE)
         expect(handleError(new TypeError('Load failed'))).toBe(OFFLINE_MESSAGE)
-        expect(handleError(new Error('duplicate key'))).toBe('duplicate key')
+        // Supabase hands the fetch failure on as an error object rather than throwing it.
+        expect(handleError({ message: 'TypeError: Failed to fetch', code: '' })).toBe(OFFLINE_MESSAGE)
+    })
+
+    const pg = (code: string, message = 'technical') => ({ message, details: '', hint: '', code })
+
+    it('passes our own messages through', () => {
+        expect(handleError(new Error('Insufficient balance'))).toBe('Insufficient balance')
+        expect(handleError(pg('P0001', 'Wish not found'))).toBe('Wish not found')
+    })
+
+    it('words Postgres and PostgREST errors from their code', () => {
+        expect(handleError(pg('23503', 'update or delete on table "categories" violates foreign key constraint'))).toBe(IN_USE_MESSAGE)
+        expect(handleError(pg('23503', 'insert or update on table "transactions" violates foreign key constraint'))).not.toBe(IN_USE_MESSAGE)
+        expect(handleError(pg('23514', 'violates check constraint "accounts_balance_check"'))).toBe('Insufficient balance.')
+        expect(handleError(pg('PGRST303'))).toBe(SIGNED_OUT_MESSAGE)
+        expect(handleError(pg('23505'))).not.toMatch(/technical|duplicate/)
+    })
+
+    it('never shows an unknown code\'s technical message', () => {
+        expect(handleError(pg('XX000', 'internal error at line 42'))).toBe('Something went wrong. Please try again.')
+        expect(handleError(null)).toBe('Something went wrong. Please try again.')
     })
 })
 

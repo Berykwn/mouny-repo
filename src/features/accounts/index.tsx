@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import { WalletIcon } from '@/components/account-type-icon'
 import { WALLET_TILE_CLASS } from '@/lib/account-tiles'
 import { BottomDrawer } from '@/components/bottom-drawer'
@@ -12,6 +12,7 @@ import {
     accountInsights, accountShares, balanceTrend, daysIntoPeriod, totalRunwayDays,
 } from './lib/account-insights'
 import { accountsService } from '@/services/accounts-categories.service'
+import { IN_USE_MESSAGE } from '@/services/_base'
 import { useAccounts, usePeriods, usePeriodTransactions } from '@/queries'
 import type { Account, TransactionWithDetails } from '@/types'
 import { toast } from 'sonner'
@@ -36,17 +37,13 @@ export function AccountPage() {
     const [openAccount, setOpenAccount] = useState<Account | null>(null)
     const [editTab, setEditTab] = useState<'edit' | 'transfer'>('edit')
 
-    useEffect(() => {
-        if (accountsQuery.error) toast.error(accountsQuery.error.message)
-    }, [accountsQuery.error])
-
     const handleDeleteAccount = async () => {
         if (!deletingAccountId) return
         setDeleteLoading(true)
         const { error } = await accountsService.remove(deletingAccountId)
         setDeleteLoading(false)
         if (error) {
-            toast.error(error.includes('foreign key') || error.includes('violates')
+            toast.error(error === IN_USE_MESSAGE
                 ? 'Cannot delete — account has linked transactions.'
                 : error)
             setDeletingAccountId(null)

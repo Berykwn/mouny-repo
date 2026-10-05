@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import { Sparkles, Loader2, Tag } from 'lucide-react'
 import { HeroAction } from '@/components/hero'
 import { BudgetHero } from './components/budget-hero'
@@ -9,6 +9,7 @@ import { CategoryForm } from './components/category-form'
 import { CategoryList } from './components/category-list'
 import { CategoryDetail } from './components/category-detail'
 import { categoriesService } from '@/services/accounts-categories.service'
+import { IN_USE_MESSAGE } from '@/services/_base'
 import type { Category, TransactionWithDetails } from '@/types'
 import { toast } from 'sonner'
 import { LoadingContent } from '@/components/loading-content'
@@ -38,18 +39,13 @@ export function CategoriesPage() {
     const [deleteLoading, setDeleteLoading] = useState(false)
     const [seeding, setSeeding] = useState(false)
 
-    const loadError = categoriesQuery.error ?? budgetsQuery.error
-    useEffect(() => {
-        if (loadError) toast.error(loadError.message)
-    }, [loadError])
-
     const handleDeleteCategory = async () => {
         if (!deletingCategoryId) return
         setDeleteLoading(true)
         const { error } = await categoriesService.remove(deletingCategoryId)
         setDeleteLoading(false)
         if (error) {
-            toast.error(error.includes('foreign key') || error.includes('violates')
+            toast.error(error === IN_USE_MESSAGE
                 ? 'Cannot delete — category is used by existing transactions.'
                 : error)
             setDeletingCategoryId(null)

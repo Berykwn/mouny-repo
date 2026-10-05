@@ -15,14 +15,54 @@ export function isMissingFunction(error: { code?: string } | null): boolean {
     return error?.code === 'PGRST202'
 }
 
+/**
+ * What the user is told when something fails. Our own messages (`new Error(...)` in a
+ * service, `raise exception` in a database function) are written for them and pass through;
+ * Postgres and PostgREST errors are technical ("violates foreign key constraint ..."), so
+ * they're worded from their code instead.
+ */
 export function handleError(error: PostgrestError | Error | unknown): string {
-    // What fetch throws when the request never reaches the server.
-    if (error instanceof TypeError && /fetch|network|load failed/i.test(error.message)) return OFFLINE_MESSAGE
-    if (error instanceof Error) return error.message
-    if (typeof error === 'object' && error !== null && 'message' in error) {
-        return (error as PostgrestError).message
+    const message = typeof error === 'object' && error !== null && 'message' in error
+        ? String((error as { message: unknown }).message)
+        : ''
+    // What fetch throws when the request never reaches the server. Supabase passes it on
+    // as an error object whose message is "TypeError: Failed to fetch".
+    if (/failed to fetch|networkerror|load failed|network request failed/i.test(message)) return OFFLINE_MESSAGE
+
+    const code = typeof error === 'object' && error !== null && 'code' in error
+        ? String((error as { code: unknown }).code ?? '')
+        : ''
+    if (code) return messageForCode(code, message)
+    return message || GENERIC_MESSAGE
+}
+
+function messageForCode(code: string, message: string): string {
+    switch (code) {
+        // `raise exception` in our own database functions.
+        case 'P0001': return message || GENERIC_MESSAGE
+        case '23503':
+            return /^update or delete/i.test(message)
+                ? IN_USE_MESSAGE
+                : 'Something this refers to no longer exists. Refresh and try again.'
+        case '23505': return 'That already exists.'
+        case '23514':
+            return /balance/i.test(message)
+                ? 'Insufficient balance.'
+                : 'One of the values isn’t allowed. Check the form and try again.'
+        case '23502': return 'Some required details are missing.'
+        case '22003': return 'That number is too large.'
+        case '22P02':
+        case '22007':
+        case '22008': return 'Some details aren’t in the right format.'
+        case '42501': return 'You don’t have permission to do that.'
+        // PostgREST: the session's token is missing, invalid or expired.
+        case 'PGRST301':
+        case 'PGRST303': return SIGNED_OUT_MESSAGE
+        // PostgREST: `.single()` found no row, e.g. it was deleted on another device.
+        case 'PGRST116': return 'That item no longer exists. Refresh and try again.'
+        case '57014': return 'The server took too long. Please try again.'
+        default: return GENERIC_MESSAGE
     }
-    return 'Something went wrong. Please try again.'
 }
 
 /** Supabase's API returns at most this many rows per request (its default "max rows"). */
@@ -80,3 +120,8 @@ export const SIGNED_OUT_MESSAGE = 'You’re signed out. Please log in again.'
 
 /** What a write says when there's no connection. */
 export const OFFLINE_MESSAGE = 'You’re offline. Connect to the internet and try again.'
+
+/** Deleting something other rows still point to, e.g. a category with transactions. */
+export const IN_USE_MESSAGE = 'It’s still in use, so it can’t be deleted.'
+
+const GENERIC_MESSAGE = 'Something went wrong. Please try again.'

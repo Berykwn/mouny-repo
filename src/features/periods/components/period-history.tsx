@@ -1,5 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
-import { toast } from 'sonner'
+import { useMemo, useState } from 'react'
 import { formatCurrency, formatDate } from '@/lib/helpers'
 import type { PayPeriod } from '@/types'
 import { History, ChevronDown, Wallet, StickyNote } from 'lucide-react'
@@ -14,12 +13,8 @@ interface PeriodHistoryProps {
 export function PeriodHistory({ periods }: PeriodHistoryProps) {
     const closed = useMemo(() => periods.filter(p => p.status === 'closed'), [periods])
     const [openId, setOpenId] = useState<string | null>(null)
-    const { data, error } = usePeriodSummaries(closed.map(p => p.id))
+    const { data } = usePeriodSummaries(closed.map(p => p.id))
     const summaryMap: Record<string, PeriodSummary> = data ?? {}
-
-    useEffect(() => {
-        if (error) toast.error(error.message)
-    }, [error])
 
     if (closed.length === 0) return null
 

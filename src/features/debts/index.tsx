@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import { BottomDrawer } from '@/components/bottom-drawer'
 import { ConfirmDrawer } from '@/components/confirmation-drawer'
 import { DebtList } from './components/debt-list'
@@ -42,10 +42,6 @@ export default function DebtsPage() {
     const [collectingDebt, setCollectingDebt] = useState<DebtWithAccount | null>(null)
     const [deletingDebt, setDeletingDebt] = useState<DebtWithAccount | null>(null)
     const [deleteLoading, setDeleteLoading] = useState(false)
-
-    useEffect(() => {
-        if (debtsQuery.error) toast.error(debtsQuery.error.message)
-    }, [debtsQuery.error])
 
     const handleDeleteConfirm = async () => {
         if (!deletingDebt) return

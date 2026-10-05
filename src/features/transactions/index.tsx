@@ -35,7 +35,6 @@ export default function TransactionsPage() {
         selectedPeriod,
         isActivePeriod: isCurrentPeriod,
         isPending: loading,
-        error: periodsError,
         selectPeriod,
     } = useSelectedPeriod()
     const txQuery = usePeriodTransactions(selectedPeriod?.id)
@@ -87,12 +86,6 @@ export default function TransactionsPage() {
     // keeps its selected day. Only a period with nothing cached yet shows a loader.
     const txLoading = !!selectedPeriod && txQuery.isPending
 
-    useEffect(() => {
-        if (periodsError) toast.error(periodsError.message)
-    }, [periodsError])
-    useEffect(() => {
-        if (txQuery.error) toast.error(txQuery.error.message)
-    }, [txQuery.error])
 
     // A new period, or rows that are gone after a refetch: drop their selections.
     useEffect(() => {
