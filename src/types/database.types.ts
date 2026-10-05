@@ -645,6 +645,31 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      move_to_savings: {
+        Args: { p_account_id: string; p_id: string }
+        Returns: {
+          account_id: string
+          amount: number
+          category_id: string | null
+          created_at: string | null
+          date: string
+          debt_id: string | null
+          id: string
+          note: string | null
+          pay_period_id: string | null
+          transfer_id: string | null
+          type: string
+          user_id: string
+          wish_list_item_id: string | null
+          wish_quantity: number | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "transactions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       pay_debt: {
         Args: {
           p_account_id: string

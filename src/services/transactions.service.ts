@@ -131,6 +131,21 @@ export const transactionsService = invalidatesOnWrite({
         }
     },
 
+    /**
+     * Turn a savings expense into the transfer it was: the money went into a savings
+     * account rather than leaving. Same date, period and note; the source balance doesn't
+     * move again, the savings account gains it, and the period still counts it as saved.
+     */
+    async moveToSavings(id: string, accountId: string): Promise<ServiceResult<Transaction>> {
+        try {
+            const { data, error } = await supabase.rpc('move_to_savings', { p_id: id, p_account_id: accountId })
+            if (error) throw error
+            return { data, error: null }
+        } catch (err) {
+            return { data: null, error: handleError(err) }
+        }
+    },
+
     /** Put a deleted transaction back exactly as it was (the delete's undo). */
     async restore(original: Transaction): Promise<ServiceResult<null>> {
         try {

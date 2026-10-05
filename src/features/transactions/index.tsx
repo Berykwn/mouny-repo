@@ -235,6 +235,7 @@ export default function TransactionsPage() {
                         readOnly={!isCurrentPeriod}
                         onEdit={() => { setEditingTx(openTx); setOpenTx(null) }}
                         onDelete={() => { setDeletingId(openTx.id); setOpenTx(null) }}
+                        onMoved={() => setOpenTx(null)}
                     />
                 )}
             </BottomDrawer>

@@ -111,6 +111,7 @@ cp .env.example .env
 | `20261005000100_ledger_integrity.sql` | Transfer transaction types, composite foreign keys, consistency triggers for debts, wishes and transfers, closed-period locks, and `adjust_balance` |
 | `20261005000200_archive_and_unperiodized_transfers.sql` | Account archiving, and transfers recorded outside any period. For databases that ran an early version of the file above |
 | `20261005000300_savings_accounts.sql` | `accounts.is_savings`; `period_summaries` counts money moved into savings accounts as saved |
+| `20261005000400_move_to_savings.sql` | `move_to_savings`: turns a savings expense into a transfer into a savings account, in place |
 
 How the data is kept consistent:
 - **Balances.** Every balance change is a transaction, so `balance = initial_balance + transactions`. That includes transfers (a `transfer_out` and a `transfer_in` sharing a `transfer_id`), receivable collections and balance adjustments. The app can't write `balance` directly.

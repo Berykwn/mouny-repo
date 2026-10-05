@@ -13,7 +13,7 @@ All notable changes to Mouny, newest first. The format follows [Keep a Changelog
 
 The app now works offline, the sign-in pages match the rest of the app, categories have kinds, and balances, debts and wishes can no longer drift out of step.
 
-> **Migrations required, in order:** `20261005000100_ledger_integrity.sql`, `20261005000200_archive_and_unperiodized_transfers.sql`, `20261005000300_savings_accounts.sql`. Run them before deploying this version: transfers, collections, balance adjustments, archiving and savings accounts depend on them. They keep every current balance as it is.
+> **Migrations required, in order:** `20261005000100_ledger_integrity.sql`, `20261005000200_archive_and_unperiodized_transfers.sql`, `20261005000300_savings_accounts.sql`, `20261005000400_move_to_savings.sql`. Run them before deploying this version: transfers, collections, balance adjustments, archiving and savings accounts depend on them. They keep every current balance as it is.
 
 ### Added
 - **Every balance change is in the ledger.** Transfers between accounts, collected receivables and balance adjustments now show up as transactions. An account's balance always equals its opening balance plus its transactions. Transfers and adjustments still work between pay periods; they're then recorded outside any period.
@@ -22,6 +22,7 @@ The app now works offline, the sign-in pages match the rest of the app, categori
   - Moving money back out to an everyday account takes it off what the period saved. Moves between two savings accounts don't count.
   - Runway and what's left to spend leave savings accounts out.
   - When you pick a savings category while a savings account exists, the form offers to record a transfer instead.
+  - **Move to savings account.** A savings expense recorded earlier (the money went nowhere) can be moved into a savings account from its detail sheet. It becomes a transfer with the same date and note: the source balance doesn't change, the savings account gains the money, and the period's numbers stay the same.
 - **Archive accounts.** An account with transactions can't be deleted, so the app now offers to archive it once its balance is zero. An archived account is hidden from your accounts and pickers, its history stays (locked), and you can restore it from the Accounts page.
 - **Works offline.** Your last balances and transactions are saved on the device, so the app opens with them even without a connection. A banner shows when you're offline. Changes are blocked while offline, with a clear message, so nothing gets lost.
 - **Update prompt.** When a new version is ready, a toast offers **Reload** instead of switching versions while you're filling in a form. An open app checks for updates every hour and whenever you return to it.

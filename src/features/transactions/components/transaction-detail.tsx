@@ -1,4 +1,8 @@
-import { Pencil, Trash2 } from 'lucide-react'
+import { useState } from 'react'
+import { Loader2, Pencil, Trash2 } from 'lucide-react'
+import { toast } from 'sonner'
+import { useAccounts } from '@/queries'
+import { transactionsService } from '@/services/transactions.service'
 import { formatCurrency, formatDate } from '@/lib/helpers'
 import { amountColor, amountSign, isTransfer } from '@/lib/transaction-type'
 import { cn } from '@/lib/utils'
@@ -29,6 +33,48 @@ interface TransactionDetailProps {
     readOnly: boolean
     onEdit: () => void
     onDelete: () => void
+    /** After the transaction was moved into a savings account (it's a transfer now). */
+    onMoved: () => void
+}
+
+/**
+ * A savings expense recorded before savings accounts existed, or by mistake: the money
+ * went into a savings account rather than leaving. One tap turns it into that transfer.
+ */
+function MoveToSavings({ tx, onMoved }: { tx: TransactionWithDetails; onMoved: () => void }) {
+    const { data: accounts } = useAccounts()
+    const [movingTo, setMovingTo] = useState<string | null>(null)
+    const targets = (accounts ?? []).filter(a => a.is_savings && a.id !== tx.account_id)
+    if (targets.length === 0) return null
+
+    const move = async (accountId: string, name: string) => {
+        setMovingTo(accountId)
+        const { error } = await transactionsService.moveToSavings(tx.id, accountId)
+        setMovingTo(null)
+        if (error) { toast.error(error); return }
+        toast.success(`Moved into ${name}.`)
+        onMoved()
+    }
+
+    return (
+        <div className="rounded-[14px] bg-info/10 px-3 py-2.5 text-[12px] text-info leading-relaxed">
+            Did this money go into a savings account? Move it there: it stays in your balance and still counts as saved.
+            <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1">
+                {targets.map(a => (
+                    <button
+                        key={a.id}
+                        type="button"
+                        onClick={() => move(a.id, a.name)}
+                        disabled={movingTo !== null}
+                        className="flex items-center gap-1.5 font-semibold underline underline-offset-2 disabled:opacity-50"
+                    >
+                        {movingTo === a.id && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                        Move to {a.name}
+                    </button>
+                ))}
+            </div>
+        </div>
+    )
 }
 
 function addedAt(createdAt: string | null): string | null {
@@ -40,7 +86,7 @@ function addedAt(createdAt: string | null): string | null {
 }
 
 /** One transaction in full — tapping a row lands here instead of a hidden gesture. */
-export function TransactionDetail({ tx, readOnly, onEdit, onDelete }: TransactionDetailProps) {
+export function TransactionDetail({ tx, readOnly, onEdit, onDelete, onMoved }: TransactionDetailProps) {
     const linked = linkedTo(tx)
     const added = addedAt(tx.created_at)
     // A transfer row has no category and its money belongs to the transfer or debt, so
@@ -88,6 +134,10 @@ export function TransactionDetail({ tx, readOnly, onEdit, onDelete }: Transactio
                 <p className="rounded-[14px] bg-info/10 text-info px-3 py-2.5 text-[12px] leading-relaxed">
                     {linkNote(linked, tx)}
                 </p>
+            )}
+
+            {!readOnly && !linked && tx.type === 'expense' && tx.category?.is_savings && (
+                <MoveToSavings tx={tx} onMoved={onMoved} />
             )}
 
             {readOnly ? (
