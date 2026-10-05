@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase'
-import { fetchAllPages, handleError, invalidatesOnWrite, sessionUser, isMissingFunction, type ServiceResult, SIGNED_OUT_MESSAGE } from './_base'
+import { fetchAllPages, handleError, invalidatesOnWrite, sessionUser, isMissingFunction, NULL_ARG, type ServiceResult, SIGNED_OUT_MESSAGE } from './_base'
 import type { Transaction, TransactionWithDetails, TransactionType } from '@/types/'
 import { EMPTY_PERIOD_SUMMARY, summarizeTransactions, summaryFromTotals, type PeriodSummary } from '@/lib/period-summary'
 
@@ -118,10 +118,10 @@ export const transactionsService = invalidatesOnWrite({
                 p_id: original.id,
                 p_pay_period_id: input.pay_period_id,
                 p_account_id: input.account_id,
-                p_category_id: input.category_id ?? null,
+                p_category_id: input.category_id ?? NULL_ARG,
                 p_type: input.type,
                 p_amount: input.amount,
-                p_note: input.note ?? null,
+                p_note: input.note ?? NULL_ARG,
                 p_date: input.date,
             })
             if (error) throw error

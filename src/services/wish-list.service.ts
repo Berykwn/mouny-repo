@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase'
-import { handleError, invalidatesOnWrite, sessionUser, isMissingFunction, type ServiceResult, SIGNED_OUT_MESSAGE } from './_base'
+import { handleError, invalidatesOnWrite, sessionUser, isMissingFunction, NULL_ARG, type ServiceResult, SIGNED_OUT_MESSAGE } from './_base'
 import type { WishListItem } from '@/types/'
 
 export type WishListPurchased = WishListItem & {
@@ -196,7 +196,7 @@ export const wishListService = invalidatesOnWrite({
                 p_quantity: quantity,
                 p_amount: amount,
                 p_account_id: input.account_id,
-                p_category_id: input.category_id ?? null,
+                p_category_id: input.category_id ?? NULL_ARG,
                 p_date: input.date,
                 p_pay_period_id: period.id,
                 p_note: note,
@@ -270,7 +270,7 @@ export const wishListService = invalidatesOnWrite({
                 p_wish_id: item.id,
                 p_amount: input.actual_price,
                 p_account_id: input.account_id,
-                p_category_id: input.category_id ?? null,
+                p_category_id: input.category_id ?? NULL_ARG,
                 p_date: input.date,
                 p_pay_period_id: period.id,
                 p_note: note,

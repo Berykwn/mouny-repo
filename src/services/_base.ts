@@ -8,6 +8,12 @@ export interface ServiceResult<T> {
 }
 
 /**
+ * A null argument for a database function. Postgres arguments are always nullable, but
+ * the generated types say a uuid or text argument is a string.
+ */
+export const NULL_ARG = null as unknown as string
+
+/**
  * True when an RPC failed because the function doesn't exist yet, i.e. its migration
  * hasn't been run in the Supabase SQL editor, so the caller should use its fallback path.
  */

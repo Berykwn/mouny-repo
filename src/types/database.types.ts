@@ -18,7 +18,7 @@ export type Database = {
         Row: {
           archived_at: string | null
           balance: number
-          created_at: string
+          created_at: string | null
           id: string
           initial_balance: number
           name: string
@@ -28,7 +28,7 @@ export type Database = {
         Insert: {
           archived_at?: string | null
           balance?: number
-          created_at?: string
+          created_at?: string | null
           id?: string
           initial_balance?: number
           name: string
@@ -38,9 +38,48 @@ export type Database = {
         Update: {
           archived_at?: string | null
           balance?: number
-          created_at?: string
+          created_at?: string | null
           id?: string
           initial_balance?: number
+          name?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      categories: {
+        Row: {
+          bg_color: string | null
+          color: string | null
+          created_at: string | null
+          icon: string | null
+          id: string
+          is_savings: boolean
+          kind: string | null
+          name: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          bg_color?: string | null
+          color?: string | null
+          created_at?: string | null
+          icon?: string | null
+          id?: string
+          is_savings?: boolean
+          kind?: string | null
+          name: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          bg_color?: string | null
+          color?: string | null
+          created_at?: string | null
+          icon?: string | null
+          id?: string
+          is_savings?: boolean
+          kind?: string | null
           name?: string
           type?: string
           user_id?: string
@@ -72,51 +111,12 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "category_budgets_category_id_fkey"
-            columns: ["category_id"]
+            columns: ["category_id", "user_id"]
             isOneToOne: false
             referencedRelation: "categories"
-            referencedColumns: ["id"]
+            referencedColumns: ["id", "user_id"]
           },
         ]
-      }
-      categories: {
-        Row: {
-          bg_color: string | null
-          color: string | null
-          created_at: string
-          icon: string | null
-          id: string
-          is_savings: boolean
-          kind: string | null
-          name: string
-          type: string
-          user_id: string
-        }
-        Insert: {
-          bg_color?: string | null
-          color?: string | null
-          created_at?: string
-          icon?: string | null
-          id?: string
-          is_savings?: boolean
-          kind?: string | null
-          name: string
-          type: string
-          user_id: string
-        }
-        Update: {
-          bg_color?: string | null
-          color?: string | null
-          created_at?: string
-          icon?: string | null
-          id?: string
-          is_savings?: boolean
-          kind?: string | null
-          name?: string
-          type?: string
-          user_id?: string
-        }
-        Relationships: []
       }
       debt_payments: {
         Row: {
@@ -151,25 +151,32 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "debt_payments_debt_id_fkey"
-            columns: ["debt_id"]
-            isOneToOne: false
-            referencedRelation: "debts"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "debt_payments_account_id_fkey"
-            columns: ["account_id"]
+            columns: ["account_id", "user_id"]
             isOneToOne: false
             referencedRelation: "accounts"
-            referencedColumns: ["id"]
+            referencedColumns: ["id", "user_id"]
+          },
+          {
+            foreignKeyName: "debt_payments_debt_id_fkey"
+            columns: ["debt_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "debts"
+            referencedColumns: ["id", "user_id"]
+          },
+          {
+            foreignKeyName: "debt_payments_transaction_id_fkey"
+            columns: ["transaction_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id", "user_id"]
           },
         ]
       }
       debts: {
         Row: {
           counterparty: string
-          created_at: string
+          created_at: string | null
           due_date: string | null
           id: string
           notes: string | null
@@ -182,7 +189,7 @@ export type Database = {
         }
         Insert: {
           counterparty: string
-          created_at?: string
+          created_at?: string | null
           due_date?: string | null
           id?: string
           notes?: string | null
@@ -195,7 +202,7 @@ export type Database = {
         }
         Update: {
           counterparty?: string
-          created_at?: string
+          created_at?: string | null
           due_date?: string | null
           id?: string
           notes?: string | null
@@ -209,17 +216,17 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "debts_pay_from_account_id_fkey"
-            columns: ["pay_from_account_id"]
+            columns: ["pay_from_account_id", "user_id"]
             isOneToOne: false
             referencedRelation: "accounts"
-            referencedColumns: ["id"]
+            referencedColumns: ["id", "user_id"]
           },
         ]
       }
       pay_periods: {
         Row: {
           closing_balance: number | null
-          created_at: string
+          created_at: string | null
           end_date: string | null
           id: string
           notes: string | null
@@ -231,7 +238,7 @@ export type Database = {
         }
         Insert: {
           closing_balance?: number | null
-          created_at?: string
+          created_at?: string | null
           end_date?: string | null
           id?: string
           notes?: string | null
@@ -243,7 +250,7 @@ export type Database = {
         }
         Update: {
           closing_balance?: number | null
-          created_at?: string
+          created_at?: string | null
           end_date?: string | null
           id?: string
           notes?: string | null
@@ -256,10 +263,10 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "pay_periods_salary_account_id_fkey"
-            columns: ["salary_account_id"]
+            columns: ["salary_account_id", "user_id"]
             isOneToOne: false
             referencedRelation: "accounts"
-            referencedColumns: ["id"]
+            referencedColumns: ["id", "user_id"]
           },
         ]
       }
@@ -268,7 +275,7 @@ export type Database = {
           account_id: string
           amount: number
           category_id: string | null
-          created_at: string
+          created_at: string | null
           date: string
           debt_id: string | null
           id: string
@@ -284,7 +291,7 @@ export type Database = {
           account_id: string
           amount: number
           category_id?: string | null
-          created_at?: string
+          created_at?: string | null
           date?: string
           debt_id?: string | null
           id?: string
@@ -300,7 +307,7 @@ export type Database = {
           account_id?: string
           amount?: number
           category_id?: string | null
-          created_at?: string
+          created_at?: string | null
           date?: string
           debt_id?: string | null
           id?: string
@@ -314,45 +321,52 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "transactions_debt_id_fkey"
-            columns: ["debt_id"]
-            isOneToOne: false
-            referencedRelation: "debts"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "transactions_account_id_fkey"
-            columns: ["account_id"]
+            columns: ["account_id", "user_id"]
             isOneToOne: false
             referencedRelation: "accounts"
-            referencedColumns: ["id"]
+            referencedColumns: ["id", "user_id"]
           },
           {
             foreignKeyName: "transactions_category_id_fkey"
-            columns: ["category_id"]
+            columns: ["category_id", "user_id"]
             isOneToOne: false
             referencedRelation: "categories"
-            referencedColumns: ["id"]
+            referencedColumns: ["id", "user_id"]
+          },
+          {
+            foreignKeyName: "transactions_debt_id_fkey"
+            columns: ["debt_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "debts"
+            referencedColumns: ["id", "user_id"]
           },
           {
             foreignKeyName: "transactions_pay_period_id_fkey"
-            columns: ["pay_period_id"]
+            columns: ["pay_period_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "active_period_summary"
+            referencedColumns: ["period_id", "user_id"]
+          },
+          {
+            foreignKeyName: "transactions_pay_period_id_fkey"
+            columns: ["pay_period_id", "user_id"]
             isOneToOne: false
             referencedRelation: "pay_periods"
-            referencedColumns: ["id"]
+            referencedColumns: ["id", "user_id"]
           },
           {
             foreignKeyName: "transactions_wish_list_item_id_fkey"
-            columns: ["wish_list_item_id"]
+            columns: ["wish_list_item_id", "user_id"]
             isOneToOne: false
             referencedRelation: "wish_list"
-            referencedColumns: ["id"]
+            referencedColumns: ["id", "user_id"]
           },
         ]
       }
       wish_list: {
         Row: {
-          created_at: string
+          created_at: string | null
           estimated_price: number | null
           icon: string | null
           id: string
@@ -371,7 +385,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
-          created_at?: string
+          created_at?: string | null
           estimated_price?: number | null
           icon?: string | null
           id?: string
@@ -390,7 +404,7 @@ export type Database = {
           user_id: string
         }
         Update: {
-          created_at?: string
+          created_at?: string | null
           estimated_price?: number | null
           icon?: string | null
           id?: string
@@ -411,58 +425,129 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "wish_list_pay_period_id_fkey"
-            columns: ["pay_period_id"]
+            columns: ["pay_period_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "active_period_summary"
+            referencedColumns: ["period_id", "user_id"]
+          },
+          {
+            foreignKeyName: "wish_list_pay_period_id_fkey"
+            columns: ["pay_period_id", "user_id"]
             isOneToOne: false
             referencedRelation: "pay_periods"
-            referencedColumns: ["id"]
+            referencedColumns: ["id", "user_id"]
           },
           {
             foreignKeyName: "wish_list_transaction_id_fkey"
-            columns: ["transaction_id"]
+            columns: ["transaction_id", "user_id"]
             isOneToOne: false
             referencedRelation: "transactions"
-            referencedColumns: ["id"]
+            referencedColumns: ["id", "user_id"]
           },
         ]
       }
     }
     Views: {
-      [_ in never]: never
+      active_period_summary: {
+        Row: {
+          closing_balance: number | null
+          end_date: string | null
+          estimated_remaining: number | null
+          period_id: string | null
+          salary_amount: number | null
+          start_date: string | null
+          status: string | null
+          total_expense: number | null
+          total_income: number | null
+          transaction_count: number | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
+      adjust_balance: {
+        Args: { p_account_id: string; p_amount: number; p_date?: string }
+        Returns: {
+          archived_at: string | null
+          balance: number
+          created_at: string | null
+          id: string
+          initial_balance: number
+          name: string
+          type: string
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "accounts"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      apply_debt_payment: {
+        Args: {
+          p_account_id: string
+          p_amount: number
+          p_date: string
+          p_debt_id: string
+          p_transaction_id: string
+        }
+        Returns: {
+          counterparty: string
+          created_at: string | null
+          due_date: string | null
+          id: string
+          notes: string | null
+          pay_from_account_id: string | null
+          remaining_amount: number
+          status: string
+          total_amount: number
+          type: string
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "debts"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       buy_wish: {
         Args: {
           p_account_id: string
           p_amount: number
-          p_category_id: string | null
+          p_category_id: string
           p_date: string
           p_note: string
           p_pay_period_id: string
           p_wish_id: string
         }
-        Returns: Database["public"]["Tables"]["wish_list"]["Row"]
-      }
-      contribute_wish_quantity: {
-        Args: {
-          p_account_id: string
-          p_amount: number
-          p_category_id: string | null
-          p_date: string
-          p_note: string
-          p_pay_period_id: string
-          p_quantity: number
-          p_wish_id: string
-        }
-        Returns: Database["public"]["Tables"]["wish_list"]["Row"]
-      }
-      period_summaries: {
-        Args: { p_period_ids: string[] }
         Returns: {
-          expense: number
-          income: number
+          created_at: string | null
+          estimated_price: number | null
+          icon: string | null
+          id: string
+          is_purchased: boolean
+          name: string
+          notes: string | null
           pay_period_id: string
-          savings: number
-        }[]
+          price_per_unit: number | null
+          priority: string | null
+          quantity: number | null
+          saved_amount: number
+          saved_quantity: number
+          target_date: string | null
+          transaction_id: string | null
+          unit: string | null
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "wish_list"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       collect_receivable: {
         Args: {
@@ -471,11 +556,90 @@ export type Database = {
           p_date: string
           p_debt_id: string
         }
-        Returns: Database["public"]["Tables"]["debts"]["Row"]
+        Returns: {
+          counterparty: string
+          created_at: string | null
+          due_date: string | null
+          id: string
+          notes: string | null
+          pay_from_account_id: string | null
+          remaining_amount: number
+          status: string
+          total_amount: number
+          type: string
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "debts"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       contribute_wish: {
         Args: { p_amount: number; p_id: string }
-        Returns: Database["public"]["Tables"]["wish_list"]["Row"]
+        Returns: {
+          created_at: string | null
+          estimated_price: number | null
+          icon: string | null
+          id: string
+          is_purchased: boolean
+          name: string
+          notes: string | null
+          pay_period_id: string
+          price_per_unit: number | null
+          priority: string | null
+          quantity: number | null
+          saved_amount: number
+          saved_quantity: number
+          target_date: string | null
+          transaction_id: string | null
+          unit: string | null
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "wish_list"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      contribute_wish_quantity: {
+        Args: {
+          p_account_id: string
+          p_amount: number
+          p_category_id: string
+          p_date: string
+          p_note: string
+          p_pay_period_id: string
+          p_quantity: number
+          p_wish_id: string
+        }
+        Returns: {
+          created_at: string | null
+          estimated_price: number | null
+          icon: string | null
+          id: string
+          is_purchased: boolean
+          name: string
+          notes: string | null
+          pay_period_id: string
+          price_per_unit: number | null
+          priority: string | null
+          quantity: number | null
+          saved_amount: number
+          saved_quantity: number
+          target_date: string | null
+          transaction_id: string | null
+          unit: string | null
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "wish_list"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       pay_debt: {
         Args: {
@@ -487,31 +651,81 @@ export type Database = {
           p_note: string
           p_pay_period_id: string
         }
-        Returns: Database["public"]["Tables"]["debts"]["Row"]
+        Returns: {
+          counterparty: string
+          created_at: string | null
+          due_date: string | null
+          id: string
+          notes: string | null
+          pay_from_account_id: string | null
+          remaining_amount: number
+          status: string
+          total_amount: number
+          type: string
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "debts"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      period_for_date: { Args: { p_date: string }; Returns: string }
+      period_summaries: {
+        Args: { p_period_ids: string[] }
+        Returns: {
+          expense: number
+          income: number
+          pay_period_id: string
+          savings: number
+        }[]
       }
       replace_transaction: {
         Args: {
           p_account_id: string
           p_amount: number
-          p_category_id: string | null
+          p_category_id: string
           p_date: string
           p_id: string
-          p_note: string | null
+          p_note: string
           p_pay_period_id: string
           p_type: string
         }
-        Returns: Database["public"]["Tables"]["transactions"]["Row"]
+        Returns: {
+          account_id: string
+          amount: number
+          category_id: string | null
+          created_at: string | null
+          date: string
+          debt_id: string | null
+          id: string
+          note: string | null
+          pay_period_id: string | null
+          transfer_id: string | null
+          type: string
+          user_id: string
+          wish_list_item_id: string | null
+          wish_quantity: number | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "transactions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      transaction_effect: {
+        Args: { p_amount: number; p_type: string }
+        Returns: number
       }
       transfer_balance: {
-        Args: { p_amount: number; p_date?: string; p_from_id: string; p_to_id: string }
-        Returns: string
-      }
-      adjust_balance: {
-        Args: { p_account_id: string; p_amount: number; p_date?: string }
-        Returns: Database["public"]["Tables"]["accounts"]["Row"]
-      }
-      period_for_date: {
-        Args: { p_date: string }
+        Args: {
+          p_amount: number
+          p_date?: string
+          p_from_id: string
+          p_to_id: string
+        }
         Returns: string
       }
     }
@@ -532,12 +746,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -561,11 +775,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -586,11 +800,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -611,11 +825,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -628,11 +842,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
