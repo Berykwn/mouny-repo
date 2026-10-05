@@ -86,7 +86,7 @@ export const accountsService = invalidatesOnWrite({
         }
     },
 
-    async create(input: { name: string; type: Account['type']; initial_balance: number }): Promise<ServiceResult<Account>> {
+    async create(input: { name: string; type: Account['type']; initial_balance: number; is_savings: boolean }): Promise<ServiceResult<Account>> {
         try {
             const user = await sessionUser()
             if (!user) throw new Error(SIGNED_OUT_MESSAGE)
@@ -104,12 +104,12 @@ export const accountsService = invalidatesOnWrite({
         }
     },
 
-    /** Name and type only: a balance changes through transactions (see adjustBalance). */
-    async update(id: string, input: { name: string; type: Account['type'] }): Promise<ServiceResult<Account>> {
+    /** Name, type and the savings flag: a balance changes through transactions (see adjustBalance). */
+    async update(id: string, input: { name: string; type: Account['type']; is_savings: boolean }): Promise<ServiceResult<Account>> {
         try {
             const { data, error } = await supabase
                 .from('accounts')
-                .update({ name: input.name, type: input.type })
+                .update({ name: input.name, type: input.type, is_savings: input.is_savings })
                 .eq('id', id)
                 .select()
                 .single()

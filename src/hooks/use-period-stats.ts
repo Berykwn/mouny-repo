@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { getDaysBetween } from '@/lib/helpers'
 import { isEverydaySpending } from '@/lib/spending-pace'
+import { withSavingsMoves } from '@/lib/savings-moves'
 import type { TransactionWithDetails } from '@/types'
 
 interface UsePeriodStatsParams {
@@ -13,7 +14,7 @@ export interface PeriodStats {
     totalIncome: number
     /** Every expense, savings included — what actually left the accounts. */
     totalExpense: number
-    /** Expenses in savings categories: set aside, not spent. */
+    /** Expenses in savings categories plus money moved into savings accounts: set aside, not spent. */
     totalSavings: number
     /** Expenses minus savings — the base for no-spend days. */
     totalSpending: number
@@ -56,10 +57,12 @@ export function usePeriodStats({
     fallbackTotalDays = null,
 }: UsePeriodStatsParams): PeriodStats {
     return useMemo(() => {
-        const totalIncome = transactions
+        // Money moved into savings accounts counts as saved, like a savings expense.
+        const rows = withSavingsMoves(transactions)
+        const totalIncome = rows
             .filter(t => t.type === 'income')
             .reduce((s, t) => s + t.amount, 0)
-        const expenses = transactions.filter(t => t.type === 'expense')
+        const expenses = rows.filter(t => t.type === 'expense')
         const totalExpense = expenses.reduce((s, t) => s + t.amount, 0)
         // Savings leave the account but aren't spending, so pace-based numbers ignore them.
         const spending = expenses.filter(t => !t.category?.is_savings)
@@ -89,7 +92,7 @@ export function usePeriodStats({
 
         // Count days up to today for an open period, but stop at the end for a closed one —
         // otherwise every day since it closed would pile up as an extra "no-spend" day.
-        const lastTxDate = transactions.reduce<string | null>((max, t) => (!max || t.date > max ? t.date : max), null)
+        const lastTxDate = rows.reduce<string | null>((max, t) => (!max || t.date > max ? t.date : max), null)
         const asOf = isClosed ? (period.end_date ?? lastTxDate ?? period.start_date) : undefined
         const daysElapsed = Math.max(1, Math.min(
             inclusiveDays(period.start_date, asOf),

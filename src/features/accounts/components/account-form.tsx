@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
 import { Loader2, ArrowRight, Check } from 'lucide-react'
 import { AccountTypeIcon, AccountTypeTile } from '@/components/account-type-icon'
 import { ACCOUNT_TILE_CLASS } from '@/lib/account-tiles'
@@ -29,6 +30,7 @@ export function AccountForm({ onSuccess, initial, allAccounts = [], initialTab =
     const [tab, setTab] = useState<Tab>(initialTab)
     const [name, setName] = useState(initial?.name ?? '')
     const [type, setType] = useState<AccountType>((initial?.type as AccountType) ?? 'bank')
+    const [isSavings, setIsSavings] = useState(initial?.is_savings ?? false)
     const [initialBalance, setInitialBalance] = useState('')
     const [adjustment, setAdjustment] = useState('')
     const [toAccountId, setToAccountId] = useState('')
@@ -51,7 +53,7 @@ export function AccountForm({ onSuccess, initial, allAccounts = [], initialTab =
         if (isEdit) {
             if (adjustment !== '' && isNaN(parsedAdj)) { toast.error('Invalid adjustment value.'); return }
             setLoading(true)
-            const { error } = await accountsService.update(initial.id, { name, type })
+            const { error } = await accountsService.update(initial.id, { name, type, is_savings: isSavings })
             const { error: adjError } = !error && adjustment !== '' && parsedAdj !== 0
                 ? await accountsService.adjustBalance(initial.id, parsedAdj)
                 : { error: null }
@@ -61,7 +63,7 @@ export function AccountForm({ onSuccess, initial, allAccounts = [], initialTab =
         } else {
             if (isNaN(parsedInitial) || parsedInitial < 0) { toast.error('Invalid balance.'); return }
             setLoading(true)
-            const { error } = await accountsService.create({ name, type, initial_balance: parsedInitial })
+            const { error } = await accountsService.create({ name, type, initial_balance: parsedInitial, is_savings: isSavings })
             setLoading(false)
             if (error) { toast.error(error); return }
             toast.success('Account created.')
@@ -194,6 +196,16 @@ export function AccountForm({ onSuccess, initial, allAccounts = [], initialTab =
                             className="h-12 rounded-[14px] border-[#e5e5e5] text-[13px]"
                         />
                     </div>
+
+                    <label className="flex items-center gap-3 px-3 py-3 rounded-[14px] border border-[#e5e5e5] cursor-pointer">
+                        <div className="flex-1 min-w-0">
+                            <p className="text-[13px] font-medium text-[#252525]">Savings account</p>
+                            <p className="text-[11px] text-[#8a8a84] leading-snug mt-0.5">
+                                Money moved in counts as saved, not spendable.
+                            </p>
+                        </div>
+                        <Switch checked={isSavings} onCheckedChange={setIsSavings} disabled={loading} />
+                    </label>
 
                     {!isEdit && (
                         <div className="flex flex-col gap-2">

@@ -109,10 +109,13 @@ cp .env.example .env
 | `20260410000300_row_level_security.sql` | RLS on every table: signed-in users only see and change their own rows |
 | `20260410000400_functions.sql` | The RPCs the app calls: `transfer_balance`, `replace_transaction`, `period_summaries`, `pay_debt`, `collect_receivable`, `contribute_wish`, `buy_wish`, `contribute_wish_quantity` |
 | `20261005000100_ledger_integrity.sql` | Transfer transaction types, composite foreign keys, consistency triggers for debts, wishes and transfers, closed-period locks, and `adjust_balance` |
+| `20261005000200_archive_and_unperiodized_transfers.sql` | Account archiving, and transfers recorded outside any period. For databases that ran an early version of the file above |
+| `20261005000300_savings_accounts.sql` | `accounts.is_savings`; `period_summaries` counts money moved into savings accounts as saved |
 
 How the data is kept consistent:
 - **Balances.** Every balance change is a transaction, so `balance = initial_balance + transactions`. That includes transfers (a `transfer_out` and a `transfer_in` sharing a `transfer_id`), receivable collections and balance adjustments. The app can't write `balance` directly.
 - **What counts as income and spending.** `transfer_in` / `transfer_out` rows move money without being income or spending: transfers, money lent or borrowed, collections and adjustments. Stats only count `income` and `expense`. Debt payments are expenses.
+- **Savings.** An expense in a savings category counts as saved. So does a transfer from an everyday account into an account with `is_savings`, net of transfers back out. In the app, `withSavingsMoves` (`src/lib/savings-moves.ts`) turns those transfers into savings rows for the stats; in the database, `period_summaries` does the same. Runway leaves savings accounts out.
 - **Overdrafts.** New money out can't take an account below zero; the app shows that as "Insufficient balance". A correction, such as deleting income, can, and the app flags the account as overdrawn.
 - **Linked records.** Deleting a debt payment puts it back on the debt. Deleting a wish purchase or instalment takes it off the wish. Deleting one side of a transfer deletes the other. The money on these rows can't be edited.
 - **Periods.** There's one active period per user, and periods don't overlap. A transaction's date falls inside its period, and a closed period's money is locked.

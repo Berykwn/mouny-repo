@@ -42,7 +42,7 @@ export const transactionsService = invalidatesOnWrite({
                 .from('transactions')
                 .select(`
           *,
-          account:accounts(id, name, type),
+          account:accounts(id, name, type, is_savings),
           category:categories(id, name, color, bg_color, icon, is_savings, kind)
         `)
                 .eq('pay_period_id', periodId)
@@ -204,7 +204,7 @@ export const transactionsService = invalidatesOnWrite({
             // No RPC yet: every row, a page at a time, summed here.
             const data = await fetchAllPages((from, to) => supabase
                 .from('transactions')
-                .select('id, pay_period_id, type, amount, category:categories(is_savings)')
+                .select('id, pay_period_id, type, amount, transfer_id, account:accounts(is_savings), category:categories(is_savings)')
                 .in('pay_period_id', periodIds)
                 .order('id')
                 .range(from, to))

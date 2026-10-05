@@ -34,7 +34,9 @@ export function groupExpensesByCategory(transactions: TransactionWithDetails[]):
             })
         }
     }
-    return Array.from(map.values()).sort((a, b) => b.amount - a.amount)
+    // A period that took more out of savings than it put in has a negative savings move;
+    // it isn't a slice of anything.
+    return Array.from(map.values()).filter(c => c.amount > 0).sort((a, b) => b.amount - a.amount)
 }
 
 export function getTopExpenseCategory(transactions: TransactionWithDetails[]): CategoryTotal | null {

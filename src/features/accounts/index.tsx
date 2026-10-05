@@ -79,12 +79,14 @@ export function AccountPage() {
     }
 
     const totalBalance = accounts.reduce((s, a) => s + a.balance, 0)
+    // Savings accounts are set aside: they count in the total, not in what spending can use.
+    const savingsBalance = accounts.filter(a => a.is_savings).reduce((s, a) => s + a.balance, 0)
 
     const daysElapsed = daysIntoPeriod(activePeriod)
     const insights = useMemo(() => accountInsights(accounts, periodTxs, daysElapsed), [accounts, periodTxs, daysElapsed])
     const shares = useMemo(() => accountShares(accounts), [accounts])
     const trend = useMemo(() => balanceTrend(periods, totalBalance), [periods, totalBalance])
-    const runwayDays = totalRunwayDays(totalBalance, periodTxs, daysElapsed)
+    const runwayDays = totalRunwayDays(totalBalance - savingsBalance, periodTxs, daysElapsed)
     let overdrawnCount = 0
     let lowCount = 0
     for (const info of insights.values()) {
@@ -100,6 +102,7 @@ export function AccountPage() {
                     <div className="space-y-4 lg:order-2">
                         <AccountsHero
                             totalBalance={totalBalance}
+                            savingsBalance={savingsBalance}
                             accountCount={accounts.length}
                             shares={shares}
                             runwayDays={runwayDays}

@@ -5,6 +5,8 @@ import type { AccountShare } from '../lib/account-insights'
 
 interface AccountsHeroProps {
     totalBalance: number
+    /** The part of the total in savings accounts, left out of the runway. */
+    savingsBalance: number
     accountCount: number
     shares: AccountShare[]
     runwayDays: number | null
@@ -13,14 +15,16 @@ interface AccountsHeroProps {
     onAdd: () => void
 }
 
-export function AccountsHero({ totalBalance, accountCount, shares, runwayDays, overdrawnCount, lowCount, onAdd }: AccountsHeroProps) {
+export function AccountsHero({ totalBalance, savingsBalance, accountCount, shares, runwayDays, overdrawnCount, lowCount, onAdd }: AccountsHeroProps) {
     let message: string | null = null
     if (overdrawnCount > 0) {
         message = `${overdrawnCount} account${overdrawnCount === 1 ? ' is' : 's are'} overdrawn — move money in to cover it.`
     } else if (lowCount > 0) {
         message = `${lowCount} account${lowCount === 1 ? ' is' : 's are'} running low at this period’s pace.`
     } else if (runwayDays !== null) {
-        message = `At this period’s pace, your balance covers about ${runwayDays} day${runwayDays === 1 ? '' : 's'} of spending.`
+        message = savingsBalance > 0
+            ? `At this period’s pace, your everyday accounts cover about ${runwayDays} day${runwayDays === 1 ? '' : 's'} of spending, savings aside.`
+            : `At this period’s pace, your balance covers about ${runwayDays} day${runwayDays === 1 ? '' : 's'} of spending.`
     }
 
     return (
@@ -43,6 +47,7 @@ export function AccountsHero({ totalBalance, accountCount, shares, runwayDays, o
                     </p>
                     <p className="text-[11px] text-muted-ink mt-2">
                         across {accountCount} account{accountCount > 1 ? 's' : ''}
+                        {savingsBalance !== 0 && <> · {formatCurrency(savingsBalance)} in savings</>}
                     </p>
 
                     {/* Where the money sits: one stacked bar, then a compact legend */}

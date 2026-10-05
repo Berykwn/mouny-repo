@@ -2,13 +2,12 @@ import { useState, useMemo } from 'react'
 import { ChevronRight } from 'lucide-react'
 import TrendingUp from '~icons/ph/trend-up-duotone'
 import TrendingDown from '~icons/ph/trend-down-duotone'
-import IncomeIcon from '~icons/app/profits'
-import ExpenseIcon from '~icons/app/loss'
+import PiggyBankIcon from '~icons/ph/piggy-bank-duotone'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import { formatCurrency, formatShortCurrency, formatDateShort } from '@/lib/helpers'
 import { cn } from '@/lib/utils'
 import { BottomDrawer } from '@/components/bottom-drawer'
-import { AccountTypeTile, CashIcon } from '@/components/account-type-icon'
+import { AccountTypeTile } from '@/components/account-type-icon'
 import { CategoryTile } from '@/features/categories/components/category-icon'
 import { categoryChartColor } from '@/features/categories/lib/category-colors'
 import { calculateHealthScore } from '@/lib/calculate-health-score'
@@ -21,6 +20,7 @@ import { groupExpensesByCategory, UNCATEGORIZED_ID, type CategoryTotal } from '.
 import { groupExpensesByWeekday } from '../../lib/group-expenses-by-weekday'
 import { CategoryDonutChart } from './category-donut-chart'
 import { KindSplitCard } from './kind-split-card'
+import { withSavingsMoves } from '@/lib/savings-moves'
 import type { ElementType, ReactNode, SVGProps } from 'react'
 import type { PayPeriod, TransactionWithDetails } from '@/types'
 
@@ -162,28 +162,23 @@ function PeriodRange({ worst, best, average, current }: PeriodRangeProps) {
   )
 }
 
-// The piggy bank has no badge of its own; a tinted circle puts it in step with the income/expense badges.
-function SavedBadge({ className }: SVGProps<SVGSVGElement>) {
-  return (
-    <span className={cn('flex items-center justify-center rounded-full bg-[#f28b8b]/20', className)}>
-      <CashIcon className="h-[62%] w-[62%]" />
-    </span>
-  )
-}
-
 interface SummaryTileProps {
-  /** A self-contained badge icon (it draws its own colored circle), so no tinted plate behind it. */
+  /** A duotone icon on a tinted plate, like a category tile. */
   icon: ElementType<SVGProps<SVGSVGElement>>
+  /** The plate's tint and the icon's color, e.g. 'bg-positive/10 text-positive'. */
+  tone: string
   label: string
   value: string
   valueClassName?: string
   diff?: ReactNode
 }
 
-function SummaryTile({ icon: Icon, label, value, valueClassName, diff }: SummaryTileProps) {
+function SummaryTile({ icon: Icon, tone, label, value, valueClassName, diff }: SummaryTileProps) {
   return (
     <div className="flex items-center gap-3 rounded-[14px] border border-[#f0f0ee] bg-[#fbfbfa] p-3">
-      <Icon className="h-10 w-10 shrink-0" />
+      <span className={cn('h-10 w-10 shrink-0 rounded-[12px] flex items-center justify-center', tone)}>
+        <Icon className="h-[22px] w-[22px]" />
+      </span>
       <div className="min-w-0 flex-1">
         <p className="text-[11px] text-[#8a8a84] leading-none">{label}</p>
         <p className={cn('text-[15px] font-medium text-[#252525] mt-1 truncate', valueClassName)}>
@@ -327,8 +322,10 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
     return map
   }, [budgetRows])
 
-  const expenses = useMemo(() => transactions.filter(t => t.type === 'expense'), [transactions])
-  const incomes  = useMemo(() => transactions.filter(t => t.type === 'income'),  [transactions])
+  // Money moved into savings accounts counts as saved, like a savings expense.
+  const rows = useMemo(() => withSavingsMoves(transactions), [transactions])
+  const expenses = useMemo(() => rows.filter(t => t.type === 'expense'), [rows])
+  const incomes  = useMemo(() => rows.filter(t => t.type === 'income'),  [rows])
 
   const totalIncome  = useMemo(() => incomes.reduce((s, t) => s + t.amount, 0), [incomes])
   const totalExpense = useMemo(() => expenses.reduce((s, t) => s + t.amount, 0), [expenses])
@@ -533,31 +530,34 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
           )}
         </div>
 
-        {/* Income / expense (/ saved): the badge icons carry their own color, so the tiles stay neutral */}
+        {/* Income / expense (/ saved): the icon plates carry the color, so the tiles stay neutral */}
         <div className={cn(
           'grid grid-cols-1 gap-2 border-t border-[#f2f2f0] pt-3 mt-4',
           totalSavings > 0 ? 'sm:grid-cols-3' : 'sm:grid-cols-2'
         )}>
           <SummaryTile
-            icon={IncomeIcon}
+            icon={TrendingUp}
+            tone="bg-positive/10 text-positive"
             label="Income"
             value={formatCurrency(totalIncome)}
-            valueClassName="text-[#059669]"
+            valueClassName="text-positive"
             diff={previousSummary ? <DiffValue pct={incomeDiffPct} goodWhenUp className="text-[11px]" /> : null}
           />
           <SummaryTile
-            icon={ExpenseIcon}
+            icon={TrendingDown}
+            tone="bg-negative/10 text-negative"
             label={totalSavings > 0 ? 'Spent' : 'Expense'}
             value={formatCurrency(totalSpending)}
-            valueClassName="text-[#dc2626]"
+            valueClassName="text-negative"
             diff={previousSummary ? <DiffValue pct={expenseDiffPct} goodWhenUp={false} className="text-[11px]" /> : null}
           />
           {totalSavings > 0 && (
             <SummaryTile
-              icon={SavedBadge}
+              icon={PiggyBankIcon}
+              tone="bg-info/10 text-info"
               label="To savings"
               value={formatCurrency(totalSavings)}
-              valueClassName="text-[#db6a6a]"
+              valueClassName="text-info"
             />
           )}
         </div>

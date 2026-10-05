@@ -21,6 +21,7 @@ export type Database = {
           created_at: string | null
           id: string
           initial_balance: number
+          is_savings: boolean
           name: string
           type: string
           user_id: string
@@ -31,6 +32,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           initial_balance?: number
+          is_savings?: boolean
           name: string
           type: string
           user_id: string
@@ -41,6 +43,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           initial_balance?: number
+          is_savings?: boolean
           name?: string
           type?: string
           user_id?: string
@@ -474,6 +477,7 @@ export type Database = {
           created_at: string | null
           id: string
           initial_balance: number
+          is_savings: boolean
           name: string
           type: string
           user_id: string

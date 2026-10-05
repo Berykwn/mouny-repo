@@ -35,6 +35,9 @@ export function AccountList({ accounts, insights, onOpen }: AccountListProps) {
                         <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-1.5">
                                 <p className="text-[13px] font-medium text-ink truncate">{acc.name}</p>
+                                {acc.is_savings && (
+                                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-info/10 text-info shrink-0">Savings</span>
+                                )}
                                 {info?.health === 'overdrawn' && (
                                     <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-negative/10 text-negative shrink-0">Overdrawn</span>
                                 )}

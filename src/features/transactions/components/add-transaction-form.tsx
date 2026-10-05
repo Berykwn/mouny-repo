@@ -133,6 +133,25 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
     const selectedAccount = accounts.find((a) => a.id === accountId)
     const parsedAmount = parseCurrencyInput(amount)
 
+    // A savings expense from an everyday account, while a savings account exists: the money
+    // probably went there, which is a transfer — it stays in the balance and still counts
+    // as saved.
+    const selectedCategory = categories.find((c) => c.id === categoryId)
+    const savingsTarget = accounts.find((a) => a.is_savings && a.id !== accountId)
+    const suggestSavingsTransfer = !initial && type === 'expense' && !!selectedCategory?.is_savings
+        && !!savingsTarget && !selectedAccount?.is_savings
+    const switchToSavingsTransfer = () => {
+        if (!savingsTarget) return
+        if (accountId) setFromAccountId(accountId)
+        setToAccountId(savingsTarget.id)
+        setTransferAmount(amount)
+        setType('transfer')
+    }
+    const transferFrom = accounts.find((a) => a.id === fromAccountId)
+    const transferTo = accounts.find((a) => a.id === toAccountId)
+    const transferSaves = !!transferTo?.is_savings && !!transferFrom && !transferFrom.is_savings
+    const transferUnsaves = !!transferFrom?.is_savings && !!transferTo && !transferTo.is_savings
+
     const handleSubmit = async (mode: 'save' | 'save-and-add-another') => {
         if (type === 'transfer') {
             if (!fromAccountId) { toast.error('Please select an account.'); return }
@@ -296,6 +315,20 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
                         />
                     </div>
 
+                    {suggestSavingsTransfer && (
+                        <div className="rounded-xl bg-info/10 px-3.5 py-3 text-[12px] text-info leading-relaxed">
+                            Putting it into {savingsTarget!.name}? Record it as a transfer instead: the money stays in your balance and still counts as saved.
+                            <button
+                                type="button"
+                                onClick={switchToSavingsTransfer}
+                                disabled={loading}
+                                className="mt-1.5 block font-semibold underline underline-offset-2"
+                            >
+                                Transfer to {savingsTarget!.name}
+                            </button>
+                        </div>
+                    )}
+
                     {/* Account / Date / Note rows */}
                     <div className="flex flex-col">
                         <button
@@ -355,16 +388,25 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
                     )}
                 </>
             ) : (
-                <TransferFields
-                    accounts={accounts}
-                    fromAccountId={fromAccountId}
-                    toAccountId={toAccountId}
-                    amount={transferAmount}
-                    onFromChange={setFromAccountId}
-                    onToChange={setToAccountId}
-                    onAmountChange={setTransferAmount}
-                    disabled={loading}
-                />
+                <>
+                    <TransferFields
+                        accounts={accounts}
+                        fromAccountId={fromAccountId}
+                        toAccountId={toAccountId}
+                        amount={transferAmount}
+                        onFromChange={setFromAccountId}
+                        onToChange={setToAccountId}
+                        onAmountChange={setTransferAmount}
+                        disabled={loading}
+                    />
+                    {(transferSaves || transferUnsaves) && (
+                        <p className="rounded-xl bg-info/10 px-3.5 py-3 text-[12px] text-info leading-relaxed">
+                            {transferSaves
+                                ? `${transferTo!.name} is a savings account, so this counts as saved this period.`
+                                : `${transferFrom!.name} is a savings account, so this takes it off what you’ve saved this period.`}
+                        </p>
+                    )}
+                </>
             )}
 
             {linked && (
