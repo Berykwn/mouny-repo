@@ -406,9 +406,9 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
   // ─── Desktop-only breakdowns (spending by account, by day of week, period comparison) ──
 
   const byAccount = useMemo(() => {
-    const map = new Map<string, { name: string; type: string; amount: number }>()
+    const map = new Map<string, { name: string; type: string; is_savings: boolean; amount: number }>()
     for (const tx of spending) {
-      const entry = map.get(tx.account.id) ?? { name: tx.account.name, type: tx.account.type, amount: 0 }
+      const entry = map.get(tx.account.id) ?? { name: tx.account.name, type: tx.account.type, is_savings: tx.account.is_savings, amount: 0 }
       entry.amount += tx.amount
       map.set(tx.account.id, entry)
     }
@@ -787,7 +787,7 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
             const pct = totalSpending > 0 ? Math.round((a.amount / totalSpending) * 100) : 0
             return (
               <div key={a.name} className="flex items-center gap-3 px-4 py-[9px] border-b border-[#f2f2f0] last:border-b-0">
-                <AccountTypeTile type={a.type} className="w-8 h-8" />
+                <AccountTypeTile type={a.type} savings={a.is_savings} className="w-8 h-8" />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between mb-1">
                     <p className="text-[13px] text-[#252525] truncate">{a.name}</p>

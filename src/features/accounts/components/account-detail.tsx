@@ -43,7 +43,7 @@ export function AccountDetail({ account, insight, canTransfer, hasActivePeriod, 
     return (
         <div className="space-y-4 pb-2">
             <div className="flex items-center gap-3">
-                <AccountTypeTile type={account.type} className="w-12 h-12 rounded-[14px]" />
+                <AccountTypeTile type={account.type} savings={account.is_savings} className="w-12 h-12 rounded-[14px]" />
                 <div className="min-w-0">
                     <p className="text-[11px] text-muted-ink">{TYPE_LABEL[account.type as AccountType]}</p>
                     <p className={cn(

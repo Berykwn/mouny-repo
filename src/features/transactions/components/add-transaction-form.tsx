@@ -337,7 +337,7 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
                             onClick={() => setAccountPickerOpen(true)}
                             className="flex items-center gap-2.5 py-[13px] text-left w-full disabled:opacity-50 disabled:pointer-events-none"
                         >
-                            <AccountTypeIcon type={selectedAccount?.type ?? 'cash'} className="w-[18px] h-[18px] shrink-0" />
+                            <AccountTypeIcon type={selectedAccount?.type ?? 'cash'} savings={selectedAccount?.is_savings} className="w-[18px] h-[18px] shrink-0" />
                             <span className="text-[13px] text-[#8a8a84] shrink-0">Account</span>
                             <span className="ml-auto flex items-center gap-1.5 min-w-0">
                                 <span className="flex flex-col items-end min-w-0">

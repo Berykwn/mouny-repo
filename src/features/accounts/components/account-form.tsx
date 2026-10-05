@@ -324,7 +324,7 @@ export function AccountForm({ onSuccess, initial, allAccounts = [], initialTab =
                                                         : 'border-[#e5e5e5] bg-white hover:border-[#d4d4d4]'
                                                 )}
                                             >
-                                                <AccountTypeTile type={acc.type} className="w-8 h-8" />
+                                                <AccountTypeTile type={acc.type} savings={acc.is_savings} className="w-8 h-8" />
                                                 <div className="flex-1 min-w-0">
                                                     <p className={cn('text-[13px] font-semibold truncate', selected ? 'text-[#252525]' : 'text-[#252525]')}>
                                                         {acc.name}

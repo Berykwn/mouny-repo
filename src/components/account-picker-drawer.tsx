@@ -27,7 +27,7 @@ export function AccountPickerDrawer({ open, onClose, accounts, selectedId, onSel
                             selectedId === a.id ? 'bg-[#f4f4f2]' : 'hover:bg-[#fbfbfa]'
                         )}
                     >
-                        <AccountTypeTile type={a.type} />
+                        <AccountTypeTile type={a.type} savings={a.is_savings} />
                         <div className="flex-1 min-w-0">
                             <p className="text-[13px] font-medium text-[#252525] truncate">{a.name}</p>
                             <p className="text-[11px] text-[#8a8a84]">{formatCurrency(a.balance ?? 0)}</p>
