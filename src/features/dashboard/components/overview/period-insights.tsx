@@ -84,7 +84,7 @@ export function PeriodInsights({ transactions, stats }: { transactions: Transact
     const insights = useMemo(() => generateInsights(transactions, stats), [transactions, stats])
 
     return (
-        <div className="rounded-[20px] border border-[#e5e5e5] bg-white px-5 py-4 space-y-2.5">
+        <div className="rounded-[20px] border border-line bg-surface px-5 py-4 space-y-2.5">
             {insights.map(insight => (
                 <p key={insight.id} className={cn('border-l-2 pl-3 text-[13px] leading-relaxed', TONE_CLASSES[insight.tone])}>
                     {insight.text}

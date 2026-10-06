@@ -149,7 +149,7 @@ function ModeSwitch({ mode, onChange }: { mode: CalendarMode; onChange: (m: Cale
                     className={cn(
                         'px-2.5 py-[5px] rounded-[7px] text-[11px] capitalize',
                         mode === m
-                            ? 'bg-white shadow-[0_1px_2px_rgba(0,0,0,.06)] font-semibold text-ink'
+                            ? 'bg-raised shadow-[0_1px_2px_rgba(0,0,0,.06)] font-semibold text-ink'
                             : 'text-muted-ink'
                     )}
                 >
@@ -271,7 +271,7 @@ export function PeriodCalendar({
                     <>
                         <div className="grid grid-cols-7 gap-[5px] mb-[6px]">
                             {DAY_LETTERS.map((l, i) => (
-                                <div key={i} className="text-[9.5px] text-center text-[#b0b0aa] tracking-[.04em]">
+                                <div key={i} className="text-[9.5px] text-center text-faint-ink tracking-[.04em]">
                                     {l}
                                 </div>
                             ))}
@@ -306,7 +306,7 @@ export function PeriodCalendar({
                                         <span
                                             className={cn(
                                                 'relative text-[9.5px] tabular-nums',
-                                                highlighted ? 'font-semibold text-[#4d7a1d]' : isFuture ? 'text-[#d4d4ce]' : 'text-ink',
+                                                highlighted ? 'font-semibold text-brand-ink' : isFuture ? 'text-faint-ink' : 'text-ink',
                                             )}
                                         >
                                             {dayNum}
@@ -318,7 +318,7 @@ export function PeriodCalendar({
                                             className="w-[70%] rounded-[2px_2px_1px_1px]"
                                             style={{
                                                 height: `${height || 2}px`,
-                                                backgroundColor: height ? heatBarColor(ratio) : '#f2f2f0',
+                                                backgroundColor: height ? heatBarColor(ratio) : 'var(--line-soft)',
                                             }}
                                         />
                                     </button>
@@ -342,13 +342,13 @@ export function PeriodCalendar({
                                     onClick={() => handleSelectDate(date)}
                                     className={cn(
                                         'shrink-0 w-[46px] rounded-[14px] border py-[9px] flex flex-col items-center gap-[5px] [scroll-snap-align:center]',
-                                        isSelected ? 'bg-[#252525] border-[#252525]' : 'bg-white border-[#f0f0ee]',
+                                        isSelected ? 'bg-ink border-ink' : 'bg-surface border-line-soft',
                                     )}
                                 >
-                                    <span className={cn('text-[9.5px]', isSelected ? 'text-[rgba(250,250,250,.6)]' : 'text-[#b0b0aa]')}>
+                                    <span className={cn('text-[9.5px]', isSelected ? 'text-on-ink/60' : 'text-faint-ink')}>
                                         {d.toLocaleDateString('en-GB', { weekday: 'short' }).charAt(0)}
                                     </span>
-                                    <span className={cn('relative text-[16px] font-semibold tabular-nums', isSelected ? 'text-[#fafafa]' : 'text-ink')}>
+                                    <span className={cn('relative text-[16px] font-semibold tabular-nums', isSelected ? 'text-on-ink' : 'text-ink')}>
                                         {d.getDate()}
                                         {isOverDay(date) && (
                                             <span aria-label="over daily allowance" className="absolute -top-0.5 -right-2 w-1.5 h-1.5 rounded-full bg-negative" />
@@ -359,7 +359,7 @@ export function PeriodCalendar({
                                             className="w-full rounded-[2px_2px_1px_1px]"
                                             style={{
                                                 height: `${height || 2}px`,
-                                                backgroundColor: !height ? '#f2f2f0' : isSelected ? '#a3d16a' : heatBarColor(ratio),
+                                                backgroundColor: !height ? 'var(--line-soft)' : isSelected ? '#a3d16a' : heatBarColor(ratio),
                                             }}
                                         />
                                     </div>

@@ -46,7 +46,7 @@ export default function DashboardPage() {
                             <Coins className="w-4 h-4" />
                         </button>
                         <div className="w-8 h-8 rounded-full bg-ink flex items-center justify-center">
-                            <span className="text-[11.5px] font-semibold text-[#fafafa]">{initials}</span>
+                            <span className="text-[11.5px] font-semibold text-on-ink">{initials}</span>
                         </div>
                     </div>
                 </div>

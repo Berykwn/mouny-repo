@@ -27,7 +27,7 @@ export function DebtEmpty({ onAdd, disabled }: DebtEmptyProps) {
                         type="button"
                         disabled={disabled}
                         onClick={() => onAdd(type)}
-                        className="rounded-[16px] border border-line bg-white p-3.5 transition-colors hover:bg-surface-soft active:bg-surface-hover disabled:opacity-50 disabled:pointer-events-none"
+                        className="rounded-[16px] border border-line bg-surface p-3.5 transition-colors hover:bg-surface-soft active:bg-surface-hover disabled:opacity-50 disabled:pointer-events-none"
                     >
                         <div className={`w-10 h-10 rounded-[12px] flex items-center justify-center ${tile}`}>
                             <Icon className="w-[22px] h-[22px]" />

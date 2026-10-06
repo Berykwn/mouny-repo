@@ -11,8 +11,8 @@ import type { DebtWithAccount } from '@/types'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 
-const FIELD_LABEL = 'text-[11px] font-medium uppercase tracking-[.14em] text-[#8a8a84]'
-const SUBMIT_BUTTON = 'w-full h-12 rounded-[14px] text-[13px] font-semibold text-white bg-[#6FA82B] hover:bg-[#6FA82B]/90 transition-colors disabled:opacity-50 disabled:pointer-events-none'
+const FIELD_LABEL = 'text-[11px] font-medium uppercase tracking-[.14em] text-muted-ink'
+const SUBMIT_BUTTON = 'w-full h-12 rounded-[14px] text-[13px] font-semibold text-white bg-brand hover:bg-brand/90 transition-colors disabled:opacity-50 disabled:pointer-events-none'
 
 interface EditDebtFormProps {
     debt: DebtWithAccount
@@ -28,7 +28,7 @@ export function EditDebtForm({ debt, onSuccess }: EditDebtFormProps) {
     const paid = debt.total_amount - debt.remaining_amount
 
     const [counterparty, setCounterparty] = useState(debt.counterparty)
-    const [amount, setAmount] = useState(String(debt.total_amount))
+    const [amount, setAmount] = useState(String(Math.round(debt.total_amount)))
     const [dueDate, setDueDate] = useState(debt.due_date ?? '')
     const [dueDateOpen, setDueDateOpen] = useState(false)
     const [notes, setNotes] = useState(debt.notes ?? '')
@@ -67,20 +67,20 @@ export function EditDebtForm({ debt, onSuccess }: EditDebtFormProps) {
                     onChange={(e) => setCounterparty(e.target.value)}
                     required
                     disabled={loading}
-                    className="h-12 rounded-[14px] border-[#e5e5e5] text-[13px]"
+                    className="h-12 rounded-[14px] border-line text-[13px]"
                 />
             </div>
 
             <div className="space-y-1.5">
                 <Label className={FIELD_LABEL}>Total amount</Label>
                 <div className="relative">
-                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[13px] text-[#8a8a84] font-medium">Rp</span>
+                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[13px] text-muted-ink font-medium">Rp</span>
                     <Input
                         type="text"
                         inputMode="numeric"
                         value={formatCurrencyInput(amount)}
                         onChange={(e) => setAmount(e.target.value.replace(/\D/g, ''))}
-                        className="pl-10 h-12 rounded-[14px] border-[#e5e5e5] text-[13px] font-mono"
+                        className="pl-10 h-12 rounded-[14px] border-line text-[13px] font-mono"
                         required
                         disabled={loading}
                     />
@@ -101,15 +101,15 @@ export function EditDebtForm({ debt, onSuccess }: EditDebtFormProps) {
                                 type="button"
                                 disabled={loading}
                                 className={cn(
-                                    'flex-1 flex items-center h-12 px-3 rounded-[14px] border border-[#e5e5e5] bg-white text-left text-[13px] transition-colors hover:bg-[#fbfbfa] disabled:opacity-50 disabled:pointer-events-none',
-                                    !dueDate && 'text-[#8a8a84]'
+                                    'flex-1 flex items-center h-12 px-3 rounded-[14px] border border-line bg-surface text-left text-[13px] transition-colors hover:bg-surface-soft disabled:opacity-50 disabled:pointer-events-none',
+                                    !dueDate && 'text-muted-ink'
                                 )}
                             >
-                                <CalendarIcon className="mr-2 h-4 w-4 text-[#8a8a84]" />
+                                <CalendarIcon className="mr-2 h-4 w-4 text-muted-ink" />
                                 {dueDate ? format(new Date(dueDate + 'T00:00:00'), 'dd MMM yyyy') : 'Pick a date'}
                             </button>
                         </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0 rounded-[14px] border-[#e5e5e5]">
+                        <PopoverContent className="w-auto p-0 rounded-[14px] border-line">
                             <Calendar
                                 mode="single"
                                 selected={dueDate ? new Date(dueDate + 'T00:00:00') : undefined}
@@ -127,7 +127,7 @@ export function EditDebtForm({ debt, onSuccess }: EditDebtFormProps) {
                             aria-label="Clear due date"
                             disabled={loading}
                             onClick={() => setDueDate('')}
-                            className="w-12 h-12 rounded-[14px] border border-[#e5e5e5] bg-white flex items-center justify-center text-muted-ink hover:text-ink hover:bg-[#fbfbfa]"
+                            className="w-12 h-12 rounded-[14px] border border-line bg-surface flex items-center justify-center text-muted-ink hover:text-ink hover:bg-surface-soft"
                         >
                             <X className="w-4 h-4" />
                         </button>
@@ -142,7 +142,7 @@ export function EditDebtForm({ debt, onSuccess }: EditDebtFormProps) {
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
                     disabled={loading}
-                    className="h-12 rounded-[14px] border-[#e5e5e5] text-[13px]"
+                    className="h-12 rounded-[14px] border-line text-[13px]"
                 />
             </div>
 

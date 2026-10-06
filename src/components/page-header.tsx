@@ -8,7 +8,7 @@ interface PageHeaderProps {
 export function PageHeader({ title, action }: PageHeaderProps) {
     return (
         <header className="lg:hidden flex items-center justify-between px-4 pt-[22px] pb-2.5">
-            <span className="text-[20px] font-semibold tracking-[-0.02em] text-[#252525] dark:text-white">
+            <span className="text-[20px] font-semibold tracking-[-0.02em] text-ink dark:text-white">
                 {title}
             </span>
             {action}

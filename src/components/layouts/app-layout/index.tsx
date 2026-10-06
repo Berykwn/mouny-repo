@@ -67,7 +67,7 @@ export default function AppLayout() {
                             <Link to="/" className="text-muted-ink hover:text-ink transition-colors">
                                 Mouny
                             </Link>
-                            <ChevronRight className="w-3.5 h-3.5 text-[#c4c4be]" />
+                            <ChevronRight className="w-3.5 h-3.5 text-faint-ink" />
                             <span className="font-medium text-ink">{currentLabel}</span>
                         </div>
 
@@ -81,7 +81,7 @@ export default function AppLayout() {
                                 Add Transaction
                             </button>
                             <div className="w-8 h-8 rounded-full bg-ink flex items-center justify-center shrink-0">
-                                <span className="text-[11.5px] font-semibold text-[#fafafa]">{getInitials(user)}</span>
+                                <span className="text-[11.5px] font-semibold text-on-ink">{getInitials(user)}</span>
                             </div>
                         </div>
                     </div>
@@ -107,7 +107,7 @@ export default function AppLayout() {
                 'fixed bottom-0 left-0 right-0 z-40 lg:hidden',
                 'pb-[env(safe-area-inset-bottom)]',
                 'flex items-center h-[76px] px-1',
-                'bg-white dark:bg-neutral-950 border-t border-line dark:border-neutral-800',
+                'bg-surface dark:bg-neutral-950 border-t border-line dark:border-neutral-800',
             )}>
                 {NAV_ITEMS.map((item) => <NavItem key={item.to} {...item} />)}
 
@@ -137,12 +137,12 @@ function NavItem({ to, label, icon: Icon, end }: { to: string; label: string; ic
             {({ isActive }) => (
                 <>
                     <Icon
-                        className={cn('w-5 h-5', isActive ? 'text-brand' : 'text-[#b0b0aa]')}
+                        className={cn('w-5 h-5', isActive ? 'text-brand' : 'text-faint-ink')}
                         strokeWidth={2}
                     />
                     <span className={cn(
                         'text-[10px] leading-none',
-                        isActive ? 'font-semibold text-brand' : 'text-[#9a9a94]',
+                        isActive ? 'font-semibold text-brand' : 'text-subtle-ink',
                     )}>
                         {label}
                     </span>

@@ -12,7 +12,7 @@ interface CategoryGridProps {
 export function CategoryGrid({ categories, selectedId, onSelect, disabled }: CategoryGridProps) {
     if (categories.length === 0) {
         return (
-            <p className="text-[11.5px] text-[#8a8a84] py-4 text-center">
+            <p className="text-[11.5px] text-muted-ink py-4 text-center">
                 No categories yet for this type.
             </p>
         )
@@ -30,14 +30,14 @@ export function CategoryGrid({ categories, selectedId, onSelect, disabled }: Cat
                         onClick={() => onSelect(c)}
                         className={cn(
                             'flex flex-col items-center gap-1.5 p-2.5 rounded-[14px] border transition-all duration-150',
-                            selected ? 'border-[#6FA82B] bg-[#f2f6ea]' : 'border-[#e5e5e5] bg-white'
+                            selected ? 'border-brand bg-brand-tint' : 'border-line bg-surface'
                         )}
                     >
                         <CategoryTile category={c} />
                         <span
                             className={cn(
                                 'text-[11px] text-center leading-tight line-clamp-2 w-full',
-                                selected ? 'text-[#252525] font-medium' : 'text-[#8a8a84]'
+                                selected ? 'text-ink font-medium' : 'text-muted-ink'
                             )}
                         >
                             {c.name}

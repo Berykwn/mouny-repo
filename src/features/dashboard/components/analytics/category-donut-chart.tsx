@@ -14,9 +14,9 @@ function DonutTooltip({ active, payload, total }: {
     const cat = payload[0].payload
     const pct = total > 0 ? Math.round((cat.amount / total) * 100) : 0
     return (
-        <div className="rounded-[10px] border border-[#e5e5e5] bg-white px-2.5 py-1.5 shadow-lg">
-            <p className="text-[10.5px] text-[#8a8a84]">{cat.name}</p>
-            <p className="text-[12px] font-medium text-[#252525]">{formatCurrency(cat.amount)} · {pct}%</p>
+        <div className="rounded-[10px] border border-line bg-surface px-2.5 py-1.5 shadow-lg">
+            <p className="text-[10.5px] text-muted-ink">{cat.name}</p>
+            <p className="text-[12px] font-medium text-ink">{formatCurrency(cat.amount)} · {pct}%</p>
         </div>
     )
 }
@@ -46,8 +46,8 @@ export function CategoryDonutChart({ categories, total }: { categories: Category
                 </PieChart>
             </ResponsiveContainer>
             <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-                <p className="text-[10px] uppercase tracking-[.1em] text-[#a3a3a3]">Total</p>
-                <p className="text-[15px] font-medium text-[#252525]">{formatShortCurrency(total)}</p>
+                <p className="text-[10px] uppercase tracking-[.1em] text-subtle-ink">Total</p>
+                <p className="text-[15px] font-medium text-ink">{formatShortCurrency(total)}</p>
             </div>
         </div>
     )

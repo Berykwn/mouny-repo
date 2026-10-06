@@ -46,7 +46,7 @@ export function DebtUpcoming({ debts, onOpen }: DebtUpcomingProps) {
                                     'w-11 h-11 rounded-[12px] flex flex-col items-center justify-center shrink-0 border leading-none',
                                     late ? 'bg-negative/10 border-negative/20 text-negative'
                                         : soon ? 'bg-warning/10 border-warning/20 text-warning'
-                                            : 'bg-white border-line text-ink'
+                                            : 'bg-surface border-line text-ink'
                                 )}>
                                     <span className="text-[15px] font-semibold tabular-nums">{day}</span>
                                     <span className="text-[9.5px] uppercase tracking-[.08em] mt-0.5">{month}</span>

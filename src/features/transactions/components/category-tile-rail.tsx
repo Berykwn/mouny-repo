@@ -12,7 +12,7 @@ interface CategoryTileRailProps {
 export function CategoryTileRail({ categories, selectedId, onSelect, disabled }: CategoryTileRailProps) {
     if (categories.length === 0) {
         return (
-            <p className="text-[11.5px] text-[#8a8a84] py-2">
+            <p className="text-[11.5px] text-muted-ink py-2">
                 No categories yet for this type.
             </p>
         )
@@ -33,7 +33,7 @@ export function CategoryTileRail({ categories, selectedId, onSelect, disabled }:
                         onClick={() => onSelect(c.id)}
                         className={cn(
                             'flex flex-col items-center shrink-0 w-[74px] py-[11px] px-1.5 rounded-[14px] border transition-colors duration-150 [scroll-snap-align:start]',
-                            selected ? 'border-[#6FA82B] bg-[#f7faf2]' : 'border-[#eeeeec] bg-white',
+                            selected ? 'border-brand bg-brand-tint' : 'border-line-soft bg-surface',
                             'disabled:opacity-50 disabled:pointer-events-none'
                         )}
                     >
@@ -41,7 +41,7 @@ export function CategoryTileRail({ categories, selectedId, onSelect, disabled }:
                         <span
                             className={cn(
                                 'mt-1.5 text-[10px] text-center leading-tight truncate w-full',
-                                selected ? 'text-[#4d7a1d] font-semibold' : 'text-[#8a8a84]'
+                                selected ? 'text-brand-ink font-semibold' : 'text-muted-ink'
                             )}
                         >
                             {c.name}

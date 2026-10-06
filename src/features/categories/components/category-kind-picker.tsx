@@ -26,7 +26,7 @@ export function CategoryKindPicker({ value, onChange, disabled }: CategoryKindPi
                             onClick={() => onChange(k)}
                             className={cn(
                                 'flex items-center gap-2.5 rounded-[14px] border-[1.5px] p-2.5 text-left transition-all duration-150 disabled:opacity-50',
-                                selected ? '' : 'border-line bg-white hover:border-[#d4d4d4]'
+                                selected ? '' : 'border-line bg-surface hover:border-line-strong'
                             )}
                             style={selected ? { borderColor: meta.color, backgroundColor: `${meta.color}14` } : undefined}
                         >

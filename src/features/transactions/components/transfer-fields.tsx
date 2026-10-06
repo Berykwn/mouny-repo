@@ -7,7 +7,7 @@ import { formatCurrency, formatCurrencyInput, parseCurrencyInput } from '@/lib/h
 import { cn } from '@/lib/utils'
 import type { Account } from '@/types'
 
-const FIELD_LABEL = 'text-[11px] font-medium uppercase tracking-[.14em] text-[#8a8a84]'
+const FIELD_LABEL = 'text-[11px] font-medium uppercase tracking-[.14em] text-muted-ink'
 
 interface TransferFieldsProps {
     accounts: Account[]
@@ -49,17 +49,17 @@ export function TransferFields({
                     className="flex items-center gap-2.5 py-[13px] text-left w-full disabled:opacity-50 disabled:pointer-events-none"
                 >
                     <AccountTypeIcon type={fromAccount?.type ?? 'cash'} savings={fromAccount?.is_savings} className="w-[18px] h-[18px] shrink-0" />
-                    <span className="text-[13px] text-[#8a8a84] shrink-0">From</span>
+                    <span className="text-[13px] text-muted-ink shrink-0">From</span>
                     <span className="ml-auto flex items-center gap-1.5 min-w-0">
                         <span className="flex flex-col items-end min-w-0">
-                            <span className="text-[13.5px] font-medium text-[#252525] truncate max-w-[160px]">
+                            <span className="text-[13.5px] font-medium text-ink truncate max-w-[160px]">
                                 {fromAccount?.name ?? 'Select account'}
                             </span>
                             {fromAccount && (
-                                <span className="text-[11.5px] text-[#b0b0aa]">{formatCurrency(fromAccount.balance)}</span>
+                                <span className="text-[11.5px] text-faint-ink">{formatCurrency(fromAccount.balance)}</span>
                             )}
                         </span>
-                        <ChevronDown className="w-3.5 h-3.5 text-[#a3a3a3] shrink-0" />
+                        <ChevronDown className="w-3.5 h-3.5 text-subtle-ink shrink-0" />
                     </span>
                 </button>
 
@@ -67,28 +67,28 @@ export function TransferFields({
                     type="button"
                     disabled={disabled}
                     onClick={() => setPickerOpen('to')}
-                    className="flex items-center gap-2.5 py-[13px] border-t border-[#f2f2f0] text-left w-full disabled:opacity-50 disabled:pointer-events-none"
+                    className="flex items-center gap-2.5 py-[13px] border-t border-line-soft text-left w-full disabled:opacity-50 disabled:pointer-events-none"
                 >
                     <AccountTypeIcon type={toAccount?.type ?? 'cash'} savings={toAccount?.is_savings} className="w-[18px] h-[18px] shrink-0" />
-                    <span className="text-[13px] text-[#8a8a84] shrink-0">To</span>
+                    <span className="text-[13px] text-muted-ink shrink-0">To</span>
                     <span className="ml-auto flex items-center gap-1.5 min-w-0">
                         <span className="flex flex-col items-end min-w-0">
-                            <span className="text-[13.5px] font-medium text-[#252525] truncate max-w-[160px]">
+                            <span className="text-[13.5px] font-medium text-ink truncate max-w-[160px]">
                                 {toAccount?.name ?? 'Select account'}
                             </span>
                             {toAccount && (
-                                <span className="text-[11.5px] text-[#b0b0aa]">{formatCurrency(toAccount.balance)}</span>
+                                <span className="text-[11.5px] text-faint-ink">{formatCurrency(toAccount.balance)}</span>
                             )}
                         </span>
-                        <ChevronDown className="w-3.5 h-3.5 text-[#a3a3a3] shrink-0" />
+                        <ChevronDown className="w-3.5 h-3.5 text-subtle-ink shrink-0" />
                     </span>
                 </button>
             </div>
 
             <div className="space-y-1.5">
                 <Label className={FIELD_LABEL}>Amount</Label>
-                <div className="flex items-baseline gap-1.5 border-b border-[#e5e5e5] pb-2">
-                    <span className="text-[20px] font-medium text-[#b0b0aa]">Rp</span>
+                <div className="flex items-baseline gap-1.5 border-b border-line pb-2">
+                    <span className="text-[20px] font-medium text-faint-ink">Rp</span>
                     <input
                         type="text"
                         inputMode="numeric"
@@ -96,26 +96,26 @@ export function TransferFields({
                         onChange={(e) => onAmountChange(e.target.value.replace(/\D/g, '').slice(0, 12))}
                         placeholder="0"
                         disabled={disabled}
-                        className="flex-1 min-w-0 bg-transparent outline-none text-[34px] font-medium tracking-[-0.02em] text-[#252525] placeholder:text-[#b0b0aa]"
+                        className="flex-1 min-w-0 bg-transparent outline-none text-[34px] font-medium tracking-[-0.02em] text-ink placeholder:text-faint-ink"
                     />
                 </div>
             </div>
 
             {amount !== '' && (previewFrom !== null || previewTo !== null) && (
-                <div className="flex flex-col gap-1 px-3 py-2.5 rounded-[14px] bg-[#f4f4f2] border border-[#e5e5e5]">
-                    <p className="text-[10px] uppercase tracking-[.14em] text-[#8a8a84] font-medium mb-0.5">After transfer</p>
+                <div className="flex flex-col gap-1 px-3 py-2.5 rounded-[14px] bg-surface-hover border border-line">
+                    <p className="text-[10px] uppercase tracking-[.14em] text-muted-ink font-medium mb-0.5">After transfer</p>
                     {fromAccount && previewFrom !== null && (
                         <div className="flex items-center justify-between">
-                            <span className="text-[11.5px] text-[#8a8a84] truncate max-w-[160px]">{fromAccount.name}</span>
-                            <span className={cn('text-[11.5px] font-semibold', previewFrom < 0 ? 'text-[#dc2626]' : 'text-[#252525]')}>
+                            <span className="text-[11.5px] text-muted-ink truncate max-w-[160px]">{fromAccount.name}</span>
+                            <span className={cn('text-[11.5px] font-semibold', previewFrom < 0 ? 'text-negative' : 'text-ink')}>
                                 {formatCurrency(previewFrom)}
                             </span>
                         </div>
                     )}
                     {toAccount && previewTo !== null && (
                         <div className="flex items-center justify-between">
-                            <span className="text-[11.5px] text-[#8a8a84] truncate max-w-[160px]">{toAccount.name}</span>
-                            <span className="text-[11.5px] font-semibold text-[#059669]">
+                            <span className="text-[11.5px] text-muted-ink truncate max-w-[160px]">{toAccount.name}</span>
+                            <span className="text-[11.5px] font-semibold text-positive">
                                 {formatCurrency(previewTo)}
                             </span>
                         </div>

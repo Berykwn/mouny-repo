@@ -24,7 +24,7 @@ export function PeriodHistoryPage() {
             <HeroGlow />
             <div className="relative flex items-center justify-between mb-4">
                 <p className="text-[11px] uppercase tracking-[.14em] text-muted-ink">Active period</p>
-                <span className="flex items-center gap-1.5 h-8 px-3 rounded-full bg-white/60 backdrop-blur-md border border-line text-[12px] font-medium text-ink">
+                <span className="flex items-center gap-1.5 h-8 px-3 rounded-full bg-surface/60 backdrop-blur-md border border-line text-[12px] font-medium text-ink">
                     <span className="w-1.5 h-1.5 rounded-full bg-brand animate-pulse" />
                     Ongoing
                 </span>

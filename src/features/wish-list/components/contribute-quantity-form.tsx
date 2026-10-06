@@ -5,7 +5,7 @@ import { Loader2, ChevronRight } from 'lucide-react'
 import { wishListService } from '@/services/wish-list.service'
 import { useAccounts, useCategories } from '@/queries'
 import { useSeedOnce } from '@/hooks/use-seed-once'
-import { formatCurrency, formatCurrencyInput, parseCurrencyInput, toISODate } from '@/lib/helpers'
+import { formatCurrency, formatCurrencyInput, parseCurrencyInput, parseDecimalInput, toDecimalInput, toISODate } from '@/lib/helpers'
 import { toast } from 'sonner'
 import { ProgressBar } from '@/components/progress-bar'
 import { CategoryIcon } from '@/features/categories/components/category-icon'
@@ -22,7 +22,7 @@ interface ContributeQuantityFormProps {
     onSuccess: () => void
 }
 
-const FIELD_LABEL = 'text-[11px] font-medium uppercase tracking-[.14em] text-[#8a8a84]'
+const FIELD_LABEL = 'text-[11px] font-medium uppercase tracking-[.14em] text-muted-ink'
 
 const NO_ACCOUNTS: Account[] = []
 const NO_CATEGORIES: Category[] = []
@@ -38,7 +38,7 @@ export function ContributeQuantityForm({ item, periodStart, onSuccess }: Contrib
     const percent = target > 0 ? Math.round((savedQuantity / target) * 100) : 0
 
     const [quantity, setQuantity] = useState('')
-    const [pricePerUnit, setPricePerUnit] = useState(item.price_per_unit ? String(item.price_per_unit) : '')
+    const [pricePerUnit, setPricePerUnit] = useState(item.price_per_unit ? String(Math.round(item.price_per_unit)) : '')
     const [date, setDate] = useState(defaultDate)
     const [accountId, setAccountId] = useState('')
     const [accountPickerOpen, setAccountPickerOpen] = useState(false)
@@ -52,9 +52,10 @@ export function ContributeQuantityForm({ item, periodStart, onSuccess }: Contrib
     const selectedAccount = accounts.find((a) => a.id === accountId)
     const selectedCategory = categories.find((c) => c.id === categoryId)
 
-    const quantityNum = Number(quantity) || 0
+    const quantityNum = parseDecimalInput(quantity)
     const pricePerUnitNum = pricePerUnit ? parseCurrencyInput(pricePerUnit) : 0
-    const total = quantityNum * pricePerUnitNum
+    // What's recorded: whole rupiah (the service rounds the same way).
+    const total = Math.round(quantityNum * pricePerUnitNum)
 
     useSeedOnce(accountsData, accs => setAccountId(accs[0]?.id ?? ''))
     useSeedOnce(categoriesData, cats => setCategoryId(cats[0]?.id ?? ''))
@@ -118,22 +119,22 @@ export function ContributeQuantityForm({ item, periodStart, onSuccess }: Contrib
         <form onSubmit={handleSubmit} className="space-y-5 pb-2">
 
             {/* Progress */}
-            <div className="rounded-[20px] border border-[#e5e5e5] bg-white p-4 space-y-3">
+            <div className="rounded-[20px] border border-line bg-surface p-4 space-y-3">
                 <div className="flex items-start justify-between">
                     <div>
-                        <p className="text-[11.5px] text-[#8a8a84]">Terkumpul untuk {item.name}</p>
-                        <p className="text-[22px] font-medium tracking-[-0.02em] text-[#252525] mt-0.5 tabular-nums">
+                        <p className="text-[11.5px] text-muted-ink">Terkumpul untuk {item.name}</p>
+                        <p className="text-[22px] font-medium tracking-[-0.02em] text-ink mt-0.5 tabular-nums">
                             {savedQuantity} {unit}
                         </p>
                     </div>
                     {target > 0 && (
-                        <p className="text-[11.5px] text-[#8a8a84] tabular-nums">of {target} {unit}</p>
+                        <p className="text-[11.5px] text-muted-ink tabular-nums">of {target} {unit}</p>
                     )}
                 </div>
                 {target > 0 && (
                     <div className="space-y-1">
                         <ProgressBar percent={percent} />
-                        <p className="text-[11px] text-[#8a8a84]">
+                        <p className="text-[11px] text-muted-ink">
                             {percent >= 100 ? 'Selesai' : `${percent}% terkumpul`}
                         </p>
                     </div>
@@ -149,16 +150,16 @@ export function ContributeQuantityForm({ item, periodStart, onSuccess }: Contrib
                         inputMode="decimal"
                         placeholder="0"
                         value={quantity}
-                        onChange={(e) => setQuantity(e.target.value.replace(/[^0-9.]/g, ''))}
+                        onChange={(e) => setQuantity(toDecimalInput(e.target.value))}
                         disabled={loading}
                         autoFocus
-                        className="h-12 rounded-[14px] border-[#e5e5e5] text-[13px] font-mono"
+                        className="h-12 rounded-[14px] border-line text-[13px] font-mono"
                     />
                 </div>
                 <div className="space-y-1.5 flex-1">
                     <Label className={FIELD_LABEL}>Harga/{unit}</Label>
                     <div className="relative">
-                        <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[13px] text-[#8a8a84] font-medium">Rp</span>
+                        <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[13px] text-muted-ink font-medium">Rp</span>
                         <Input
                             type="text"
                             inputMode="numeric"
@@ -166,15 +167,15 @@ export function ContributeQuantityForm({ item, periodStart, onSuccess }: Contrib
                             onChange={(e) => setPricePerUnit(e.target.value.replace(/\D/g, ''))}
                             placeholder="0"
                             disabled={loading}
-                            className="pl-10 h-12 rounded-[14px] border-[#e5e5e5] text-[13px] font-mono"
+                            className="pl-10 h-12 rounded-[14px] border-line text-[13px] font-mono"
                         />
                     </div>
                 </div>
             </div>
 
             {total > 0 && (
-                <p className="text-[12px] text-[#8a8a84]">
-                    Total: <span className="font-medium text-[#252525]">{formatCurrency(total)}</span>
+                <p className="text-[12px] text-muted-ink">
+                    Total: <span className="font-medium text-ink">{formatCurrency(total)}</span>
                 </p>
             )}
 
@@ -187,20 +188,20 @@ export function ContributeQuantityForm({ item, periodStart, onSuccess }: Contrib
                     type="button"
                     disabled={loading}
                     onClick={() => setAccountPickerOpen(true)}
-                    className="w-full flex items-center justify-between px-3 h-[52px] rounded-[14px] border border-[#e5e5e5] bg-white text-left transition-colors hover:bg-[#fbfbfa] disabled:opacity-50 disabled:pointer-events-none"
+                    className="w-full flex items-center justify-between px-3 h-[52px] rounded-[14px] border border-line bg-surface text-left transition-colors hover:bg-surface-soft disabled:opacity-50 disabled:pointer-events-none"
                 >
                     {selectedAccount ? (
                         <div className="flex items-center gap-3 min-w-0">
                             <AccountTypeTile type={selectedAccount.type} savings={selectedAccount.is_savings} />
                             <div className="min-w-0">
-                                <p className="text-[13px] font-medium text-[#252525] truncate">{selectedAccount.name}</p>
-                                <p className="text-[11.5px] text-[#8a8a84]">{formatCurrency(selectedAccount.balance)}</p>
+                                <p className="text-[13px] font-medium text-ink truncate">{selectedAccount.name}</p>
+                                <p className="text-[11.5px] text-muted-ink">{formatCurrency(selectedAccount.balance)}</p>
                             </div>
                         </div>
                     ) : (
-                        <span className="text-[13px] text-[#8a8a84]">Select account</span>
+                        <span className="text-[13px] text-muted-ink">Select account</span>
                     )}
-                    <ChevronRight className="w-4 h-4 text-[#a3a3a3] shrink-0" />
+                    <ChevronRight className="w-4 h-4 text-subtle-ink shrink-0" />
                 </button>
                 <AccountPickerDrawer
                     open={accountPickerOpen}
@@ -218,7 +219,7 @@ export function ContributeQuantityForm({ item, periodStart, onSuccess }: Contrib
                         Category
                     </Label>
                     {selectedCategory && (
-                        <span className="text-[11px] text-[#8a8a84] flex items-center gap-1">
+                        <span className="text-[11px] text-muted-ink flex items-center gap-1">
                             <CategoryIcon name={selectedCategory.icon} className="w-3 h-3" style={{ color: categoryChartColor(selectedCategory) }} />
                             {selectedCategory.name}
                         </span>
@@ -249,7 +250,7 @@ export function ContributeQuantityForm({ item, periodStart, onSuccess }: Contrib
             <button
                 type="submit"
                 disabled={loading}
-                className="w-full h-12 rounded-[14px] text-[13px] font-semibold text-white bg-[#6FA82B] hover:bg-[#6FA82B]/90 transition-colors disabled:opacity-50 disabled:pointer-events-none"
+                className="w-full h-12 rounded-[14px] text-[13px] font-semibold text-white bg-brand hover:bg-brand/90 transition-colors disabled:opacity-50 disabled:pointer-events-none"
             >
                 {loading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : 'Cicil'}
             </button>

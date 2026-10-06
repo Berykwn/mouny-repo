@@ -54,6 +54,25 @@
   --line-soft: #f2f2f0;
   --surface-soft: #fbfbfa;
   --surface-hover: #f4f4f2;
+
+  /* Surfaces and tints that sit on top of the page */
+  --surface: #ffffff;
+  --raised: #ffffff;
+  --on-ink: #fafafa;
+  --faint-ink: #b0b0aa;
+  --line-strong: #d4d4d4;
+  --brand-ink: #4d7a1d;
+  --brand-muted: #6b8f45;
+  --brand-tint: #f2f6ea;
+  --brand-line: #cfdcb8;
+  --negative-ink: #b91c1c;
+  --negative-soft: #fef2f2;
+  --negative-line: #f3c5c5;
+  --warning-ink: #b45309;
+  --warning-soft: #fff7ed;
+  --tint-violet: #7c3aed;
+  --tint-pink: #db2777;
+  --tint-teal: #0f766e;
 }
 
 .dark {
@@ -102,6 +121,24 @@
   --line-soft: rgba(255, 255, 255, 0.06);
   --surface-soft: #1a1a1a;
   --surface-hover: #232323;
+
+  --surface: #141414;
+  --raised: #2e2e2e;
+  --on-ink: #171717;
+  --faint-ink: #5f5f5a;
+  --line-strong: rgba(255, 255, 255, 0.2);
+  --brand-ink: #9bd65a;
+  --brand-muted: #8fb86a;
+  --brand-tint: #1b2513;
+  --brand-line: #3a4d27;
+  --negative-ink: #f87171;
+  --negative-soft: #2a1515;
+  --negative-line: #5c2828;
+  --warning-ink: #fbbf24;
+  --warning-soft: #2a1d0e;
+  --tint-violet: #a78bfa;
+  --tint-pink: #f472b6;
+  --tint-teal: #2dd4bf;
 }
 
 @theme inline {
@@ -155,6 +192,20 @@
   --color-line-soft: var(--line-soft);
   --color-surface-soft: var(--surface-soft);
   --color-surface-hover: var(--surface-hover);
+  --color-surface: var(--surface);
+  --color-raised: var(--raised);
+  --color-on-ink: var(--on-ink);
+  --color-faint-ink: var(--faint-ink);
+  --color-line-strong: var(--line-strong);
+  --color-brand-ink: var(--brand-ink);
+  --color-brand-muted: var(--brand-muted);
+  --color-brand-tint: var(--brand-tint);
+  --color-brand-line: var(--brand-line);
+  --color-negative-ink: var(--negative-ink);
+  --color-negative-soft: var(--negative-soft);
+  --color-negative-line: var(--negative-line);
+  --color-warning-ink: var(--warning-ink);
+  --color-warning-soft: var(--warning-soft);
 }
 
 @layer base {
@@ -169,6 +220,6 @@
 
 @layer components {
   .card {
-    @apply rounded-[20px] border border-line bg-white dark:bg-neutral-950 dark:border-neutral-800;
+    @apply rounded-[20px] border border-line bg-surface;
   }
 }

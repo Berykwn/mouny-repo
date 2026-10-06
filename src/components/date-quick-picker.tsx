@@ -15,8 +15,8 @@ interface DateQuickPickerProps {
 }
 
 const CHIP_BASE = 'inline-flex items-center gap-1.5 px-4 h-9 rounded-full border text-[13px] font-medium transition-colors duration-150'
-const CHIP_ACTIVE = 'border-[#6FA82B] bg-[#f2f6ea] text-[#4d7a1d]'
-const CHIP_INACTIVE = 'border-[#e5e5e5] bg-white text-[#252525]'
+const CHIP_ACTIVE = 'border-brand bg-brand-tint text-brand-ink'
+const CHIP_INACTIVE = 'border-line bg-surface text-ink'
 
 export function DateQuickPicker({ date, periodStart, maxDate, onChange, disabled }: DateQuickPickerProps) {
     const [customOpen, setCustomOpen] = useState(false)
@@ -62,7 +62,7 @@ export function DateQuickPicker({ date, periodStart, maxDate, onChange, disabled
                             {isCustom ? format(new Date(date + 'T00:00:00'), 'dd MMM') : 'Custom'}
                         </button>
                     </PopoverTrigger>
-                    <PopoverContent align="end" className="w-auto p-0 rounded-[14px] border-[#e5e5e5]">
+                    <PopoverContent align="end" className="w-auto p-0 rounded-[14px] border-line">
                         <Calendar
                             mode="single"
                             selected={new Date(date + 'T00:00:00')}
@@ -79,7 +79,7 @@ export function DateQuickPicker({ date, periodStart, maxDate, onChange, disabled
                     </PopoverContent>
                 </Popover>
             </div>
-            <p className="text-[11px] text-[#a3a3a3]">
+            <p className="text-[11px] text-subtle-ink">
                 {format(new Date(periodStart + 'T00:00:00'), 'dd MMM')} — {format(new Date(maxDate + 'T00:00:00'), 'dd MMM yyyy')}
             </p>
         </div>

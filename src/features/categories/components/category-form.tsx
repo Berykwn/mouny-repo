@@ -24,7 +24,7 @@ interface CategoryFormProps {
 }
 
 const ICON_KEYS = Object.keys(ICON_MAP)
-const FIELD_LABEL = 'text-[11px] font-medium uppercase tracking-[.14em] text-[#8a8a84]'
+const FIELD_LABEL = 'text-[11px] font-medium uppercase tracking-[.14em] text-muted-ink'
 
 export function CategoryForm({ onSuccess, initial, initialBudget }: CategoryFormProps) {
     const [type, setType] = useState<CategoryType>((initial?.type as CategoryType) ?? 'expense')
@@ -33,7 +33,7 @@ export function CategoryForm({ onSuccess, initial, initialBudget }: CategoryForm
     const [bgColor, setBgColor] = useState<string | null>(initial?.bg_color ?? null)
     const [colorTarget, setColorTarget] = useState<'icon' | 'bg'>('icon')
     const [icon, setIcon] = useState<string>(initial?.icon ?? ICON_KEYS[0])
-    const [budget, setBudget] = useState(initialBudget ? String(initialBudget) : '')
+    const [budget, setBudget] = useState(initialBudget ? String(Math.round(initialBudget)) : '')
     const [kind, setKind] = useState<CategoryKind>(initial ? resolveCategoryKind(initial) : 'daily')
     // A new category's kind follows its name until it's picked by hand.
     const [kindPicked, setKindPicked] = useState(!!initial)
@@ -102,7 +102,7 @@ export function CategoryForm({ onSuccess, initial, initialBudget }: CategoryForm
                         if (!kindPicked) setKind(guessCategoryKind(e.target.value))
                     }}
                     disabled={loading}
-                    className="h-12 rounded-[14px] border-[#e5e5e5] text-[13px]"
+                    className="h-12 rounded-[14px] border-line text-[13px]"
                 />
             </div>
 
@@ -110,18 +110,18 @@ export function CategoryForm({ onSuccess, initial, initialBudget }: CategoryForm
             {type === 'expense' && (
                 <div className="space-y-1.5">
                     <Label className={FIELD_LABEL}>Spending target per period (optional)</Label>
-                    <div className="flex items-center gap-2 h-12 rounded-[14px] border border-[#e5e5e5] px-4">
-                        <span className="text-[13px] text-[#8a8a84] font-medium">Rp</span>
+                    <div className="flex items-center gap-2 h-12 rounded-[14px] border border-line px-4">
+                        <span className="text-[13px] text-muted-ink font-medium">Rp</span>
                         <input
                             inputMode="numeric"
                             value={formatCurrencyInput(budget)}
                             onChange={(e) => setBudget(e.target.value.replace(/\D/g, ''))}
                             placeholder="0"
                             disabled={loading}
-                            className="flex-1 text-[13px] font-medium text-[#252525] outline-none bg-transparent"
+                            className="flex-1 text-[13px] font-medium text-ink outline-none bg-transparent"
                         />
                     </div>
-                    <p className="text-[10.5px] text-[#a3a3a3]">Shown as budget progress in Analytics.</p>
+                    <p className="text-[10.5px] text-subtle-ink">Shown as budget progress in Analytics.</p>
                 </div>
             )}
 
@@ -154,7 +154,7 @@ export function CategoryForm({ onSuccess, initial, initialBudget }: CategoryForm
                                 {selected ? (
                                     <CategoryTile category={{ color, bg_color: bgColor, icon: key }} />
                                 ) : (
-                                    <span className="w-8 h-8 rounded-[10px] flex items-center justify-center transition-colors group-hover:bg-[#f4f4f2]">
+                                    <span className="w-8 h-8 rounded-[10px] flex items-center justify-center transition-colors group-hover:bg-surface-hover">
                                         <CategoryIcon name={key} className="w-[18px] h-[18px]" />
                                     </span>
                                 )}
@@ -177,15 +177,15 @@ export function CategoryForm({ onSuccess, initial, initialBudget }: CategoryForm
                                 className={cn(
                                     'px-3 h-7 rounded-[8px] text-[11px] font-medium border transition-colors',
                                     bgColor === null
-                                        ? 'border-[#252525] text-[#252525]'
-                                        : 'border-dashed border-[#d4d4d0] text-[#8a8a84]'
+                                        ? 'border-ink text-ink'
+                                        : 'border-dashed border-line-strong text-muted-ink'
                                 )}
                                 style={{ backgroundColor: color + '20' }}
                             >
                                 Auto
                             </button>
                         )}
-                        <div className="flex p-0.5 rounded-[10px] bg-[#f4f4f2]">
+                        <div className="flex p-0.5 rounded-[10px] bg-surface-hover">
                             {(['icon', 'bg'] as const).map((target) => (
                                 <button
                                     key={target}
@@ -193,7 +193,7 @@ export function CategoryForm({ onSuccess, initial, initialBudget }: CategoryForm
                                     onClick={() => setColorTarget(target)}
                                     className={cn(
                                         'px-3 h-7 rounded-[8px] text-[11px] font-medium transition-colors',
-                                        colorTarget === target ? 'bg-white text-[#252525] shadow-sm' : 'text-[#8a8a84]'
+                                        colorTarget === target ? 'bg-raised text-ink shadow-sm' : 'text-muted-ink'
                                     )}
                                 >
                                     {target === 'icon' ? 'Icon' : 'Background'}
@@ -213,7 +213,7 @@ export function CategoryForm({ onSuccess, initial, initialBudget }: CategoryForm
                                 className={cn(
                                     'aspect-square rounded-full border border-black/5 transition-all duration-150',
                                     selected
-                                        ? 'ring-2 ring-offset-2 ring-offset-white ring-[#252525] scale-110'
+                                        ? 'ring-2 ring-offset-2 ring-offset-white ring-ink scale-110'
                                         : 'hover:scale-105'
                                 )}
                                 style={{ backgroundColor: c }}
@@ -224,13 +224,13 @@ export function CategoryForm({ onSuccess, initial, initialBudget }: CategoryForm
             </div>
 
             {/* Preview */}
-            <div className="flex items-center gap-3 p-3 rounded-[14px] bg-[#f4f4f2]">
+            <div className="flex items-center gap-3 p-3 rounded-[14px] bg-surface-hover">
                 <CategoryTile category={{ color, bg_color: bgColor, icon }} className="border border-black/5" />
                 <div className="min-w-0 flex-1">
-                    <p className="text-[13px] font-medium text-[#252525] truncate leading-tight">
-                        {name.trim() || <span className="text-[#8a8a84] italic font-normal">Category name</span>}
+                    <p className="text-[13px] font-medium text-ink truncate leading-tight">
+                        {name.trim() || <span className="text-muted-ink italic font-normal">Category name</span>}
                     </p>
-                    <p className="text-[11px] text-[#8a8a84] mt-0.5">
+                    <p className="text-[11px] text-muted-ink mt-0.5">
                         {type === 'expense' ? `Expense · ${CATEGORY_KIND_META[kind].label}` : 'Income'}
                     </p>
                 </div>
@@ -239,7 +239,7 @@ export function CategoryForm({ onSuccess, initial, initialBudget }: CategoryForm
             <button
                 type="submit"
                 disabled={loading}
-                className="w-full h-12 rounded-[14px] text-[13px] font-semibold text-white bg-[#6FA82B] hover:bg-[#6FA82B]/90 transition-colors disabled:opacity-50 disabled:pointer-events-none"
+                className="w-full h-12 rounded-[14px] text-[13px] font-semibold text-white bg-brand hover:bg-brand/90 transition-colors disabled:opacity-50 disabled:pointer-events-none"
             >
                 {loading
                     ? <Loader2 className="w-4 h-4 animate-spin mx-auto" />

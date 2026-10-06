@@ -23,7 +23,7 @@ export function LedgerTabs({ active, onChange }: LedgerTabsProps) {
                         'pb-2.5 -mb-px text-[14px]',
                         active === tab.key
                             ? 'font-semibold text-brand border-b-2 border-brand'
-                            : 'text-[#9a9a94]'
+                            : 'text-subtle-ink'
                     )}
                 >
                     {tab.label}

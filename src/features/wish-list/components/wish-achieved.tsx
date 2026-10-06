@@ -15,7 +15,7 @@ export function WishAchieved({ items }: { items: WishListPurchased[] }) {
     return (
         <div className="card overflow-hidden">
             <div className="flex items-center gap-3 px-4 pt-4 pb-3">
-                <div className="w-10 h-10 rounded-[12px] bg-[#f59e0b]/15 text-[#b45309] flex items-center justify-center shrink-0">
+                <div className="w-10 h-10 rounded-[12px] bg-[#f59e0b]/15 text-warning-ink flex items-center justify-center shrink-0">
                     <TrophyIcon className="w-[22px] h-[22px]" />
                 </div>
                 <div className="min-w-0">

@@ -13,8 +13,8 @@ interface ContributeFormProps {
     onSuccess: () => void
 }
 
-const FIELD_LABEL = 'text-[11px] font-medium uppercase tracking-[.14em] text-[#8a8a84]'
-const SUBMIT_BUTTON = 'w-full h-12 rounded-[14px] text-[13px] font-semibold text-white bg-[#6FA82B] hover:bg-[#6FA82B]/90 transition-colors disabled:opacity-50 disabled:pointer-events-none'
+const FIELD_LABEL = 'text-[11px] font-medium uppercase tracking-[.14em] text-muted-ink'
+const SUBMIT_BUTTON = 'w-full h-12 rounded-[14px] text-[13px] font-semibold text-white bg-brand hover:bg-brand/90 transition-colors disabled:opacity-50 disabled:pointer-events-none'
 
 export function ContributeForm({ item, onSuccess }: ContributeFormProps) {
     const [amount, setAmount] = useState('')
@@ -47,22 +47,22 @@ export function ContributeForm({ item, onSuccess }: ContributeFormProps) {
 
     return (
         <form onSubmit={handleSubmit} className="space-y-4 pb-2">
-            <div className="rounded-[20px] border border-[#e5e5e5] bg-white p-4 space-y-3">
+            <div className="rounded-[20px] border border-line bg-surface p-4 space-y-3">
                 <div className="flex items-start justify-between">
                     <div>
-                        <p className="text-[11.5px] text-[#8a8a84]">Saved toward {item.name}</p>
-                        <p className="text-[22px] font-medium tracking-[-0.02em] text-[#252525] mt-0.5 tabular-nums">
+                        <p className="text-[11.5px] text-muted-ink">Saved toward {item.name}</p>
+                        <p className="text-[22px] font-medium tracking-[-0.02em] text-ink mt-0.5 tabular-nums">
                             {formatCurrency(item.saved_amount)}
                         </p>
                     </div>
                     {hasTarget && (
-                        <p className="text-[11.5px] text-[#8a8a84] tabular-nums">of {formatCurrency(item.estimated_price!)}</p>
+                        <p className="text-[11.5px] text-muted-ink tabular-nums">of {formatCurrency(item.estimated_price!)}</p>
                     )}
                 </div>
                 {hasTarget && (
                     <div className="space-y-1">
                         <ProgressBar percent={percent} />
-                        <p className="text-[11px] text-[#8a8a84]">
+                        <p className="text-[11px] text-muted-ink">
                             {percent >= 100 ? 'Ready to buy' : `${percent}% saved`}
                         </p>
                     </div>
@@ -72,7 +72,7 @@ export function ContributeForm({ item, onSuccess }: ContributeFormProps) {
             <div className="space-y-1.5">
                 <Label className={FIELD_LABEL}>Amount to add</Label>
                 <div className="relative">
-                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[13px] text-[#8a8a84] font-medium">
+                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[13px] text-muted-ink font-medium">
                         Rp
                     </span>
                     <Input
@@ -81,7 +81,7 @@ export function ContributeForm({ item, onSuccess }: ContributeFormProps) {
                         placeholder="0"
                         value={formatCurrencyInput(amount)}
                         onChange={(e) => setAmount(e.target.value.replace(/\D/g, ''))}
-                        className="pl-10 h-12 rounded-[14px] border-[#e5e5e5] text-[13px] font-mono"
+                        className="pl-10 h-12 rounded-[14px] border-line text-[13px] font-mono"
                         disabled={loading}
                         autoFocus
                     />

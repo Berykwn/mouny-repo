@@ -38,7 +38,7 @@ export function SafeToSpendCard({
                     className={cn('h-full', isNegative ? 'bg-negative' : 'bg-brand')}
                     style={{ width: `${spentPercent}%` }}
                 />
-                <div className="h-full w-px bg-white" />
+                <div className="h-full w-px bg-surface" />
                 <div className="h-full flex-1 bg-brand-soft" />
             </div>
 

@@ -22,7 +22,7 @@ interface ClosePeriodFormProps {
     onSuccess: () => void
 }
 
-const FIELD_LABEL = 'text-[11px] font-medium uppercase tracking-[.14em] text-[#8a8a84]'
+const FIELD_LABEL = 'text-[11px] font-medium uppercase tracking-[.14em] text-muted-ink'
 
 export function ClosePeriodForm({ period, onSuccess }: ClosePeriodFormProps) {
     const [endDate, setEndDate] = useState<Date | undefined>(new Date())
@@ -76,28 +76,28 @@ export function ClosePeriodForm({ period, onSuccess }: ClosePeriodFormProps) {
     if (!confirmed) {
         return (
             <div className="space-y-4 pb-2">
-                <div className="flex items-start gap-3 rounded-[14px] border border-[#f3c5c5] bg-[#fef2f2] px-4 py-4">
-                    <AlertTriangle className="w-4 h-4 text-[#dc2626] shrink-0 mt-0.5" />
+                <div className="flex items-start gap-3 rounded-[14px] border border-negative-line bg-negative-soft px-4 py-4">
+                    <AlertTriangle className="w-4 h-4 text-negative shrink-0 mt-0.5" />
                     <div className="min-w-0">
-                        <p className="text-[13px] font-medium text-[#252525]">Close this period?</p>
-                        <p className="text-[11.5px] text-[#dc2626] mt-0.5">This action cannot be undone.</p>
+                        <p className="text-[13px] font-medium text-ink">Close this period?</p>
+                        <p className="text-[11.5px] text-negative mt-0.5">This action cannot be undone.</p>
                     </div>
                 </div>
 
-                <div className="rounded-[20px] border border-[#e5e5e5] bg-white p-4 space-y-4">
+                <div className="rounded-[20px] border border-line bg-surface p-4 space-y-4">
                     <div className="flex justify-between text-[13px]">
-                        <span className="text-[#8a8a84]">Start date</span>
-                        <span className="font-medium text-[#252525]">{period.start_date}</span>
+                        <span className="text-muted-ink">Start date</span>
+                        <span className="font-medium text-ink">{period.start_date}</span>
                     </div>
 
                     <div className="flex justify-between text-[13px]">
-                        <span className="text-[#8a8a84]">Salary</span>
-                        <span className="font-medium text-[#252525]">
+                        <span className="text-muted-ink">Salary</span>
+                        <span className="font-medium text-ink">
                             {formatCurrency(period.salary_amount)}
                         </span>
                     </div>
 
-                    <div className="border-t border-[#f2f2f0]" />
+                    <div className="border-t border-line-soft" />
 
                     <div className="space-y-1.5">
                         <Label className={FIELD_LABEL}>Closing date*</Label>
@@ -107,18 +107,18 @@ export function ClosePeriodForm({ period, onSuccess }: ClosePeriodFormProps) {
                                 <button
                                     type="button"
                                     className={cn(
-                                        'w-full flex items-center h-12 px-3 rounded-[14px] border border-[#e5e5e5] bg-white text-left text-[13px] transition-colors hover:bg-[#fbfbfa]',
-                                        !endDate && 'text-[#8a8a84]'
+                                        'w-full flex items-center h-12 px-3 rounded-[14px] border border-line bg-surface text-left text-[13px] transition-colors hover:bg-surface-soft',
+                                        !endDate && 'text-muted-ink'
                                     )}
                                 >
-                                    <CalendarIcon className="mr-2 h-4 w-4 text-[#8a8a84]" />
+                                    <CalendarIcon className="mr-2 h-4 w-4 text-muted-ink" />
                                     {endDate
                                         ? format(endDate, 'dd MMM yyyy')
                                         : 'Pick a date'}
                                 </button>
                             </PopoverTrigger>
 
-                            <PopoverContent className="w-auto p-0 rounded-[14px] border-[#e5e5e5]">
+                            <PopoverContent className="w-auto p-0 rounded-[14px] border-line">
                                 <Calendar
                                     mode="single"
                                     selected={endDate}
@@ -130,7 +130,7 @@ export function ClosePeriodForm({ period, onSuccess }: ClosePeriodFormProps) {
                                 />
                             </PopoverContent>
                         </Popover>
-                        <span className="text-[11px] text-[#8a8a84]">
+                        <span className="text-[11px] text-muted-ink">
                             Defaults to today if empty.
                         </span>
                     </div>
@@ -139,7 +139,7 @@ export function ClosePeriodForm({ period, onSuccess }: ClosePeriodFormProps) {
                 <button
                     type="button"
                     onClick={() => setConfirmed(true)}
-                    className="w-full h-12 rounded-[14px] text-[13px] font-semibold text-white bg-[#dc2626] hover:bg-[#dc2626]/90 transition-colors"
+                    className="w-full h-12 rounded-[14px] text-[13px] font-semibold text-white bg-negative hover:bg-negative/90 transition-colors"
                 >
                     Yes, close this period
                 </button>
@@ -149,11 +149,11 @@ export function ClosePeriodForm({ period, onSuccess }: ClosePeriodFormProps) {
 
     return (
         <div className="space-y-4 pb-2">
-            <div className="flex items-start gap-3 rounded-[14px] border border-[#e5e5e5] bg-[#f4f4f2] px-4 py-4">
-                <Info className="w-4 h-4 text-[#8a8a84] shrink-0 mt-0.5" />
+            <div className="flex items-start gap-3 rounded-[14px] border border-line bg-surface-hover px-4 py-4">
+                <Info className="w-4 h-4 text-muted-ink shrink-0 mt-0.5" />
                 <div className="min-w-0">
-                    <p className="text-[13px] font-medium text-[#252525]">Close Period</p>
-                    <p className="text-[11.5px] text-[#8a8a84] mt-0.5">
+                    <p className="text-[13px] font-medium text-ink">Close Period</p>
+                    <p className="text-[11.5px] text-muted-ink mt-0.5">
                         Closing balance will be calculated automatically from all your accounts.
                     </p>
                 </div>
@@ -163,7 +163,7 @@ export function ClosePeriodForm({ period, onSuccess }: ClosePeriodFormProps) {
                 type="button"
                 onClick={handleClose}
                 disabled={loading}
-                className="w-full h-12 rounded-[14px] text-[13px] font-semibold text-white bg-[#dc2626] hover:bg-[#dc2626]/90 transition-colors disabled:opacity-50 disabled:pointer-events-none"
+                className="w-full h-12 rounded-[14px] text-[13px] font-semibold text-white bg-negative hover:bg-negative/90 transition-colors disabled:opacity-50 disabled:pointer-events-none"
             >
                 {loading
                     ? <Loader2 className="w-4 h-4 animate-spin mx-auto" />
@@ -174,7 +174,7 @@ export function ClosePeriodForm({ period, onSuccess }: ClosePeriodFormProps) {
                 type="button"
                 onClick={() => setConfirmed(false)}
                 disabled={loading}
-                className="w-full h-12 rounded-[14px] text-[13px] font-semibold border border-[#e5e5e5] text-[#252525] hover:bg-[#f4f4f2] transition-colors disabled:opacity-50 disabled:pointer-events-none"
+                className="w-full h-12 rounded-[14px] text-[13px] font-semibold border border-line text-ink hover:bg-surface-hover transition-colors disabled:opacity-50 disabled:pointer-events-none"
             >
                 Cancel
             </button>

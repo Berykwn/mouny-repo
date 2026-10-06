@@ -25,7 +25,7 @@ interface OpenPeriodFormProps {
     onSuccess: () => void
 }
 
-const FIELD_LABEL = 'text-[11px] font-medium uppercase tracking-[.14em] text-[#8a8a84]'
+const FIELD_LABEL = 'text-[11px] font-medium uppercase tracking-[.14em] text-muted-ink'
 
 const NO_ACCOUNTS: Account[] = []
 
@@ -97,18 +97,18 @@ export function OpenPeriodForm({ onSuccess }: OpenPeriodFormProps) {
                             type="button"
                             disabled={loading}
                             className={cn(
-                                'w-full flex items-center h-12 px-3 rounded-[14px] border border-[#e5e5e5] bg-white text-left text-[13px] transition-colors hover:bg-[#fbfbfa] disabled:opacity-50 disabled:pointer-events-none',
-                                !startDate && 'text-[#8a8a84]'
+                                'w-full flex items-center h-12 px-3 rounded-[14px] border border-line bg-surface text-left text-[13px] transition-colors hover:bg-surface-soft disabled:opacity-50 disabled:pointer-events-none',
+                                !startDate && 'text-muted-ink'
                             )}
                         >
-                            <CalendarIcon className="mr-2 h-4 w-4 text-[#8a8a84]" />
+                            <CalendarIcon className="mr-2 h-4 w-4 text-muted-ink" />
                             {startDate
                                 ? format(startDate, 'dd MMM yyyy')
                                 : 'Pick a date'}
                         </button>
                     </PopoverTrigger>
 
-                    <PopoverContent className="w-auto p-0 rounded-[14px] border-[#e5e5e5]">
+                    <PopoverContent className="w-auto p-0 rounded-[14px] border-line">
                         <Calendar
                             mode="single"
                             selected={startDate}
@@ -121,7 +121,7 @@ export function OpenPeriodForm({ onSuccess }: OpenPeriodFormProps) {
                     </PopoverContent>
                 </Popover>
 
-                <span className="text-[11px] text-[#8a8a84]">
+                <span className="text-[11px] text-muted-ink">
                     Defaults to today if empty.
                 </span>
             </div>
@@ -129,7 +129,7 @@ export function OpenPeriodForm({ onSuccess }: OpenPeriodFormProps) {
             <div className="space-y-1.5">
                 <Label className={FIELD_LABEL}>Expected Income / Salary</Label>
                 <div className="relative">
-                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[13px] text-[#8a8a84] font-medium">
+                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[13px] text-muted-ink font-medium">
                         Rp
                     </span>
                     <Input
@@ -138,12 +138,12 @@ export function OpenPeriodForm({ onSuccess }: OpenPeriodFormProps) {
                         placeholder="0"
                         value={formatCurrencyInput(salary)}
                         onChange={(e) => setSalary(e.target.value.replace(/\D/g, ''))}
-                        className="pl-10 h-12 rounded-[14px] border-[#e5e5e5] text-[13px] font-mono"
+                        className="pl-10 h-12 rounded-[14px] border-line text-[13px] font-mono"
                         required
                         disabled={loading}
                     />
                 </div>
-                <span className="text-[11px] text-[#d97706]">
+                <span className="text-[11px] text-warning">
                     Expected income cannot be edited after the pay period is opened.
                 </span>
             </div>
@@ -154,20 +154,20 @@ export function OpenPeriodForm({ onSuccess }: OpenPeriodFormProps) {
                     type="button"
                     disabled={loading}
                     onClick={() => setAccountPickerOpen(true)}
-                    className="w-full flex items-center justify-between px-3 h-[52px] rounded-[14px] border border-[#e5e5e5] bg-white text-left transition-colors hover:bg-[#fbfbfa] disabled:opacity-50 disabled:pointer-events-none"
+                    className="w-full flex items-center justify-between px-3 h-[52px] rounded-[14px] border border-line bg-surface text-left transition-colors hover:bg-surface-soft disabled:opacity-50 disabled:pointer-events-none"
                 >
                     {selectedAccount ? (
                         <div className="flex items-center gap-3 min-w-0">
                             <AccountTypeTile type={selectedAccount.type} savings={selectedAccount.is_savings} />
                             <div className="min-w-0">
-                                <p className="text-[13px] font-medium text-[#252525] truncate">{selectedAccount.name}</p>
-                                <p className="text-[11.5px] text-[#8a8a84]">{formatCurrency(selectedAccount.balance)}</p>
+                                <p className="text-[13px] font-medium text-ink truncate">{selectedAccount.name}</p>
+                                <p className="text-[11.5px] text-muted-ink">{formatCurrency(selectedAccount.balance)}</p>
                             </div>
                         </div>
                     ) : (
-                        <span className="text-[13px] text-[#8a8a84]">Select account</span>
+                        <span className="text-[13px] text-muted-ink">Select account</span>
                     )}
-                    <ChevronRight className="w-4 h-4 text-[#a3a3a3] shrink-0" />
+                    <ChevronRight className="w-4 h-4 text-subtle-ink shrink-0" />
                 </button>
                 <AccountPickerDrawer
                     open={accountPickerOpen}
@@ -188,14 +188,14 @@ export function OpenPeriodForm({ onSuccess }: OpenPeriodFormProps) {
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
                     disabled={loading}
-                    className="h-12 rounded-[14px] border-[#e5e5e5] text-[13px]"
+                    className="h-12 rounded-[14px] border-line text-[13px]"
                 />
             </div>
 
             <button
                 type="submit"
                 disabled={loading || accounts.length === 0}
-                className="w-full h-12 rounded-[14px] text-[13px] font-semibold text-white bg-[#6FA82B] hover:bg-[#6FA82B]/90 transition-colors disabled:opacity-50 disabled:pointer-events-none"
+                className="w-full h-12 rounded-[14px] text-[13px] font-semibold text-white bg-brand hover:bg-brand/90 transition-colors disabled:opacity-50 disabled:pointer-events-none"
             >
                 {loading
                     ? <Loader2 className="w-4 h-4 animate-spin mx-auto" />

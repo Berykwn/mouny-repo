@@ -14,7 +14,7 @@ const TREND_PERIODS = 6
 
 // Composition colors, assigned by balance rank so the biggest account is always brand green.
 const SHARE_COLORS = ['#6FA82B', '#3d6eb6', '#8b5cf6', '#f59e0b', '#14b8a6', '#ec4899']
-const OTHERS_COLOR = '#c4c4be'
+const OTHERS_COLOR = 'var(--faint-ink)'
 const MAX_SHARES = 4
 
 export interface AccountActivity {

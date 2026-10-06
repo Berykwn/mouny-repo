@@ -39,20 +39,20 @@ export function PeriodPickerDrawer({
                             className={cn(
                                 'w-full flex items-center justify-between px-4 py-3 rounded-[14px] border text-left transition-colors',
                                 isSelected
-                                    ? 'bg-[#f2f6ea] border-[#6FA82B]'
-                                    : 'bg-white border-[#e5e5e5] hover:bg-[#fbfbfa]'
+                                    ? 'bg-brand-tint border-brand'
+                                    : 'bg-surface border-line hover:bg-surface-soft'
                             )}
                         >
                             <div className="flex items-center gap-2.5">
                                 <div className={cn(
                                     'w-2 h-2 rounded-full shrink-0',
-                                    isActive ? 'bg-[#6FA82B]' : 'bg-[#a3a3a3]'
+                                    isActive ? 'bg-brand' : 'bg-subtle-ink'
                                 )} />
                                 <div>
-                                    <p className={cn('text-[13px] font-medium', isSelected ? 'text-[#4d7a1d]' : 'text-[#252525]')}>
+                                    <p className={cn('text-[13px] font-medium', isSelected ? 'text-brand-ink' : 'text-ink')}>
                                         {isActive ? 'Current period' : formatDate(period.start_date)}
                                     </p>
-                                    <p className={cn('text-[11px]', isSelected ? 'text-[#4d7a1d]/80' : 'text-[#8a8a84]')}>
+                                    <p className={cn('text-[11px]', isSelected ? 'text-brand-ink/80' : 'text-muted-ink')}>
                                         {periodLabel(period)} · {period.status}
                                     </p>
                                 </div>

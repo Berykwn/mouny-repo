@@ -106,7 +106,7 @@ export function KindSplitCard({ expenses, totalIncome, isClosed }: KindSplitCard
                 {rows.map(row => {
                     const pct = pctOf(row.amount)
                     return (
-                        <div key={row.key} className="bg-white dark:bg-neutral-950 p-3 min-w-0">
+                        <div key={row.key} className="bg-surface dark:bg-neutral-950 p-3 min-w-0">
                             <div className="flex items-center justify-between gap-2">
                                 <p className="flex items-center gap-1.5 text-[11px] text-muted-ink">
                                     <span className="flex -space-x-0.5">

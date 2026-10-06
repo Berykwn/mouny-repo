@@ -7,7 +7,7 @@ import { format } from 'date-fns'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Calendar } from '@/components/ui/calendar'
 import { wishListService } from '@/services/wish-list.service'
-import { formatCurrency, formatCurrencyInput, parseCurrencyInput, toISODate } from '@/lib/helpers'
+import { formatCurrency, formatCurrencyInput, parseCurrencyInput, parseDecimalInput, toDecimalInput, toISODate } from '@/lib/helpers'
 import { WishTile } from './wish-tile'
 import { ICON_MAP } from '@/lib/icon-map'
 import { CategoryIcon } from '@/features/categories/components/category-icon'
@@ -23,14 +23,14 @@ interface WishListFormProps {
     onSuccess: () => void
 }
 
-const FIELD_LABEL = 'text-[11px] font-medium uppercase tracking-[.14em] text-[#8a8a84]'
+const FIELD_LABEL = 'text-[11px] font-medium uppercase tracking-[.14em] text-muted-ink'
 
 const ICON_KEYS = Object.keys(ICON_MAP)
 
 const PRIORITIES: { value: WishListPriority; label: string; style: string }[] = [
-    { value: 'low', label: 'Low', style: 'bg-[#f4f4f2] text-[#8a8a84]' },
-    { value: 'medium', label: 'Medium', style: 'bg-[#fff7ed] text-[#d97706]' },
-    { value: 'high', label: 'High', style: 'bg-[#fef2f2] text-[#dc2626]' },
+    { value: 'low', label: 'Low', style: 'bg-surface-hover text-muted-ink' },
+    { value: 'medium', label: 'Medium', style: 'bg-warning-soft text-warning' },
+    { value: 'high', label: 'High', style: 'bg-negative-soft text-negative' },
 ]
 
 export function WishListForm({ payPeriodId, item, defaultName, onSuccess }: WishListFormProps) {
@@ -39,7 +39,8 @@ export function WishListForm({ payPeriodId, item, defaultName, onSuccess }: Wish
     const presetUnit = itemUnit && (WISH_LIST_UNITS as readonly string[]).includes(itemUnit) ? itemUnit : null
 
     const [name, setName] = useState(item?.name ?? defaultName ?? '')
-    const [price, setPrice] = useState(item?.estimated_price ? String(item.estimated_price) : '')
+    // Whole rupiah: the field drops anything after a decimal point, which would read 10x too much.
+    const [price, setPrice] = useState(item?.estimated_price ? String(Math.round(item.estimated_price)) : '')
     const [priority, setPriority] = useState<WishListPriority>((item?.priority as WishListPriority) ?? 'low')
     const [notes, setNotes] = useState(item?.notes ?? '')
     const [icon, setIcon] = useState<string | null>(item?.icon ?? null)
@@ -53,11 +54,11 @@ export function WishListForm({ payPeriodId, item, defaultName, onSuccess }: Wish
     const [quantity, setQuantity] = useState(item?.quantity ? String(item.quantity) : '')
     const [unit, setUnit] = useState<string>(presetUnit ?? (itemUnit ? 'custom' : WISH_LIST_UNITS[0]))
     const [customUnit, setCustomUnit] = useState(itemUnit && !presetUnit ? itemUnit : '')
-    const [pricePerUnit, setPricePerUnit] = useState(item?.price_per_unit ? String(item.price_per_unit) : '')
+    const [pricePerUnit, setPricePerUnit] = useState(item?.price_per_unit ? String(Math.round(item.price_per_unit)) : '')
 
-    const quantityNum = Number(quantity) || 0
+    const quantityNum = parseDecimalInput(quantity)
     const pricePerUnitNum = pricePerUnit ? parseCurrencyInput(pricePerUnit) : 0
-    const computedTarget = quantityNum * pricePerUnitNum
+    const computedTarget = Math.round(quantityNum * pricePerUnitNum)
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -146,7 +147,7 @@ export function WishListForm({ payPeriodId, item, defaultName, onSuccess }: Wish
                     onChange={(e) => setName(e.target.value)}
                     required
                     disabled={loading}
-                    className="h-12 rounded-[14px] border-[#e5e5e5] text-[13px]"
+                    className="h-12 rounded-[14px] border-line text-[13px]"
                 />
             </div>
 
@@ -162,7 +163,7 @@ export function WishListForm({ payPeriodId, item, defaultName, onSuccess }: Wish
                                 'flex-1 py-2 rounded-[10px] text-[13px] font-medium border transition-all',
                                 priority === p.value
                                     ? `${p.style} border-transparent`
-                                    : 'border-[#e5e5e5] text-[#8a8a84] hover:text-[#252525]'
+                                    : 'border-line text-muted-ink hover:text-ink'
                             )}
                         >
                             {p.label}
@@ -176,7 +177,7 @@ export function WishListForm({ payPeriodId, item, defaultName, onSuccess }: Wish
                     Icon <span className="normal-case tracking-normal font-normal">(optional)</span>
                 </Label>
                 {/* Same icon set and grid as the category picker; "Auto" keeps the name-matched icon. */}
-                <div className="grid grid-cols-8 gap-1 max-h-[184px] overflow-y-auto rounded-[14px] border border-[#e5e5e5] p-1.5">
+                <div className="grid grid-cols-8 gap-1 max-h-[184px] overflow-y-auto rounded-[14px] border border-line p-1.5">
                     <button
                         type="button"
                         title="Automatic"
@@ -202,7 +203,7 @@ export function WishListForm({ payPeriodId, item, defaultName, onSuccess }: Wish
                                 {selected ? (
                                     <WishTile name={name} icon={key} className="w-8 h-8 rounded-[10px]" iconClassName="w-[18px] h-[18px]" />
                                 ) : (
-                                    <span className="w-8 h-8 rounded-[10px] flex items-center justify-center transition-colors group-hover:bg-[#f4f4f2]">
+                                    <span className="w-8 h-8 rounded-[10px] flex items-center justify-center transition-colors group-hover:bg-surface-hover">
                                         <CategoryIcon name={key} className="w-[18px] h-[18px]" />
                                     </span>
                                 )}
@@ -210,7 +211,7 @@ export function WishListForm({ payPeriodId, item, defaultName, onSuccess }: Wish
                         )
                     })}
                 </div>
-                <p className="text-[11px] text-[#8a8a84]">
+                <p className="text-[11px] text-muted-ink">
                     {icon === null ? 'Automatic — picked from the name.' : 'Tap the first tile to go back to automatic.'}
                 </p>
             </div>
@@ -226,15 +227,15 @@ export function WishListForm({ payPeriodId, item, defaultName, onSuccess }: Wish
                                 type="button"
                                 disabled={loading}
                                 className={cn(
-                                    'flex-1 flex items-center h-12 px-3 rounded-[14px] border border-[#e5e5e5] bg-white text-left text-[13px] transition-colors hover:bg-[#fbfbfa] disabled:opacity-50',
-                                    !targetDate && 'text-[#8a8a84]'
+                                    'flex-1 flex items-center h-12 px-3 rounded-[14px] border border-line bg-surface text-left text-[13px] transition-colors hover:bg-surface-soft disabled:opacity-50',
+                                    !targetDate && 'text-muted-ink'
                                 )}
                             >
-                                <CalendarIcon className="mr-2 h-4 w-4 text-[#8a8a84]" />
+                                <CalendarIcon className="mr-2 h-4 w-4 text-muted-ink" />
                                 {targetDate ? format(new Date(targetDate + 'T00:00:00'), 'dd MMM yyyy') : 'No deadline'}
                             </button>
                         </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0 rounded-[14px] border-[#e5e5e5]">
+                        <PopoverContent className="w-auto p-0 rounded-[14px] border-line">
                             <Calendar
                                 mode="single"
                                 selected={targetDate ? new Date(targetDate + 'T00:00:00') : undefined}
@@ -253,25 +254,25 @@ export function WishListForm({ payPeriodId, item, defaultName, onSuccess }: Wish
                             type="button"
                             onClick={() => setTargetDate(null)}
                             aria-label="Clear deadline"
-                            className="w-12 h-12 rounded-[14px] border border-[#e5e5e5] flex items-center justify-center text-[#8a8a84] hover:text-[#252525]"
+                            className="w-12 h-12 rounded-[14px] border border-line flex items-center justify-center text-muted-ink hover:text-ink"
                         >
                             <X className="w-4 h-4" />
                         </button>
                     )}
                 </div>
-                <p className="text-[11px] text-[#8a8a84]">We’ll tell you how much to set aside each period to make it.</p>
+                <p className="text-[11px] text-muted-ink">We’ll tell you how much to set aside each period to make it.</p>
             </div>
 
-            <div className="flex items-center justify-between rounded-[14px] border border-[#e5e5e5] p-3 gap-3">
+            <div className="flex items-center justify-between rounded-[14px] border border-line p-3 gap-3">
                 <div className="space-y-0.5">
-                    <p className="text-[13px] font-medium text-[#252525]">Track by quantity</p>
-                    <p className="text-[11.5px] text-[#8a8a84]">For items with a fluctuating price, like gold</p>
+                    <p className="text-[13px] font-medium text-ink">Track by quantity</p>
+                    <p className="text-[11.5px] text-muted-ink">For items with a fluctuating price, like gold</p>
                 </div>
                 <Switch
                     checked={trackByQuantity}
                     onCheckedChange={setTrackByQuantity}
                     disabled={loading}
-                    className="data-[state=checked]:bg-[#6FA82B]"
+                    className="data-[state=checked]:bg-brand"
                 />
             </div>
 
@@ -285,9 +286,9 @@ export function WishListForm({ payPeriodId, item, defaultName, onSuccess }: Wish
                                 inputMode="decimal"
                                 placeholder="0"
                                 value={quantity}
-                                onChange={(e) => setQuantity(e.target.value.replace(/[^0-9.]/g, ''))}
+                                onChange={(e) => setQuantity(toDecimalInput(e.target.value))}
                                 disabled={loading}
-                                className="h-12 rounded-[14px] border-[#e5e5e5] text-[13px] font-mono"
+                                className="h-12 rounded-[14px] border-line text-[13px] font-mono"
                             />
                         </div>
                         <div className="space-y-2 flex-1">
@@ -302,8 +303,8 @@ export function WishListForm({ payPeriodId, item, defaultName, onSuccess }: Wish
                                         className={cn(
                                             'px-2.5 py-1.5 rounded-[8px] text-[12px] font-medium border transition-all capitalize',
                                             unit === u
-                                                ? 'bg-[#f2f6ea] text-[#4d7a1d] border-transparent'
-                                                : 'border-[#e5e5e5] text-[#8a8a84] hover:text-[#252525]'
+                                                ? 'bg-brand-tint text-brand-ink border-transparent'
+                                                : 'border-line text-muted-ink hover:text-ink'
                                         )}
                                     >
                                         {u === 'custom' ? 'Other' : u}
@@ -319,14 +320,14 @@ export function WishListForm({ payPeriodId, item, defaultName, onSuccess }: Wish
                             value={customUnit}
                             onChange={(e) => setCustomUnit(e.target.value)}
                             disabled={loading}
-                            className="h-12 rounded-[14px] border-[#e5e5e5] text-[13px]"
+                            className="h-12 rounded-[14px] border-line text-[13px]"
                         />
                     )}
 
                     <div className="space-y-2">
                         <Label className={FIELD_LABEL}>Price per unit</Label>
                         <div className="relative">
-                            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[13px] text-[#8a8a84] font-medium">
+                            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[13px] text-muted-ink font-medium">
                                 Rp
                             </span>
                             <Input
@@ -335,15 +336,15 @@ export function WishListForm({ payPeriodId, item, defaultName, onSuccess }: Wish
                                 placeholder="0"
                                 value={formatCurrencyInput(pricePerUnit)}
                                 onChange={(e) => setPricePerUnit(e.target.value.replace(/\D/g, ''))}
-                                className="pl-10 h-12 rounded-[14px] border-[#e5e5e5] text-[13px] font-mono"
+                                className="pl-10 h-12 rounded-[14px] border-line text-[13px] font-mono"
                                 disabled={loading}
                             />
                         </div>
                     </div>
 
                     {computedTarget > 0 && (
-                        <p className="text-[12px] text-[#8a8a84]">
-                            Target: <span className="font-medium text-[#252525]">{formatCurrency(computedTarget)}</span>
+                        <p className="text-[12px] text-muted-ink">
+                            Target: <span className="font-medium text-ink">{formatCurrency(computedTarget)}</span>
                         </p>
                     )}
                 </div>
@@ -353,7 +354,7 @@ export function WishListForm({ payPeriodId, item, defaultName, onSuccess }: Wish
                         Estimated price <span className="normal-case tracking-normal font-normal">(optional)</span>
                     </Label>
                     <div className="relative">
-                        <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[13px] text-[#8a8a84] font-medium">
+                        <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[13px] text-muted-ink font-medium">
                             Rp
                         </span>
                         <Input
@@ -362,7 +363,7 @@ export function WishListForm({ payPeriodId, item, defaultName, onSuccess }: Wish
                             placeholder="0"
                             value={formatCurrencyInput(price)}
                             onChange={(e) => setPrice(e.target.value.replace(/\D/g, ''))}
-                            className="pl-10 h-12 rounded-[14px] border-[#e5e5e5] text-[13px] font-mono"
+                            className="pl-10 h-12 rounded-[14px] border-line text-[13px] font-mono"
                             disabled={loading}
                         />
                     </div>
@@ -378,14 +379,14 @@ export function WishListForm({ payPeriodId, item, defaultName, onSuccess }: Wish
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
                     disabled={loading}
-                    className="h-12 rounded-[14px] border-[#e5e5e5] text-[13px]"
+                    className="h-12 rounded-[14px] border-line text-[13px]"
                 />
             </div>
 
             <button
                 type="submit"
                 disabled={loading}
-                className="w-full h-12 rounded-[14px] text-[13px] font-semibold text-white bg-[#6FA82B] hover:bg-[#6FA82B]/90 transition-colors disabled:opacity-50 disabled:pointer-events-none"
+                className="w-full h-12 rounded-[14px] text-[13px] font-semibold text-white bg-brand hover:bg-brand/90 transition-colors disabled:opacity-50 disabled:pointer-events-none"
             >
                 {loading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : isEdit ? 'Save Changes' : 'Save Item'}
             </button>

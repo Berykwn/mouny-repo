@@ -71,12 +71,12 @@ function resolveIcon(name: string, icon?: string | null): { Icon: Icon; key: str
 // Soft plate + saturated icon pairs. The tint follows the icon (like a category's color),
 // not the wish's id — a new wish has no id yet, and typing its name must not recolor it.
 const TINTS: [string, string][] = [
-    ['#6FA82B1f', '#4d7a1d'],
-    ['#3d6eb61f', '#3d6eb6'],
-    ['#8b5cf61f', '#7c3aed'],
-    ['#ec48991f', '#db2777'],
-    ['#f59e0b24', '#b45309'],
-    ['#14b8a61f', '#0f766e'],
+    ['#6FA82B1f', 'var(--brand-ink)'],
+    ['#3d6eb61f', 'var(--info)'],
+    ['#8b5cf61f', 'var(--tint-violet)'],
+    ['#ec48991f', 'var(--tint-pink)'],
+    ['#f59e0b24', 'var(--warning-ink)'],
+    ['#14b8a61f', 'var(--tint-teal)'],
 ]
 
 function tintFor(seed: string): [string, string] {

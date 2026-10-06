@@ -22,8 +22,8 @@ interface TransactionListViewProps {
 }
 
 const CHIP = 'shrink-0 px-3 py-1.5 rounded-full text-[12px] font-medium border transition-colors'
-const CHIP_ON = 'bg-ink text-white border-ink'
-const CHIP_OFF = 'bg-white text-muted-ink border-line hover:text-ink'
+const CHIP_ON = 'bg-ink text-on-ink border-ink'
+const CHIP_OFF = 'bg-surface text-muted-ink border-line hover:text-ink'
 const TOOL_BTN = 'flex items-center gap-1.5 px-2 sm:px-2.5 h-8 rounded-[10px] text-[12px] font-medium transition-colors'
 
 function dayLabel(date: string): string {
@@ -104,7 +104,7 @@ export function TransactionListView({
         <div className="space-y-3 pt-3">
             {/* Search + tools */}
             <div className="flex items-center gap-2">
-                <label className="flex-1 flex items-center gap-2 h-10 px-3 rounded-[12px] border border-line bg-white focus-within:border-ink/40 transition-colors">
+                <label className="flex-1 flex items-center gap-2 h-10 px-3 rounded-[12px] border border-line bg-surface focus-within:border-ink/40 transition-colors">
                     <Search className="w-4 h-4 text-subtle-ink shrink-0" />
                     <input
                         type="search"
@@ -124,7 +124,7 @@ export function TransactionListView({
                     title="Export CSV"
                     onClick={handleExport}
                     disabled={filtered.length === 0}
-                    className="w-10 h-10 rounded-[12px] border border-line bg-white flex items-center justify-center text-muted-ink hover:text-ink transition-colors disabled:opacity-40"
+                    className="w-10 h-10 rounded-[12px] border border-line bg-surface flex items-center justify-center text-muted-ink hover:text-ink transition-colors disabled:opacity-40"
                 >
                     <Download className="w-4 h-4" />
                 </button>
@@ -134,7 +134,7 @@ export function TransactionListView({
                         onClick={() => selecting ? exitSelect() : setSelectMode(true)}
                         className={cn(
                             'h-10 px-3 rounded-[12px] border flex items-center gap-1.5 text-[12px] font-medium transition-colors',
-                            selecting ? 'bg-ink text-white border-ink' : 'bg-white text-ink border-line hover:bg-surface-soft'
+                            selecting ? 'bg-ink text-on-ink border-ink' : 'bg-surface text-ink border-line hover:bg-surface-soft'
                         )}
                     >
                         <ListChecks className="w-4 h-4" />
@@ -163,7 +163,7 @@ export function TransactionListView({
                         onClick={() => setCategoryId(categoryId === f.id ? null : f.id)}
                         className={cn(CHIP, categoryId === f.id ? CHIP_ON : CHIP_OFF)}
                     >
-                        {f.name} <span className={cn('tabular-nums', categoryId === f.id ? 'text-white/60' : 'text-subtle-ink')}>{f.count}</span>
+                        {f.name} <span className={cn('tabular-nums', categoryId === f.id ? 'text-on-ink/60' : 'text-subtle-ink')}>{f.count}</span>
                     </button>
                 ))}
             </div>
@@ -181,7 +181,7 @@ export function TransactionListView({
                                 disabled={!commonType}
                                 title={!commonType ? 'Select transactions of only one type' : 'Change category'}
                                 onClick={onBulkCategoryRequest}
-                                className={cn(TOOL_BTN, 'text-ink hover:bg-white disabled:opacity-40 disabled:pointer-events-none')}
+                                className={cn(TOOL_BTN, 'text-ink hover:bg-surface disabled:opacity-40 disabled:pointer-events-none')}
                             >
                                 <Tag className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Category</span>
                             </button>
@@ -190,7 +190,7 @@ export function TransactionListView({
                                 title="Delete"
                                 disabled={selectedIds.length === 0}
                                 onClick={onBulkDeleteRequest}
-                                className={cn(TOOL_BTN, 'text-negative hover:bg-white disabled:opacity-40 disabled:pointer-events-none')}
+                                className={cn(TOOL_BTN, 'text-negative hover:bg-surface disabled:opacity-40 disabled:pointer-events-none')}
                             >
                                 <Trash2 className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Delete</span>
                             </button>
@@ -198,7 +198,7 @@ export function TransactionListView({
                                 type="button"
                                 aria-label="Done selecting"
                                 onClick={exitSelect}
-                                className="flex items-center justify-center w-8 h-8 rounded-[10px] text-muted-ink hover:bg-white transition-colors"
+                                className="flex items-center justify-center w-8 h-8 rounded-[10px] text-muted-ink hover:bg-surface transition-colors"
                             >
                                 <X className="w-3.5 h-3.5" />
                             </button>

@@ -28,7 +28,7 @@ export function CategoryTypePicker({ value, onChange }: CategoryTypePickerProps)
                                 ? positive
                                     ? 'border-positive bg-positive/10'
                                     : 'border-negative bg-negative/10'
-                                : 'border-line bg-white hover:border-[#d4d4d4]'
+                                : 'border-line bg-surface hover:border-line-strong'
                         )}
                     >
                         <div className={cn(

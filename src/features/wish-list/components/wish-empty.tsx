@@ -33,7 +33,7 @@ export function WishEmpty({ onAdd, disabled }: WishEmptyProps) {
                         type="button"
                         disabled={disabled}
                         onClick={() => onAdd(name)}
-                        className="px-3 py-1.5 rounded-full text-[12px] font-medium border border-line bg-white text-ink hover:bg-surface-soft transition-colors disabled:opacity-50"
+                        className="px-3 py-1.5 rounded-full text-[12px] font-medium border border-line bg-surface text-ink hover:bg-surface-soft transition-colors disabled:opacity-50"
                     >
                         + {name}
                     </button>

@@ -37,7 +37,7 @@ export function HeroAction({ onClick, disabled, icon, children }: HeroActionProp
             className={cn(
                 'h-8 flex items-center gap-1 rounded-full pl-2.5 pr-3',
                 'text-[12px] font-medium transition-colors',
-                'bg-white/60 backdrop-blur-md border border-line text-ink hover:bg-white/90',
+                'bg-surface/60 backdrop-blur-md border border-line text-ink hover:bg-surface/90',
                 'disabled:opacity-40 disabled:pointer-events-none'
             )}
         >

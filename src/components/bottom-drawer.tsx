@@ -9,7 +9,7 @@ interface BottomDrawerProps {
     children: React.ReactNode
     /** Overrides the drawer's mobile max-height. Defaults to today's `max-h-[90dvh]`. */
     maxHeightClassName?: string
-    /** Overrides the title's text styling. Defaults to today's `font-semibold text-[15px] text-[#252525]`. */
+    /** Overrides the title's text styling. Defaults to today's `font-semibold text-[15px] text-ink`. */
     titleClassName?: string
 }
 
@@ -22,7 +22,7 @@ export function BottomDrawer({
     title,
     children,
     maxHeightClassName = 'max-h-[90dvh]',
-    titleClassName = 'font-semibold text-[15px] text-[#252525]',
+    titleClassName = 'font-semibold text-[15px] text-ink',
 }: BottomDrawerProps) {
     React.useEffect(() => {
         if (!open) return
@@ -47,7 +47,7 @@ export function BottomDrawer({
 
             {/* Drawer */}
             <div className={cn(
-                'fixed inset-x-0 bottom-0 z-50 bg-white rounded-t-[20px] border-t border-[#e5e5e5] shadow-xl',
+                'fixed inset-x-0 bottom-0 z-50 bg-surface rounded-t-[20px] border-t border-line shadow-xl',
                 'flex flex-col pb-[env(safe-area-inset-bottom)] lg:pb-0',
                 maxHeightClassName,
                 // Desktop: center as modal
@@ -56,14 +56,14 @@ export function BottomDrawer({
             )}>
                 {/* Handle bar — mobile only */}
                 <div className="flex justify-center pt-3 pb-1 lg:hidden">
-                    <div className="w-10 h-1 rounded-full bg-[#e5e5e5]" />
+                    <div className="w-10 h-1 rounded-full bg-line" />
                 </div>
 
-                <div className="flex items-center justify-between px-5 py-3 border-b border-[#f2f2f0] shrink-0">
+                <div className="flex items-center justify-between px-5 py-3 border-b border-line-soft shrink-0">
                     <h2 className={titleClassName}>{title}</h2>
                     <button
                         onClick={onClose}
-                        className="w-7 h-7 rounded-full flex items-center justify-center text-[#8a8a84] hover:text-[#252525] hover:bg-[#f4f4f2] transition-colors"
+                        className="w-7 h-7 rounded-full flex items-center justify-center text-muted-ink hover:text-ink hover:bg-surface-hover transition-colors"
                     >
                         <X className="w-4 h-4" />
                     </button>

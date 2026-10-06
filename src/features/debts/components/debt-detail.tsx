@@ -11,7 +11,7 @@ import { formatMonthYear } from '@/features/wish-list/lib/wish-analytics'
 import { debtProgress, dueStatus, type DueStatus, type PayoffStop } from '../lib/debt-insights'
 import { DebtAvatar } from './debt-avatar'
 
-const PRIMARY_BTN = 'w-full h-12 rounded-[14px] text-[13px] font-semibold text-white bg-[#6FA82B] hover:bg-[#6FA82B]/90 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:pointer-events-none'
+const PRIMARY_BTN = 'w-full h-12 rounded-[14px] text-[13px] font-semibold text-white bg-brand hover:bg-brand/90 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:pointer-events-none'
 const SECONDARY_BTN = 'w-full h-12 rounded-[14px] text-[13px] font-semibold border border-line text-ink hover:bg-surface-hover transition-colors flex items-center justify-center gap-2'
 
 function dueText(status: DueStatus, dueDate: string | null): { text: string; className: string } {

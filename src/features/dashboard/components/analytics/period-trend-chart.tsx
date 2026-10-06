@@ -8,9 +8,9 @@ interface PeriodTrendChartProps {
   trend: TrendPoint[]
 }
 
-const INCOME_COLOR = '#4d7a1d'
+const INCOME_COLOR = 'var(--brand-ink)'
 const EXPENSE_COLOR = '#c9977a'
-const NET_COLOR = '#252525'
+const NET_COLOR = 'var(--ink)'
 
 function TrendTooltip({ active, payload, label }: {
   active?: boolean
@@ -21,22 +21,22 @@ function TrendTooltip({ active, payload, label }: {
   const p = payload[0].payload
 
   return (
-    <div className="rounded-[12px] border border-[#e5e5e5] bg-white px-3 py-2.5 shadow-lg">
-      <p className="text-[11px] font-medium text-[#252525] mb-1.5">
-        {label}{p.isCurrent && <span className="text-[#8a8a84]"> · ongoing</span>}
+    <div className="rounded-[12px] border border-line bg-surface px-3 py-2.5 shadow-lg">
+      <p className="text-[11px] font-medium text-ink mb-1.5">
+        {label}{p.isCurrent && <span className="text-muted-ink"> · ongoing</span>}
       </p>
       <div className="space-y-0.5">
         <p className="text-[11px] flex items-center justify-between gap-4">
           <span style={{ color: INCOME_COLOR }}>In</span>
-          <span className="font-medium text-[#252525]">{formatCurrency(p.income)}</span>
+          <span className="font-medium text-ink">{formatCurrency(p.income)}</span>
         </p>
         <p className="text-[11px] flex items-center justify-between gap-4">
           <span style={{ color: EXPENSE_COLOR }}>Out</span>
-          <span className="font-medium text-[#252525]">{formatCurrency(p.expense)}</span>
+          <span className="font-medium text-ink">{formatCurrency(p.expense)}</span>
         </p>
-        <p className="text-[11px] flex items-center justify-between gap-4 pt-0.5 border-t border-[#f2f2f0] mt-1">
-          <span className="text-[#8a8a84]">Net</span>
-          <span className={p.net < 0 ? 'font-medium text-[#dc2626]' : 'font-medium text-[#4d7a1d]'}>
+        <p className="text-[11px] flex items-center justify-between gap-4 pt-0.5 border-t border-line-soft mt-1">
+          <span className="text-muted-ink">Net</span>
+          <span className={p.net < 0 ? 'font-medium text-negative' : 'font-medium text-brand-ink'}>
             {p.net >= 0 ? '+' : ''}{formatCurrency(p.net)}
           </span>
         </p>
@@ -49,7 +49,7 @@ export function PeriodTrendChart({ trend }: PeriodTrendChartProps) {
   if (trend.length < 2) {
     return (
       <div className="flex flex-col items-center justify-center text-center py-10 px-4">
-        <p className="text-[13px] text-[#8a8a84]">
+        <p className="text-[13px] text-muted-ink">
           Your trend will appear once you've completed a full pay period.
         </p>
       </div>
@@ -74,7 +74,7 @@ export function PeriodTrendChart({ trend }: PeriodTrendChartProps) {
               tickFormatter={(v: number) => formatShortCurrency(v)}
               width={36}
             />
-            <Tooltip content={<TrendTooltip />} cursor={{ fill: '#f4f4f2' }} />
+            <Tooltip content={<TrendTooltip />} cursor={{ fill: 'var(--surface-hover)' }} />
             <Bar dataKey="income" name="In" radius={[3, 3, 0, 0]} barSize={10}>
               {trend.map((d, i) => (
                 <Cell key={i} fill={INCOME_COLOR} fillOpacity={d.isCurrent ? 0.55 : 1} />
@@ -98,16 +98,16 @@ export function PeriodTrendChart({ trend }: PeriodTrendChartProps) {
       </div>
 
       <div className="flex items-center gap-4 mt-2 px-1">
-        <span className="inline-flex items-center gap-1.5 text-[10.5px] text-[#8a8a84]">
+        <span className="inline-flex items-center gap-1.5 text-[10.5px] text-muted-ink">
           <span className="w-2 h-2 rounded-full" style={{ backgroundColor: INCOME_COLOR }} /> Income
         </span>
-        <span className="inline-flex items-center gap-1.5 text-[10.5px] text-[#8a8a84]">
+        <span className="inline-flex items-center gap-1.5 text-[10.5px] text-muted-ink">
           <span className="w-2 h-2 rounded-full" style={{ backgroundColor: EXPENSE_COLOR }} /> Expense
         </span>
-        <span className="inline-flex items-center gap-1.5 text-[10.5px] text-[#8a8a84]">
+        <span className="inline-flex items-center gap-1.5 text-[10.5px] text-muted-ink">
           <span className="w-2 h-2 rounded-full" style={{ backgroundColor: NET_COLOR }} /> Net
         </span>
-        <span className="text-[10.5px] text-[#a3a3a3] ml-auto">lighter bar = ongoing</span>
+        <span className="text-[10.5px] text-subtle-ink ml-auto">lighter bar = ongoing</span>
       </div>
     </div>
   )

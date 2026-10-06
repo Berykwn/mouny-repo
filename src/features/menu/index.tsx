@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
-import { CreditCard, ShoppingBag, Tag, History, LogOut, ChevronRight, CalendarCheck, CalendarPlus } from 'lucide-react'
+import { CreditCard, ShoppingBag, Tag, History, LogOut, ChevronRight, CalendarCheck, CalendarPlus, Monitor, Sun, Moon, Palette } from 'lucide-react'
+import { useTheme, type Theme } from '@/contexts/ThemeContext'
 import { supabase } from '@/lib/supabase'
 import { ConfirmDrawer } from '@/components/confirmation-drawer'
 import { BottomDrawer } from '@/components/bottom-drawer'
@@ -83,7 +84,7 @@ export default function MenuPage() {
                             <HeroGlow />
                             <div className="relative flex items-center gap-3.5">
                                 <div className="w-12 h-12 rounded-full bg-ink flex items-center justify-center shrink-0">
-                                    <span className="text-[15px] font-semibold text-[#fafafa]">{getInitials(user)}</span>
+                                    <span className="text-[15px] font-semibold text-on-ink">{getInitials(user)}</span>
                                 </div>
                                 <div className="min-w-0">
                                     <p className="text-[16px] font-medium tracking-[-0.01em] text-ink truncate">{name || 'Your account'}</p>
@@ -121,6 +122,7 @@ export default function MenuPage() {
                                 to="/period-history" icon={History} tint="info" label="Period History"
                                 sub={counts ? `${counts.closedPeriods} closed period${counts.closedPeriods === 1 ? '' : 's'}` : 'Past pay periods'}
                             />
+                            <AppearanceRow />
                         </Group>
 
                         <div className="space-y-2">
@@ -189,7 +191,7 @@ function PeriodCard({ period, left, usedPct, onOpen, onClose }: PeriodCardProps)
                 <button
                     type="button"
                     onClick={onOpen}
-                    className="mt-4 w-full h-11 rounded-[14px] text-[13px] font-semibold text-white bg-[#6FA82B] hover:bg-[#6FA82B]/90 transition-colors flex items-center justify-center gap-2"
+                    className="mt-4 w-full h-11 rounded-[14px] text-[13px] font-semibold text-white bg-brand hover:bg-brand/90 transition-colors flex items-center justify-center gap-2"
                 >
                     <CalendarPlus className="w-4 h-4" /> Open new period
                 </button>
@@ -238,6 +240,51 @@ function PeriodCard({ period, left, usedPct, onOpen, onClose }: PeriodCardProps)
     )
 }
 
+const THEME_OPTIONS: { value: Theme; label: string; icon: typeof Tag }[] = [
+    { value: 'system', label: 'Auto', icon: Monitor },
+    { value: 'light', label: 'Light', icon: Sun },
+    { value: 'dark', label: 'Dark', icon: Moon },
+]
+
+function AppearanceRow() {
+    const { theme, setTheme } = useTheme()
+
+    return (
+        <div className="flex items-center gap-3 px-4 py-3">
+            <span className={cn('w-9 h-9 rounded-[10px] flex items-center justify-center shrink-0', TINT.info)}>
+                <Palette className="w-4 h-4" strokeWidth={1.9} />
+            </span>
+            <span className="flex-1 min-w-0">
+                <span className="block text-[13px] font-medium text-ink">Appearance</span>
+                <span className="block text-[11.5px] text-muted-ink truncate">
+                    {theme === 'system' ? 'Follows your device' : `Always ${theme}`}
+                </span>
+            </span>
+            <div role="radiogroup" aria-label="Theme" className="flex shrink-0 rounded-[10px] bg-line-soft p-0.5">
+                {THEME_OPTIONS.map(({ value, label, icon: Icon }) => (
+                    <button
+                        key={value}
+                        type="button"
+                        role="radio"
+                        aria-checked={theme === value}
+                        aria-label={label}
+                        title={label}
+                        onClick={() => setTheme(value)}
+                        className={cn(
+                            'w-8 h-7 rounded-[8px] flex items-center justify-center transition-colors',
+                            theme === value
+                                ? 'bg-raised text-ink shadow-sm'
+                                : 'text-muted-ink hover:text-ink'
+                        )}
+                    >
+                        <Icon className="w-3.5 h-3.5" strokeWidth={1.9} />
+                    </button>
+                ))}
+            </div>
+        </div>
+    )
+}
+
 function Group({ label, children }: { label: string; children: ReactNode }) {
     return (
         <div>
@@ -269,7 +316,7 @@ function Row({ to, icon: Icon, tint, label, sub, flag }: RowProps) {
             {flag && (
                 <span className={cn('text-[10.5px] font-semibold px-2 py-0.5 rounded-full shrink-0', flag.className)}>{flag.text}</span>
             )}
-            <ChevronRight className="w-4 h-4 text-[#c4c4be] shrink-0" />
+            <ChevronRight className="w-4 h-4 text-faint-ink shrink-0" />
         </NavLink>
     )
 }

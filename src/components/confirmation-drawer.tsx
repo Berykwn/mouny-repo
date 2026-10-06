@@ -28,10 +28,10 @@ export function ConfirmDrawer({
             <div className="space-y-4 pb-2">
                 <div className={cn(
                     'flex items-start gap-3 rounded-[14px] border px-4 py-4',
-                    destructive ? 'bg-[#fef2f2] border-[#f3c5c5]' : 'bg-[#f4f4f2] border-[#e5e5e5]'
+                    destructive ? 'bg-negative-soft border-negative-line' : 'bg-surface-hover border-line'
                 )}>
-                    <AlertTriangle className={cn('w-4 h-4 shrink-0 mt-0.5', destructive ? 'text-[#dc2626]' : 'text-[#8a8a84]')} />
-                    <p className={cn('text-[13px]', destructive ? 'text-[#dc2626]' : 'text-[#252525]')}>{description}</p>
+                    <AlertTriangle className={cn('w-4 h-4 shrink-0 mt-0.5', destructive ? 'text-negative' : 'text-muted-ink')} />
+                    <p className={cn('text-[13px]', destructive ? 'text-negative' : 'text-ink')}>{description}</p>
                 </div>
 
                 <button
@@ -40,7 +40,7 @@ export function ConfirmDrawer({
                     disabled={loading}
                     className={cn(
                         'w-full h-12 rounded-[14px] text-[13px] font-semibold text-white transition-colors disabled:opacity-50 disabled:pointer-events-none',
-                        destructive ? 'bg-[#dc2626] hover:bg-[#dc2626]/90' : 'bg-[#6FA82B] hover:bg-[#6FA82B]/90'
+                        destructive ? 'bg-negative hover:bg-negative/90' : 'bg-brand hover:bg-brand/90'
                     )}
                 >
                     {loading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : confirmLabel}
@@ -50,7 +50,7 @@ export function ConfirmDrawer({
                     type="button"
                     onClick={onClose}
                     disabled={loading}
-                    className="w-full h-12 rounded-[14px] text-[13px] font-semibold border border-[#e5e5e5] text-[#252525] hover:bg-[#f4f4f2] transition-colors disabled:opacity-50 disabled:pointer-events-none"
+                    className="w-full h-12 rounded-[14px] text-[13px] font-semibold border border-line text-ink hover:bg-surface-hover transition-colors disabled:opacity-50 disabled:pointer-events-none"
                 >
                     Cancel
                 </button>

@@ -77,7 +77,7 @@ export function WishListItems({ items, roadmap, pace, onOpen }: WishListItemsPro
                 'px-3 py-1.5 rounded-full text-[12px] font-medium border transition-colors',
                 filter === id
                   ? 'bg-surface-hover text-ink border-line'
-                  : 'bg-white text-muted-ink border-line hover:text-ink'
+                  : 'bg-surface text-muted-ink border-line hover:text-ink'
               )}
             >
               {label} ({count})

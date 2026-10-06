@@ -12,6 +12,7 @@ import { TransferFields } from './transfer-fields'
 import { transactionsService, type CreateTransactionInput } from '@/services/transactions.service'
 import { accountsService } from '@/services/accounts-categories.service'
 import { formatCurrency, formatCurrencyInput, parseCurrencyInput, toISODate } from '@/lib/helpers'
+import { summarizeTransactions } from '@/lib/period-summary'
 import { cn } from '@/lib/utils'
 import { useAccounts, useCategories, usePeriodTransactions } from '@/queries'
 import type { Account, Category, TransactionWithDetails } from '@/types'
@@ -22,9 +23,9 @@ type TxType = 'income' | 'expense' | 'transfer'
 const NO_ACCOUNTS: Account[] = []
 const NO_CATEGORIES: Category[] = []
 
-const FIELD_LABEL = 'text-[11px] font-medium uppercase tracking-[.14em] text-[#8a8a84]'
-const OUTLINE_BUTTON = 'flex-1 h-[52px] rounded-[14px] border border-[#e5e5e5] text-[14px] font-semibold text-[#5b5b55] transition-colors hover:bg-[#fbfbfa] disabled:opacity-50 disabled:pointer-events-none'
-const FILLED_BUTTON = 'flex-1 h-[52px] rounded-[14px] text-[14px] font-semibold text-white bg-[#6FA82B] hover:bg-[#6FA82B]/90 transition-colors disabled:opacity-50 disabled:pointer-events-none'
+const FIELD_LABEL = 'text-[11px] font-medium uppercase tracking-[.14em] text-muted-ink'
+const OUTLINE_BUTTON = 'flex-1 h-[52px] rounded-[14px] border border-line text-[14px] font-semibold text-[#5b5b55] dark:text-neutral-300 transition-colors hover:bg-surface-soft disabled:opacity-50 disabled:pointer-events-none'
+const FILLED_BUTTON = 'flex-1 h-[52px] rounded-[14px] text-[14px] font-semibold text-white bg-brand hover:bg-brand/90 transition-colors disabled:opacity-50 disabled:pointer-events-none'
 
 interface AddTransactionFormProps {
     payPeriodId: string
@@ -52,7 +53,8 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
     }
 
     const [type, setType] = useState<TxType>((initial?.type as TxType | undefined) ?? 'expense')
-    const [amount, setAmount] = useState(initial ? String(initial.amount) : '')
+    // Whole rupiah: the field drops anything after a decimal point, which would read 10x too much.
+    const [amount, setAmount] = useState(initial ? String(Math.round(initial.amount)) : '')
     const [note, setNote] = useState(initial?.note ?? '')
     const [date, setDate] = useState(resolveDate(initial?.date ?? defaultDate))
     const [accountId, setAccountId] = useState(initial?.account_id ?? '')
@@ -120,14 +122,12 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
 
     // "Safe to spend" baseline for the consequence strip, from the period's cached
     // transactions; the strip itself adds the in-progress amount.
+    // Worked out like the dashboard's, so money moved into savings isn't counted as spendable.
+    // Editing: the baseline is the period without this transaction, so the strip shows where
+    // the edited version leaves you.
     const safeToSpend = useMemo(() => {
         if (!periodTxs) return null
-        const totalIncome = periodTxs.filter((t) => t.type === 'income').reduce((s, t) => s + t.amount, 0)
-        const totalExpense = periodTxs.filter((t) => t.type === 'expense').reduce((s, t) => s + t.amount, 0)
-        // Editing: the baseline is the period without this transaction, so the strip
-        // shows where the edited version leaves you.
-        const own = initial ? (initial.type === 'income' ? -initial.amount : initial.amount) : 0
-        return totalIncome - totalExpense + own
+        return summarizeTransactions(initial ? periodTxs.filter((t) => t.id !== initial.id) : periodTxs).net
     }, [periodTxs, initial])
 
     const selectedAccount = accounts.find((a) => a.id === accountId)
@@ -259,10 +259,10 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
     return (
         <div className="flex flex-col gap-[18px]">
             {/* Type segmented control */}
-            <div className="relative flex w-full rounded-xl bg-[#f4f4f2] p-[3px] gap-1">
+            <div className="relative flex w-full rounded-xl bg-surface-hover p-[3px] gap-1">
                 <div
                     className={cn(
-                        'absolute top-[3px] bottom-[3px] rounded-[9px] bg-white shadow-sm transition-transform duration-200 ease-out',
+                        'absolute top-[3px] bottom-[3px] rounded-[9px] bg-raised shadow-sm transition-transform duration-200 ease-out',
                         initial ? 'w-[calc((100%-4px)/2)]' : 'w-[calc((100%-8px)/3)]',
                         type === 'income' && 'translate-x-[calc(100%+4px)]',
                         type === 'transfer' && 'translate-x-[calc(200%+8px)]',
@@ -276,7 +276,7 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
                         onClick={() => setType(t)}
                         className={cn(
                             'relative z-10 flex-1 py-2 text-[13px] rounded-[9px] transition-colors duration-150',
-                            type === t ? 'text-[#252525] font-semibold' : 'text-[#8a8a84] font-medium'
+                            type === t ? 'text-ink font-semibold' : 'text-muted-ink font-medium'
                         )}
                     >
                         {t === 'expense' ? 'Expense' : t === 'income' ? 'Income' : 'Transfer'}
@@ -289,8 +289,8 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
                     {/* Amount */}
                     <div className="space-y-1.5">
                         <Label className={FIELD_LABEL}>Amount</Label>
-                        <div className="flex items-baseline gap-1.5 border-b border-[#e5e5e5] pb-2">
-                            <span className="text-[20px] font-medium text-[#b0b0aa]">Rp</span>
+                        <div className="flex items-baseline gap-1.5 border-b border-line pb-2">
+                            <span className="text-[20px] font-medium text-faint-ink">Rp</span>
                             <input
                                 ref={amountInputRef}
                                 type="text"
@@ -299,7 +299,7 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
                                 onChange={(e) => setAmount(e.target.value.replace(/\D/g, '').slice(0, 12))}
                                 placeholder="0"
                                 disabled={loading || moneyLocked}
-                                className="flex-1 min-w-0 bg-transparent outline-none text-[34px] font-medium tracking-[-0.02em] text-[#252525] placeholder:text-[#b0b0aa]"
+                                className="flex-1 min-w-0 bg-transparent outline-none text-[34px] font-medium tracking-[-0.02em] text-ink placeholder:text-faint-ink"
                             />
                         </div>
                     </div>
@@ -338,24 +338,24 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
                             className="flex items-center gap-2.5 py-[13px] text-left w-full disabled:opacity-50 disabled:pointer-events-none"
                         >
                             <AccountTypeIcon type={selectedAccount?.type ?? 'cash'} savings={selectedAccount?.is_savings} className="w-[18px] h-[18px] shrink-0" />
-                            <span className="text-[13px] text-[#8a8a84] shrink-0">Account</span>
+                            <span className="text-[13px] text-muted-ink shrink-0">Account</span>
                             <span className="ml-auto flex items-center gap-1.5 min-w-0">
                                 <span className="flex flex-col items-end min-w-0">
-                                    <span className="text-[13.5px] font-medium text-[#252525] truncate max-w-[160px]">
+                                    <span className="text-[13.5px] font-medium text-ink truncate max-w-[160px]">
                                         {selectedAccount?.name ?? 'Select'}
                                     </span>
                                     {selectedAccount && (
-                                        <span className="text-[11.5px] text-[#b0b0aa]">{formatCurrency(selectedAccount.balance)}</span>
+                                        <span className="text-[11.5px] text-faint-ink">{formatCurrency(selectedAccount.balance)}</span>
                                     )}
                                 </span>
-                                <ChevronDown className="w-3.5 h-3.5 text-[#a3a3a3] shrink-0" />
+                                <ChevronDown className="w-3.5 h-3.5 text-subtle-ink shrink-0" />
                             </span>
                         </button>
 
-                        <div className="py-[13px] border-t border-[#f2f2f0] flex flex-col gap-2">
+                        <div className="py-[13px] border-t border-line-soft flex flex-col gap-2">
                             <div className="flex items-center gap-2.5">
-                                <CalendarIcon className="w-4 h-4 text-[#8a8a84] shrink-0" strokeWidth={2} />
-                                <span className="text-[13px] text-[#8a8a84]">Date</span>
+                                <CalendarIcon className="w-4 h-4 text-muted-ink shrink-0" strokeWidth={2} />
+                                <span className="text-[13px] text-muted-ink">Date</span>
                             </div>
                             <DateQuickPicker
                                 date={date}
@@ -366,10 +366,10 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
                             />
                         </div>
 
-                        <div className="py-[13px] border-t border-[#f2f2f0] flex flex-col gap-2">
+                        <div className="py-[13px] border-t border-line-soft flex flex-col gap-2">
                             <div className="flex items-center gap-2.5">
-                                <Pencil className="w-4 h-4 text-[#8a8a84] shrink-0" strokeWidth={2} />
-                                <span className="text-[13px] text-[#8a8a84]">Note</span>
+                                <Pencil className="w-4 h-4 text-muted-ink shrink-0" strokeWidth={2} />
+                                <span className="text-[13px] text-muted-ink">Note</span>
                             </div>
                             <Input
                                 type="text"
@@ -377,7 +377,7 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
                                 value={note}
                                 onChange={(e) => setNote(e.target.value)}
                                 disabled={loading}
-                                className="h-11 rounded-[12px] border-[#e5e5e5] text-[13.5px]"
+                                className="h-11 rounded-[12px] border-line text-[13.5px]"
                             />
                         </div>
                     </div>

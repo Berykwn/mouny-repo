@@ -12,7 +12,7 @@ import { LOW_RUNWAY_DAYS, type AccountInsight } from '../lib/account-insights'
 const TYPE_LABEL = { bank: 'Bank account', cash: 'Cash' }
 const RECENT_COUNT = 5
 
-const PRIMARY_BTN = 'w-full h-12 rounded-[14px] text-[13px] font-semibold text-white bg-[#6FA82B] hover:bg-[#6FA82B]/90 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:pointer-events-none'
+const PRIMARY_BTN = 'w-full h-12 rounded-[14px] text-[13px] font-semibold text-white bg-brand hover:bg-brand/90 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:pointer-events-none'
 
 interface AccountDetailProps {
     account: Account
@@ -60,12 +60,12 @@ export function AccountDetail({ account, insight, canTransfer, hasActivePeriod, 
             )}
 
             {hasActivePeriod && (
-                <div className="grid grid-cols-2 gap-px overflow-hidden rounded-[14px] border border-[#f0f0ee] bg-[#f0f0ee]">
-                    <div className="bg-white p-3">
+                <div className="grid grid-cols-2 gap-px overflow-hidden rounded-[14px] border border-line-soft bg-line-soft">
+                    <div className="bg-surface p-3">
                         <p className="text-[11px] text-muted-ink">In this period</p>
                         <p className="text-[15px] font-medium text-positive tabular-nums mt-1">+{formatCurrency(moneyIn)}</p>
                     </div>
-                    <div className="bg-white p-3">
+                    <div className="bg-surface p-3">
                         <p className="text-[11px] text-muted-ink">Out this period</p>
                         <p className="text-[15px] font-medium text-ink tabular-nums mt-1">−{formatCurrency(moneyOut)}</p>
                     </div>

@@ -60,12 +60,12 @@ export function CategoryDetail({ category, transactions, budget, hasActivePeriod
             )}
 
             {hasActivePeriod && (
-                <div className="grid grid-cols-2 gap-px overflow-hidden rounded-[14px] border border-[#f0f0ee] bg-[#f0f0ee]">
-                    <div className="bg-white p-3">
+                <div className="grid grid-cols-2 gap-px overflow-hidden rounded-[14px] border border-line-soft bg-line-soft">
+                    <div className="bg-surface p-3">
                         <p className="text-[11px] text-muted-ink">Transactions</p>
                         <p className="text-[15px] font-medium text-ink tabular-nums mt-1">{transactions.length}</p>
                     </div>
-                    <div className="bg-white p-3">
+                    <div className="bg-surface p-3">
                         <p className="text-[11px] text-muted-ink">Average each</p>
                         <p className="text-[15px] font-medium text-ink tabular-nums mt-1">{formatCurrency(average)}</p>
                     </div>

@@ -57,18 +57,18 @@ interface StatCellProps {
 function StatCell({ label, value, sub, valueClassName, onTap, visual, className }: StatCellProps & { className?: string }) {
   return (
     <div
-      className={cn('bg-white p-3 min-w-0', onTap && 'cursor-pointer hover:bg-[#fbfbfa] active:bg-[#f4f4f2] transition-colors', className)}
+      className={cn('bg-surface p-3 min-w-0', onTap && 'cursor-pointer hover:bg-surface-soft active:bg-surface-hover transition-colors', className)}
       onClick={onTap}
     >
       <div className="flex items-center gap-1">
-        <p className="text-[11px] text-[#8a8a84] truncate">{label}</p>
-        {onTap && <ChevronRight className="w-3 h-3 text-[#c4c4be] shrink-0" />}
+        <p className="text-[11px] text-muted-ink truncate">{label}</p>
+        {onTap && <ChevronRight className="w-3 h-3 text-faint-ink shrink-0" />}
       </div>
-      <p className={cn('text-[15px] sm:text-[17px] font-medium tracking-[-0.01em] text-[#252525] mt-1 truncate tabular-nums', valueClassName)}>
+      <p className={cn('text-[15px] sm:text-[17px] font-medium tracking-[-0.01em] text-ink mt-1 truncate tabular-nums', valueClassName)}>
         {value}
       </p>
       {visual && <div className="mt-2">{visual}</div>}
-      {sub && <p className="text-[10.5px] text-[#a3a3a3] mt-1 truncate">{sub}</p>}
+      {sub && <p className="text-[10.5px] text-subtle-ink mt-1 truncate">{sub}</p>}
     </div>
   )
 }
@@ -76,7 +76,7 @@ function StatCell({ label, value, sub, valueClassName, onTap, visual, className 
 /** Hairline-divided grid: 1px gaps over a line-colored background read as dividers. */
 function StatGrid({ className, children }: { className?: string; children: ReactNode }) {
   return (
-    <div className={cn('grid gap-px overflow-hidden rounded-[14px] border border-[#f0f0ee] bg-[#f0f0ee]', className)}>
+    <div className={cn('grid gap-px overflow-hidden rounded-[14px] border border-line-soft bg-line-soft', className)}>
       {children}
     </div>
   )
@@ -90,7 +90,7 @@ interface MeterProps {
 
 function Meter({ value, color }: MeterProps) {
   return (
-    <div className="h-1 rounded-full bg-[#f2f2f0] overflow-hidden">
+    <div className="h-1 rounded-full bg-line-soft overflow-hidden">
       <div
         className="h-full rounded-full transition-all duration-300"
         style={{ width: `${Math.min(100, Math.max(0, value * 100))}%`, backgroundColor: color }}
@@ -108,7 +108,7 @@ interface SplitBarProps {
 
 function SplitBar({ left, right, leftColor, rightColor }: SplitBarProps) {
   const total = left + right
-  if (total === 0) return <div className="h-1 rounded-full bg-[#f2f2f0]" />
+  if (total === 0) return <div className="h-1 rounded-full bg-line-soft" />
   return (
     <div className="flex h-1 gap-[2px] overflow-hidden rounded-full">
       {left > 0 && <div className="h-full" style={{ flexGrow: left, backgroundColor: leftColor }} />}
@@ -135,26 +135,26 @@ function PeriodRange({ worst, best, average, current }: PeriodRangeProps) {
 
   return (
     <div className="px-1 pt-5 pb-1">
-      <div className="relative h-1.5 rounded-full bg-gradient-to-r from-[#dc2626]/35 via-[#e5e5e5] to-[#059669]/35">
+      <div className="relative h-1.5 rounded-full bg-gradient-to-r from-negative/35 via-line to-positive/35">
         <div
-          className="absolute top-1/2 h-3 w-[2px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#8a8a84]"
+          className="absolute top-1/2 h-3 w-[2px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-muted-ink"
           style={{ left: pos(average) }}
         />
         <div
-          className="absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-[#252525] shadow-sm"
+          className="absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-surface bg-ink shadow-sm"
           style={{ left: pos(current) }}
         />
         <span
-          className={cn('absolute -top-5 whitespace-nowrap text-[10px] font-medium text-[#252525]', labelShift)}
+          className={cn('absolute -top-5 whitespace-nowrap text-[10px] font-medium text-ink', labelShift)}
           style={{ left: pos(current) }}
         >
           This period
         </span>
       </div>
-      <div className="mt-2 flex items-center justify-between text-[10px] text-[#a3a3a3]">
+      <div className="mt-2 flex items-center justify-between text-[10px] text-subtle-ink">
         <span>Worst</span>
         <span className="inline-flex items-center gap-1">
-          <span className="inline-block h-2.5 w-[2px] rounded-full bg-[#8a8a84]" /> Average
+          <span className="inline-block h-2.5 w-[2px] rounded-full bg-muted-ink" /> Average
         </span>
         <span>Best</span>
       </div>
@@ -175,20 +175,20 @@ interface SummaryTileProps {
 
 function SummaryTile({ icon: Icon, tone, label, value, valueClassName, diff }: SummaryTileProps) {
   return (
-    <div className="flex items-center gap-3 rounded-[14px] border border-[#f0f0ee] bg-[#fbfbfa] p-3">
+    <div className="flex items-center gap-3 rounded-[14px] border border-line-soft bg-surface-soft p-3">
       <span className={cn('h-10 w-10 shrink-0 rounded-[12px] flex items-center justify-center', tone)}>
         <Icon className="h-[22px] w-[22px]" />
       </span>
       <div className="min-w-0 flex-1">
-        <p className="text-[11px] text-[#8a8a84] leading-none">{label}</p>
-        <p className={cn('text-[15px] font-medium text-[#252525] mt-1 truncate', valueClassName)}>
+        <p className="text-[11px] text-muted-ink leading-none">{label}</p>
+        <p className={cn('text-[15px] font-medium text-ink mt-1 truncate', valueClassName)}>
           {value}
         </p>
       </div>
       {diff && (
         <div className="shrink-0 text-right">
           {diff}
-          <p className="text-[10px] text-[#a3a3a3] mt-0.5">vs last</p>
+          <p className="text-[10px] text-subtle-ink mt-0.5">vs last</p>
         </div>
       )}
     </div>
@@ -203,11 +203,11 @@ interface DiffValueProps {
 
 function DiffValue({ pct, goodWhenUp, className }: DiffValueProps) {
   if (pct === null) {
-    return <span className={cn('text-[13px] font-medium text-[#a3a3a3]', className)}>—</span>
+    return <span className={cn('text-[13px] font-medium text-subtle-ink', className)}>—</span>
   }
   const isUp = pct > 0
   const isGood = pct === 0 ? true : isUp === goodWhenUp
-  const color = isGood ? '#059669' : '#dc2626'
+  const color = isGood ? 'var(--positive)' : 'var(--negative)'
   const Icon = isUp ? TrendingUp : TrendingDown
 
   return (
@@ -229,11 +229,11 @@ function DaySheet({ date, transactions, onClose }: DaySheetProps) {
 
   return (
     <BottomDrawer open onClose={onClose} title={formatDateShort(date)}>
-      <p className="text-[22px] font-medium leading-tight -mt-1 mb-3 text-[#252525]">
+      <p className="text-[22px] font-medium leading-tight -mt-1 mb-3 text-ink">
         {formatCurrency(total)}
       </p>
 
-      <div className="-mx-5 max-h-72 overflow-y-auto divide-y divide-[#f2f2f0]">
+      <div className="-mx-5 max-h-72 overflow-y-auto divide-y divide-line-soft">
         {transactions.map((tx) => (
           <div
             key={tx.id}
@@ -242,15 +242,15 @@ function DaySheet({ date, transactions, onClose }: DaySheetProps) {
             <div className="flex items-center gap-3 min-w-0">
               <CategoryTile category={tx.category} />
               <div className="min-w-0">
-                <p className="text-[13px] font-medium text-[#252525] truncate">
+                <p className="text-[13px] font-medium text-ink truncate">
                   {tx.note ?? tx.category?.name ?? 'Expense'}
                 </p>
                 {tx.category && tx.note && (
-                  <p className="text-[11px] text-[#a3a3a3] truncate">{tx.category.name}</p>
+                  <p className="text-[11px] text-subtle-ink truncate">{tx.category.name}</p>
                 )}
               </div>
             </div>
-            <p className="text-[13px] font-medium text-[#252525] tabular-nums shrink-0 pl-3">{formatCurrency(tx.amount)}</p>
+            <p className="text-[13px] font-medium text-ink tabular-nums shrink-0 pl-3">{formatCurrency(tx.amount)}</p>
           </div>
         ))}
       </div>
@@ -270,8 +270,8 @@ function CategoryTransactionList({ transactions }: CategoryTransactionListProps)
   )
 
   return (
-    <div className="px-4 pb-3 -mt-1 bg-[#fbfbfa]">
-      <div className="rounded-[12px] border border-[#f0f0ee] bg-white overflow-hidden divide-y divide-[#f2f2f0]">
+    <div className="px-4 pb-3 -mt-1 bg-surface-soft">
+      <div className="rounded-[12px] border border-line-soft bg-surface overflow-hidden divide-y divide-line-soft">
         {sorted.map((tx) => (
           <div
             key={tx.id}
@@ -285,16 +285,16 @@ function CategoryTransactionList({ transactions }: CategoryTransactionListProps)
                 />
               )}
               <div className="min-w-0">
-                <p className="text-[12.5px] font-medium text-[#252525] truncate">
+                <p className="text-[12.5px] font-medium text-ink truncate">
                   {tx.note ?? tx.category?.name ?? 'Expense'}
                 </p>
-                <p className="text-[10.5px] text-[#a3a3a3]">
+                <p className="text-[10.5px] text-subtle-ink">
                   {formatDateShort(tx.date)}
                   {tx.category && tx.note ? ` · ${tx.category.name}` : ''}
                 </p>
               </div>
             </div>
-            <p className="text-[12.5px] font-medium text-[#252525] shrink-0 pl-2">{formatCurrency(tx.amount)}</p>
+            <p className="text-[12.5px] font-medium text-ink shrink-0 pl-2">{formatCurrency(tx.amount)}</p>
           </div>
         ))}
       </div>
@@ -304,9 +304,9 @@ function CategoryTransactionList({ transactions }: CategoryTransactionListProps)
 
 // Budget progress color: green while comfortably under, amber approaching, red over.
 function budgetColor(ratio: number): string {
-  if (ratio >= 1) return '#dc2626'
-  if (ratio >= 0.7) return '#d97706'
-  return '#4d7a1d'
+  if (ratio >= 1) return 'var(--negative)'
+  if (ratio >= 0.7) return 'var(--warning)'
+  return 'var(--brand-ink)'
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
@@ -358,9 +358,12 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
   // Categories at/near their target float to the top — the first thing you see
   // is what's about to blow its budget. Un-targeted categories come next.
   const sortedCategories = useMemo(() => {
+    // A zero budget would divide to Infinity (and Infinity - Infinity is NaN, which breaks
+    // the sort): anything spent against it is simply over, so it ranks first.
+    const usedShare = (c: CatEntry) => budgets[c.id] > 0 ? c.amount / budgets[c.id] : c.amount > 0 ? Number.MAX_VALUE : 0
     const budgeted = categoriesByAmount
       .filter(c => budgets[c.id] !== undefined)
-      .sort((a, b) => (b.amount / budgets[b.id]) - (a.amount / budgets[a.id]))
+      .sort((a, b) => usedShare(b) - usedShare(a))
     const unbudgeted = categoriesByAmount.filter(c => budgets[c.id] === undefined)
     return [...budgeted, ...unbudgeted]
   }, [categoriesByAmount, budgets])
@@ -455,19 +458,19 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
     expenseDiffPct,
   }), [totalIncome, totalSpending, totalBalance, totalDebt, expenseDiffPct])
 
-  const healthBarColor = health.score >= 80 ? '#059669' : health.score >= 60 ? '#4d7a1d' : health.score >= 40 ? '#d97706' : '#dc2626'
+  const healthBarColor = health.score >= 80 ? 'var(--positive)' : health.score >= 60 ? 'var(--brand-ink)' : health.score >= 40 ? 'var(--warning)' : 'var(--negative)'
 
   return (
     <>
     <div className="space-y-2.5 pt-3 lg:grid lg:grid-cols-2 lg:gap-4 lg:space-y-0 lg:items-start">
 
       {/* ── Financial health card ── */}
-      <div className="rounded-[20px] border border-[#e5e5e5] bg-white p-4 lg:col-span-2">
+      <div className="rounded-[20px] border border-line bg-surface p-4 lg:col-span-2">
         <div className="flex items-center justify-between mb-3">
-          <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84]">Financial health</p>
+          <p className="text-[11px] uppercase tracking-[.14em] text-muted-ink">Financial health</p>
           <span
             className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10.5px] font-semibold"
-            style={{ backgroundColor: `${healthBarColor}1f`, color: healthBarColor }}
+            style={{ backgroundColor: `color-mix(in srgb, ${healthBarColor} 12%, transparent)`, color: healthBarColor }}
           >
             <span className="h-[5px] w-[5px] rounded-full" style={{ backgroundColor: healthBarColor }} />
             {health.label}
@@ -479,7 +482,7 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
         >
           {health.score}
         </p>
-        <div className="flex h-1.5 w-full overflow-hidden rounded-full bg-[#f2f2f0]">
+        <div className="flex h-1.5 w-full overflow-hidden rounded-full bg-line-soft">
           <div
             className="h-full rounded-full transition-all duration-300"
             style={{ width: `${health.score}%`, backgroundColor: healthBarColor }}
@@ -488,13 +491,13 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
         {(health.periodReasons.length > 0 || health.overallReasons.length > 0) && (
           <div className="mt-2.5 space-y-1">
             {health.periodReasons.length > 0 && (
-              <p className="text-[11.5px] text-[#8a8a84]">
-                <span className="text-[#a3a3a3]">This period:</span> {health.periodReasons.join(' · ')}
+              <p className="text-[11.5px] text-muted-ink">
+                <span className="text-subtle-ink">This period:</span> {health.periodReasons.join(' · ')}
               </p>
             )}
             {health.overallReasons.length > 0 && (
-              <p className="text-[11.5px] text-[#8a8a84]">
-                <span className="text-[#a3a3a3]">Overall:</span> {health.overallReasons.join(' · ')}
+              <p className="text-[11.5px] text-muted-ink">
+                <span className="text-subtle-ink">Overall:</span> {health.overallReasons.join(' · ')}
               </p>
             )}
           </div>
@@ -502,27 +505,27 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
       </div>
 
       {/* ── Period summary card (Overview) — net + vs last period, so the comparison has context ── */}
-      <div className="rounded-[20px] border border-[#e5e5e5] bg-white p-4 lg:col-span-2">
-        <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84] mb-1.5">Period summary</p>
+      <div className="rounded-[20px] border border-line bg-surface p-4 lg:col-span-2">
+        <p className="text-[11px] uppercase tracking-[.14em] text-muted-ink mb-1.5">Period summary</p>
 
         {/* Net: the plain headline — the income/expense badges below are what it's made of */}
         <p className={cn(
           'text-[32px] lg:text-[28px] font-medium tracking-[-0.02em] leading-none truncate',
-          net < 0 ? 'text-[#dc2626]' : 'text-[#252525]'
+          net < 0 ? 'text-negative' : 'text-ink'
         )}>
           {net >= 0 ? '+' : ''}{formatCurrency(net)}
         </p>
         <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-1.5 text-[11.5px]">
           {savingsRate !== null && (
-            <span className={savingsRate < 0 ? 'text-[#dc2626]' : 'text-[#059669]'}>
+            <span className={savingsRate < 0 ? 'text-negative' : 'text-positive'}>
               {savingsRate >= 0
                 ? `${Math.round(savingsRate)}% of income unspent`
                 : `Overspent by ${Math.abs(Math.round(savingsRate))}% of income`}
             </span>
           )}
           {unspentDiffAbs !== null && (
-            <span className="text-[#a3a3a3]">
-              <span className={unspentDiffAbs < 0 ? 'text-[#dc2626]' : 'text-[#059669]'}>
+            <span className="text-subtle-ink">
+              <span className={unspentDiffAbs < 0 ? 'text-negative' : 'text-positive'}>
                 {unspentDiffAbs >= 0 ? '+' : ''}{formatCurrency(unspentDiffAbs)}
               </span>
               {' '}unspent vs last period
@@ -532,7 +535,7 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
 
         {/* Income / expense (/ saved): the icon plates carry the color, so the tiles stay neutral */}
         <div className={cn(
-          'grid grid-cols-1 gap-2 border-t border-[#f2f2f0] pt-3 mt-4',
+          'grid grid-cols-1 gap-2 border-t border-line-soft pt-3 mt-4',
           totalSavings > 0 ? 'sm:grid-cols-3' : 'sm:grid-cols-2'
         )}>
           <SummaryTile
@@ -568,10 +571,10 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
 
       {/* ── Budgets card (Categories) ── */}
       {sortedCategories.length > 0 && (
-        <div className="rounded-[20px] border border-[#e5e5e5] bg-white overflow-hidden lg:col-span-2">
+        <div className="rounded-[20px] border border-line bg-surface overflow-hidden lg:col-span-2">
           <div className="flex items-center justify-between px-4 pt-4 pb-3">
-            <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84]">Budgets</p>
-            <p className="text-[11px] text-[#a3a3a3]">tap a row for detail</p>
+            <p className="text-[11px] uppercase tracking-[.14em] text-muted-ink">Budgets</p>
+            <p className="text-[11px] text-subtle-ink">tap a row for detail</p>
           </div>
 
           <div className="px-4 pb-1">
@@ -590,10 +593,10 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
               const ratio = target ? cat.amount / target : null
 
               return (
-                <div key={cat.id} className={cn('border-b border-[#f2f2f0]', isExpanded && 'sm:col-span-2')}>
+                <div key={cat.id} className={cn('border-b border-line-soft', isExpanded && 'sm:col-span-2')}>
                   <div
                     onClick={() => setExpandedCategoryId(id => id === cat.id ? null : cat.id)}
-                    className="px-4 py-2.5 cursor-pointer hover:bg-[#fbfbfa] transition-colors"
+                    className="px-4 py-2.5 cursor-pointer hover:bg-surface-soft transition-colors"
                   >
                     <div className="flex items-center justify-between mb-1.5">
                       <div className="flex items-center gap-2 min-w-0">
@@ -601,38 +604,38 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
                           className="h-2 w-2 rounded-full shrink-0"
                           style={{ backgroundColor: categoryChartColor(cat) }}
                         />
-                        <p className="text-[13px] text-[#252525] truncate">{cat.name}</p>
+                        <p className="text-[13px] text-ink truncate">{cat.name}</p>
                         {target !== undefined && ratio !== null && ratio >= 0.7 && (
                           <span
                             className="text-[10px] font-medium shrink-0 rounded-full px-1.5 py-[1px]"
-                            style={{ color: budgetColor(ratio), backgroundColor: `${budgetColor(ratio)}1a` }}
+                            style={{ color: budgetColor(ratio), backgroundColor: `color-mix(in srgb, ${budgetColor(ratio)} 10%, transparent)` }}
                           >
                             {ratio >= 1 ? 'Over' : 'Near budget'}
                           </span>
                         )}
                       </div>
                       <div className="flex items-center gap-3 shrink-0">
-                        <span className="text-[12px] text-[#a3a3a3] min-w-[28px] text-right">
+                        <span className="text-[12px] text-subtle-ink min-w-[28px] text-right">
                           {pct !== null ? `${pct}%` : '—'}
                         </span>
-                        <span className="text-[13px] font-medium text-[#252525] min-w-[82px] text-right">
+                        <span className="text-[13px] font-medium text-ink min-w-[82px] text-right">
                           {formatCurrency(cat.amount)}
                         </span>
                         <ChevronRight
-                          className={cn('w-[13px] h-[13px] text-[#c4c4be] shrink-0 transition-transform', isExpanded && 'rotate-90')}
+                          className={cn('w-[13px] h-[13px] text-faint-ink shrink-0 transition-transform', isExpanded && 'rotate-90')}
                         />
                       </div>
                     </div>
 
                     <div className="flex items-center gap-2">
-                      <div className="flex-1 h-1 rounded-full bg-[#f2f2f0] overflow-hidden">
+                      <div className="flex-1 h-1 rounded-full bg-line-soft overflow-hidden">
                         <div
                           className="h-full rounded-full transition-all duration-300"
                           style={{ width: `${pct ?? 0}%`, backgroundColor: categoryChartColor(cat) }}
                         />
                       </div>
                       {target !== undefined && (
-                        <span className="text-[10px] text-[#a3a3a3] shrink-0">
+                        <span className="text-[10px] text-subtle-ink shrink-0">
                           {Math.round((ratio ?? 0) * 100)}% of {formatCurrency(target)} budget
                         </span>
                       )}
@@ -645,38 +648,38 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
             })}
           </div>
 
-          <div className="flex items-center justify-between px-4 py-2.5 bg-[#f4f4f2]">
-            <p className="text-[12px] text-[#8a8a84]">Total spent</p>
-            <p className="text-[13px] font-medium text-[#252525]">{formatCurrency(totalExpense)}</p>
+          <div className="flex items-center justify-between px-4 py-2.5 bg-surface-hover">
+            <p className="text-[12px] text-muted-ink">Total spent</p>
+            <p className="text-[13px] font-medium text-ink">{formatCurrency(totalExpense)}</p>
           </div>
         </div>
       )}
 
       {/* ── Spending trend card (Trends) ── */}
-      <div className="rounded-[20px] border border-[#e5e5e5] bg-white p-4 lg:col-span-2">
-        <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84]">Spending trend</p>
+      <div className="rounded-[20px] border border-line bg-surface p-4 lg:col-span-2">
+        <p className="text-[11px] uppercase tracking-[.14em] text-muted-ink">Spending trend</p>
         {trend.length >= 2 && (
-          <p className="text-[11px] text-[#a3a3a3] mt-0.5 mb-3">Last {trend.length} pay periods</p>
+          <p className="text-[11px] text-subtle-ink mt-0.5 mb-3">Last {trend.length} pay periods</p>
         )}
         <PeriodTrendChart trend={trend} />
       </div>
 
       {/* ── Stats card (Overview) — this period's stats, plus how it stacks up against past periods ── */}
-      <div className="rounded-[20px] border border-[#e5e5e5] bg-white p-4 lg:col-span-2">
-        <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84] mb-3">Stats</p>
+      <div className="rounded-[20px] border border-line bg-surface p-4 lg:col-span-2">
+        <p className="text-[11px] uppercase tracking-[.14em] text-muted-ink mb-3">Stats</p>
 
         {/* Pace: how fast money is going vs how fast it safely can */}
-        <p className="text-[10.5px] font-medium text-[#a3a3a3] mb-1.5">Pace</p>
+        <p className="text-[10.5px] font-medium text-subtle-ink mb-1.5">Pace</p>
         <StatGrid className={paceCount === 3 ? 'grid-cols-2 sm:grid-cols-3' : paceCount === 2 ? 'grid-cols-2' : 'grid-cols-1'}>
           <StatCell
             label="Daily average"
             value={formatCurrency(stats.dailyAvg)}
-            valueClassName={overSafePace ? 'text-[#d97706]' : undefined}
+            valueClassName={overSafePace ? 'text-warning' : undefined}
             sub={
               <>
                 everyday, over {stats.daysElapsed} day{stats.daysElapsed !== 1 ? 's' : ''}
                 {stats.safeDaily !== null && (
-                  <span className={overSafePace ? 'text-[#d97706]' : 'text-[#059669]'}>
+                  <span className={overSafePace ? 'text-warning' : 'text-positive'}>
                     {' · '}{overSafePace ? 'above safe pace' : 'within safe pace'}
                   </span>
                 )}
@@ -697,14 +700,14 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
               label="Days left"
               value={`${stats.daysRemaining}`}
               className={paceCount === 3 ? 'col-span-2 sm:col-span-1' : undefined}
-              visual={stats.totalDays ? <Meter value={stats.daysElapsed / stats.totalDays} color="#4d7a1d" /> : undefined}
+              visual={stats.totalDays ? <Meter value={stats.daysElapsed / stats.totalDays} color="var(--brand-ink)" /> : undefined}
               sub={stats.totalDays !== null ? `day ${Math.min(stats.daysElapsed, stats.totalDays)} of ${stats.totalDays}` : undefined}
             />
           )}
         </StatGrid>
 
         {/* Highlights: the standout moments of the period */}
-        <p className="text-[10.5px] font-medium text-[#a3a3a3] mt-4 mb-1.5">Highlights</p>
+        <p className="text-[10.5px] font-medium text-subtle-ink mt-4 mb-1.5">Highlights</p>
         <StatGrid className={cn('grid-cols-2', biggestDayEntry ? 'lg:grid-cols-4' : 'lg:grid-cols-3')}>
           {biggestDayEntry && (
             <StatCell
@@ -724,12 +727,12 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
           <StatCell
             label="Transactions"
             value={`${expenses.length + incomes.length}`}
-            visual={<SplitBar left={expenses.length} right={incomes.length} leftColor="#dc2626" rightColor="#059669" />}
+            visual={<SplitBar left={expenses.length} right={incomes.length} leftColor="var(--negative)" rightColor="var(--positive)" />}
             sub={
               <>
-                <span className="text-[#dc2626]">{expenses.length} out</span>
+                <span className="text-negative">{expenses.length} out</span>
                 {' · '}
-                <span className="text-[#059669]">{incomes.length} in</span>
+                <span className="text-positive">{incomes.length} in</span>
               </>
             }
           />
@@ -744,26 +747,26 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
         </StatGrid>
 
         {periodComparison && (
-          <div className="mt-4 pt-3 border-t border-[#f2f2f0]">
-            <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84] mb-2">Across your periods</p>
+          <div className="mt-4 pt-3 border-t border-line-soft">
+            <p className="text-[11px] uppercase tracking-[.14em] text-muted-ink mb-2">Across your periods</p>
             <StatGrid className="grid-cols-3">
               <StatCell
                 label="Best period"
                 value={formatCurrency(periodComparison.best.unspent)}
                 sub={periodComparison.best.label}
-                valueClassName="text-[#059669]"
+                valueClassName="text-positive"
               />
               <StatCell
                 label="Worst period"
                 value={formatCurrency(periodComparison.worst.unspent)}
                 sub={periodComparison.worst.label}
-                valueClassName={periodComparison.worst.unspent < 0 ? 'text-[#dc2626]' : undefined}
+                valueClassName={periodComparison.worst.unspent < 0 ? 'text-negative' : undefined}
               />
               <StatCell
                 label="Average unspent"
                 value={formatCurrency(periodComparison.average)}
                 sub={`across ${trend.length} periods`}
-                valueClassName={periodComparison.average < 0 ? 'text-[#dc2626]' : undefined}
+                valueClassName={periodComparison.average < 0 ? 'text-negative' : undefined}
               />
             </StatGrid>
             <PeriodRange
@@ -778,22 +781,22 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
 
       {/* ── Spending by account (Trends, desktop only) ── */}
       {byAccount.length > 0 && (
-        <div className="hidden lg:block rounded-[20px] border border-[#e5e5e5] bg-white overflow-hidden">
-          <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84] px-4 pt-4">
+        <div className="hidden lg:block rounded-[20px] border border-line bg-surface overflow-hidden">
+          <p className="text-[11px] uppercase tracking-[.14em] text-muted-ink px-4 pt-4">
             Spending by account
           </p>
-          <p className="text-[11px] text-[#a3a3a3] px-4 pb-3">% of this period's spending (savings excluded)</p>
+          <p className="text-[11px] text-subtle-ink px-4 pb-3">% of this period's spending (savings excluded)</p>
           {byAccount.map(a => {
             const pct = totalSpending > 0 ? Math.round((a.amount / totalSpending) * 100) : 0
             return (
-              <div key={a.name} className="flex items-center gap-3 px-4 py-[9px] border-b border-[#f2f2f0] last:border-b-0">
+              <div key={a.name} className="flex items-center gap-3 px-4 py-[9px] border-b border-line-soft last:border-b-0">
                 <AccountTypeTile type={a.type} savings={a.is_savings} className="w-8 h-8" />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between mb-1">
-                    <p className="text-[13px] text-[#252525] truncate">{a.name}</p>
-                    <p className="text-[13px] font-medium text-[#252525]">{formatCurrency(a.amount)}</p>
+                    <p className="text-[13px] text-ink truncate">{a.name}</p>
+                    <p className="text-[13px] font-medium text-ink">{formatCurrency(a.amount)}</p>
                   </div>
-                  <div className="h-1 rounded-full bg-[#f2f2f0] overflow-hidden">
+                  <div className="h-1 rounded-full bg-line-soft overflow-hidden">
                     <div className="h-full rounded-full bg-[#94a3b8]" style={{ width: `${pct}%` }} />
                   </div>
                 </div>
@@ -805,9 +808,9 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
 
       {/* ── By day of week (Trends, desktop only) ── */}
       {byWeekday.some(d => d.total > 0) && (
-        <div className="hidden lg:block rounded-[20px] border border-[#e5e5e5] bg-white p-4">
-          <p className="text-[11px] uppercase tracking-[.14em] text-[#8a8a84]">By day of week</p>
-          <p className="text-[11px] text-[#a3a3a3] mb-3">Total expense per weekday, this period</p>
+        <div className="hidden lg:block rounded-[20px] border border-line bg-surface p-4">
+          <p className="text-[11px] uppercase tracking-[.14em] text-muted-ink">By day of week</p>
+          <p className="text-[11px] text-subtle-ink mb-3">Total expense per weekday, this period</p>
           <div style={{ width: '100%', height: 140 }}>
             <ResponsiveContainer>
               <BarChart data={byWeekday} margin={{ top: 4, right: 0, left: 0, bottom: 0 }}>
@@ -820,19 +823,19 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
                   width={36}
                 />
                 <Tooltip
-                  cursor={{ fill: '#f4f4f2' }}
+                  cursor={{ fill: 'var(--surface-hover)' }}
                   content={({ active, payload }) => {
                     if (!active || !payload?.length) return null
                     const d = payload[0].payload as { day: string; total: number }
                     return (
-                      <div className="rounded-[10px] border border-[#e5e5e5] bg-white px-2.5 py-1.5 shadow-lg">
-                        <p className="text-[10.5px] text-[#8a8a84]">{d.day}</p>
-                        <p className="text-[12px] font-medium text-[#252525]">{formatCurrency(d.total)}</p>
+                      <div className="rounded-[10px] border border-line bg-surface px-2.5 py-1.5 shadow-lg">
+                        <p className="text-[10.5px] text-muted-ink">{d.day}</p>
+                        <p className="text-[12px] font-medium text-ink">{formatCurrency(d.total)}</p>
                       </div>
                     )
                   }}
                 />
-                <Bar dataKey="total" radius={[3, 3, 0, 0]} fill="#4d7a1d" />
+                <Bar dataKey="total" radius={[3, 3, 0, 0]} fill="var(--brand-ink)" />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -853,73 +856,73 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
         const runway = stats.runwayDays
 
         return (
-          <div className="rounded-[20px] border border-[#cfdcb8] bg-[#f2f6ea] p-4 lg:col-span-2">
+          <div className="rounded-[20px] border border-brand-line bg-brand-tint p-4 lg:col-span-2">
             <div className="flex items-baseline justify-between gap-3">
-              <p className="text-[11px] uppercase tracking-[.14em] text-[#4d7a1d]">Projection</p>
+              <p className="text-[11px] uppercase tracking-[.14em] text-brand-ink">Projection</p>
               {stats.isEndDateEstimated && (
-                <p className="text-[10.5px] text-[#6b8f45]">assuming a {stats.totalDays}-day period, like the last one</p>
+                <p className="text-[10.5px] text-brand-muted">assuming a {stats.totalDays}-day period, like the last one</p>
               )}
             </div>
-            <p className="text-[12.5px] text-[#4d7a1d] mt-1.5">
-              If you keep spending <span className="font-semibold text-[#252525]">{formatCurrency(stats.dailyAvg)}/day</span> on everyday things
+            <p className="text-[12.5px] text-brand-ink mt-1.5">
+              If you keep spending <span className="font-semibold text-ink">{formatCurrency(stats.dailyAvg)}/day</span> on everyday things
               {stats.oneOffSpending > 0 ? <> (the {formatCurrency(stats.oneOffSpending)} in bills &amp; one-offs so far counts once{totalSavings > 0 ? ', savings not counted' : ''})</> : totalSavings > 0 ? ' (savings not counted)' : ''}:
             </p>
 
             {/* Spent so far → projected rest, against this period's income */}
-            <div className="relative mt-4 h-2.5 rounded-full bg-white/80">
+            <div className="relative mt-4 h-2.5 rounded-full bg-surface/80">
               <div className="absolute inset-y-0 left-0 flex overflow-hidden rounded-full" style={{ width: `${spentPct + restPct}%` }}>
-                <div className="h-full bg-[#4d7a1d]" style={{ width: `${(spentPct / (spentPct + restPct || 1)) * 100}%` }} />
+                <div className="h-full bg-brand-ink" style={{ width: `${(spentPct / (spentPct + restPct || 1)) * 100}%` }} />
                 <div
-                  className={cn('h-full flex-1', overIncome ? 'bg-[#dc2626]/45' : 'bg-[#4d7a1d]/35')}
+                  className={cn('h-full flex-1', overIncome ? 'bg-negative/45' : 'bg-brand-ink/35')}
                 />
               </div>
               {overIncome && (
                 <div
-                  className="absolute -top-1 -bottom-1 w-[2px] -translate-x-1/2 rounded-full bg-[#252525]"
+                  className="absolute -top-1 -bottom-1 w-[2px] -translate-x-1/2 rounded-full bg-ink"
                   style={{ left: `${incomePct}%` }}
                   title="Income"
                 />
               )}
             </div>
-            <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[10.5px] text-[#6b8f45]">
+            <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[10.5px] text-brand-muted">
               <span className="inline-flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-full bg-[#4d7a1d]" /> {totalSavings > 0 ? 'Spent + saved' : 'Spent'} {formatCurrency(totalExpense)}
+                <span className="h-2 w-2 rounded-full bg-brand-ink" /> {totalSavings > 0 ? 'Spent + saved' : 'Spent'} {formatCurrency(totalExpense)}
               </span>
               <span className="inline-flex items-center gap-1.5">
-                <span className={cn('h-2 w-2 rounded-full', overIncome ? 'bg-[#dc2626]/45' : 'bg-[#4d7a1d]/35')} />
+                <span className={cn('h-2 w-2 rounded-full', overIncome ? 'bg-negative/45' : 'bg-brand-ink/35')} />
                 Still to come ~{formatCurrency(projectedSpend - totalExpense)}
               </span>
               <span className="inline-flex items-center gap-1.5">
-                {overIncome ? <span className="h-2.5 w-[2px] rounded-full bg-[#252525]" /> : <span className="h-2 w-2 rounded-full border border-[#cfdcb8] bg-white" />}
+                {overIncome ? <span className="h-2.5 w-[2px] rounded-full bg-ink" /> : <span className="h-2 w-2 rounded-full border border-brand-line bg-surface" />}
                 Income {formatCurrency(totalIncome)}
               </span>
             </div>
 
-            <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-px overflow-hidden rounded-[14px] border border-[#dfe8d2] bg-[#dfe8d2]">
-              <div className="bg-[#f7faf2] p-3">
-                <p className="text-[11px] text-[#6b8f45]">You'll spend about</p>
-                <p className={cn('text-[17px] font-medium mt-1 tabular-nums', overIncome ? 'text-[#dc2626]' : 'text-[#252525]')}>
+            <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-px overflow-hidden rounded-[14px] border border-brand-line bg-brand-line">
+              <div className="bg-brand-tint p-3">
+                <p className="text-[11px] text-brand-muted">You'll spend about</p>
+                <p className={cn('text-[17px] font-medium mt-1 tabular-nums', overIncome ? 'text-negative' : 'text-ink')}>
                   {formatCurrency(projectedSpend)}
                 </p>
-                <p className="text-[10.5px] text-[#8aa56a] mt-1">
+                <p className="text-[10.5px] text-brand-muted mt-1">
                   {totalSavings > 0 ? `in total, incl. ${formatCurrency(totalSavings)} saved` : 'in total this period'}
                 </p>
               </div>
-              <div className="bg-[#f7faf2] p-3">
-                <p className="text-[11px] text-[#6b8f45]">You'll end with</p>
-                <p className={cn('text-[17px] font-medium mt-1 tabular-nums', projectedClose < 0 ? 'text-[#dc2626]' : 'text-[#059669]')}>
+              <div className="bg-brand-tint p-3">
+                <p className="text-[11px] text-brand-muted">You'll end with</p>
+                <p className={cn('text-[17px] font-medium mt-1 tabular-nums', projectedClose < 0 ? 'text-negative' : 'text-positive')}>
                   {projectedClose >= 0 ? '' : '−'}{formatCurrency(Math.abs(projectedClose))}
                 </p>
-                <p className="text-[10.5px] text-[#8aa56a] mt-1">
+                <p className="text-[10.5px] text-brand-muted mt-1">
                   {projectedClose >= 0 ? "of this period's income left over" : 'more than this period\'s income'}
                 </p>
               </div>
-              <div className="bg-[#f7faf2] p-3">
-                <p className="text-[11px] text-[#6b8f45]">Money lasts</p>
-                <p className={cn('text-[17px] font-medium mt-1 tabular-nums', runway !== null && runway < daysLeft ? 'text-[#dc2626]' : 'text-[#252525]')}>
+              <div className="bg-brand-tint p-3">
+                <p className="text-[11px] text-brand-muted">Money lasts</p>
+                <p className={cn('text-[17px] font-medium mt-1 tabular-nums', runway !== null && runway < daysLeft ? 'text-negative' : 'text-ink')}>
                   {runway === null ? '—' : runway <= 0 ? 'Already out' : `${runway} day${runway !== 1 ? 's' : ''}`}
                 </p>
-                <p className="text-[10.5px] text-[#8aa56a] mt-1">
+                <p className="text-[10.5px] text-brand-muted mt-1">
                   {runway === null
                     ? 'no spending yet'
                     : runway >= daysLeft

@@ -30,7 +30,7 @@ export function AmountChips({ remaining, planned, value, onPick, disabled }: Amo
                         'px-3 py-1.5 rounded-full text-[11.5px] font-medium border transition-colors disabled:opacity-50',
                         value === o.amount
                             ? 'bg-surface-hover text-ink border-line'
-                            : 'bg-white text-muted-ink border-line hover:text-ink'
+                            : 'bg-surface text-muted-ink border-line hover:text-ink'
                     )}
                 >
                     {o.label} <span className="tabular-nums text-subtle-ink">· {formatShortCurrency(o.amount)}</span>

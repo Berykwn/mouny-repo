@@ -21,7 +21,7 @@ interface BuyItemFormProps {
     onSuccess: () => void
 }
 
-const FIELD_LABEL = 'text-[11px] font-medium uppercase tracking-[.14em] text-[#8a8a84]'
+const FIELD_LABEL = 'text-[11px] font-medium uppercase tracking-[.14em] text-muted-ink'
 
 const NO_ACCOUNTS: Account[] = []
 const NO_CATEGORIES: Category[] = []
@@ -30,7 +30,7 @@ export function BuyItemForm({ item, periodStart, onSuccess }: BuyItemFormProps) 
     const today = toISODate()
     const defaultDate = today < periodStart ? periodStart : today
 
-    const [price, setPrice] = useState(item.estimated_price ? String(item.estimated_price) : '')
+    const [price, setPrice] = useState(item.estimated_price ? String(Math.round(item.estimated_price)) : '')
     const [date, setDate] = useState(defaultDate)
     const [accountId, setAccountId] = useState('')
     const [accountPickerOpen, setAccountPickerOpen] = useState(false)
@@ -96,13 +96,13 @@ export function BuyItemForm({ item, periodStart, onSuccess }: BuyItemFormProps) 
         <form onSubmit={handleSubmit} className="space-y-5 pb-2">
 
             {/* Item info */}
-            <div className="rounded-[20px] border border-[#e5e5e5] bg-white p-4">
+            <div className="rounded-[20px] border border-line bg-surface p-4">
                 <p className={FIELD_LABEL + ' mb-0.5'}>
                     Mark as purchased
                 </p>
-                <p className="text-[13px] font-medium text-[#252525]">{item.name}</p>
+                <p className="text-[13px] font-medium text-ink">{item.name}</p>
                 {item.estimated_price && (
-                    <p className="text-[11px] text-[#8a8a84] mt-0.5">
+                    <p className="text-[11px] text-muted-ink mt-0.5">
                         Est. {formatCurrency(item.estimated_price)}
                     </p>
                 )}
@@ -114,7 +114,7 @@ export function BuyItemForm({ item, periodStart, onSuccess }: BuyItemFormProps) 
                     Actual price
                 </Label>
                 <div className="relative">
-                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[13px] text-[#8a8a84] font-medium">Rp</span>
+                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[13px] text-muted-ink font-medium">Rp</span>
                     <Input
                         type="text"
                         inputMode="numeric"
@@ -122,7 +122,7 @@ export function BuyItemForm({ item, periodStart, onSuccess }: BuyItemFormProps) 
                         onChange={(e) => setPrice(e.target.value.replace(/\D/g, ''))}
                         placeholder="0"
                         disabled={loading}
-                        className="pl-10 h-12 rounded-[14px] border-[#e5e5e5] text-[13px] font-mono"
+                        className="pl-10 h-12 rounded-[14px] border-line text-[13px] font-mono"
                     />
                 </div>
             </div>
@@ -136,20 +136,20 @@ export function BuyItemForm({ item, periodStart, onSuccess }: BuyItemFormProps) 
                     type="button"
                     disabled={loading}
                     onClick={() => setAccountPickerOpen(true)}
-                    className="w-full flex items-center justify-between px-3 h-[52px] rounded-[14px] border border-[#e5e5e5] bg-white text-left transition-colors hover:bg-[#fbfbfa] disabled:opacity-50 disabled:pointer-events-none"
+                    className="w-full flex items-center justify-between px-3 h-[52px] rounded-[14px] border border-line bg-surface text-left transition-colors hover:bg-surface-soft disabled:opacity-50 disabled:pointer-events-none"
                 >
                     {selectedAccount ? (
                         <div className="flex items-center gap-3 min-w-0">
                             <AccountTypeTile type={selectedAccount.type} savings={selectedAccount.is_savings} />
                             <div className="min-w-0">
-                                <p className="text-[13px] font-medium text-[#252525] truncate">{selectedAccount.name}</p>
-                                <p className="text-[11.5px] text-[#8a8a84]">{formatCurrency(selectedAccount.balance)}</p>
+                                <p className="text-[13px] font-medium text-ink truncate">{selectedAccount.name}</p>
+                                <p className="text-[11.5px] text-muted-ink">{formatCurrency(selectedAccount.balance)}</p>
                             </div>
                         </div>
                     ) : (
-                        <span className="text-[13px] text-[#8a8a84]">Select account</span>
+                        <span className="text-[13px] text-muted-ink">Select account</span>
                     )}
-                    <ChevronRight className="w-4 h-4 text-[#a3a3a3] shrink-0" />
+                    <ChevronRight className="w-4 h-4 text-subtle-ink shrink-0" />
                 </button>
                 <AccountPickerDrawer
                     open={accountPickerOpen}
@@ -167,7 +167,7 @@ export function BuyItemForm({ item, periodStart, onSuccess }: BuyItemFormProps) 
                         Category
                     </Label>
                     {selectedCategory && (
-                        <span className="text-[11px] text-[#8a8a84] flex items-center gap-1">
+                        <span className="text-[11px] text-muted-ink flex items-center gap-1">
                             <CategoryIcon name={selectedCategory.icon} className="w-3 h-3" style={{ color: categoryChartColor(selectedCategory) }} />
                             {selectedCategory.name}
                         </span>
@@ -198,7 +198,7 @@ export function BuyItemForm({ item, periodStart, onSuccess }: BuyItemFormProps) 
             <button
                 type="submit"
                 disabled={loading}
-                className="w-full h-12 rounded-[14px] text-[13px] font-semibold text-white bg-[#6FA82B] hover:bg-[#6FA82B]/90 transition-colors disabled:opacity-50 disabled:pointer-events-none"
+                className="w-full h-12 rounded-[14px] text-[13px] font-semibold text-white bg-brand hover:bg-brand/90 transition-colors disabled:opacity-50 disabled:pointer-events-none"
             >
                 {loading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : 'Mark as Purchased'}
             </button>

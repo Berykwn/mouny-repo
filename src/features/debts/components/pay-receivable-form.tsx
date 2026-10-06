@@ -14,8 +14,8 @@ import { DateQuickPicker } from '@/components/date-quick-picker'
 import { ProgressBar } from '@/components/progress-bar'
 import { AmountChips } from './amount-chips'
 
-const FIELD_LABEL = 'text-[11px] font-medium uppercase tracking-[.14em] text-[#8a8a84]'
-const SUBMIT_BUTTON = 'w-full h-12 rounded-[14px] text-[13px] font-semibold text-white bg-[#6FA82B] hover:bg-[#6FA82B]/90 transition-colors disabled:opacity-50 disabled:pointer-events-none'
+const FIELD_LABEL = 'text-[11px] font-medium uppercase tracking-[.14em] text-muted-ink'
+const SUBMIT_BUTTON = 'w-full h-12 rounded-[14px] text-[13px] font-semibold text-white bg-brand hover:bg-brand/90 transition-colors disabled:opacity-50 disabled:pointer-events-none'
 
 interface PayReceivableFormProps {
     debt: DebtWithAccount
@@ -31,7 +31,7 @@ const NO_ACCOUNTS: Account[] = []
 export function PayReceivableForm({ debt, periodStartDate, plannedAmount, onSuccess }: PayReceivableFormProps) {
     const today = toISODate()
 
-    const [amount, setAmount] = useState(String(debt.remaining_amount))
+    const [amount, setAmount] = useState(String(Math.round(debt.remaining_amount)))
     const [date, setDate] = useState(today)
     const [loading, setLoading] = useState(false)
     const [accountPickerOpen, setAccountPickerOpen] = useState(false)
@@ -103,24 +103,24 @@ export function PayReceivableForm({ debt, periodStartDate, plannedAmount, onSucc
 
     return (
         <form onSubmit={handleSubmit} className="space-y-4 pb-2">
-            <div className="rounded-[20px] border border-[#e5e5e5] bg-white p-4 space-y-3">
+            <div className="rounded-[20px] border border-line bg-surface p-4 space-y-3">
                 <div className="flex items-start justify-between">
                     <div>
-                        <p className="text-[11.5px] text-[#8a8a84]">Owed by {debt.counterparty}</p>
-                        <p className="text-[22px] font-medium tracking-[-0.02em] text-[#252525] mt-0.5">{formatCurrency(debt.remaining_amount)}</p>
+                        <p className="text-[11.5px] text-muted-ink">Owed by {debt.counterparty}</p>
+                        <p className="text-[22px] font-medium tracking-[-0.02em] text-ink mt-0.5">{formatCurrency(debt.remaining_amount)}</p>
                     </div>
-                    <p className="text-[11.5px] text-[#8a8a84]">of {formatCurrency(debt.total_amount)}</p>
+                    <p className="text-[11.5px] text-muted-ink">of {formatCurrency(debt.total_amount)}</p>
                 </div>
                 <div className="space-y-1">
-                    <ProgressBar percent={collectedPercent} color="#059669" />
-                    <p className="text-[11px] text-[#8a8a84]">{collectedPercent}% collected</p>
+                    <ProgressBar percent={collectedPercent} color="var(--positive)" />
+                    <p className="text-[11px] text-muted-ink">{collectedPercent}% collected</p>
                 </div>
             </div>
 
             <div className="space-y-1.5">
                 <Label className={FIELD_LABEL}>Collection amount</Label>
                 <div className="relative">
-                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[13px] text-[#8a8a84] font-medium">
+                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[13px] text-muted-ink font-medium">
                         Rp
                     </span>
                     <Input
@@ -128,7 +128,7 @@ export function PayReceivableForm({ debt, periodStartDate, plannedAmount, onSucc
                         inputMode="numeric"
                         value={formatCurrencyInput(amount)}
                         onChange={(e) => setAmount(e.target.value.replace(/\D/g, ''))}
-                        className="pl-10 h-12 rounded-[14px] border-[#e5e5e5] text-[13px] font-mono"
+                        className="pl-10 h-12 rounded-[14px] border-line text-[13px] font-mono"
                         required
                         disabled={loading}
                     />
@@ -148,20 +148,20 @@ export function PayReceivableForm({ debt, periodStartDate, plannedAmount, onSucc
                     type="button"
                     disabled={loading}
                     onClick={() => setAccountPickerOpen(true)}
-                    className="w-full flex items-center justify-between px-3 h-[52px] rounded-[14px] border border-[#e5e5e5] bg-white text-left transition-colors hover:bg-[#fbfbfa] disabled:opacity-50 disabled:pointer-events-none"
+                    className="w-full flex items-center justify-between px-3 h-[52px] rounded-[14px] border border-line bg-surface text-left transition-colors hover:bg-surface-soft disabled:opacity-50 disabled:pointer-events-none"
                 >
                     {selectedAccount ? (
                         <div className="flex items-center gap-3 min-w-0">
                             <AccountTypeTile type={selectedAccount.type} savings={selectedAccount.is_savings} />
                             <div className="min-w-0">
-                                <p className="text-[13px] font-medium text-[#252525] truncate">{selectedAccount.name}</p>
-                                <p className="text-[11.5px] text-[#8a8a84]">{formatCurrency(selectedAccount.balance)}</p>
+                                <p className="text-[13px] font-medium text-ink truncate">{selectedAccount.name}</p>
+                                <p className="text-[11.5px] text-muted-ink">{formatCurrency(selectedAccount.balance)}</p>
                             </div>
                         </div>
                     ) : (
-                        <span className="text-[13px] text-[#8a8a84]">Select account</span>
+                        <span className="text-[13px] text-muted-ink">Select account</span>
                     )}
-                    <ChevronRight className="w-4 h-4 text-[#a3a3a3] shrink-0" />
+                    <ChevronRight className="w-4 h-4 text-subtle-ink shrink-0" />
                 </button>
                 <AccountPickerDrawer
                     open={accountPickerOpen}

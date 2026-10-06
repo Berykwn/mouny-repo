@@ -36,7 +36,7 @@ export function BulkCategoryDrawer({ open, onClose, type, loading, onConfirm }: 
                 type="button"
                 disabled={!selectedCategoryId || loading}
                 onClick={() => onConfirm(selectedCategoryId)}
-                className="mt-4 w-full h-12 rounded-[14px] text-[13px] font-semibold text-white bg-[#6FA82B] hover:bg-[#6FA82B]/90 transition-colors disabled:opacity-50 disabled:pointer-events-none"
+                className="mt-4 w-full h-12 rounded-[14px] text-[13px] font-semibold text-white bg-brand hover:bg-brand/90 transition-colors disabled:opacity-50 disabled:pointer-events-none"
             >
                 {loading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : 'Apply'}
             </button>

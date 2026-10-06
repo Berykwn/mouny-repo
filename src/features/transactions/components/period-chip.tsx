@@ -20,7 +20,7 @@ export function PeriodChip({ period, onClick }: PeriodChipProps) {
     return (
         <button
             onClick={onClick}
-            className="flex items-center gap-2 pl-2 pr-2.5 py-1.5 rounded-full bg-white border border-line shrink-0"
+            className="flex items-center gap-2 pl-2 pr-2.5 py-1.5 rounded-full bg-surface border border-line shrink-0"
         >
             <span className="w-1.5 h-1.5 rounded-full bg-brand shrink-0" />
             <span className="text-[12px] font-medium text-ink">{month} period</span>

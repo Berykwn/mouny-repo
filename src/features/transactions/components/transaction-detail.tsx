@@ -26,7 +26,7 @@ function typeLabel(tx: TransactionWithDetails): string {
     return tx.category?.is_savings ? 'Saved' : 'Expense'
 }
 
-const PRIMARY_BTN = 'w-full h-12 rounded-[14px] text-[13px] font-semibold text-white bg-[#6FA82B] hover:bg-[#6FA82B]/90 transition-colors flex items-center justify-center gap-2'
+const PRIMARY_BTN = 'w-full h-12 rounded-[14px] text-[13px] font-semibold text-white bg-brand hover:bg-brand/90 transition-colors flex items-center justify-center gap-2'
 
 interface TransactionDetailProps {
     tx: TransactionWithDetails

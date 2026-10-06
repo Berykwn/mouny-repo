@@ -25,7 +25,7 @@ const TINT: Record<Tint, string> = {
     brand: 'bg-brand/10 text-brand',
     info: 'bg-info/10 text-info',
     warning: 'bg-warning/10 text-warning',
-    violet: 'bg-[#8b5cf6]/10 text-[#7c3aed]',
+    violet: 'bg-[#8b5cf6]/10 text-[#7c3aed] dark:text-violet-400',
 }
 
 const GROUPS: { label: string | null; items: SidebarItem[] }[] = [
@@ -85,7 +85,7 @@ export function Sidebar({ activePeriod, user }: SidebarProps) {
             <div className="flex items-center gap-2 px-2">
                 <img src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" className="w-6 h-6 shrink-0" />
                 <span className="text-[20px] font-semibold tracking-[-0.02em] text-ink">Mouny.</span>
-                <span className="ml-auto px-1.5 py-0.5 rounded-md border border-line bg-white text-[10px] text-muted-ink tabular-nums">
+                <span className="ml-auto px-1.5 py-0.5 rounded-md border border-line bg-surface text-[10px] text-muted-ink tabular-nums">
                     v{__APP_VERSION__}
                 </span>
             </div>
@@ -109,11 +109,11 @@ export function Sidebar({ activePeriod, user }: SidebarProps) {
                 to="/menu"
                 className={({ isActive }) => cn(
                     'mt-3 flex items-center gap-2.5 rounded-[14px] border p-2.5 transition-colors',
-                    isActive ? 'bg-white border-line shadow-[0_1px_2px_rgba(0,0,0,.05)]' : 'border-transparent hover:bg-white hover:border-line'
+                    isActive ? 'bg-surface border-line shadow-[0_1px_2px_rgba(0,0,0,.05)]' : 'border-transparent hover:bg-surface hover:border-line'
                 )}
             >
                 <div className="w-8 h-8 rounded-full bg-ink flex items-center justify-center shrink-0">
-                    <span className="text-[11.5px] font-semibold text-[#fafafa]">{getInitials(user)}</span>
+                    <span className="text-[11.5px] font-semibold text-on-ink">{getInitials(user)}</span>
                 </div>
                 <div className="min-w-0 flex-1">
                     <p className="text-[12.5px] font-medium text-ink truncate">{name || 'Your account'}</p>
@@ -128,7 +128,7 @@ export function Sidebar({ activePeriod, user }: SidebarProps) {
 function PeriodCard({ period, summary }: { period: PayPeriod | null; summary: PeriodSummary | null }) {
     if (!period) {
         return (
-            <NavLink to="/period-history" className="mt-5 block rounded-[16px] border border-dashed border-line bg-white p-3.5 hover:border-ink/20 transition-colors">
+            <NavLink to="/period-history" className="mt-5 block rounded-[16px] border border-dashed border-line bg-surface p-3.5 hover:border-ink/20 transition-colors">
                 <p className="text-[12.5px] font-medium text-ink">No active period</p>
                 <p className="text-[11px] text-muted-ink mt-0.5">Start one when your salary comes in.</p>
             </NavLink>
@@ -183,8 +183,8 @@ function SidebarNavItem({ item, badge }: { item: SidebarItem; badge?: Badge }) {
             className={({ isActive }) => cn(
                 'flex items-center gap-2.5 h-10 px-2 rounded-[12px] border transition-colors',
                 isActive
-                    ? 'bg-white border-line shadow-[0_1px_2px_rgba(0,0,0,.05)]'
-                    : 'border-transparent hover:bg-white/70'
+                    ? 'bg-surface border-line shadow-[0_1px_2px_rgba(0,0,0,.05)]'
+                    : 'border-transparent hover:bg-surface/70'
             )}
         >
             {({ isActive }) => (

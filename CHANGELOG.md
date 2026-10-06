@@ -30,6 +30,7 @@ The app now works offline, the sign-in pages match the rest of the app, categori
 - **Needs / Wants / Savings card** in analytics, measured against the 50/30/20 guide.
 - **Category detail sheet.** Tap a category to see this period's total, budget progress and recent transactions, with Edit and Delete.
 - Proper install icons for Android (maskable) and iOS (apple-touch-icon).
+- **Appearance setting.** Choose Auto, Light or Dark from the Menu. Auto follows your device, and now switches as soon as the device does.
 
 ### Changed
 - **Debt money no longer skews your stats.** Lending money used to count as spending, and borrowing as income. Both now count as transfers, and so do collections and transfers between your own accounts. They move your balance but stay out of income, spending, savings rate and the health score. Debt payments still count as bills. Existing lending and borrowing transactions are converted automatically.
@@ -47,6 +48,8 @@ The app now works offline, the sign-in pages match the rest of the app, categori
 - The status bar colour follows the app's theme instead of staying black.
 
 ### Fixed
+- **Dark mode covers the whole app.** Forms, drawers, analytics, charts and the calendar kept light colours in dark mode. They now follow the theme.
+- **Light mode stays light on Samsung phones.** With the phone in dark mode, Samsung Internet (and Chrome's "darken websites") darkened the app on its own. Choosing Light now keeps it light.
 - **Quantities with a comma.** Typing `0,5` gram in a quantity wish recorded 5 grams (and ten times the cost). A comma is now read as the decimal separator.
 - **Recording a debt is all or nothing.** When lending more than an account held, the receivable was saved without the money leaving; trying again made a second one. The debt and its transfer are now saved together.
 - **Editing a debt's total can't lose a payment.** A payment made at the same moment (on another device) could be wiped from the remaining amount. The database now works the remaining amount out itself.

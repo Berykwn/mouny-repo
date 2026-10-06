@@ -1,8 +1,10 @@
 import { createContext, ReactNode, use, useEffect, useState } from "react"
 
+export type Theme = "light" | "dark" | "system"
+
 type ThemeType = {
-    theme: string
-    setTheme: (theme: string) => void
+    theme: Theme
+    setTheme: (theme: Theme) => void
 }
 
 export const ThemeContext = createContext<ThemeType | null>(null)
@@ -19,46 +21,56 @@ function applyThemeColor(theme: keyof typeof THEME_COLORS) {
         .forEach(meta => meta.setAttribute('content', THEME_COLORS[theme]))
 }
 
+/**
+ * Chromium browsers with forced dark (Samsung Internet, Chrome's "darken websites") repaint any
+ * page whose color-scheme lacks dark. "only" opts out, so a chosen light theme stays ours.
+ */
+function applyColorScheme(scheme: string) {
+    document.documentElement.style.colorScheme = scheme
+    document.querySelector('meta[name="color-scheme"]')?.setAttribute('content', scheme)
+}
+
+function readTheme(storageKey: string, fallback: Theme): Theme {
+    const stored = localStorage.getItem(storageKey)
+    return stored === "light" || stored === "dark" || stored === "system" ? stored : fallback
+}
+
 export function ThemeProvider({
     children,
     defaultTheme = "system",
     storageKey = "shadcn-ui-theme",
 }: {
     children: ReactNode
-    defaultTheme?: string
+    defaultTheme?: Theme
     storageKey?: string
 }) {
-    const [theme, setTheme] = useState(
-        () => localStorage.getItem(storageKey) ?? defaultTheme
-    )
+    const [theme, setTheme] = useState<Theme>(() => readTheme(storageKey, defaultTheme))
 
     useEffect(() => {
         const root = window.document.documentElement
+        const media = window.matchMedia("(prefers-color-scheme: dark)")
 
-        root.classList.remove("light", "dark")
-
-        if (theme === "system") {
-            const systemTheme = window.matchMedia("(prefers-color-scheme: dark)")
-                .matches
-                ? "dark"
-                : "light"
-
-            root.classList.add(systemTheme)
-            root.style.colorScheme = systemTheme
-            applyThemeColor(systemTheme)
-            return
+        const apply = () => {
+            const resolved = theme === "system" ? (media.matches ? "dark" : "light") : theme
+            root.classList.remove("light", "dark")
+            root.classList.add(resolved)
+            applyColorScheme(theme === "system" ? "light dark" : `only ${resolved}`)
+            applyThemeColor(resolved)
         }
 
-        root.classList.add(theme)
-        root.style.colorScheme = theme
-        applyThemeColor(theme === 'dark' ? 'dark' : 'light')
+        apply()
+        if (theme !== "system") return
+
+        // Follow the OS live, e.g. a scheduled switch to dark at night.
+        media.addEventListener("change", apply)
+        return () => media.removeEventListener("change", apply)
     }, [theme])
 
     return (
         <ThemeContext
             value={{
                 theme,
-                setTheme: (theme: string) => {
+                setTheme: (theme: Theme) => {
                     localStorage.setItem(storageKey, theme)
                     setTheme(theme)
                 },

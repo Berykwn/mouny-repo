@@ -23,7 +23,7 @@ export function AddTransactionFlow({ payPeriodId, periodStart, periodEnd, defaul
             onClose={onClose}
             title={initial ? 'Edit transaction' : 'New transaction'}
             maxHeightClassName="max-h-[92%]"
-            titleClassName="font-semibold text-[17px] text-[#252525]"
+            titleClassName="font-semibold text-[17px] text-ink"
         >
             <AddTransactionForm
                 key={initial?.id}

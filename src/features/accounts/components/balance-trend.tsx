@@ -43,12 +43,12 @@ export function BalanceTrend({ points }: { points: TrendPoint[] }) {
             <svg viewBox={`0 0 ${W} ${H}`} className="mt-3 w-full h-16" preserveAspectRatio="none" aria-hidden>
                 <defs>
                     <linearGradient id="balance-trend-fill" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#6FA82B" stopOpacity="0.18" />
-                        <stop offset="100%" stopColor="#6FA82B" stopOpacity="0" />
+                        <stop offset="0%" stopColor="var(--brand)" stopOpacity="0.18" />
+                        <stop offset="100%" stopColor="var(--brand)" stopOpacity="0" />
                     </linearGradient>
                 </defs>
                 <polygon points={area} fill="url(#balance-trend-fill)" />
-                <polyline points={line} fill="none" stroke="#6FA82B" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+                <polyline points={line} fill="none" stroke="var(--brand)" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
             </svg>
 
             <div className="mt-1.5 flex justify-between text-[10px] text-subtle-ink">
