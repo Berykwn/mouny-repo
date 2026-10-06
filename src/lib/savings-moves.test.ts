@@ -31,6 +31,33 @@ describe('withSavingsMoves', () => {
         expect(withSavingsMoves(once)).toEqual(once)
     })
 
+    it('counts income paid straight into savings as saved, so moving it out is not counted twice', () => {
+        const salary = tx({ type: 'income', amount: 10_000_000, account: savings, account_id: savings.id })
+        const rows = withSavingsMoves([salary, ...transfer('t1', savings, everyday, 10_000_000)])
+        expect(summarizeTransactions(rows)).toMatchObject({ income: 10_000_000, savings: 0, spending: 0, net: 10_000_000 })
+        // Still sitting in savings: saved, not spendable.
+        expect(summarizeTransactions([salary])).toMatchObject({ savings: 10_000_000, net: 0 })
+    })
+
+    it('takes spending from a savings account off what was saved', () => {
+        const rows = [
+            tx({ type: 'income', amount: 10_000_000 }),
+            ...transfer('t1', everyday, savings, 3_000_000),
+            tx({ type: 'expense', amount: 2_000_000, account: savings, account_id: savings.id, category: { is_savings: false } }),
+        ]
+        // BCA holds 7jt; 1jt is still in savings.
+        expect(summarizeTransactions(rows)).toMatchObject({ savings: 1_000_000, spending: 2_000_000, net: 7_000_000 })
+    })
+
+    it('changes nothing when run over its own output, with savings income and spending', () => {
+        const once = withSavingsMoves([
+            tx({ type: 'income', amount: 5_000_000, account: savings, account_id: savings.id }),
+            tx({ type: 'expense', amount: 1_000_000, account: savings, account_id: savings.id, category: { is_savings: false } }),
+        ])
+        expect(once).toHaveLength(4)
+        expect(withSavingsMoves(once)).toEqual(once)
+    })
+
     it('ignores moves between savings accounts and ordinary transfers', () => {
         const rows = withSavingsMoves([...transfer('t1', savings, savings2, 1_000_000), ...transfer('t2', everyday, { ...everyday, id: 'cash' }, 300_000)])
         expect(rows.every(r => r.type.startsWith('transfer'))).toBe(true)

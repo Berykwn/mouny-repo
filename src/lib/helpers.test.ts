@@ -7,9 +7,50 @@ import {
     getDaysBetween,
     getInitials,
     parseCurrencyInput,
+    parseCurrencyWithSign,
+    parseDecimalInput,
     spentPercent,
+    toDecimalInput,
     toISODate,
+    toSignedDigits,
 } from './helpers'
+
+describe('signed currency input', () => {
+    it('keeps a minus typed first, last or before the number', () => {
+        expect(toSignedDigits('-')).toBe('-')
+        expect(toSignedDigits('-5')).toBe('-5')
+        expect(toSignedDigits('-5.000')).toBe('-5000')
+        expect(toSignedDigits('5.000-')).toBe('-5000')
+        expect(toSignedDigits('5.000')).toBe('5000')
+    })
+
+    it('reads the minus signs phone keyboards type', () => {
+        expect(toSignedDigits('−5000')).toBe('-5000')
+        expect(toSignedDigits('–5000')).toBe('-5000')
+        expect(formatCurrencyInput('−25000')).toBe('-25.000')
+    })
+
+    it('parses whole signed rupiah', () => {
+        expect(parseCurrencyWithSign('-20.000')).toBe(-20_000)
+        expect(parseCurrencyWithSign('50.000')).toBe(50_000)
+        expect(parseCurrencyWithSign('-')).toBe(0)
+        expect(parseCurrencyWithSign('')).toBe(0)
+    })
+})
+
+describe('decimal input', () => {
+    it('reads a comma as the decimal separator', () => {
+        expect(toDecimalInput('0,5')).toBe('0.5')
+        expect(parseDecimalInput('0,5')).toBe(0.5)
+        expect(parseDecimalInput('2,5')).toBe(2.5)
+    })
+
+    it('keeps only the first separator', () => {
+        expect(toDecimalInput('1.2.3')).toBe('1.23')
+        expect(toDecimalInput('1,2,3')).toBe('1.23')
+        expect(parseDecimalInput('abc')).toBe(0)
+    })
+})
 
 describe('currency input', () => {
     it('formats digits with Indonesian grouping and keeps a leading minus', () => {
@@ -60,6 +101,8 @@ describe('formatting', () => {
         expect(formatCompact(12_400)).toBe('12k')
         expect(formatShortCurrency(1_500_000)).toBe('1.5jt')
         expect(formatShortCurrency(25_000)).toBe('25rb')
+        expect(formatShortCurrency(-1_500_000)).toBe('-1.5jt')
+        expect(formatCompact(-12_400)).toBe('-12k')
     })
 
     it('spentPercent is 0 with no budget', () => {

@@ -4,7 +4,10 @@ export interface PeriodSummary {
     income: number
     /** Every expense, savings included — what left the everyday accounts. */
     expense: number
-    /** Expenses in savings categories plus money moved into savings accounts: set aside, not spent. */
+    /**
+     * Set aside, not spent: expenses in savings categories, money moved into savings
+     * accounts, and a savings account's own income, less what's spent from one.
+     */
     savings: number
     /** Expenses minus savings. */
     spending: number
@@ -21,11 +24,12 @@ export interface PeriodSummary {
 export const EMPTY_PERIOD_SUMMARY: PeriodSummary = { income: 0, expense: 0, savings: 0, spending: 0, net: 0, unspent: 0 }
 
 type SummaryRow = {
+    id?: string
     type: string
     amount: number
     transfer_id?: string | null
     account?: { is_savings?: boolean | null } | null
-    category?: { is_savings: boolean } | null
+    category?: { id?: string; is_savings: boolean } | null
 }
 
 export function summarizeTransactions(rows: SummaryRow[]): PeriodSummary {

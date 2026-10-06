@@ -13,7 +13,7 @@ All notable changes to Mouny, newest first. The format follows [Keep a Changelog
 
 The app now works offline, the sign-in pages match the rest of the app, categories have kinds, and balances, debts and wishes can no longer drift out of step.
 
-> **Migrations required, in order:** `20261005000100_ledger_integrity.sql`, `20261005000200_archive_and_unperiodized_transfers.sql`, `20261005000300_savings_accounts.sql`, `20261005000400_move_to_savings.sql`. Run them before deploying this version: transfers, collections, balance adjustments, archiving and savings accounts depend on them. They keep every current balance as it is.
+> **Migrations required, in order:** `20261005000100_ledger_integrity.sql`, `20261005000200_archive_and_unperiodized_transfers.sql`, `20261005000300_savings_accounts.sql`, `20261005000400_move_to_savings.sql`, `20261006000100_calculation_fixes.sql`. Run them before deploying this version: transfers, collections, balance adjustments, archiving and savings accounts depend on them. They keep every current balance as it is.
 
 ### Added
 - **Every balance change is in the ledger.** Transfers between accounts, collected receivables and balance adjustments now show up as transactions. An account's balance always equals its opening balance plus its transactions. Transfers and adjustments still work between pay periods; they're then recorded outside any period.
@@ -47,6 +47,18 @@ The app now works offline, the sign-in pages match the rest of the app, categori
 - The status bar colour follows the app's theme instead of staying black.
 
 ### Fixed
+- **Quantities with a comma.** Typing `0,5` gram in a quantity wish recorded 5 grams (and ten times the cost). A comma is now read as the decimal separator.
+- **Recording a debt is all or nothing.** When lending more than an account held, the receivable was saved without the money leaving; trying again made a second one. The debt and its transfer are now saved together.
+- **Editing a debt's total can't lose a payment.** A payment made at the same moment (on another device) could be wiped from the remaining amount. The database now works the remaining amount out itself.
+- **Savings accounts count once.** Salary paid straight into a savings account and then moved out counted twice in net and *Safe to spend*. Income into a savings account now counts as saved, and spending from one comes off what's saved.
+- **Closed periods stay as they closed.** Marking an account or category as savings rewrote the numbers of periods already closed. Each transaction now keeps the savings flags it had, and closed periods keep theirs.
+- **Repaying a cash loan isn't spending twice.** Borrowed cash comes in as a transfer and spending it is counted, so the repayment is now a transfer too. Pay-later and installment payments are still expenses.
+- **Closing a period.** It can't close before its last transaction, the closing balance is taken from the accounts in the database, and a closed period can't be reopened.
+- *Safe to spend* in the add-transaction form now matches the dashboard (money moved into savings isn't spendable).
+- Editing an amount with decimals (older data) no longer reads it ten times too high.
+- Categories with a zero budget no longer scramble the budget order in analytics.
+- Short amounts show negatives properly (`-1.5jt`, not `-1500000`).
+- **Balance adjustment.** A minus typed before the number, or the minus sign some phone keyboards type, was dropped. Any minus in the field now makes it negative, and a **+/−** button flips the sign for keypads with no minus key.
 - The app no longer signs you out when you open it offline with an expired session. It refreshes the session once you're back online.
 - The bottom nav and drawers now clear the iPhone home indicator.
 - The app font (Barlow) now loads offline too.

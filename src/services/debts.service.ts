@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase'
-import { handleError, invalidatesOnWrite, sessionUser, type ServiceResult, SIGNED_OUT_MESSAGE } from './_base'
+import { handleError, invalidatesOnWrite, isMissingFunction, NULL_ARG, sessionUser, type ServiceResult, SIGNED_OUT_MESSAGE } from './_base'
 import type { Account, Debt, DebtPayment, DebtWithAccount, Category } from '@/types/'
 import { COLORS } from '@/lib/static-colors'
 
@@ -18,6 +18,50 @@ export interface DebtEditInput {
     total_amount: number
     due_date: string | null
     notes: string | null
+}
+
+/**
+ * For a database without create_debt yet: the debt, then its transfer. If the transfer
+ * fails the debt is removed again, so it isn't left without its money.
+ */
+async function createInSteps(input: Parameters<typeof debtsService.create>[0]): Promise<ServiceResult<Debt>> {
+    const user = await sessionUser()
+    if (!user) throw new Error(SIGNED_OUT_MESSAGE)
+
+    const { data: debt, error } = await supabase
+        .from('debts')
+        .insert({
+            user_id: user.id,
+            type: input.type,
+            counterparty: input.counterparty,
+            total_amount: input.total_amount,
+            remaining_amount: input.total_amount,
+            due_date: input.due_date,
+            pay_from_account_id: input.account_id,
+            status: 'active',
+            notes: input.notes,
+        })
+        .select()
+        .single()
+    if (error) throw error
+
+    if (input.moved && input.account_id) {
+        const { error: txError } = await supabase.from('transactions').insert({
+            user_id: user.id,
+            pay_period_id: input.moved.pay_period_id,
+            account_id: input.account_id,
+            type: input.type === 'debt' ? 'transfer_in' : 'transfer_out',
+            amount: input.total_amount,
+            note: `${input.type === 'debt' ? 'Debt received' : 'Lent to'} — ${input.counterparty}`,
+            date: input.moved.date,
+            debt_id: debt.id,
+        })
+        if (txError) {
+            await supabase.from('debts').delete().eq('id', debt.id)
+            throw txError
+        }
+    }
+    return { data: debt, error: null }
 }
 
 export const debtsService = invalidatesOnWrite({
@@ -78,19 +122,38 @@ export const debtsService = invalidatesOnWrite({
         }
     },
 
-    async create(input: Omit<Debt, 'id' | 'user_id' | 'created_at'>): Promise<ServiceResult<Debt>> {
+    /**
+     * Record a debt or receivable and, when money actually changed hands, its transfer
+     * (borrowed money in, lent money out), in one database transaction: if the transfer
+     * fails (say the account is short), no debt is left behind.
+     */
+    async create(input: {
+        type: 'debt' | 'receivable'
+        counterparty: string
+        total_amount: number
+        due_date: string | null
+        notes: string | null
+        account_id: string | null
+        /** The money moved through account_id on `date`, in the period. */
+        moved: { date: string; pay_period_id: string } | null
+    }): Promise<ServiceResult<Debt>> {
         try {
-            const user = await sessionUser()
-            if (!user) throw new Error(SIGNED_OUT_MESSAGE)
-
-            const { data, error } = await supabase
-                .from('debts')
-                .insert({ ...input, user_id: user.id })
-                .select()
-                .single()
-
-            if (error) throw error
-            return { data, error: null }
+            const { data, error } = await supabase.rpc('create_debt', {
+                p_type: input.type,
+                p_counterparty: input.counterparty,
+                p_total_amount: input.total_amount,
+                p_due_date: input.due_date ?? NULL_ARG,
+                p_notes: input.notes ?? NULL_ARG,
+                p_account_id: input.account_id ?? NULL_ARG,
+                p_moves_money: !!input.moved,
+                p_date: input.moved?.date ?? NULL_ARG,
+                p_pay_period_id: input.moved?.pay_period_id ?? NULL_ARG,
+            })
+            if (!isMissingFunction(error)) {
+                if (error) throw error
+                return { data, error: null }
+            }
+            return await createInSteps(input)
         } catch (err) {
             return { data: null, error: handleError(err) }
         }
@@ -148,7 +211,9 @@ export const debtsService = invalidatesOnWrite({
 
     /**
      * Edit a debt's details. Changing the total keeps what's already been paid: the
-     * remaining amount moves by the same difference (never below zero).
+     * remaining amount moves by the same difference (never below zero). The database
+     * works that out again on the locked row (debts_amounts), so a payment made between
+     * the read and the write here isn't lost; what's sent covers a database without it.
      */
     async update(id: string, input: DebtEditInput): Promise<ServiceResult<Debt>> {
         try {

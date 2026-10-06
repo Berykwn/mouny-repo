@@ -67,7 +67,7 @@ export const wishListService = invalidatesOnWrite({
             if (!user) throw new Error(SIGNED_OUT_MESSAGE)
 
             const estimated_price = input.quantity && input.price_per_unit
-                ? input.quantity * input.price_per_unit
+                ? Math.round(input.quantity * input.price_per_unit)
                 : input.estimated_price
 
             const { data, error } = await supabase
@@ -101,7 +101,7 @@ export const wishListService = invalidatesOnWrite({
     }): Promise<ServiceResult<WishListItem>> {
         try {
             const estimated_price = input.quantity && input.price_per_unit
-                ? input.quantity * input.price_per_unit
+                ? Math.round(input.quantity * input.price_per_unit)
                 : input.estimated_price
 
             const { data, error } = await supabase

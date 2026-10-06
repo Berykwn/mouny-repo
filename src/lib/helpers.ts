@@ -16,7 +16,7 @@ export function formatCurrency(amount: number): string {
 export function formatCurrencyInput(value: string): string {
     if (!value) return ''
     // Keep a leading minus (balance adjustments) and ignore stray characters instead of showing NaN.
-    const negative = value.trim().startsWith('-')
+    const negative = MINUS.test(value.trim()[0] ?? '')
     const digits = value.replace(/\D/g, '')
     if (!digits) return negative ? '-' : ''
     return (negative ? '-' : '') + Number(digits).toLocaleString('id-ID')
@@ -27,11 +27,41 @@ export function parseCurrencyInput(value: string): number {
     return parseInt(value.replace(/\D/g, ''), 10) || 0
 }
 
+// Keyboards differ in what their minus key types: a hyphen, a real minus sign, or a dash.
+const MINUS = /[-‐-―−﹣－]/
+
+/**
+ * What a signed rupiah field keeps as it's typed: digits, with a leading "-" when a minus
+ * was typed anywhere in it. So "-" then "5000" and "5000" with "-" put in front (or at the
+ * end) both read as -5000, and deleting the minus makes it positive again.
+ */
+export function toSignedDigits(value: string): string {
+    const negative = MINUS.test(value)
+    return (negative ? '-' : '') + value.replace(/\D/g, '')
+}
+
+/** A signed whole rupiah amount from a field like "-20.000"; 0 when there's no number. */
 export function parseCurrencyWithSign(value: string): number {
     if (!value) return 0
-    return parseFloat(
-        value.replace(/[^0-9,-]/g, '').replace(',', '.')
-    ) || 0
+    const digits = value.replace(/\D/g, '')
+    if (!digits) return 0
+    return (MINUS.test(value) ? -1 : 1) * parseInt(digits, 10)
+}
+
+/**
+ * What a quantity field (grams, pcs) keeps as it's typed. A comma is the decimal
+ * separator in Indonesian, so "0,5" means half, not 5; only the first separator counts.
+ */
+export function toDecimalInput(value: string): string {
+    const cleaned = value.replace(/,/g, '.').replace(/[^0-9.]/g, '')
+    const dot = cleaned.indexOf('.')
+    return dot === -1 ? cleaned : cleaned.slice(0, dot + 1) + cleaned.slice(dot + 1).replace(/\./g, '')
+}
+
+/** A quantity from a toDecimalInput value; 0 when there's no number. */
+export function parseDecimalInput(value: string): number {
+    const n = Number(toDecimalInput(value))
+    return Number.isFinite(n) ? n : 0
 }
 
 /**
@@ -99,15 +129,17 @@ export function getDaysBetween(
 }
 
 export function formatCompact(value: number): string {
+    if (value < 0) return `-${formatCompact(-value)}`
     if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1).replace('.0', '')}m`
     if (value >= 1_000) return `${Math.round(value / 1_000)}k`
     return `${Math.round(value)}`
 }
 
 export function formatShortCurrency (value: number): string {
+    if (value < 0) return `-${formatShortCurrency(-value)}`
     if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1).replace('.0', '')}jt`
     if (value >= 1_000) return `${(value / 1_000).toFixed(0)}rb`
-    return `${value}`
+    return `${Math.round(value)}`
 }
 
 export function getInitials(user: { user_metadata?: { full_name?: string } | null; email?: string | null } | null): string {

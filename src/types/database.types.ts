@@ -276,8 +276,10 @@ export type Database = {
       transactions: {
         Row: {
           account_id: string
+          account_is_savings: boolean
           amount: number
           category_id: string | null
+          category_is_savings: boolean
           created_at: string | null
           date: string
           debt_id: string | null
@@ -292,8 +294,10 @@ export type Database = {
         }
         Insert: {
           account_id: string
+          account_is_savings?: boolean
           amount: number
           category_id?: string | null
+          category_is_savings?: boolean
           created_at?: string | null
           date?: string
           debt_id?: string | null
@@ -308,8 +312,10 @@ export type Database = {
         }
         Update: {
           account_id?: string
+          account_is_savings?: boolean
           amount?: number
           category_id?: string | null
+          category_is_savings?: boolean
           created_at?: string | null
           date?: string
           debt_id?: string | null
@@ -580,6 +586,38 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      create_debt: {
+        Args: {
+          p_account_id: string
+          p_counterparty: string
+          p_date: string
+          p_due_date: string
+          p_moves_money: boolean
+          p_notes: string
+          p_pay_period_id: string
+          p_total_amount: number
+          p_type: string
+        }
+        Returns: {
+          counterparty: string
+          created_at: string | null
+          due_date: string | null
+          id: string
+          notes: string | null
+          pay_from_account_id: string | null
+          remaining_amount: number
+          status: string
+          total_amount: number
+          type: string
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "debts"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       contribute_wish: {
         Args: { p_amount: number; p_id: string }
         Returns: {
@@ -649,8 +687,10 @@ export type Database = {
         Args: { p_account_id: string; p_id: string }
         Returns: {
           account_id: string
+          account_is_savings: boolean
           amount: number
           category_id: string | null
+          category_is_savings: boolean
           created_at: string | null
           date: string
           debt_id: string | null
@@ -723,8 +763,10 @@ export type Database = {
         }
         Returns: {
           account_id: string
+          account_is_savings: boolean
           amount: number
           category_id: string | null
+          category_is_savings: boolean
           created_at: string | null
           date: string
           debt_id: string | null

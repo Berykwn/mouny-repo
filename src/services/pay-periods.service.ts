@@ -57,6 +57,9 @@ export const payPeriodsService = invalidatesOnWrite({
     },
 
     // Close the active period: its closing balance and end date are fixed from here on.
+    // The database refuses an end date before the period's last transaction and takes the
+    // closing balance from the accounts itself (pay_periods_guard); the one sent here only
+    // covers a database without that rule.
     async close(id: string, closingBalance: number, endDate: string): Promise<ServiceResult<PayPeriod>> {
         try {
             const { data, error } = await supabase

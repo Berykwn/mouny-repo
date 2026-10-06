@@ -32,6 +32,23 @@ function toRow(tx: Transaction): Transaction {
         transfer_id: tx.transfer_id,
         debt_id: tx.debt_id,
         wish_quantity: tx.wish_quantity,
+        // Set again by the database from the account and category; sent only to fill the type.
+        account_is_savings: tx.account_is_savings,
+        category_is_savings: tx.category_is_savings,
+    }
+}
+
+/**
+ * Whether the account and category counted as savings when the transaction was made: a
+ * closed period keeps the flags it closed with, so its numbers don't change when an
+ * account is marked as savings later. Falls back to the current flags on a database that
+ * doesn't have the columns yet.
+ */
+function withSavingsFlagsAtTheTime(tx: TransactionWithDetails): TransactionWithDetails {
+    return {
+        ...tx,
+        account: { ...tx.account, is_savings: tx.account_is_savings ?? tx.account.is_savings },
+        category: tx.category && { ...tx.category, is_savings: tx.category_is_savings ?? tx.category.is_savings },
     }
 }
 
@@ -50,7 +67,7 @@ export const transactionsService = invalidatesOnWrite({
                 .order('id')
                 .range(from, to))
 
-            return { data, error: null }
+            return { data: data.map(withSavingsFlagsAtTheTime), error: null }
         } catch (err) {
             return { data: null, error: handleError(err) }
         }

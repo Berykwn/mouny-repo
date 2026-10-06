@@ -24,6 +24,8 @@ export function tx({ category, ...overrides }: TxOverrides = {}): TransactionWit
         transfer_id: null,
         debt_id: null,
         wish_quantity: null,
+        account_is_savings: overrides.account?.is_savings ?? false,
+        category_is_savings: category?.is_savings ?? false,
         account: { id: 'acc-1', name: 'BCA', type: 'bank', is_savings: false },
         category: category
             ? { id: 'cat-1', name: 'Food', color: null, bg_color: null, icon: null, is_savings: false, kind: null, ...category }
