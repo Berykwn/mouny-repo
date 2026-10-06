@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { CategoryTile } from '@/features/categories/components/category-icon'
 import { cn } from '@/lib/utils'
 import type { Category } from '@/types'
@@ -10,6 +11,18 @@ interface CategoryTileRailProps {
 }
 
 export function CategoryTileRail({ categories, selectedId, onSelect, disabled }: CategoryTileRailProps) {
+    const railRef = useRef<HTMLDivElement>(null)
+
+    // Bring a pick made elsewhere (quick entry) into view; scrolls the rail only, not the drawer.
+    useEffect(() => {
+        const rail = railRef.current
+        const tile = rail?.querySelector<HTMLElement>('[aria-pressed="true"]')
+        if (!rail || !tile) return
+        if (tile.offsetLeft < rail.scrollLeft || tile.offsetLeft + tile.offsetWidth > rail.scrollLeft + rail.clientWidth) {
+            rail.scrollTo({ left: tile.offsetLeft - 8, behavior: 'smooth' })
+        }
+    }, [selectedId])
+
     if (categories.length === 0) {
         return (
             <p className="text-[11.5px] text-muted-ink py-2">
@@ -20,7 +33,8 @@ export function CategoryTileRail({ categories, selectedId, onSelect, disabled }:
 
     return (
         <div
-            className="flex gap-2 overflow-x-auto pb-0.5 [scroll-snap-type:x_mandatory] [&::-webkit-scrollbar]:hidden"
+            ref={railRef}
+            className="relative flex gap-2 overflow-x-auto pb-0.5 [scroll-snap-type:x_mandatory] [&::-webkit-scrollbar]:hidden"
             style={{ scrollbarWidth: 'none' }}
         >
             {categories.map((c) => {
@@ -29,6 +43,7 @@ export function CategoryTileRail({ categories, selectedId, onSelect, disabled }:
                     <button
                         key={c.id}
                         type="button"
+                        aria-pressed={selected}
                         disabled={disabled}
                         onClick={() => onSelect(c.id)}
                         className={cn(

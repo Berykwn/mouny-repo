@@ -30,6 +30,7 @@ The app now works offline, the sign-in pages match the rest of the app, categori
 - **Needs / Wants / Savings card** in analytics, measured against the 50/30/20 guide.
 - **Category detail sheet.** Tap a category to see this period's total, budget progress and recent transactions, with Edit and Delete.
 - Proper install icons for Android (maskable) and iOS (apple-touch-icon).
+- **Quick entry.** Type a line like `makan siang 35rb gopay` at the top of the add form and it fills in the amount, account, category and note. It reads `rb`, `k`, `jt`, `juta` and `1,5jt`, and learns categories from your own notes. Below it, your most repeated transactions are one tap away. Both only fill the form; you still check and save.
 - **Appearance setting.** Choose Auto, Light or Dark from the Menu. Auto follows your device, and now switches as soon as the device does.
 
 ### Changed

@@ -9,12 +9,14 @@ import { DateQuickPicker } from '@/components/date-quick-picker'
 import { CategoryTileRail } from './category-tile-rail'
 import { ConsequenceStrip } from './consequence-strip'
 import { TransferFields } from './transfer-fields'
+import { QuickEntryBar } from './quick-entry-bar'
+import { frequentEntries, parseQuickEntry, type QuickEntry } from '../lib/quick-entry'
 import { transactionsService, type CreateTransactionInput } from '@/services/transactions.service'
 import { accountsService } from '@/services/accounts-categories.service'
 import { formatCurrency, formatCurrencyInput, parseCurrencyInput, toISODate } from '@/lib/helpers'
 import { summarizeTransactions } from '@/lib/period-summary'
 import { cn } from '@/lib/utils'
-import { useAccounts, useCategories, usePeriodTransactions } from '@/queries'
+import { useAccounts, useCategories, usePeriods, usePeriodTransactions } from '@/queries'
 import type { Account, Category, TransactionWithDetails } from '@/types'
 import { linkedTo } from '../lib/ledger'
 
@@ -70,6 +72,15 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
     const categories = type === 'transfer' ? NO_CATEGORIES : typeCategories ?? NO_CATEGORIES
     const { data: periodTxs } = usePeriodTransactions(payPeriodId)
 
+    // Quick entry learns from this period and the one before (periods are newest first).
+    const { periods } = usePeriods()
+    const periodIndex = periods.findIndex((p) => p.id === payPeriodId)
+    const previousPeriodId = periodIndex >= 0 ? periods[periodIndex + 1]?.id : undefined
+    const { data: previousTxs } = usePeriodTransactions(initial ? null : previousPeriodId)
+    const { data: allCategories } = useCategories()
+    const history = useMemo(() => [...(periodTxs ?? []), ...(previousTxs ?? [])], [periodTxs, previousTxs])
+    const frequent = useMemo(() => frequentEntries(history), [history])
+
     // Transfer-only state
     const [fromAccountId, setFromAccountId] = useState('')
     const [toAccountId, setToAccountId] = useState('')
@@ -106,6 +117,8 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
     // Default the category when the type changes (or its categories first arrive), but
     // not on a refetch of the same type, which would undo the user's pick.
     const categoriesSeededFor = useRef<TxType | null>(null)
+    // A quick entry that switches the type brings its category along, picked once they load.
+    const pendingCategoryId = useRef<string | null>(null)
     useEffect(() => {
         if (type === 'transfer') {
             categoriesSeededFor.current = type
@@ -114,11 +127,28 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
         }
         if (!typeCategories || categoriesSeededFor.current === type) return
         categoriesSeededFor.current = type
+        const pending = pendingCategoryId.current
+        pendingCategoryId.current = null
+        if (pending && typeCategories.some(c => c.id === pending)) { setCategoryId(pending); return }
         // Editing: keep the transaction's own category while its type is unchanged.
         const keep = initial && type === initial.type && typeCategories.some(c => c.id === initial.category_id)
         setCategoryId(keep ? initial.category_id! : typeCategories[0]?.id ?? '')
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [type, typeCategories])
+
+    const applyQuickEntry = (entry: QuickEntry) => {
+        if (entry.type !== type) {
+            pendingCategoryId.current = entry.categoryId
+            setType(entry.type)
+        } else if (entry.categoryId) {
+            setCategoryId(entry.categoryId)
+        }
+        if (entry.amount) setAmount(String(entry.amount))
+        if (entry.accountId) setAccountId(entry.accountId)
+        if (entry.note) setNote(entry.note)
+    }
+    const parseEntry = (text: string) =>
+        parseQuickEntry(text, { accounts, categories: allCategories ?? NO_CATEGORIES, history })
 
     // "Safe to spend" baseline for the consequence strip, from the period's cached
     // transactions; the strip itself adds the in-progress amount.
@@ -258,6 +288,10 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
 
     return (
         <div className="flex flex-col gap-[18px]">
+            {!initial && (
+                <QuickEntryBar frequent={frequent} parse={parseEntry} onApply={applyQuickEntry} disabled={loading} />
+            )}
+
             {/* Type segmented control */}
             <div className="relative flex w-full rounded-xl bg-surface-hover p-[3px] gap-1">
                 <div
