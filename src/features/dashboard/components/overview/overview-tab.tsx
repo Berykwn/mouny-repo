@@ -6,6 +6,7 @@ import { OverviewData } from '@/types/overview.types'
 import { usePeriodStats } from '@/hooks/use-period-stats'
 import { useBillReserve } from '@/hooks/use-bill-reserve'
 import { BillsDueCard } from '@/features/bills/components/bills-due-card'
+import { QuickAddCard } from '@/features/quick-transactions/components/quick-add-card'
 import { SafeToSpendCard } from './safe-to-spend-card'
 import { PeriodInsights } from './period-insights'
 import { TodayWeekCard } from './today-week-card'
@@ -101,6 +102,8 @@ export function OverviewTransaction({
                         reservedBills={stats.reservedBills}
                         unpaidBills={reserve.dues.filter(d => d.outstanding > 0).length}
                     />
+
+                    {isActivePeriod && <QuickAddCard period={data.period} />}
 
                     {isActivePeriod && reserve.dues.length > 0 && (
                         <BillsDueCard dues={reserve.dues} period={data.period} />

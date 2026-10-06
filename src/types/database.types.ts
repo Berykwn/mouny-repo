@@ -273,6 +273,51 @@ export type Database = {
           },
         ]
       }
+      quick_transactions: {
+        Row: {
+          amount: number
+          category_id: string
+          created_at: string
+          id: string
+          label: string | null
+          last_account_id: string | null
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          category_id: string
+          created_at?: string
+          id?: string
+          label?: string | null
+          last_account_id?: string | null
+          user_id?: string
+        }
+        Update: {
+          amount?: number
+          category_id?: string
+          created_at?: string
+          id?: string
+          label?: string | null
+          last_account_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quick_transactions_category_id_fkey"
+            columns: ["category_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id", "user_id"]
+          },
+          {
+            foreignKeyName: "quick_transactions_last_account_id_fkey"
+            columns: ["last_account_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id", "user_id"]
+          },
+        ]
+      }
       recurring_bills: {
         Row: {
           account_id: string | null

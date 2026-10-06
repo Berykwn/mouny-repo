@@ -10,6 +10,7 @@ import { accountsService, categoriesService } from '@/services/accounts-categori
 import { categoryBudgetsService } from '@/services/budgets.service'
 import { debtsService } from '@/services/debts.service'
 import { recurringBillsService } from '@/services/recurring-bills.service'
+import { quickTransactionsService } from '@/services/quick-transactions.service'
 import { payPeriodsService } from '@/services/pay-periods.service'
 import { transactionsService } from '@/services/transactions.service'
 import { wishListService } from '@/services/wish-list.service'
@@ -24,6 +25,7 @@ export const queryKeys = {
     categories: ['categories'] as const,
     budgets: ['budgets'] as const,
     bills: ['bills'] as const,
+    quickTransactions: ['quick-transactions'] as const,
     debts: ['debts'] as const,
     debtPayments: (debtId: string) => ['debts', debtId, 'payments'] as const,
     wishes: ['wishes'] as const,
@@ -96,6 +98,14 @@ export function useBills() {
     return useQuery({
         queryKey: queryKeys.bills,
         queryFn: () => unwrap(recurringBillsService.getAll()),
+    })
+}
+
+/** Quick transactions set up per category, oldest first. */
+export function useQuickTransactions() {
+    return useQuery({
+        queryKey: queryKeys.quickTransactions,
+        queryFn: () => unwrap(quickTransactionsService.getAll()),
     })
 }
 

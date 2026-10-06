@@ -13,7 +13,7 @@ All notable changes to Mouny, newest first. The format follows [Keep a Changelog
 
 The app now works offline, the sign-in pages match the rest of the app, categories have kinds, and balances, debts and wishes can no longer drift out of step.
 
-> **Migrations required, in order:** `20261005000100_ledger_integrity.sql`, `20261005000200_archive_and_unperiodized_transfers.sql`, `20261005000300_savings_accounts.sql`, `20261005000400_move_to_savings.sql`, `20261006000100_calculation_fixes.sql`, `20261007000100_recurring_bills.sql`. Run them before deploying this version: transfers, collections, balance adjustments, archiving and savings accounts depend on them. They keep every current balance as it is.
+> **Migrations required, in order:** `20261005000100_ledger_integrity.sql`, `20261005000200_archive_and_unperiodized_transfers.sql`, `20261005000300_savings_accounts.sql`, `20261005000400_move_to_savings.sql`, `20261006000100_calculation_fixes.sql`, `20261007000100_recurring_bills.sql`, `20261007000200_quick_transactions.sql`. Run them before deploying this version: transfers, collections, balance adjustments, archiving and savings accounts depend on them. They keep every current balance as it is.
 
 ### Added
 - **Every balance change is in the ledger.** Transfers between accounts, collected receivables and balance adjustments now show up as transactions. An account's balance always equals its opening balance plus its transactions. Transfers and adjustments still work between pay periods; they're then recorded outside any period.
@@ -32,7 +32,7 @@ The app now works offline, the sign-in pages match the rest of the app, categori
 - Proper install icons for Android (maskable) and iOS (apple-touch-icon).
 - **Bills & subscriptions.** Add what you pay every month or year (rent, electricity, Netflix, a yearly domain), with an optional last payment for installments. *Safe to spend* now holds back the bills still due this period, so it's honest from day one; the daily allowance, runway and projections follow. Pay a bill in two taps from the dashboard's *Bills this period* card, with the amount editable for bills that vary. The Bills page shows what they cost per month and per year, and you can pause or end any of them.
 - **Smarter insights.** The overview’s insight card now ranks what matters most and shows up to four lines: when your money runs out at this pace (with a date), bills that are overdue or due this week, a category well above or below your usual for this point in the period, spending against last period at the same day, and what your subscriptions cost a year.
-- **Quick entry.** Type a line like `makan siang 35rb gopay` at the top of the add form and it fills in the amount, account, category and note. It reads `rb`, `k`, `jt`, `juta` and `1,5jt`, and learns categories from your own notes. Below it, your most repeated transactions are one tap away. Both only fill the form; you still check and save.
+- **Quick amounts.** Set up one-tap amounts on a category (open it from Categories), like *Parkir 2rb* and *Parkir 5rb*, optionally named (*Kopi* under Food & Drinks). They show as pills on the overview and at the top of the add form. A tap asks only which account paid and an optional note; the date is today, and the account you used last time is picked for you.
 - **Appearance setting.** Choose Auto, Light or Dark from the Menu. Auto follows your device, and now switches as soon as the device does.
 
 ### Changed

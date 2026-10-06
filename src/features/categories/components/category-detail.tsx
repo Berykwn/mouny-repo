@@ -4,6 +4,7 @@ import { cn } from '@/lib/utils'
 import { CATEGORY_KIND_META, resolveCategoryKind } from '@/lib/category-kind'
 import type { Category, TransactionWithDetails } from '@/types'
 import { CategoryTile } from './category-icon'
+import { QuickAmountsEditor } from '@/features/quick-transactions/components/quick-amounts-editor'
 
 const RECENT_COUNT = 5
 
@@ -71,6 +72,8 @@ export function CategoryDetail({ category, transactions, budget, hasActivePeriod
                     </div>
                 </div>
             )}
+
+            <QuickAmountsEditor category={category} />
 
             <div className="rounded-[20px] border border-line overflow-hidden">
                 <p className="px-4 pt-3 pb-2 text-[11px] uppercase tracking-[.14em] text-muted-ink">Recent this period</p>

@@ -29,6 +29,11 @@ export type RecurringBillUpdate = Database['public']['Tables']['recurring_bills'
 export type BillKind = 'bill' | 'subscription'
 export type BillFrequency = 'monthly' | 'yearly'
 
+export type QuickTransaction = Database['public']['Tables']['quick_transactions']['Row']
+export type QuickTransactionWithCategory = QuickTransaction & {
+    category: Pick<Category, 'id' | 'name' | 'type' | 'color' | 'bg_color' | 'icon'>
+}
+
 export type WishListItem = Database['public']['Tables']['wish_list']['Row']
 export type WishListInsert = Database['public']['Tables']['wish_list']['Insert']
 export type WishListUpdate = Database['public']['Tables']['wish_list']['Update']

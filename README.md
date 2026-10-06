@@ -114,6 +114,7 @@ cp .env.example .env
 | `20261005000400_move_to_savings.sql` | `move_to_savings`: turns a savings expense into a transfer into a savings account, in place |
 | `20261006000100_calculation_fixes.sql` | `create_debt` and a reworked `pay_debt`, savings flags kept on each transaction, closing rules for periods |
 | `20261007000100_recurring_bills.sql` | `recurring_bills`, and `transactions.recurring_bill_id` linking a payment to its bill |
+| `20261007000200_quick_transactions.sql` | `quick_transactions`: one-tap amounts per category, with the account used last |
 
 How the data is kept consistent:
 - **Balances.** Every balance change is a transaction, so `balance = initial_balance + transactions`. That includes transfers (a `transfer_out` and a `transfer_in` sharing a `transfer_id`), receivable collections and balance adjustments. The app can't write `balance` directly.
