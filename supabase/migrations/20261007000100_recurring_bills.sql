@@ -25,7 +25,7 @@ create table if not exists public.recurring_bills (
   ends_on     date,
   paused      boolean not null default false,
   created_at  timestamptz not null default now(),
-  constraint recurring_bills_due_month_check check ((frequency = 'yearly') = (due_month is not null)),
+  constraint recurring_bills_yearly_due_month_check check ((frequency = 'yearly') = (due_month is not null)),
   constraint recurring_bills_ends_on_check check (ends_on is null or ends_on >= starts_on),
   constraint recurring_bills_id_user_id_key unique (id, user_id),
   constraint recurring_bills_category_id_fkey
