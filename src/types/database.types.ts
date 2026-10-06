@@ -273,6 +273,72 @@ export type Database = {
           },
         ]
       }
+      recurring_bills: {
+        Row: {
+          account_id: string | null
+          amount: number
+          category_id: string | null
+          created_at: string
+          due_day: number
+          due_month: number | null
+          ends_on: string | null
+          frequency: string
+          id: string
+          kind: string
+          name: string
+          paused: boolean
+          starts_on: string
+          user_id: string
+        }
+        Insert: {
+          account_id?: string | null
+          amount: number
+          category_id?: string | null
+          created_at?: string
+          due_day: number
+          due_month?: number | null
+          ends_on?: string | null
+          frequency?: string
+          id?: string
+          kind?: string
+          name: string
+          paused?: boolean
+          starts_on?: string
+          user_id?: string
+        }
+        Update: {
+          account_id?: string | null
+          amount?: number
+          category_id?: string | null
+          created_at?: string
+          due_day?: number
+          due_month?: number | null
+          ends_on?: string | null
+          frequency?: string
+          id?: string
+          kind?: string
+          name?: string
+          paused?: boolean
+          starts_on?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recurring_bills_account_id_fkey"
+            columns: ["account_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id", "user_id"]
+          },
+          {
+            foreignKeyName: "recurring_bills_category_id_fkey"
+            columns: ["category_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id", "user_id"]
+          },
+        ]
+      }
       transactions: {
         Row: {
           account_id: string
@@ -286,6 +352,7 @@ export type Database = {
           id: string
           note: string | null
           pay_period_id: string | null
+          recurring_bill_id: string | null
           transfer_id: string | null
           type: string
           user_id: string
@@ -304,6 +371,7 @@ export type Database = {
           id?: string
           note?: string | null
           pay_period_id?: string | null
+          recurring_bill_id?: string | null
           transfer_id?: string | null
           type: string
           user_id: string
@@ -322,6 +390,7 @@ export type Database = {
           id?: string
           note?: string | null
           pay_period_id?: string | null
+          recurring_bill_id?: string | null
           transfer_id?: string | null
           type?: string
           user_id?: string
@@ -362,6 +431,13 @@ export type Database = {
             columns: ["pay_period_id", "user_id"]
             isOneToOne: false
             referencedRelation: "pay_periods"
+            referencedColumns: ["id", "user_id"]
+          },
+          {
+            foreignKeyName: "transactions_recurring_bill_id_fkey"
+            columns: ["recurring_bill_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "recurring_bills"
             referencedColumns: ["id", "user_id"]
           },
           {
@@ -697,6 +773,7 @@ export type Database = {
           id: string
           note: string | null
           pay_period_id: string | null
+          recurring_bill_id: string | null
           transfer_id: string | null
           type: string
           user_id: string
@@ -773,6 +850,7 @@ export type Database = {
           id: string
           note: string | null
           pay_period_id: string | null
+          recurring_bill_id: string | null
           transfer_id: string | null
           type: string
           user_id: string

@@ -39,6 +39,7 @@ const appRoutes: RouteObject[] = [
                     { path: '/', lazy: page(() => import('@/features/dashboard')) },
                     { path: '/transactions', lazy: page(() => import('@/features/transactions')) },
                     { path: '/debts', lazy: page(() => import('@/features/debts')) },
+                    { path: '/bills', lazy: page(() => import('@/features/bills')) },
                     { path: '/wish-list', lazy: page(() => import('@/features/wish-list')) },
                     { path: '/category', lazy: page(() => import('@/features/categories').then(m => ({ default: m.CategoriesPage }))) },
                     { path: '/period-history', lazy: page(() => import('@/features/periods').then(m => ({ default: m.PeriodHistoryPage }))) },

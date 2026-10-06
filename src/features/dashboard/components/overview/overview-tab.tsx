@@ -4,6 +4,8 @@ import { getDaysBetween } from '@/lib/helpers'
 import { LoadingContent } from '@/components/loading-content'
 import { OverviewData } from '@/types/overview.types'
 import { usePeriodStats } from '@/hooks/use-period-stats'
+import { useBillReserve } from '@/hooks/use-bill-reserve'
+import { BillsDueCard } from '@/features/bills/components/bills-due-card'
 import { SafeToSpendCard } from './safe-to-spend-card'
 import { PeriodInsights } from './period-insights'
 import { TodayWeekCard } from './today-week-card'
@@ -67,11 +69,13 @@ export function OverviewTransaction({
     isActivePeriod: boolean
 }) {
     const { data, loading } = useOverviewData(periodId)
+    const reserve = useBillReserve(data?.period, data?.transactions)
 
     const stats = usePeriodStats({
         period: data?.period ?? { start_date: '', end_date: null },
         transactions: data?.transactions ?? [],
         fallbackTotalDays: data?.fallbackTotalDays ?? null,
+        reservedBills: reserve.reserved,
     })
 
     if (loading) return <LoadingContent />
@@ -94,7 +98,13 @@ export function OverviewTransaction({
                         totalSavings={stats.totalSavings}
                         remaining={stats.remaining}
                         spentPercent={stats.spentPercent}
+                        reservedBills={stats.reservedBills}
+                        unpaidBills={reserve.dues.filter(d => d.outstanding > 0).length}
                     />
+
+                    {isActivePeriod && reserve.dues.length > 0 && (
+                        <BillsDueCard dues={reserve.dues} period={data.period} />
+                    )}
 
                     {isActivePeriod && <PeriodInsights transactions={transactions} stats={stats} />}
                 </div>

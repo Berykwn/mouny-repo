@@ -23,6 +23,7 @@ export function tx({ category, ...overrides }: TxOverrides = {}): TransactionWit
         wish_list_item_id: null,
         transfer_id: null,
         debt_id: null,
+        recurring_bill_id: null,
         wish_quantity: null,
         account_is_savings: overrides.account?.is_savings ?? false,
         category_is_savings: category?.is_savings ?? false,

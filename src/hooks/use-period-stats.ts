@@ -8,6 +8,8 @@ interface UsePeriodStatsParams {
     period: { start_date: string; end_date: string | null; status?: string }
     transactions: TransactionWithDetails[]
     fallbackTotalDays?: number | null
+    /** Bills still due this period (useBillReserve): held back from what's safe to spend. */
+    reservedBills?: number
 }
 
 export interface PeriodStats {
@@ -20,7 +22,10 @@ export interface PeriodStats {
     totalSpending: number
     /** Bills and other one-offs within totalSpending: counted once, never extrapolated. */
     oneOffSpending: number
+    /** Income minus expenses minus bills still due: safe to spend. */
     remaining: number
+    /** Bills still due this period, already taken out of remaining. */
+    reservedBills: number
     spentPercent: number
     daysElapsed: number
     totalDays: number | null
@@ -55,6 +60,7 @@ export function usePeriodStats({
     period,
     transactions,
     fallbackTotalDays = null,
+    reservedBills = 0,
 }: UsePeriodStatsParams): PeriodStats {
     return useMemo(() => {
         // Money moved into savings accounts counts as saved, like a savings expense.
@@ -74,12 +80,13 @@ export function usePeriodStats({
             .reduce((s, t) => s + t.amount, 0)
         const oneOffSpending = totalSpending - everydaySpending
 
-        const remaining = totalIncome - totalExpense
+        const isClosed = period.status === 'closed'
+        // A closed period's bills are history; nothing is still due in it.
+        const reserved = isClosed ? 0 : reservedBills
+        const remaining = totalIncome - totalExpense - reserved
         const spentPercent = totalIncome > 0
             ? Math.min(Math.round((totalExpense / totalIncome) * 100), 100)
             : 0
-
-        const isClosed = period.status === 'closed'
 
         let totalDays: number | null = null
         let isEndDateEstimated = false
@@ -112,7 +119,7 @@ export function usePeriodStats({
         const canProject = !isClosed && daysElapsed >= MIN_PROJECTION_DAYS
         // Savings and one-offs already paid stay as they are; only everyday spending keeps its pace.
         const projectedSpend = canProject && totalDays !== null && daysRemaining !== null
-            ? totalExpense + dailyAvg * daysRemaining
+            ? totalExpense + reserved + dailyAvg * daysRemaining
             : null
         const projectedClose = projectedSpend !== null ? totalIncome - projectedSpend : null
 
@@ -130,6 +137,7 @@ export function usePeriodStats({
             totalSpending,
             oneOffSpending,
             remaining,
+            reservedBills: reserved,
             spentPercent,
             daysElapsed,
             totalDays,
@@ -143,5 +151,5 @@ export function usePeriodStats({
             isEndDateEstimated,
             isClosed,
         }
-    }, [period.start_date, period.end_date, period.status, transactions, fallbackTotalDays])
+    }, [period.start_date, period.end_date, period.status, transactions, fallbackTotalDays, reservedBills])
 }

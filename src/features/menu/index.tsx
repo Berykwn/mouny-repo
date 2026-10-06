@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
-import { CreditCard, ShoppingBag, Tag, History, LogOut, ChevronRight, CalendarCheck, CalendarPlus, Monitor, Sun, Moon, Palette } from 'lucide-react'
+import { CreditCard, Receipt, ShoppingBag, Tag, History, LogOut, ChevronRight, CalendarCheck, CalendarPlus, Monitor, Sun, Moon, Palette } from 'lucide-react'
 import { useTheme, type Theme } from '@/contexts/ThemeContext'
 import { supabase } from '@/lib/supabase'
 import { ConfirmDrawer } from '@/components/confirmation-drawer'
@@ -41,7 +41,7 @@ export default function MenuPage() {
         budgets: budgets.length,
         closedPeriods: periods.filter(p => p.status === 'closed').length,
     } : null
-    const { summary, debts, wishes } = useMoneyGlance(activePeriod)
+    const { summary, left, bills, debts, wishes } = useMoneyGlance(activePeriod)
 
     async function handleLogout() {
         setLogoutConfirm(false)
@@ -65,6 +65,13 @@ export default function MenuPage() {
         : debts?.dueSoon
             ? { text: `${debts.dueSoon} due soon`, className: 'bg-warning/10 text-warning' }
             : null
+
+    const billSub = !bills
+        ? 'Rent, utilities and subscriptions'
+        : bills.due === 0
+            ? 'Nothing due this period'
+            : `${bills.due} due · ${formatShortCurrency(bills.reserved)} set aside`
+    const billFlag = bills?.overdue ? { text: `${bills.overdue} overdue`, className: 'bg-negative/10 text-negative' } : null
 
     const wishSub = !wishes
         ? 'Things you’re saving toward'
@@ -100,7 +107,7 @@ export default function MenuPage() {
 
                         <PeriodCard
                             period={activePeriod}
-                            left={summary ? summary.net : null}
+                            left={left}
                             usedPct={summary && summary.income > 0 ? Math.min(100, Math.round((summary.expense / summary.income) * 100)) : null}
                             onOpen={() => setPeriodDrawer('open')}
                             onClose={() => setPeriodDrawer('close')}
@@ -110,6 +117,7 @@ export default function MenuPage() {
                     <div className="space-y-4 lg:order-1">
                         <Group label="Money">
                             <Row to="/debts" icon={CreditCard} tint="warning" label="Debts" sub={debtSub} flag={debtFlag} />
+                            <Row to="/bills" icon={Receipt} tint="info" label="Bills" sub={billSub} flag={billFlag} />
                             <Row to="/wish-list" icon={ShoppingBag} tint="brand" label="Wishlist" sub={wishSub} flag={wishFlag} />
                         </Group>
 

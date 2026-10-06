@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
-import { useDebts, usePeriodSummary, useWishes } from '@/queries'
+import { useDebts, usePeriodSummary, usePeriodTransactions, useWishes } from '@/queries'
+import { useBillReserve } from './use-bill-reserve'
 import { dueStatus } from '@/features/debts/lib/debt-insights'
 import { wishProgress } from '@/features/wish-list/lib/wish-analytics'
 import type { PeriodSummary } from '@/lib/period-summary'
@@ -19,8 +20,18 @@ export interface WishGlance {
     ready: number
 }
 
+export interface BillGlance {
+    /** Bills with a due date still unpaid this period. */
+    due: number
+    overdue: number
+    reserved: number
+}
+
 export interface MoneyGlance {
     summary: PeriodSummary | null
+    /** What's left this period after bills still due: the dashboard's safe to spend. */
+    left: number | null
+    bills: BillGlance | null
     debts: DebtGlance | null
     wishes: WishGlance | null
 }
@@ -34,6 +45,8 @@ export function useMoneyGlance(period: PayPeriod | null): MoneyGlance {
     const { data: summary } = usePeriodSummary(period?.id)
     const { data: debts } = useDebts({ activeOnly: true })
     const { data: wishes } = useWishes()
+    const { data: periodTxs } = usePeriodTransactions(period?.id)
+    const reserve = useBillReserve(period, periodTxs)
 
     const debtGlance = useMemo((): DebtGlance | null => {
         if (!debts) return null
@@ -52,5 +65,19 @@ export function useMoneyGlance(period: PayPeriod | null): MoneyGlance {
         wishes ? { count: wishes.length, ready: wishes.filter(w => wishProgress(w).ready).length } : null
     ), [wishes])
 
-    return { summary: summary ?? null, debts: debtGlance, wishes: wishGlance }
+    const billGlance = useMemo((): BillGlance | null => (
+        reserve.window ? {
+            due: reserve.dues.filter(d => d.outstanding > 0).length,
+            overdue: reserve.dues.filter(d => d.status === 'overdue').length,
+            reserved: reserve.reserved,
+        } : null
+    ), [reserve])
+
+    return {
+        summary: summary ?? null,
+        left: summary ? summary.net - reserve.reserved : null,
+        bills: billGlance,
+        debts: debtGlance,
+        wishes: wishGlance,
+    }
 }

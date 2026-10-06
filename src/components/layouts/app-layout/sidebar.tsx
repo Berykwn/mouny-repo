@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { House, List, Wallet, CreditCard, ShoppingBag, Tag, History, ChevronRight } from 'lucide-react'
+import { House, List, Wallet, CreditCard, Receipt, ShoppingBag, Tag, History, ChevronRight } from 'lucide-react'
 import type { User } from '@supabase/supabase-js'
 import { cn } from '@/lib/utils'
 import { formatCurrency, getDaysBetween, getInitials } from '@/lib/helpers'
@@ -9,7 +9,7 @@ import type { PeriodSummary } from '@/lib/period-summary'
 import type { PayPeriod } from '@/types'
 
 type Tint = 'brand' | 'info' | 'warning' | 'violet'
-type BadgeKey = 'debts' | 'wishes'
+type BadgeKey = 'debts' | 'wishes' | 'bills'
 
 interface SidebarItem {
     to: string
@@ -41,6 +41,7 @@ const GROUPS: { label: string | null; items: SidebarItem[] }[] = [
         label: 'Money',
         items: [
             { to: '/debts', label: 'Debts', icon: CreditCard, tint: 'warning', badge: 'debts' },
+            { to: '/bills', label: 'Bills', icon: Receipt, tint: 'info', badge: 'bills' },
             { to: '/wish-list', label: 'Wishlist', icon: ShoppingBag, tint: 'brand', badge: 'wishes' },
         ],
     },
@@ -61,10 +62,11 @@ interface Badge {
 }
 
 /** What needs attention on the Debts and Wishlist pages, as nav badges. */
-function badgesFrom({ debts, wishes }: MoneyGlance): Partial<Record<BadgeKey, Badge>> {
+function badgesFrom({ debts, wishes, bills }: MoneyGlance): Partial<Record<BadgeKey, Badge>> {
     const badges: Partial<Record<BadgeKey, Badge>> = {}
     if (debts?.overdue) badges.debts = { count: debts.overdue, title: `${debts.overdue} overdue`, className: 'bg-negative text-white' }
     else if (debts?.dueSoon) badges.debts = { count: debts.dueSoon, title: `${debts.dueSoon} due this week`, className: 'bg-warning/15 text-warning' }
+    if (bills?.overdue) badges.bills = { count: bills.overdue, title: `${bills.overdue} overdue`, className: 'bg-negative text-white' }
     if (wishes?.ready) badges.wishes = { count: wishes.ready, title: `${wishes.ready} ready to buy`, className: 'bg-positive/10 text-positive' }
     return badges
 }
@@ -90,7 +92,7 @@ export function Sidebar({ activePeriod, user }: SidebarProps) {
                 </span>
             </div>
 
-            <PeriodCard period={activePeriod} summary={summary} />
+            <PeriodCard period={activePeriod} summary={summary} left={glance.left} />
 
             <nav className="mt-5 flex flex-col gap-4 flex-1 overflow-y-auto -mx-1 px-1">
                 {GROUPS.map((group, i) => (
@@ -125,7 +127,7 @@ export function Sidebar({ activePeriod, user }: SidebarProps) {
     )
 }
 
-function PeriodCard({ period, summary }: { period: PayPeriod | null; summary: PeriodSummary | null }) {
+function PeriodCard({ period, summary, left }: { period: PayPeriod | null; summary: PeriodSummary | null; left: number | null }) {
     if (!period) {
         return (
             <NavLink to="/period-history" className="mt-5 block rounded-[16px] border border-dashed border-line bg-surface p-3.5 hover:border-ink/20 transition-colors">
@@ -137,7 +139,6 @@ function PeriodCard({ period, summary }: { period: PayPeriod | null; summary: Pe
 
     const month = new Date(period.start_date + 'T00:00:00').toLocaleDateString('en-GB', { month: 'short' })
     const day = Math.max(1, getDaysBetween(period.start_date) + 1)
-    const left = summary ? summary.net : null
     const usedPct = summary && summary.income > 0 ? Math.min(100, Math.round((summary.expense / summary.income) * 100)) : null
 
     return (

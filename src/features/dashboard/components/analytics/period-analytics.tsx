@@ -13,6 +13,7 @@ import { categoryChartColor } from '@/features/categories/lib/category-colors'
 import { calculateHealthScore } from '@/lib/calculate-health-score'
 import type { PeriodSummary } from '@/lib/period-summary'
 import { usePeriodStats } from '@/hooks/use-period-stats'
+import { useBillReserve } from '@/hooks/use-bill-reserve'
 import { useBudgets } from '@/queries'
 import { usePeriodTrend } from '../../hooks/use-period-trend'
 import { PeriodTrendChart } from './period-trend-chart'
@@ -396,7 +397,8 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
     [incomes, expenses]
   )
 
-  const stats = usePeriodStats({ period, transactions: statsTransactions, fallbackTotalDays })
+  const billReserve = useBillReserve(period, transactions)
+  const stats = usePeriodStats({ period, transactions: statsTransactions, fallbackTotalDays, reservedBills: billReserve.reserved })
   const hasPredictive = !stats.isClosed && stats.totalIncome > 0 && stats.projectedSpend !== null
   const overSafePace = stats.safeDaily !== null && stats.dailyAvg > stats.safeDaily
   const showDaysLeft = stats.daysRemaining !== null && !stats.isClosed

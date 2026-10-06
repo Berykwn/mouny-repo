@@ -15,6 +15,7 @@ import { AddTransactionFlow } from './components/add-transaction-flow'
 import { linkedTo } from './lib/ledger'
 import { BottomDrawer } from '@/components/bottom-drawer'
 import { usePeriodStats } from '@/hooks/use-period-stats'
+import { useBillReserve } from '@/hooks/use-bill-reserve'
 import { transactionsService } from '@/services/transactions.service'
 import { getDaysBetween, toISODate } from '@/lib/helpers'
 import { queryClient } from '@/lib/query-client'
@@ -61,10 +62,12 @@ export default function TransactionsPage() {
     const fallbackTotalDays = prevPeriod?.end_date
         ? getDaysBetween(prevPeriod.start_date, prevPeriod.end_date) + 1
         : null
+    const billReserve = useBillReserve(selectedPeriod, transactions)
     const stats = usePeriodStats({
         period: selectedPeriod ?? { start_date: today, end_date: null },
         transactions,
         fallbackTotalDays,
+        reservedBills: billReserve.reserved,
     })
     // The even daily share of what came in: the bar each day's spending is held against.
     const dailyLimit = stats.totalIncome > 0 && stats.totalDays ? stats.totalIncome / stats.totalDays : null

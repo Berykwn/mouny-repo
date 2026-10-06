@@ -8,6 +8,9 @@ interface SafeToSpendCardProps {
     totalSavings: number
     remaining: number
     spentPercent: number
+    /** Bills still due this period, already out of remaining. */
+    reservedBills?: number
+    unpaidBills?: number
 }
 
 export function SafeToSpendCard({
@@ -16,6 +19,8 @@ export function SafeToSpendCard({
     totalSavings,
     remaining,
     spentPercent,
+    reservedBills = 0,
+    unpaidBills = 0,
 }: SafeToSpendCardProps) {
     const isNegative = remaining < 0
 
@@ -32,6 +37,11 @@ export function SafeToSpendCard({
             >
                 {formatCurrency(remaining)}
             </p>
+            {reservedBills > 0 && (
+                <p className="mt-1.5 text-[11.5px] text-muted-ink">
+                    {formatCurrency(reservedBills)} set aside for {unpaidBills} bill{unpaidBills === 1 ? '' : 's'} still due
+                </p>
+            )}
 
             <div className="mt-4 flex h-1.5 w-full overflow-hidden rounded-full bg-line-soft">
                 <div

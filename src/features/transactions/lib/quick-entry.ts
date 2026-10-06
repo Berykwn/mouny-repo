@@ -174,7 +174,8 @@ export interface FrequentEntry {
 export function frequentEntries(txs: TransactionWithDetails[], limit = 6): FrequentEntry[] {
     const groups = new Map<string, { latest: TransactionWithDetails; count: number }>()
     for (const tx of txs) {
-        if ((tx.type !== 'income' && tx.type !== 'expense') || linkedTo(tx)) continue
+        // Bill payments have their own Pay button.
+        if ((tx.type !== 'income' && tx.type !== 'expense') || linkedTo(tx) || tx.recurring_bill_id) continue
         const note = (tx.note ?? '').trim()
         if (!note && !tx.category_id) continue
         const key = [tx.type, note.toLowerCase(), tx.category_id ?? '', tx.account_id].join('|')

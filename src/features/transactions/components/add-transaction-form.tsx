@@ -15,6 +15,7 @@ import { transactionsService, type CreateTransactionInput } from '@/services/tra
 import { accountsService } from '@/services/accounts-categories.service'
 import { formatCurrency, formatCurrencyInput, parseCurrencyInput, toISODate } from '@/lib/helpers'
 import { summarizeTransactions } from '@/lib/period-summary'
+import { useBillReserve } from '@/hooks/use-bill-reserve'
 import { cn } from '@/lib/utils'
 import { useAccounts, useCategories, usePeriods, usePeriodTransactions } from '@/queries'
 import type { Account, Category, TransactionWithDetails } from '@/types'
@@ -80,6 +81,9 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
     const { data: allCategories } = useCategories()
     const history = useMemo(() => [...(periodTxs ?? []), ...(previousTxs ?? [])], [periodTxs, previousTxs])
     const frequent = useMemo(() => frequentEntries(history), [history])
+    // Bills still due are held back, as on the dashboard. Worked out from every transaction,
+    // so editing a bill's payment doesn't count that bill as due again.
+    const billReserve = useBillReserve(periodIndex >= 0 ? periods[periodIndex] : null, periodTxs)
 
     // Transfer-only state
     const [fromAccountId, setFromAccountId] = useState('')
@@ -157,8 +161,8 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
     // the edited version leaves you.
     const safeToSpend = useMemo(() => {
         if (!periodTxs) return null
-        return summarizeTransactions(initial ? periodTxs.filter((t) => t.id !== initial.id) : periodTxs).net
-    }, [periodTxs, initial])
+        return summarizeTransactions(initial ? periodTxs.filter((t) => t.id !== initial.id) : periodTxs).net - billReserve.reserved
+    }, [periodTxs, initial, billReserve.reserved])
 
     const selectedAccount = accounts.find((a) => a.id === accountId)
     const parsedAmount = parseCurrencyInput(amount)

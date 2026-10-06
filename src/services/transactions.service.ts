@@ -13,6 +13,7 @@ export interface CreateTransactionInput {
     date: string
     wish_list_item_id?: string
     debt_id?: string
+    recurring_bill_id?: string
 }
 
 /** Just the table's own columns — a TransactionWithDetails also carries joined account/category. */
@@ -31,6 +32,7 @@ function toRow(tx: Transaction): Transaction {
         wish_list_item_id: tx.wish_list_item_id,
         transfer_id: tx.transfer_id,
         debt_id: tx.debt_id,
+        recurring_bill_id: tx.recurring_bill_id,
         wish_quantity: tx.wish_quantity,
         // Set again by the database from the account and category; sent only to fill the type.
         account_is_savings: tx.account_is_savings,

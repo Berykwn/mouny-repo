@@ -112,6 +112,8 @@ cp .env.example .env
 | `20261005000200_archive_and_unperiodized_transfers.sql` | Account archiving, and transfers recorded outside any period. For databases that ran an early version of the file above |
 | `20261005000300_savings_accounts.sql` | `accounts.is_savings`; `period_summaries` counts money moved into savings accounts as saved |
 | `20261005000400_move_to_savings.sql` | `move_to_savings`: turns a savings expense into a transfer into a savings account, in place |
+| `20261006000100_calculation_fixes.sql` | `create_debt` and a reworked `pay_debt`, savings flags kept on each transaction, closing rules for periods |
+| `20261007000100_recurring_bills.sql` | `recurring_bills`, and `transactions.recurring_bill_id` linking a payment to its bill |
 
 How the data is kept consistent:
 - **Balances.** Every balance change is a transaction, so `balance = initial_balance + transactions`. That includes transfers (a `transfer_out` and a `transfer_in` sharing a `transfer_id`), receivable collections and balance adjustments. The app can't write `balance` directly.
@@ -119,6 +121,7 @@ How the data is kept consistent:
 - **Savings.** An expense in a savings category counts as saved. So does a transfer from an everyday account into an account with `is_savings`, net of transfers back out. In the app, `withSavingsMoves` (`src/lib/savings-moves.ts`) turns those transfers into savings rows for the stats; in the database, `period_summaries` does the same. Runway leaves savings accounts out.
 - **Overdrafts.** New money out can't take an account below zero; the app shows that as "Insufficient balance". A correction, such as deleting income, can, and the app flags the account as overdrawn.
 - **Linked records.** Deleting a debt payment puts it back on the debt. Deleting a wish purchase or instalment takes it off the wish. Deleting one side of a transfer deletes the other. The money on these rows can't be edited.
+- **Bills.** A bill is paid for a period when the period has an expense with its `recurring_bill_id`; deleting that expense makes it due again. The app holds back what's still due from safe to spend (`src/features/bills/lib/bills.ts`).
 - **Periods.** There's one active period per user, and periods don't overlap. A transaction's date falls inside its period, and a closed period's money is locked.
 - **Ownership.** Composite foreign keys mean a row can only point at the same user's rows. You can't delete an account, category or period that transactions still use. Deleting a user deletes all of their data.
 

@@ -9,6 +9,7 @@ import { queryOptions, useQuery } from '@tanstack/react-query'
 import { accountsService, categoriesService } from '@/services/accounts-categories.service'
 import { categoryBudgetsService } from '@/services/budgets.service'
 import { debtsService } from '@/services/debts.service'
+import { recurringBillsService } from '@/services/recurring-bills.service'
 import { payPeriodsService } from '@/services/pay-periods.service'
 import { transactionsService } from '@/services/transactions.service'
 import { wishListService } from '@/services/wish-list.service'
@@ -22,6 +23,7 @@ export const queryKeys = {
     archivedAccounts: ['accounts', 'archived'] as const,
     categories: ['categories'] as const,
     budgets: ['budgets'] as const,
+    bills: ['bills'] as const,
     debts: ['debts'] as const,
     debtPayments: (debtId: string) => ['debts', debtId, 'payments'] as const,
     wishes: ['wishes'] as const,
@@ -86,6 +88,14 @@ export function useBudgets() {
     return useQuery({
         queryKey: queryKeys.budgets,
         queryFn: () => unwrap(categoryBudgetsService.getAll()),
+    })
+}
+
+/** Recurring bills and subscriptions, paused and ended ones included. */
+export function useBills() {
+    return useQuery({
+        queryKey: queryKeys.bills,
+        queryFn: () => unwrap(recurringBillsService.getAll()),
     })
 }
 
