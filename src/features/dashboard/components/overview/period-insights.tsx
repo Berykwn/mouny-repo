@@ -1,87 +1,54 @@
 import { useMemo } from 'react'
-import { formatCurrency } from '@/lib/helpers'
+import { useBills, usePeriods, useTransactionsOfPeriods } from '@/queries'
+import { billCosts, type BillDue } from '@/features/bills/lib/bills'
+import { toISODate } from '@/lib/helpers'
 import { cn } from '@/lib/utils'
-import { getTopExpenseCategory } from '../../lib/group-expenses-by-category'
-import { groupExpensesByWeekday } from '../../lib/group-expenses-by-weekday'
 import type { PeriodStats } from '@/hooks/use-period-stats'
-import type { TransactionWithDetails } from '@/types'
+import type { PayPeriod, TransactionWithDetails } from '@/types'
+import { generateInsights, type InsightTone, type PastPeriod } from '../../lib/insights'
 
-type Tone = 'warning' | 'positive' | 'info' | 'neutral'
-interface Insight { id: string; tone: Tone; text: string }
-
-const TONE_CLASSES: Record<Tone, string> = {
+const TONE_CLASSES: Record<InsightTone, string> = {
     warning: 'border-warning text-warning',
     positive: 'border-brand text-positive',
     info: 'border-info text-info',
     neutral: 'border-line text-muted-ink',
 }
 
-function generateInsights(transactions: TransactionWithDetails[], stats: PeriodStats): Insight[] {
-    // Savings are set aside, not spent — keep them out of the spending insights.
-    const spending = transactions.filter(t => t.type === 'expense' && !t.category?.is_savings)
+/** How many earlier periods "your usual" is drawn from. */
+const HISTORY_PERIODS = 3
 
-    if (stats.totalSpending <= 0) {
-        return [{ id: 'no-spend', tone: 'neutral', text: 'No spending recorded yet this period.' }]
-    }
-
-    const insights: Insight[] = []
-
-    if (stats.safeDaily !== null) {
-        insights.push(stats.dailyAvg > stats.safeDaily
-            ? { id: 'pace-warning', tone: 'warning', text: `Spending faster than planned — ${formatCurrency(stats.dailyAvg)}/day vs a safe ${formatCurrency(stats.safeDaily)}/day.` }
-            : { id: 'pace-good', tone: 'positive', text: 'On track — spending is under your safe daily pace.' })
-    }
-
-    const topCategory = getTopExpenseCategory(spending)
-    if (topCategory) {
-        const pct = Math.round((topCategory.amount / stats.totalSpending) * 100)
-        if (pct >= 40) {
-            insights.push({ id: 'top-category', tone: 'info', text: `Most of this period's spending is going to ${topCategory.name} (${pct}%).` })
-        }
-    }
-
-    if (stats.noSpendDays > 0) {
-        insights.push({ id: 'no-spend-days', tone: 'positive', text: `${stats.noSpendDays} no-spend day${stats.noSpendDays !== 1 ? 's' : ''} so far this period.` })
-    }
-
-    const biggest = spending.reduce<TransactionWithDetails | null>(
-        (mx, tx) => (!mx || tx.amount > mx.amount ? tx : mx), null
-    )
-    if (biggest) {
-        const pct = Math.round((biggest.amount / stats.totalSpending) * 100)
-        if (pct >= 15) {
-            insights.push({ id: 'biggest-expense', tone: 'neutral', text: `Your biggest single expense was ${formatCurrency(biggest.amount)} on ${biggest.category?.name ?? 'an expense'} (${pct}% of spending).` })
-        }
-    }
-
-    const weekdayTotals = groupExpensesByWeekday(spending)
-    const weekdaySum = weekdayTotals.reduce((s, d) => s + d.total, 0)
-    if (weekdaySum > 0) {
-        const topWeekday = weekdayTotals.reduce((mx, d) => (d.total > mx.total ? d : mx), weekdayTotals[0])
-        const pct = Math.round((topWeekday.total / weekdaySum) * 100)
-        if (pct >= 30) {
-            insights.push({ id: 'weekday-pattern', tone: 'neutral', text: `You tend to spend most on ${topWeekday.day}s — ${pct}% of this period's expenses.` })
-        }
-    }
-
-    if (stats.totalIncome > 0) {
-        // Savings transactions aren't spending, so they count toward the rate, not against it.
-        const unspent = stats.totalIncome - stats.totalSpending
-        const savingsRate = Math.round((unspent / stats.totalIncome) * 100)
-        insights.push(unspent < 0
-            ? { id: 'overspent', tone: 'warning', text: `You've overspent this period by ${formatCurrency(Math.abs(unspent))}.` }
-            : { id: 'savings-rate', tone: savingsRate >= 20 ? 'positive' : 'neutral', text: `${savingsRate}% of income unspent so far this period.` })
-    }
-
-    if (insights.length === 0) {
-        insights.push({ id: 'fallback', tone: 'neutral', text: 'Keep logging transactions to see how this period is trending.' })
-    }
-
-    return insights.slice(0, 4)
+interface PeriodInsightsProps {
+    period: Pick<PayPeriod, 'id' | 'start_date'>
+    transactions: TransactionWithDetails[]
+    stats: PeriodStats
+    dues: BillDue[]
 }
 
-export function PeriodInsights({ transactions, stats }: { transactions: TransactionWithDetails[]; stats: PeriodStats }) {
-    const insights = useMemo(() => generateInsights(transactions, stats), [transactions, stats])
+export function PeriodInsights({ period, transactions, stats, dues }: PeriodInsightsProps) {
+    const { periods } = usePeriods()
+    const { data: bills } = useBills()
+
+    // Periods are newest first, so the earlier ones follow this one.
+    const earlier = useMemo(() => {
+        const index = periods.findIndex(p => p.id === period.id)
+        return index >= 0 ? periods.slice(index + 1, index + 1 + HISTORY_PERIODS) : []
+    }, [periods, period.id])
+    const earlierTxs = useTransactionsOfPeriods(earlier.map(p => p.id))
+
+    const insights = useMemo(() => {
+        const today = toISODate()
+        // Comparisons wait for history; the rest shows straight away.
+        const history: PastPeriod[] = earlierTxs ? earlier.map((p, i) => ({ start_date: p.start_date, transactions: earlierTxs[i] })) : []
+        return generateInsights({
+            today,
+            periodStart: period.start_date,
+            stats,
+            transactions,
+            history,
+            dues,
+            subscriptionsPerYear: bills ? billCosts(bills, today).subscriptionsPerYear : 0,
+        })
+    }, [earlier, earlierTxs, period.start_date, stats, transactions, dues, bills])
 
     return (
         <div className="rounded-[20px] border border-line bg-surface px-5 py-4 space-y-2.5">

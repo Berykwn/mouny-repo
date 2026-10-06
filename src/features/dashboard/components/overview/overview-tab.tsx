@@ -106,7 +106,7 @@ export function OverviewTransaction({
                         <BillsDueCard dues={reserve.dues} period={data.period} />
                     )}
 
-                    {isActivePeriod && <PeriodInsights transactions={transactions} stats={stats} />}
+                    {isActivePeriod && <PeriodInsights period={data.period} transactions={transactions} stats={stats} dues={reserve.dues} />}
                 </div>
 
                 <div className="space-y-3">

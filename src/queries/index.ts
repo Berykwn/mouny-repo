@@ -5,7 +5,7 @@
  * Writes go through the services, which refresh the cache when they succeed
  * (see invalidatesOnWrite).
  */
-import { queryOptions, useQuery } from '@tanstack/react-query'
+import { queryOptions, useQueries, useQuery } from '@tanstack/react-query'
 import { accountsService, categoriesService } from '@/services/accounts-categories.service'
 import { categoryBudgetsService } from '@/services/budgets.service'
 import { debtsService } from '@/services/debts.service'
@@ -15,7 +15,7 @@ import { transactionsService } from '@/services/transactions.service'
 import { wishListService } from '@/services/wish-list.service'
 import type { ServiceResult } from '@/services/_base'
 import { pacePeriods, savingsPace, type SavingsPace } from '@/features/wish-list/lib/wish-analytics'
-import type { Category, PayPeriod } from '@/types'
+import type { Category, PayPeriod, TransactionWithDetails } from '@/types'
 
 export const queryKeys = {
     periods: ['periods'] as const,
@@ -134,6 +134,20 @@ export function usePeriodTransactions(periodId: string | null | undefined) {
         queryKey: queryKeys.transactions(periodId ?? ''),
         queryFn: () => unwrap(transactionsService.getByPeriod(periodId!)),
         enabled: !!periodId,
+    })
+}
+
+/**
+ * Several periods' transactions, each under its own cache entry (shared with
+ * usePeriodTransactions). Null until every one has loaded.
+ */
+export function useTransactionsOfPeriods(periodIds: string[]): TransactionWithDetails[][] | null {
+    return useQueries({
+        queries: periodIds.map(id => ({
+            queryKey: queryKeys.transactions(id),
+            queryFn: () => unwrap(transactionsService.getByPeriod(id)),
+        })),
+        combine: results => results.every(r => r.data) ? results.map(r => r.data!) : null,
     })
 }
 
