@@ -23,11 +23,13 @@ function applyThemeColor(theme: keyof typeof THEME_COLORS) {
 
 /**
  * Chromium browsers with forced dark (Samsung Internet, Chrome's "darken websites") repaint any
- * page whose color-scheme lacks dark. "only" opts out, so a chosen light theme stays ours.
+ * page whose root color-scheme lacks dark, and Samsung ignores "only light". So the root always
+ * claims dark support and a chosen light theme sets its scheme on the body instead, which keeps
+ * native controls light without inviting the browser to darken the page.
  */
-function applyColorScheme(scheme: string) {
-    document.documentElement.style.colorScheme = scheme
-    document.querySelector('meta[name="color-scheme"]')?.setAttribute('content', scheme)
+function applyColorScheme(resolved: "light" | "dark", followsSystem: boolean) {
+    document.documentElement.style.colorScheme = resolved === "dark" ? "dark" : "light dark"
+    document.body.style.colorScheme = followsSystem || resolved === "dark" ? "" : "light"
 }
 
 function readTheme(storageKey: string, fallback: Theme): Theme {
@@ -54,7 +56,7 @@ export function ThemeProvider({
             const resolved = theme === "system" ? (media.matches ? "dark" : "light") : theme
             root.classList.remove("light", "dark")
             root.classList.add(resolved)
-            applyColorScheme(theme === "system" ? "light dark" : `only ${resolved}`)
+            applyColorScheme(resolved, theme === "system")
             applyThemeColor(resolved)
         }
 
