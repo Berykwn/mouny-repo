@@ -208,6 +208,15 @@
   --color-warning-soft: var(--warning-soft);
 }
 
+/* Dark before the app has picked a theme, so a dark device gets no white flash. Samsung Internet
+   also only stops force-darkening when a site's CSS answers prefers-color-scheme itself. */
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) {
+    color-scheme: dark;
+    background-color: #0a0a0a;
+  }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
