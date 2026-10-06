@@ -59,7 +59,7 @@ export function BillDueRow({ due, onPay, onOpen }: BillDueRowProps) {
                         <button
                             type="button"
                             onClick={onPay}
-                            className="h-8 px-3 rounded-[10px] bg-brand text-white text-[12px] font-semibold hover:bg-brand/90 transition-colors"
+                            className="h-8 px-3 rounded-[10px] border border-line text-ink text-[12px] font-semibold hover:bg-surface-hover transition-colors"
                         >
                             Pay
                         </button>

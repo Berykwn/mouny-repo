@@ -1,21 +1,24 @@
 import { useMemo, useState } from 'react'
-import { Pause, Pencil, Play, Plus, Receipt, Repeat, Trash2 } from 'lucide-react'
+import { Receipt, Repeat } from 'lucide-react'
 import { toast } from 'sonner'
 import { BottomDrawer } from '@/components/bottom-drawer'
 import { ConfirmDrawer } from '@/components/confirmation-drawer'
 import { LoadingContent } from '@/components/loading-content'
 import { PageHeader } from '@/components/page-header'
-import { HeroGlow } from '@/components/hero'
 import { useBills, usePeriods, usePeriodTransactions } from '@/queries'
 import { useBillReserve } from '@/hooks/use-bill-reserve'
 import { recurringBillsService } from '@/services/recurring-bills.service'
-import { formatCurrency, formatShortCurrency, toISODate } from '@/lib/helpers'
+import { formatShortCurrency, toISODate } from '@/lib/helpers'
 import { cn } from '@/lib/utils'
 import type { BillKind, RecurringBill } from '@/types'
-import { billCosts, isRunning, nextDueDate, type BillDue } from './lib/bills'
+import { billCosts, billShares, isRunning, nextDueDate, yearlyAhead, type BillDue } from './lib/bills'
 import { scheduleLabel, shortDate } from './lib/bill-labels'
+import { BillDetail } from './components/bill-detail'
 import { BillDueRow } from './components/bill-due-row'
 import { BillForm } from './components/bill-form'
+import { BillsBreakdown } from './components/bills-breakdown'
+import { BillsHero } from './components/bills-hero'
+import { BillsYearly } from './components/bills-yearly'
 import { PayBillForm } from './components/pay-bill-form'
 
 const NO_BILLS: RecurringBill[] = []
@@ -38,6 +41,8 @@ export default function BillsPage() {
     const [busy, setBusy] = useState(false)
 
     const costs = useMemo(() => billCosts(bills, today), [bills, today])
+    const shares = useMemo(() => billShares(bills, today), [bills, today])
+    const ahead = useMemo(() => yearlyAhead(bills, today), [bills, today])
     const groups = useMemo(() => {
         const byNext = (a: RecurringBill, b: RecurringBill) =>
             (nextDueDate(a, today) ?? '9999').localeCompare(nextDueDate(b, today) ?? '9999')
@@ -71,32 +76,18 @@ export default function BillsPage() {
     }
 
     const hero = (
-        <header className="card p-5 relative overflow-hidden">
-            <HeroGlow />
-            <div className="relative">
-                <p className="text-[11px] uppercase tracking-[.14em] text-muted-ink">Every month</p>
-                <p className="mt-1.5 text-[30px] font-medium leading-none tracking-[-.03em] tabular-nums text-ink">
-                    {formatCurrency(Math.round(costs.perMonth))}
-                </p>
-                <p className="mt-2 text-[12px] text-muted-ink">
-                    {costs.count} running · {formatShortCurrency(costs.perYear)} a year
-                    {costs.subscriptionsPerYear > 0 && <> · subscriptions {formatShortCurrency(costs.subscriptionsPerYear)}/yr</>}
-                </p>
-                {reserve.reserved > 0 && (
-                    <p className="mt-3 pt-3 border-t border-line-soft text-[12px] text-muted-ink">
-                        <span className="font-medium text-ink">{formatCurrency(reserve.reserved)}</span> set aside from safe to spend for bills still due this period.
-                    </p>
-                )}
-                <button
-                    type="button"
-                    onClick={() => setAdding('')}
-                    className="mt-4 w-full h-11 rounded-[14px] text-[13px] font-semibold text-white bg-brand hover:bg-brand/90 transition-colors flex items-center justify-center gap-2"
-                >
-                    <Plus className="w-4 h-4" /> Add bill
-                </button>
-            </div>
-        </header>
+        <BillsHero
+            dues={reserve.dues}
+            reserved={reserve.reserved}
+            billCount={bills.length}
+            hasPeriod={!!activePeriod}
+            onAdd={() => setAdding('')}
+        />
     )
+    const breakdownCard = (
+        <BillsBreakdown costs={costs} shares={shares} salary={activePeriod?.salary_amount ?? null} onOpen={setOpen} />
+    )
+    const yearlyCard = <BillsYearly ahead={ahead} onOpen={setOpen} />
 
     return (
         <>
@@ -104,7 +95,10 @@ export default function BillsPage() {
             <section className="px-4 pb-4 lg:px-0 space-y-4">
                 {billsQuery.isPending ? <LoadingContent /> : (
                     <div className="space-y-4 lg:grid lg:grid-cols-[1fr_360px] lg:gap-4 lg:items-start lg:space-y-0">
-                        <div className="lg:order-2">{hero}</div>
+                        <div className="space-y-4 lg:order-2">
+                            {hero}
+                            <div className="hidden lg:block space-y-4">{breakdownCard}{yearlyCard}</div>
+                        </div>
 
                         <div className="space-y-4 lg:order-1">
                             {bills.length === 0 ? (
@@ -114,7 +108,7 @@ export default function BillsPage() {
                                     </span>
                                     <p className="mt-3 text-[14px] font-medium text-ink">No bills yet</p>
                                     <p className="mt-0.5 text-[12px] text-muted-ink leading-relaxed">
-                                        Add what you pay every month or year. Safe to spend then holds back what’s still due, so it’s honest from the first day of the period.
+                                        Add what you pay every month or year, and safe to spend holds back what’s still due.
                                     </p>
                                     <div className="mt-3 flex flex-wrap gap-1.5">
                                         {SUGGESTIONS.map(s => (
@@ -185,11 +179,12 @@ export default function BillsPage() {
                                     ))}
                                 </>
                             )}
+                            <div className="lg:hidden space-y-4">{breakdownCard}{yearlyCard}</div>
                         </div>
                     </div>
                 )}
 
-                <BottomDrawer open={adding !== null} onClose={() => setAdding(null)} title="Add bill">
+                <BottomDrawer open={adding !== null} onClose={() => setAdding(null)} title="Add Bill">
                     {adding !== null && (
                         <BillForm
                             key={adding}
@@ -199,40 +194,24 @@ export default function BillsPage() {
                     )}
                 </BottomDrawer>
 
-                <BottomDrawer open={!!editing} onClose={() => setEditing(null)} title="Edit bill">
+                <BottomDrawer open={!!editing} onClose={() => setEditing(null)} title="Edit Bill">
                     {editing && <BillForm key={editing.id} initial={editing} onSuccess={() => setEditing(null)} />}
                 </BottomDrawer>
 
+                {/* Detail sheet — each action closes it and hands off to its own drawer */}
                 <BottomDrawer open={!!open} onClose={() => setOpen(null)} title={open?.name ?? ''}>
-                    {open && (() => {
-                        const due = dueFor(open)
-                        const next = nextDueDate(open, today)
-                        return (
-                            <div className="space-y-4 pb-2">
-                                <div className="rounded-[20px] border border-line bg-surface p-4">
-                                    <p className="text-[11.5px] text-muted-ink">{scheduleLabel(open)}</p>
-                                    <p className="text-[22px] font-medium tracking-[-0.02em] text-ink mt-0.5">{formatCurrency(open.amount)}</p>
-                                    <p className="text-[11.5px] text-muted-ink mt-1">
-                                        {open.paused ? 'Paused: not held back from safe to spend.' : next ? `Next due ${shortDate(next)}` : 'No more payments due.'}
-                                    </p>
-                                </div>
-                                {due && due.outstanding > 0 && activePeriod && (
-                                    <button
-                                        type="button"
-                                        onClick={() => { setPaying(due); setOpen(null) }}
-                                        className="w-full h-12 rounded-[14px] text-[13px] font-semibold text-white bg-brand hover:bg-brand/90 transition-colors"
-                                    >
-                                        Pay {formatCurrency(open.amount)}
-                                    </button>
-                                )}
-                                <div className="grid grid-cols-3 gap-2">
-                                    <ActionButton icon={Pencil} label="Edit" onClick={() => { setEditing(open); setOpen(null) }} />
-                                    <ActionButton icon={open.paused ? Play : Pause} label={open.paused ? 'Resume' : 'Pause'} onClick={() => togglePause(open)} disabled={busy} />
-                                    <ActionButton icon={Trash2} label="Delete" danger onClick={() => { setDeleting(open); setOpen(null) }} />
-                                </div>
-                            </div>
-                        )
-                    })()}
+                    {open && (
+                        <BillDetail
+                            bill={open}
+                            due={activePeriod ? dueFor(open) : undefined}
+                            nextDue={nextDueDate(open, today)}
+                            busy={busy}
+                            onPay={() => { const due = dueFor(open); if (due) setPaying(due); setOpen(null) }}
+                            onTogglePause={() => togglePause(open)}
+                            onEdit={() => { setEditing(open); setOpen(null) }}
+                            onDelete={() => { setDeleting(open); setOpen(null) }}
+                        />
+                    )}
                 </BottomDrawer>
 
                 <BottomDrawer open={!!paying} onClose={() => setPaying(null)} title={paying ? `Pay ${paying.bill.name}` : ''}>
@@ -250,8 +229,8 @@ export default function BillsPage() {
 
                 <ConfirmDrawer
                     open={!!deleting}
-                    title="Delete bill"
-                    description="Past payments stay in your ledger as ordinary expenses."
+                    title="Delete Bill"
+                    description="Past payments stay in your history as ordinary expenses."
                     confirmLabel="Delete"
                     loading={busy}
                     onConfirm={handleDelete}
@@ -264,27 +243,4 @@ export default function BillsPage() {
 
 function suggestion(name: string): { name: string; kind: BillKind } {
     return { name, kind: /netflix|spotify/i.test(name) ? 'subscription' : 'bill' }
-}
-
-function ActionButton({ icon: Icon, label, onClick, danger, disabled }: {
-    icon: typeof Pencil
-    label: string
-    onClick: () => void
-    danger?: boolean
-    disabled?: boolean
-}) {
-    return (
-        <button
-            type="button"
-            onClick={onClick}
-            disabled={disabled}
-            className={cn(
-                'h-16 rounded-[14px] border border-line flex flex-col items-center justify-center gap-1 text-[12px] font-medium transition-colors hover:bg-surface-soft disabled:opacity-50',
-                danger ? 'text-negative' : 'text-ink'
-            )}
-        >
-            <Icon className="w-4 h-4" strokeWidth={1.9} />
-            {label}
-        </button>
-    )
 }

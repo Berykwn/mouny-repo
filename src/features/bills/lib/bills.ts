@@ -142,6 +142,50 @@ export interface BillCosts {
     count: number
 }
 
+const perMonthOf = (b: Pick<RecurringBill, 'frequency' | 'amount'>) => (b.frequency === 'yearly' ? b.amount / 12 : b.amount)
+
+export interface BillShare {
+    bill: RecurringBill
+    perMonth: number
+    /** Of all running bills' monthly cost, 0 to 1. */
+    share: number
+}
+
+/** Running bills by what they cost a month, biggest first. */
+export function billShares(bills: RecurringBill[], today: string): BillShare[] {
+    const running = bills.filter(b => isRunning(b, today))
+    const total = running.reduce((s, b) => s + perMonthOf(b), 0)
+    return running
+        .map(bill => ({ bill, perMonth: perMonthOf(bill), share: total > 0 ? perMonthOf(bill) / total : 0 }))
+        .sort((a, b) => b.perMonth - a.perMonth || a.bill.name.localeCompare(b.bill.name))
+}
+
+export interface YearlyAhead {
+    bill: RecurringBill
+    date: string
+    /** Whole months from now to the due date, at least 1. */
+    monthsLeft: number
+    /** What to put aside each month to have it ready. */
+    perMonth: number
+}
+
+/** Yearly bills due within twelve months, soonest first: the ones a monthly view hides. */
+export function yearlyAhead(bills: RecurringBill[], today: string): YearlyAhead[] {
+    const horizon = addMonths(today, 12)
+    const [ty, tm] = today.split('-').map(Number)
+    return bills
+        .filter(b => b.frequency === 'yearly' && isRunning(b, today))
+        .map((bill): YearlyAhead | null => {
+            const date = nextDueDate(bill, today)
+            if (!date || date > horizon) return null
+            const [y, m] = date.split('-').map(Number)
+            const monthsLeft = Math.max(1, (y * 12 + m) - (ty * 12 + tm))
+            return { bill, date, monthsLeft, perMonth: bill.amount / monthsLeft }
+        })
+        .filter((a): a is YearlyAhead => a !== null)
+        .sort((a, b) => a.date.localeCompare(b.date))
+}
+
 /** What the running bills cost, a yearly bill spread over twelve months. */
 export function billCosts(bills: RecurringBill[], today: string): BillCosts {
     const running = bills.filter(b => isRunning(b, today))

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { tx } from '@/test/fixtures'
 import type { RecurringBill } from '@/types'
-import { billCosts, billsForPeriod, dueDatesBetween, nextDueDate, periodWindow, reservedTotal } from './bills'
+import { billCosts, billShares, billsForPeriod, dueDatesBetween, nextDueDate, periodWindow, reservedTotal, yearlyAhead } from './bills'
 
 function bill(overrides: Partial<RecurringBill> = {}): RecurringBill {
     return {
@@ -103,6 +103,36 @@ describe('billsForPeriod', () => {
             tx({ recurring_bill_id: 'rent', date: '2026-10-02' }),
         ], window, '2026-10-05')
         expect(dues[0]).toMatchObject({ status: 'paid', reserved: 0, outstanding: 0 })
+    })
+})
+
+describe('billShares', () => {
+    it('ranks running bills by monthly cost', () => {
+        const shares = billShares([
+            bill({ id: 'netflix', amount: 200_000 }),
+            bill({ id: 'rent', amount: 1_600_000 }),
+            bill({ id: 'domain', amount: 2_400_000, frequency: 'yearly', due_month: 3 }),
+            bill({ id: 'gym', amount: 500_000, paused: true }),
+        ], '2026-10-01')
+        expect(shares.map(s => [s.bill.id, s.perMonth, s.share])).toEqual([
+            ['rent', 1_600_000, 0.8],
+            ['netflix', 200_000, 0.1],
+            ['domain', 200_000, 0.1],
+        ])
+    })
+})
+
+describe('yearlyAhead', () => {
+    it('spreads each yearly bill over the months left until it is due', () => {
+        const ahead = yearlyAhead([
+            bill({ id: 'domain', amount: 300_000, frequency: 'yearly', due_day: 12, due_month: 3 }),
+            bill({ id: 'insurance', amount: 1_200_000, frequency: 'yearly', due_day: 20, due_month: 10 }),
+            bill({ id: 'rent' }),
+        ], '2026-10-06')
+        expect(ahead.map(a => [a.bill.id, a.date, a.monthsLeft, a.perMonth])).toEqual([
+            ['insurance', '2026-10-20', 1, 1_200_000],
+            ['domain', '2027-03-12', 5, 60_000],
+        ])
     })
 })
 
