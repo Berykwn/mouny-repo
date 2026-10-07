@@ -34,7 +34,9 @@ export type QuickTransactionWithCategory = QuickTransaction & {
     category: Pick<Category, 'id' | 'name' | 'type' | 'color' | 'bg_color' | 'icon'>
 }
 
-export type WishListItem = Database['public']['Tables']['wish_list']['Row']
+export type NotificationSettings = Database['public']['Tables']['notification_settings']['Row']
+
+export type WishListItem =Database['public']['Tables']['wish_list']['Row']
 export type WishListInsert = Database['public']['Tables']['wish_list']['Insert']
 export type WishListUpdate = Database['public']['Tables']['wish_list']['Update']
 

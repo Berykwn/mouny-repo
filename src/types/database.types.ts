@@ -226,6 +226,39 @@ export type Database = {
           },
         ]
       }
+      notification_settings: {
+        Row: {
+          bills: boolean
+          daily_hour: number
+          daily_log: boolean
+          debts: boolean
+          budgets: boolean
+          time_zone: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          bills?: boolean
+          daily_hour?: number
+          daily_log?: boolean
+          debts?: boolean
+          budgets?: boolean
+          time_zone?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          bills?: boolean
+          daily_hour?: number
+          daily_log?: boolean
+          debts?: boolean
+          budgets?: boolean
+          time_zone?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       pay_periods: {
         Row: {
           closing_balance: number | null
@@ -272,6 +305,36 @@ export type Database = {
             referencedColumns: ["id", "user_id"]
           },
         ]
+      }
+      push_subscriptions: {
+        Row: {
+          auth: string
+          created_at: string
+          endpoint: string
+          id: string
+          p256dh: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          auth: string
+          created_at?: string
+          endpoint: string
+          id?: string
+          p256dh: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Update: {
+          auth?: string
+          created_at?: string
+          endpoint?: string
+          id?: string
+          p256dh?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
       }
       quick_transactions: {
         Row: {
@@ -908,6 +971,15 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      save_push_subscription: {
+        Args: {
+          p_auth: string
+          p_endpoint: string
+          p_p256dh: string
+          p_user_agent?: string
+        }
+        Returns: undefined
       }
       transaction_effect: {
         Args: { p_amount: number; p_type: string }

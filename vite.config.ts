@@ -36,6 +36,8 @@ export default defineConfig(({ mode }) => {
       workbox: {
         // The default leaves out fonts, so offline the app would fall back to a system font.
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
+        // Reminders: shows pushed notifications and opens the app when one is tapped.
+        importScripts: ['push-sw.js'],
       },
       manifest: {
         name: 'Mouny',

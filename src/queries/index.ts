@@ -11,6 +11,7 @@ import { categoryBudgetsService } from '@/services/budgets.service'
 import { debtsService } from '@/services/debts.service'
 import { recurringBillsService } from '@/services/recurring-bills.service'
 import { quickTransactionsService } from '@/services/quick-transactions.service'
+import { notificationsService } from '@/services/notifications.service'
 import { payPeriodsService } from '@/services/pay-periods.service'
 import { transactionsService } from '@/services/transactions.service'
 import { wishListService } from '@/services/wish-list.service'
@@ -26,6 +27,7 @@ export const queryKeys = {
     budgets: ['budgets'] as const,
     bills: ['bills'] as const,
     quickTransactions: ['quick-transactions'] as const,
+    notificationSettings: ['notification-settings'] as const,
     debts: ['debts'] as const,
     debtPayments: (debtId: string) => ['debts', debtId, 'payments'] as const,
     wishes: ['wishes'] as const,
@@ -98,6 +100,14 @@ export function useBills() {
     return useQuery({
         queryKey: queryKeys.bills,
         queryFn: () => unwrap(recurringBillsService.getAll()),
+    })
+}
+
+/** Which reminders to send and when; the defaults until they're first saved. */
+export function useNotificationSettings() {
+    return useQuery({
+        queryKey: queryKeys.notificationSettings,
+        queryFn: () => unwrap(notificationsService.getSettings()),
     })
 }
 

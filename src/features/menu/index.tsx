@@ -15,6 +15,8 @@ import { formatCurrency, formatShortCurrency, getDaysBetween, getInitials } from
 import type { PayPeriod } from '@/types'
 import { cn } from '@/lib/utils'
 import { PageHeader } from '@/components/page-header'
+import { NotificationsRow } from '@/features/notifications/notification-settings'
+import { notificationsService } from '@/services/notifications.service'
 
 const TINT = {
     brand: 'bg-brand/10 text-brand',
@@ -45,6 +47,8 @@ export default function MenuPage() {
 
     async function handleLogout() {
         setLogoutConfirm(false)
+        // Whoever signs in next on this device shouldn't get this account's reminders.
+        await notificationsService.disableDevice()
         await supabase.auth.signOut()
         navigate('/login', { replace: true })
     }
@@ -130,6 +134,7 @@ export default function MenuPage() {
                                 to="/period-history" icon={History} tint="info" label="Period History"
                                 sub={counts ? `${counts.closedPeriods} closed period${counts.closedPeriods === 1 ? '' : 's'}` : 'Past pay periods'}
                             />
+                            <NotificationsRow />
                             <AppearanceRow />
                         </Group>
 
