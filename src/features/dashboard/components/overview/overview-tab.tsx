@@ -11,6 +11,7 @@ import { SafeToSpendCard } from './safe-to-spend-card'
 import { PeriodInsights } from './period-insights'
 import { TodayWeekCard } from './today-week-card'
 import { BalancesCard } from './balances-card'
+import { SpendingByAccountCard } from './spending-by-account-card'
 import { AnalyticsSection } from '../analytics/analytics-section'
 
 /**
@@ -43,8 +44,6 @@ function useOverviewData(periodId: string): { data: OverviewData | null; loading
             : null
 
         return {
-            totalIncome: periodTxs.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0),
-            totalExpense: periodTxs.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0),
             transactions: periodTxs,
             accounts: accountsList,
             closingBalance: currentPeriod.closing_balance ?? null,
@@ -53,8 +52,11 @@ function useOverviewData(periodId: string): { data: OverviewData | null; loading
             allPeriods: allList,
             previousSummary: previousQuery.data ?? null,
             totalBalance: accountsList.reduce((s, a) => s + a.balance, 0),
-            // Receivables are money owed to the user, not debt.
-            totalDebt: (debtsQuery.data ?? []).filter(d => d.type === 'debt').reduce((s, d) => s + d.remaining_amount, 0),
+            // Receivables are money owed to the user, not debt. Unknown until debts load:
+            // counting it as 0 would show a "No debt" health score.
+            totalDebt: debtsQuery.data
+                ? debtsQuery.data.filter(d => d.type === 'debt').reduce((s, d) => s + d.remaining_amount, 0)
+                : null,
         }
     }, [txsQuery.data, accountsQuery.data, debtsQuery.data, previousQuery.data, currentPeriod, prevPeriod, allList])
 
@@ -98,12 +100,19 @@ export function OverviewTransaction({
                         totalSpending={stats.totalSpending}
                         totalSavings={stats.totalSavings}
                         remaining={stats.remaining}
-                        spentPercent={stats.spentPercent}
                         reservedBills={stats.reservedBills}
                         unpaidBills={reserve.dues.filter(d => d.outstanding > 0).length}
+                        previousSummary={data.previousSummary}
+                        totalBalance={data.totalBalance}
+                        totalDebt={data.totalDebt}
                     />
 
-                    {isActivePeriod && <QuickAddCard period={data.period} />}
+                    {/* On mobile the bottom nav's + button already adds a transaction. */}
+                    {isActivePeriod && (
+                        <div className="hidden lg:block">
+                            <QuickAddCard period={data.period} />
+                        </div>
+                    )}
 
                     {isActivePeriod && reserve.dues.length > 0 && (
                         <BillsDueCard dues={reserve.dues} period={data.period} />
@@ -127,6 +136,10 @@ export function OverviewTransaction({
                             periodEnd={data.period.end_date}
                         />
                     )}
+
+                    <div className="hidden lg:block">
+                        <SpendingByAccountCard transactions={transactions} />
+                    </div>
                 </div>
             </div>
 

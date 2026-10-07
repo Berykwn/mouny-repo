@@ -1,35 +1,18 @@
 import { useState, useMemo } from 'react'
 import { ChevronRight } from 'lucide-react'
-import TrendingUp from '~icons/ph/trend-up-duotone'
-import TrendingDown from '~icons/ph/trend-down-duotone'
-import PiggyBankIcon from '~icons/ph/piggy-bank-duotone'
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
-import { formatCurrency, formatShortCurrency, formatDateShort } from '@/lib/helpers'
+import { formatCurrency, formatDateShort, formatShortCurrency } from '@/lib/helpers'
 import { cn } from '@/lib/utils'
-import { BottomDrawer } from '@/components/bottom-drawer'
-import { AccountTypeTile } from '@/components/account-type-icon'
-import { CategoryTile } from '@/features/categories/components/category-icon'
 import { categoryChartColor } from '@/features/categories/lib/category-colors'
-import { calculateHealthScore } from '@/lib/calculate-health-score'
-import type { PeriodSummary } from '@/lib/period-summary'
 import { usePeriodStats } from '@/hooks/use-period-stats'
 import { useBillReserve } from '@/hooks/use-bill-reserve'
 import { useBudgets } from '@/queries'
 import { usePeriodTrend } from '../../hooks/use-period-trend'
 import { PeriodTrendChart } from './period-trend-chart'
 import { groupExpensesByCategory, UNCATEGORIZED_ID, type CategoryTotal } from '../../lib/group-expenses-by-category'
-import { groupExpensesByWeekday } from '../../lib/group-expenses-by-weekday'
 import { CategoryDonutChart } from './category-donut-chart'
 import { KindSplitCard } from './kind-split-card'
 import { withSavingsMoves } from '@/lib/savings-moves'
-import type { ElementType, ReactNode, SVGProps } from 'react'
 import type { PayPeriod, TransactionWithDetails } from '@/types'
-
-interface DayEntry {
-  date: string
-  total: number
-  txs: TransactionWithDetails[]
-}
 
 type CatEntry = CategoryTotal
 
@@ -37,83 +20,34 @@ interface PeriodAnalyticsProps {
   transactions: TransactionWithDetails[]
   period: PayPeriod
   periods: PayPeriod[]
-  previousSummary: PeriodSummary | null
-  totalBalance: number
-  totalDebt: number
   /** Length of the previous period, used to estimate an open period's end. */
   fallbackTotalDays?: number | null
 }
 
-interface StatCellProps {
-  label: string
-  value: string
-  sub?: ReactNode
-  valueClassName?: string
-  onTap?: () => void
-  /** A small data visual under the value (progress, split, …) — carries meaning an icon can't. */
-  visual?: ReactNode
-}
-
-// One cell of a hairline-divided stat grid: typography does the work, no icon.
-function StatCell({ label, value, sub, valueClassName, onTap, visual, className }: StatCellProps & { className?: string }) {
+// Everyday spending per day against the safe daily amount: the bar is the pace, the tick is the limit.
+function PaceGauge({ daily, safe }: { daily: number; safe: number }) {
+  const scale = Math.max(daily, safe) * 1.15
+  const over = daily > safe
   return (
-    <div
-      className={cn('bg-surface p-3 min-w-0', onTap && 'cursor-pointer hover:bg-surface-soft active:bg-surface-hover transition-colors', className)}
-      onClick={onTap}
-    >
-      <div className="flex items-center gap-1">
-        <p className="text-[11px] text-muted-ink truncate">{label}</p>
-        {onTap && <ChevronRight className="w-3 h-3 text-faint-ink shrink-0" />}
+    <div className="mt-3">
+      <div className="relative h-2 rounded-full bg-line-soft">
+        <div
+          className={cn('h-full rounded-full transition-all duration-300', over ? 'bg-warning' : 'bg-brand-ink')}
+          style={{ width: `${(daily / scale) * 100}%` }}
+        />
+        <div
+          className="absolute -top-1 -bottom-1 w-[2px] -translate-x-1/2 rounded-full bg-ink"
+          style={{ left: `${(safe / scale) * 100}%` }}
+        />
       </div>
-      <p className={cn('text-[15px] sm:text-[17px] font-medium tracking-[-0.01em] text-ink mt-1 truncate tabular-nums', valueClassName)}>
-        {value}
-      </p>
-      {visual && <div className="mt-2">{visual}</div>}
-      {sub && <p className="text-[10.5px] text-subtle-ink mt-1 truncate">{sub}</p>}
-    </div>
-  )
-}
-
-/** Hairline-divided grid: 1px gaps over a line-colored background read as dividers. */
-function StatGrid({ className, children }: { className?: string; children: ReactNode }) {
-  return (
-    <div className={cn('grid gap-px overflow-hidden rounded-[14px] border border-line-soft bg-line-soft', className)}>
-      {children}
-    </div>
-  )
-}
-
-interface MeterProps {
-  /** 0–1 */
-  value: number
-  color: string
-}
-
-function Meter({ value, color }: MeterProps) {
-  return (
-    <div className="h-1 rounded-full bg-line-soft overflow-hidden">
-      <div
-        className="h-full rounded-full transition-all duration-300"
-        style={{ width: `${Math.min(100, Math.max(0, value * 100))}%`, backgroundColor: color }}
-      />
-    </div>
-  )
-}
-
-interface SplitBarProps {
-  left: number
-  right: number
-  leftColor: string
-  rightColor: string
-}
-
-function SplitBar({ left, right, leftColor, rightColor }: SplitBarProps) {
-  const total = left + right
-  if (total === 0) return <div className="h-1 rounded-full bg-line-soft" />
-  return (
-    <div className="flex h-1 gap-[2px] overflow-hidden rounded-full">
-      {left > 0 && <div className="h-full" style={{ flexGrow: left, backgroundColor: leftColor }} />}
-      {right > 0 && <div className="h-full" style={{ flexGrow: right, backgroundColor: rightColor }} />}
+      <div className="relative mt-1 h-3.5">
+        <span
+          className="absolute -translate-x-1/2 whitespace-nowrap text-[10.5px] text-muted-ink"
+          style={{ left: `${(safe / scale) * 100}%` }}
+        >
+          safe {formatShortCurrency(safe)}
+        </span>
+      </div>
     </div>
   )
 }
@@ -123,10 +57,13 @@ interface PeriodRangeProps {
   best: number
   average: number
   current: number
+  currentLabel: string
+  worstText: string
+  bestText: string
 }
 
-// Where the average and this period sit between the worst and best period nets.
-function PeriodRange({ worst, best, average, current }: PeriodRangeProps) {
+// Where the average and this period sit between the worst and best of the other periods.
+function PeriodRange({ worst, best, average, current, currentLabel, worstText, bestText }: PeriodRangeProps) {
   const span = best - worst
   if (span <= 0) return null
   const frac = (v: number) => Math.min(1, Math.max(0, (v - worst) / span))
@@ -149,113 +86,17 @@ function PeriodRange({ worst, best, average, current }: PeriodRangeProps) {
           className={cn('absolute -top-5 whitespace-nowrap text-[10px] font-medium text-ink', labelShift)}
           style={{ left: pos(current) }}
         >
-          This period
+          {currentLabel}
         </span>
       </div>
-      <div className="mt-2 flex items-center justify-between text-[10px] text-subtle-ink">
-        <span>Worst</span>
-        <span className="inline-flex items-center gap-1">
-          <span className="inline-block h-2.5 w-[2px] rounded-full bg-muted-ink" /> Average
+      <div className="mt-2 flex items-center justify-between gap-2 text-[10.5px] text-muted-ink">
+        <span className="truncate">Worst {worstText}</span>
+        <span className="inline-flex items-center gap-1 shrink-0">
+          <span className="inline-block h-2.5 w-[2px] rounded-full bg-muted-ink" /> Avg
         </span>
-        <span>Best</span>
+        <span className="truncate text-right">Best {bestText}</span>
       </div>
     </div>
-  )
-}
-
-interface SummaryTileProps {
-  /** A duotone icon on a tinted plate, like a category tile. */
-  icon: ElementType<SVGProps<SVGSVGElement>>
-  /** The plate's tint and the icon's color, e.g. 'bg-positive/10 text-positive'. */
-  tone: string
-  label: string
-  value: string
-  valueClassName?: string
-  diff?: ReactNode
-}
-
-function SummaryTile({ icon: Icon, tone, label, value, valueClassName, diff }: SummaryTileProps) {
-  return (
-    <div className="flex items-center gap-3 rounded-[14px] border border-line-soft bg-surface-soft p-3">
-      <span className={cn('h-10 w-10 shrink-0 rounded-[12px] flex items-center justify-center', tone)}>
-        <Icon className="h-[22px] w-[22px]" />
-      </span>
-      <div className="min-w-0 flex-1">
-        <p className="text-[11px] text-muted-ink leading-none">{label}</p>
-        <p className={cn('text-[15px] font-medium text-ink mt-1 truncate', valueClassName)}>
-          {value}
-        </p>
-      </div>
-      {diff && (
-        <div className="shrink-0 text-right">
-          {diff}
-          <p className="text-[10px] text-subtle-ink mt-0.5">vs last</p>
-        </div>
-      )}
-    </div>
-  )
-}
-
-interface DiffValueProps {
-  pct: number | null
-  goodWhenUp: boolean
-  className?: string
-}
-
-function DiffValue({ pct, goodWhenUp, className }: DiffValueProps) {
-  if (pct === null) {
-    return <span className={cn('text-[13px] font-medium text-subtle-ink', className)}>—</span>
-  }
-  const isUp = pct > 0
-  const isGood = pct === 0 ? true : isUp === goodWhenUp
-  const color = isGood ? 'var(--positive)' : 'var(--negative)'
-  const Icon = isUp ? TrendingUp : TrendingDown
-
-  return (
-    <span className={cn('inline-flex items-center gap-1 text-[13px] font-medium', className)} style={{ color }}>
-      {pct !== 0 && <Icon className="w-[13px] h-[13px]" />}
-      {isUp ? '+' : ''}{pct}%
-    </span>
-  )
-}
-
-interface DaySheetProps {
-  date: string
-  transactions: TransactionWithDetails[]
-  onClose: () => void
-}
-
-function DaySheet({ date, transactions, onClose }: DaySheetProps) {
-  const total = transactions.reduce((s, t) => s + t.amount, 0)
-
-  return (
-    <BottomDrawer open onClose={onClose} title={formatDateShort(date)}>
-      <p className="text-[22px] font-medium leading-tight -mt-1 mb-3 text-ink">
-        {formatCurrency(total)}
-      </p>
-
-      <div className="-mx-5 max-h-72 overflow-y-auto divide-y divide-line-soft">
-        {transactions.map((tx) => (
-          <div
-            key={tx.id}
-            className="flex items-center justify-between px-5 py-3"
-          >
-            <div className="flex items-center gap-3 min-w-0">
-              <CategoryTile category={tx.category} />
-              <div className="min-w-0">
-                <p className="text-[13px] font-medium text-ink truncate">
-                  {tx.note ?? tx.category?.name ?? 'Expense'}
-                </p>
-                {tx.category && tx.note && (
-                  <p className="text-[11px] text-subtle-ink truncate">{tx.category.name}</p>
-                )}
-              </div>
-            </div>
-            <p className="text-[13px] font-medium text-ink tabular-nums shrink-0 pl-3">{formatCurrency(tx.amount)}</p>
-          </div>
-        ))}
-      </div>
-    </BottomDrawer>
   )
 }
 
@@ -312,8 +153,7 @@ function budgetColor(ratio: number): string {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export function PeriodAnalytics({ transactions, period, periods, previousSummary, totalBalance, totalDebt, fallbackTotalDays = null }: PeriodAnalyticsProps) {
-  const [biggestDayOpen, setBiggestDayOpen] = useState(false)
+export function PeriodAnalytics({ transactions, period, periods, fallbackTotalDays = null }: PeriodAnalyticsProps) {
   const [expandedCategoryId, setExpandedCategoryId] = useState<string | null>(null)
 
   const { data: budgetRows } = useBudgets()
@@ -335,8 +175,6 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
   const spending = useMemo(() => expenses.filter(t => !t.category?.is_savings), [expenses])
   const totalSpending = useMemo(() => spending.reduce((s, t) => s + t.amount, 0), [spending])
   const totalSavings = totalExpense - totalSpending
-
-  const net = totalIncome - totalExpense
 
   const categoriesByAmount = useMemo<CatEntry[]>(() => groupExpensesByCategory(expenses), [expenses])
 
@@ -369,27 +207,6 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
     return [...budgeted, ...unbudgeted]
   }, [categoriesByAmount, budgets])
 
-  // Biggest day / biggest expense look across the period's spending (savings aren't a splurge).
-  const biggestDayEntry = useMemo<DayEntry | null>(() => {
-    const map = new Map<string, TransactionWithDetails[]>()
-    for (const tx of spending) {
-      const arr = map.get(tx.date) ?? []
-      arr.push(tx)
-      map.set(tx.date, arr)
-    }
-    return Array.from(map.entries()).reduce<DayEntry | null>((best, [date, txs]) => {
-      const total = txs.reduce((s, t) => s + t.amount, 0)
-      return !best || total > best.total ? { date, total, txs } : best
-    }, null)
-  }, [spending])
-
-  const biggestExpense = useMemo(
-    () => spending.reduce<TransactionWithDetails | null>(
-      (mx, tx) => (!mx || tx.amount > mx.amount ? tx : mx), null
-    ),
-    [spending]
-  )
-
   // ─── Period stats — delegated to the shared hook ───────────────────────────
 
   const statsTransactions = useMemo(
@@ -401,172 +218,35 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
   const stats = usePeriodStats({ period, transactions: statsTransactions, fallbackTotalDays, reservedBills: billReserve.reserved })
   const hasPredictive = !stats.isClosed && stats.totalIncome > 0 && stats.projectedSpend !== null
   const overSafePace = stats.safeDaily !== null && stats.dailyAvg > stats.safeDaily
-  const showDaysLeft = stats.daysRemaining !== null && !stats.isClosed
-  const paceCount = 1 + (stats.safeDaily !== null ? 1 : 0) + (showDaysLeft ? 1 : 0)
 
   // ─── Multi-period trend ─────────────────────────────────────────────────────
 
   const { trend } = usePeriodTrend(periods, period, transactions)
 
-  // ─── Desktop-only breakdowns (spending by account, by day of week, period comparison) ──
-
-  const byAccount = useMemo(() => {
-    const map = new Map<string, { name: string; type: string; is_savings: boolean; amount: number }>()
-    for (const tx of spending) {
-      const entry = map.get(tx.account.id) ?? { name: tx.account.name, type: tx.account.type, is_savings: tx.account.is_savings, amount: 0 }
-      entry.amount += tx.amount
-      map.set(tx.account.id, entry)
-    }
-    return Array.from(map.values()).sort((a, b) => b.amount - a.amount)
-  }, [spending])
-
-  const byWeekday = useMemo(() => groupExpensesByWeekday(spending), [spending])
-
-  const periodComparison = useMemo(() => {
-    if (trend.length < 2) return null
-    // Ranked by unspent, so a period that moved money into savings isn't marked down for it.
-    const best = trend.reduce((mx, t) => t.unspent > mx.unspent ? t : mx, trend[0])
-    const worst = trend.reduce((mn, t) => t.unspent < mn.unspent ? t : mn, trend[0])
-    const average = trend.reduce((s, t) => s + t.unspent, 0) / trend.length
-    return { best, worst, average }
-  }, [trend])
-
-  // ─── Savings rate, trend vs previous period, and health score ──────────────
+  // ─── Period comparison ──
 
   // Share of income not spent: what's left plus what went into savings.
   const unspent = totalIncome - totalSpending
-  const savingsRate = totalIncome > 0 ? (unspent / totalIncome) * 100 : null
 
-  // Spending vs spending — the previous period's savings mustn't count as its spend.
-  const expenseDiffPct = useMemo(() => (
-    previousSummary && previousSummary.spending > 0
-      ? Math.round(((totalSpending - previousSummary.spending) / previousSummary.spending) * 100)
-      : null
-  ), [previousSummary, totalSpending])
-
-  const incomeDiffPct = useMemo(() => (
-    previousSummary && previousSummary.income > 0
-      ? Math.round(((totalIncome - previousSummary.income) / previousSummary.income) * 100)
-      : null
-  ), [previousSummary, totalIncome])
-
-  const unspentDiffAbs = previousSummary ? unspent - previousSummary.unspent : null
-
-  const health = useMemo(() => calculateHealthScore({
-    totalIncome,
-    totalSpending,
-    totalBalance,
-    totalDebt,
-    expenseDiffPct,
-  }), [totalIncome, totalSpending, totalBalance, totalDebt, expenseDiffPct])
-
-  const healthBarColor = health.score >= 80 ? 'var(--positive)' : health.score >= 60 ? 'var(--brand-ink)' : health.score >= 40 ? 'var(--warning)' : 'var(--negative)'
+  const periodComparison = useMemo(() => {
+    const others = trend.filter(t => t.periodId !== period.id)
+    if (others.length === 0) return null
+    // Ranked by unspent, so a period that moved money into savings isn't marked down for it.
+    const best = others.reduce((mx, t) => t.unspent > mx.unspent ? t : mx, others[0])
+    const worst = others.reduce((mn, t) => t.unspent < mn.unspent ? t : mn, others[0])
+    const average = others.reduce((s, t) => s + t.unspent, 0) / others.length
+    // An open period's unspent-so-far would beat every full period early on, so it's
+    // compared by where it's projected to end; until there's a projection, not at all.
+    const current = stats.isClosed
+      ? unspent
+      : stats.projectedClose !== null ? stats.projectedClose + stats.totalSavings : null
+    const beaten = current === null ? 0 : others.filter(t => current > t.unspent).length
+    return { best, worst, average, current, beaten, others: others.length }
+  }, [trend, period.id, stats.isClosed, stats.projectedClose, stats.totalSavings, unspent])
 
   return (
     <>
     <div className="space-y-2.5 pt-3 lg:grid lg:grid-cols-2 lg:gap-4 lg:space-y-0 lg:items-start">
-
-      {/* ── Financial health card ── */}
-      <div className="rounded-[20px] border border-line bg-surface p-4 lg:col-span-2">
-        <div className="flex items-center justify-between mb-3">
-          <p className="text-[11px] uppercase tracking-[.14em] text-muted-ink">Financial health</p>
-          <span
-            className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10.5px] font-semibold"
-            style={{ backgroundColor: `color-mix(in srgb, ${healthBarColor} 12%, transparent)`, color: healthBarColor }}
-          >
-            <span className="h-[5px] w-[5px] rounded-full" style={{ backgroundColor: healthBarColor }} />
-            {health.label}
-          </span>
-        </div>
-        <p
-          className="text-[44px] font-medium leading-none tracking-[-.03em] tabular-nums mb-3"
-          style={{ color: healthBarColor }}
-        >
-          {health.score}
-        </p>
-        <div className="flex h-1.5 w-full overflow-hidden rounded-full bg-line-soft">
-          <div
-            className="h-full rounded-full transition-all duration-300"
-            style={{ width: `${health.score}%`, backgroundColor: healthBarColor }}
-          />
-        </div>
-        {(health.periodReasons.length > 0 || health.overallReasons.length > 0) && (
-          <div className="mt-2.5 space-y-1">
-            {health.periodReasons.length > 0 && (
-              <p className="text-[11.5px] text-muted-ink">
-                <span className="text-subtle-ink">This period:</span> {health.periodReasons.join(' · ')}
-              </p>
-            )}
-            {health.overallReasons.length > 0 && (
-              <p className="text-[11.5px] text-muted-ink">
-                <span className="text-subtle-ink">Overall:</span> {health.overallReasons.join(' · ')}
-              </p>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* ── Period summary card (Overview) — net + vs last period, so the comparison has context ── */}
-      <div className="rounded-[20px] border border-line bg-surface p-4 lg:col-span-2">
-        <p className="text-[11px] uppercase tracking-[.14em] text-muted-ink mb-1.5">Period summary</p>
-
-        {/* Net: the plain headline — the income/expense badges below are what it's made of */}
-        <p className={cn(
-          'text-[32px] lg:text-[28px] font-medium tracking-[-0.02em] leading-none truncate',
-          net < 0 ? 'text-negative' : 'text-ink'
-        )}>
-          {net >= 0 ? '+' : ''}{formatCurrency(net)}
-        </p>
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-1.5 text-[11.5px]">
-          {savingsRate !== null && (
-            <span className={savingsRate < 0 ? 'text-negative' : 'text-positive'}>
-              {savingsRate >= 0
-                ? `${Math.round(savingsRate)}% of income unspent`
-                : `Overspent by ${Math.abs(Math.round(savingsRate))}% of income`}
-            </span>
-          )}
-          {unspentDiffAbs !== null && (
-            <span className="text-subtle-ink">
-              <span className={unspentDiffAbs < 0 ? 'text-negative' : 'text-positive'}>
-                {unspentDiffAbs >= 0 ? '+' : ''}{formatCurrency(unspentDiffAbs)}
-              </span>
-              {' '}unspent vs last period
-            </span>
-          )}
-        </div>
-
-        {/* Income / expense (/ saved): the icon plates carry the color, so the tiles stay neutral */}
-        <div className={cn(
-          'grid grid-cols-1 gap-2 border-t border-line-soft pt-3 mt-4',
-          totalSavings > 0 ? 'sm:grid-cols-3' : 'sm:grid-cols-2'
-        )}>
-          <SummaryTile
-            icon={TrendingUp}
-            tone="bg-positive/10 text-positive"
-            label="Income"
-            value={formatCurrency(totalIncome)}
-            valueClassName="text-positive"
-            diff={previousSummary ? <DiffValue pct={incomeDiffPct} goodWhenUp className="text-[11px]" /> : null}
-          />
-          <SummaryTile
-            icon={TrendingDown}
-            tone="bg-negative/10 text-negative"
-            label={totalSavings > 0 ? 'Spent' : 'Expense'}
-            value={formatCurrency(totalSpending)}
-            valueClassName="text-negative"
-            diff={previousSummary ? <DiffValue pct={expenseDiffPct} goodWhenUp={false} className="text-[11px]" /> : null}
-          />
-          {totalSavings > 0 && (
-            <SummaryTile
-              icon={PiggyBankIcon}
-              tone="bg-info/10 text-info"
-              label="To savings"
-              value={formatCurrency(totalSavings)}
-              valueClassName="text-info"
-            />
-          )}
-        </div>
-      </div>
 
       {/* ── Needs / wants / savings split (Categories) ── */}
       <KindSplitCard expenses={expenses} totalIncome={totalIncome} isClosed={stats.isClosed} />
@@ -664,185 +344,34 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
           <p className="text-[11px] text-subtle-ink mt-0.5 mb-3">Last {trend.length} pay periods</p>
         )}
         <PeriodTrendChart trend={trend} />
-      </div>
 
-      {/* ── Stats card (Overview) — this period's stats, plus how it stacks up against past periods ── */}
-      <div className="rounded-[20px] border border-line bg-surface p-4 lg:col-span-2">
-        <p className="text-[11px] uppercase tracking-[.14em] text-muted-ink mb-3">Stats</p>
-
-        {/* Pace: how fast money is going vs how fast it safely can */}
-        <p className="text-[10.5px] font-medium text-subtle-ink mb-1.5">Pace</p>
-        <StatGrid className={paceCount === 3 ? 'grid-cols-2 sm:grid-cols-3' : paceCount === 2 ? 'grid-cols-2' : 'grid-cols-1'}>
-          <StatCell
-            label="Daily average"
-            value={formatCurrency(stats.dailyAvg)}
-            valueClassName={overSafePace ? 'text-warning' : undefined}
-            sub={
-              <>
-                everyday, over {stats.daysElapsed} day{stats.daysElapsed !== 1 ? 's' : ''}
-                {stats.safeDaily !== null && (
-                  <span className={overSafePace ? 'text-warning' : 'text-positive'}>
-                    {' · '}{overSafePace ? 'above safe pace' : 'within safe pace'}
-                  </span>
-                )}
-              </>
-            }
-          />
-
-          {stats.safeDaily !== null && (
-            <StatCell
-              label="Safe per day"
-              value={formatCurrency(stats.safeDaily)}
-              sub="to stay on track"
-            />
-          )}
-
-          {showDaysLeft && (
-            <StatCell
-              label="Days left"
-              value={`${stats.daysRemaining}`}
-              className={paceCount === 3 ? 'col-span-2 sm:col-span-1' : undefined}
-              visual={stats.totalDays ? <Meter value={stats.daysElapsed / stats.totalDays} color="var(--brand-ink)" /> : undefined}
-              sub={stats.totalDays !== null ? `day ${Math.min(stats.daysElapsed, stats.totalDays)} of ${stats.totalDays}` : undefined}
-            />
-          )}
-        </StatGrid>
-
-        {/* Highlights: the standout moments of the period */}
-        <p className="text-[10.5px] font-medium text-subtle-ink mt-4 mb-1.5">Highlights</p>
-        <StatGrid className={cn('grid-cols-2', biggestDayEntry ? 'lg:grid-cols-4' : 'lg:grid-cols-3')}>
-          {biggestDayEntry && (
-            <StatCell
-              label="Biggest day"
-              value={formatCurrency(biggestDayEntry.total)}
-              sub={formatDateShort(biggestDayEntry.date)}
-              onTap={() => setBiggestDayOpen(true)}
-            />
-          )}
-
-          <StatCell
-            label="Biggest expense"
-            value={biggestExpense ? formatCurrency(biggestExpense.amount) : '—'}
-            sub={biggestExpense?.note ?? biggestExpense?.category?.name}
-          />
-
-          <StatCell
-            label="Transactions"
-            value={`${expenses.length + incomes.length}`}
-            visual={<SplitBar left={expenses.length} right={incomes.length} leftColor="var(--negative)" rightColor="var(--positive)" />}
-            sub={
-              <>
-                <span className="text-negative">{expenses.length} out</span>
-                {' · '}
-                <span className="text-positive">{incomes.length} in</span>
-              </>
-            }
-          />
-
-          <StatCell
-            label="No-spend days"
-            value={`${stats.noSpendDays}`}
-            className={!biggestDayEntry ? 'col-span-2 lg:col-span-1' : undefined}
-            visual={<Meter value={stats.noSpendDays / stats.daysElapsed} color="#6366f1" />}
-            sub={`of ${stats.daysElapsed} day${stats.daysElapsed !== 1 ? 's' : ''}${stats.isClosed ? '' : ' so far'}`}
-          />
-        </StatGrid>
-
+        {/* How this period stacks up against the others */}
         {periodComparison && (
-          <div className="mt-4 pt-3 border-t border-line-soft">
-            <p className="text-[11px] uppercase tracking-[.14em] text-muted-ink mb-2">Across your periods</p>
-            <StatGrid className="grid-cols-3">
-              <StatCell
-                label="Best period"
-                value={formatCurrency(periodComparison.best.unspent)}
-                sub={periodComparison.best.label}
-                valueClassName="text-positive"
+          <div className="mt-3 pt-3 border-t border-line-soft">
+            <p className="text-[13px] text-ink">
+              {periodComparison.current === null
+                ? 'Too early to compare with your other periods.'
+                : <>
+                    {stats.isClosed ? 'Better than ' : 'On pace to beat '}
+                    <span className="font-medium">{periodComparison.beaten} of your other {periodComparison.others}</span>
+                    {' '}period{periodComparison.others !== 1 ? 's' : ''}
+                  </>}
+            </p>
+            <p className="text-[11.5px] text-muted-ink mt-0.5">Ranked by income left unspent</p>
+            {periodComparison.current !== null && (
+              <PeriodRange
+                worst={periodComparison.worst.unspent}
+                best={periodComparison.best.unspent}
+                average={periodComparison.average}
+                current={periodComparison.current}
+                currentLabel={stats.isClosed ? 'This period' : 'This period, projected'}
+                worstText={`${periodComparison.worst.label} · ${formatShortCurrency(periodComparison.worst.unspent)}`}
+                bestText={`${periodComparison.best.label} · ${formatShortCurrency(periodComparison.best.unspent)}`}
               />
-              <StatCell
-                label="Worst period"
-                value={formatCurrency(periodComparison.worst.unspent)}
-                sub={periodComparison.worst.label}
-                valueClassName={periodComparison.worst.unspent < 0 ? 'text-negative' : undefined}
-              />
-              <StatCell
-                label="Average unspent"
-                value={formatCurrency(periodComparison.average)}
-                sub={`across ${trend.length} periods`}
-                valueClassName={periodComparison.average < 0 ? 'text-negative' : undefined}
-              />
-            </StatGrid>
-            <PeriodRange
-              worst={periodComparison.worst.unspent}
-              best={periodComparison.best.unspent}
-              average={periodComparison.average}
-              current={unspent}
-            />
+            )}
           </div>
         )}
       </div>
-
-      {/* ── Spending by account (Trends, desktop only) ── */}
-      {byAccount.length > 0 && (
-        <div className="hidden lg:block rounded-[20px] border border-line bg-surface overflow-hidden">
-          <p className="text-[11px] uppercase tracking-[.14em] text-muted-ink px-4 pt-4">
-            Spending by account
-          </p>
-          <p className="text-[11px] text-subtle-ink px-4 pb-3">% of this period's spending (savings excluded)</p>
-          {byAccount.map(a => {
-            const pct = totalSpending > 0 ? Math.round((a.amount / totalSpending) * 100) : 0
-            return (
-              <div key={a.name} className="flex items-center gap-3 px-4 py-[9px] border-b border-line-soft last:border-b-0">
-                <AccountTypeTile type={a.type} savings={a.is_savings} className="w-8 h-8" />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between mb-1">
-                    <p className="text-[13px] text-ink truncate">{a.name}</p>
-                    <p className="text-[13px] font-medium text-ink">{formatCurrency(a.amount)}</p>
-                  </div>
-                  <div className="h-1 rounded-full bg-line-soft overflow-hidden">
-                    <div className="h-full rounded-full bg-[#94a3b8]" style={{ width: `${pct}%` }} />
-                  </div>
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      )}
-
-      {/* ── By day of week (Trends, desktop only) ── */}
-      {byWeekday.some(d => d.total > 0) && (
-        <div className="hidden lg:block rounded-[20px] border border-line bg-surface p-4">
-          <p className="text-[11px] uppercase tracking-[.14em] text-muted-ink">By day of week</p>
-          <p className="text-[11px] text-subtle-ink mb-3">Total expense per weekday, this period</p>
-          <div style={{ width: '100%', height: 140 }}>
-            <ResponsiveContainer>
-              <BarChart data={byWeekday} margin={{ top: 4, right: 0, left: 0, bottom: 0 }}>
-                <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 10.5, fill: '#a3a3a3' }} />
-                <YAxis
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fontSize: 10, fill: '#a3a3a3' }}
-                  tickFormatter={(v: number) => formatShortCurrency(v)}
-                  width={36}
-                />
-                <Tooltip
-                  cursor={{ fill: 'var(--surface-hover)' }}
-                  content={({ active, payload }) => {
-                    if (!active || !payload?.length) return null
-                    const d = payload[0].payload as { day: string; total: number }
-                    return (
-                      <div className="rounded-[10px] border border-line bg-surface px-2.5 py-1.5 shadow-lg">
-                        <p className="text-[10.5px] text-muted-ink">{d.day}</p>
-                        <p className="text-[12px] font-medium text-ink">{formatCurrency(d.total)}</p>
-                      </div>
-                    )
-                  }}
-                />
-                <Bar dataKey="total" radius={[3, 3, 0, 0]} fill="var(--brand-ink)" />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      )}
 
       {/* ── Projection card (Overview) — open periods only: where this period lands if today's pace holds ── */}
       {hasPredictive && stats.projectedSpend !== null && stats.projectedClose !== null && stats.totalDays !== null && (() => {
@@ -865,7 +394,33 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
                 <p className="text-[10.5px] text-brand-muted">assuming a {stats.totalDays}-day period, like the last one</p>
               )}
             </div>
-            <p className="text-[12.5px] text-brand-ink mt-1.5">
+
+            {/* Pace: everyday spending per day against what keeps the period on track */}
+            {stats.safeDaily !== null && (
+              <div className="mt-3 rounded-[14px] bg-surface/70 p-3">
+                <div className="flex items-baseline justify-between gap-3">
+                  <p className={cn('text-[18px] font-medium tabular-nums leading-none', overSafePace ? 'text-warning' : 'text-ink')}>
+                    {formatCurrency(stats.dailyAvg)}<span className="text-[12px] font-normal text-muted-ink"> / day</span>
+                  </p>
+                  <span className={cn(
+                    'text-[11px] font-medium rounded-full px-2 py-[2px] shrink-0',
+                    overSafePace ? 'bg-warning/10 text-warning' : 'bg-positive/10 text-positive'
+                  )}>
+                    {stats.safeDaily <= 0
+                      ? 'no safe room left'
+                      : overSafePace
+                        ? `${Math.round((stats.dailyAvg / stats.safeDaily - 1) * 100)}% over safe pace`
+                        : 'within safe pace'}
+                  </span>
+                </div>
+                {stats.safeDaily > 0 && <PaceGauge daily={stats.dailyAvg} safe={stats.safeDaily} />}
+                <p className="mt-1.5 text-[11px] text-muted-ink">
+                  Day {Math.min(stats.daysElapsed, stats.totalDays)} of {stats.totalDays} · {daysLeft} day{daysLeft !== 1 ? 's' : ''} left
+                </p>
+              </div>
+            )}
+
+            <p className="text-[12.5px] text-brand-ink mt-3">
               If you keep spending <span className="font-semibold text-ink">{formatCurrency(stats.dailyAvg)}/day</span> on everyday things
               {stats.oneOffSpending > 0 ? <> (the {formatCurrency(stats.oneOffSpending)} in bills &amp; one-offs so far counts once{totalSavings > 0 ? ', savings not counted' : ''})</> : totalSavings > 0 ? ' (savings not counted)' : ''}:
             </p>
@@ -938,14 +493,6 @@ export function PeriodAnalytics({ transactions, period, periods, previousSummary
       })()}
 
     </div>
-
-      {biggestDayOpen && biggestDayEntry && (
-        <DaySheet
-          date={biggestDayEntry.date}
-          transactions={biggestDayEntry.txs}
-          onClose={() => setBiggestDayOpen(false)}
-        />
-      )}
     </>
   )
 }

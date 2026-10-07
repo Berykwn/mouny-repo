@@ -11,9 +11,6 @@ export function AnalyticsSection({ data }: { data: OverviewData }) {
                 transactions={data.transactions}
                 period={data.period}
                 periods={data.allPeriods}
-                previousSummary={data.previousSummary}
-                totalBalance={data.totalBalance}
-                totalDebt={data.totalDebt}
                 fallbackTotalDays={data.fallbackTotalDays}
             />
         </div>

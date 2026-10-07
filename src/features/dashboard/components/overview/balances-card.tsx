@@ -21,22 +21,36 @@ export function BalancesCard({ accounts, isActivePeriod, closingBalance }: Balan
         <button
             type="button"
             onClick={() => navigate('/accounts')}
-            className="card flex w-full items-center justify-between px-5 py-4 text-left"
+            className="card w-full px-5 py-4 text-left"
         >
-            <div className="flex items-center gap-2.5">
-                <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${WALLET_TILE_CLASS}`}>
-                    <WalletIcon className="h-5 w-5" />
+            <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                    <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${WALLET_TILE_CLASS}`}>
+                        <WalletIcon className="h-5 w-5" />
+                    </div>
+                    <span className="text-[13.5px] text-ink">
+                        {isActivePeriod ? 'Balances' : 'Closing balance'}
+                    </span>
                 </div>
-                <span className="text-[13.5px] text-ink">
-                    {isActivePeriod ? 'Balances' : 'Closing balance'}
-                </span>
+                <div className="flex items-center gap-2">
+                    <span className="text-[13.5px] font-medium tabular-nums text-ink">
+                        {formatCurrency(total)}
+                    </span>
+                    <ArrowRight className="h-[13px] w-[13px] text-muted-ink" />
+                </div>
             </div>
-            <div className="flex items-center gap-2">
-                <span className="text-[13.5px] font-medium tabular-nums text-ink">
-                    {formatCurrency(total)}
-                </span>
-                <ArrowRight className="h-[13px] w-[13px] text-muted-ink" />
-            </div>
+
+            {/* Desktop has the room to show where the total sits; today's balances, so only for the open period. */}
+            {isActivePeriod && accounts.length > 1 && (
+                <div className="hidden lg:block mt-3 border-t border-line-soft">
+                    {accounts.map(a => (
+                        <div key={a.id} className="flex items-center justify-between py-2 border-b border-line-soft last:border-b-0 text-[12.5px]">
+                            <span className="text-muted-ink truncate">{a.name}</span>
+                            <span className="font-medium tabular-nums text-ink">{formatCurrency(a.balance)}</span>
+                        </div>
+                    ))}
+                </div>
+            )}
         </button>
     )
 }

@@ -26,7 +26,6 @@ export interface PeriodStats {
     remaining: number
     /** Bills still due this period, already taken out of remaining. */
     reservedBills: number
-    spentPercent: number
     daysElapsed: number
     totalDays: number | null
     daysRemaining: number | null
@@ -84,9 +83,6 @@ export function usePeriodStats({
         // A closed period's bills are history; nothing is still due in it.
         const reserved = isClosed ? 0 : reservedBills
         const remaining = totalIncome - totalExpense - reserved
-        const spentPercent = totalIncome > 0
-            ? Math.min(Math.round((totalExpense / totalIncome) * 100), 100)
-            : 0
 
         let totalDays: number | null = null
         let isEndDateEstimated = false
@@ -138,7 +134,6 @@ export function usePeriodStats({
             oneOffSpending,
             remaining,
             reservedBills: reserved,
-            spentPercent,
             daysElapsed,
             totalDays,
             daysRemaining,

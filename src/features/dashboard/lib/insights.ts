@@ -216,12 +216,13 @@ function periodInsights({ stats, transactions }: InsightInput): Insight[] {
         }
     }
 
+    // The share of income unspent already heads the overview card; only overspending earns a line here.
     if (stats.totalIncome > 0) {
-        // Savings aren't spending, so they count toward the rate, not against it.
+        // Savings aren't spending, so they don't count as overspending.
         const unspent = stats.totalIncome - stats.totalSpending
-        out.push(unspent < 0
-            ? { id: 'overspent', tone: 'warning', priority: 85, text: `You’ve spent ${formatCurrency(-unspent)} more than came in this period.` }
-            : { id: 'savings-rate', tone: pct(unspent, stats.totalIncome) >= 20 ? 'positive' : 'neutral', priority: 28, text: `${pct(unspent, stats.totalIncome)}% of income unspent so far this period.` })
+        if (unspent < 0) {
+            out.push({ id: 'overspent', tone: 'warning', priority: 85, text: `You’ve spent ${formatCurrency(-unspent)} more than came in this period.` })
+        }
     }
     return out
 }

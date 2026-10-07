@@ -14,7 +14,6 @@ function stats(overrides: Partial<PeriodStats> = {}): PeriodStats {
         oneOffSpending: 0,
         remaining: 8_000_000,
         reservedBills: 0,
-        spentPercent: 20,
         daysElapsed: 12,
         totalDays: 30,
         daysRemaining: 18,
