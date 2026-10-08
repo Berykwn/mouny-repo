@@ -1,11 +1,11 @@
-import { useMemo, useState, type ElementType, type ReactNode, type SVGProps } from 'react'
-import TrendingUp from '~icons/ph/trend-up-duotone'
-import TrendingDown from '~icons/ph/trend-down-duotone'
-import PiggyBankIcon from '~icons/ph/piggy-bank-duotone'
+import { useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
+import { ArrowRight } from 'lucide-react'
 import { formatCurrency } from '@/lib/helpers'
 import { cn } from '@/lib/utils'
 import { calculateHealthScore } from '@/lib/calculate-health-score'
 import type { PeriodSummary } from '@/lib/period-summary'
+import { PeriodTotals } from './period-totals'
 
 interface SafeToSpendCardProps {
     totalIncome: number
@@ -18,6 +18,9 @@ interface SafeToSpendCardProps {
     unpaidBills?: number
     previousSummary: PeriodSummary | null
     totalBalance: number
+    /** What the accounts hold, or what they held at the close for a closed period. */
+    balance: number
+    isActivePeriod: boolean
     /** Null while debts are still loading or failed: the health score waits rather than guess "no debt". */
     totalDebt: number | null
 }
@@ -35,6 +38,8 @@ export function SafeToSpendCard({
     unpaidBills = 0,
     previousSummary,
     totalBalance,
+    balance,
+    isActivePeriod,
     totalDebt,
 }: SafeToSpendCardProps) {
     const [reasonsOpen, setReasonsOpen] = useState(false)
@@ -49,9 +54,6 @@ export function SafeToSpendCard({
     // Spending vs spending — the previous period's savings mustn't count as its spend.
     const expenseDiffPct = previousSummary && previousSummary.spending > 0
         ? Math.round(((totalSpending - previousSummary.spending) / previousSummary.spending) * 100)
-        : null
-    const incomeDiffPct = previousSummary && previousSummary.income > 0
-        ? Math.round(((totalIncome - previousSummary.income) / previousSummary.income) * 100)
         : null
 
     const health = useMemo(() => totalDebt === null ? null : calculateHealthScore({
@@ -157,7 +159,21 @@ export function SafeToSpendCard({
 
             <div className="mt-4 border-t border-line-soft pt-3.5">
                 <div className="flex flex-wrap items-end justify-between gap-x-3 gap-y-1.5">
-                    <div className="min-w-0">
+                    {/* On a phone the first question is "how much do I have?", so balances lead there;
+                        desktop has the balances card beside this one and keeps the period net. */}
+                    <Link to="/accounts" className="min-w-0 lg:hidden">
+                        <p className="text-[11px] uppercase tracking-[.14em] text-muted-ink">
+                            {isActivePeriod ? 'Balances' : 'Closing balance'}
+                        </p>
+                        <p className={cn(
+                            'mt-1 flex items-center gap-1.5 text-[22px] font-medium leading-none tracking-[-0.02em] tabular-nums',
+                            balance < 0 ? 'text-negative' : 'text-ink'
+                        )}>
+                            <span className="truncate">{formatCurrency(balance)}</span>
+                            <ArrowRight className="h-[13px] w-[13px] shrink-0 text-muted-ink" />
+                        </p>
+                    </Link>
+                    <div className="min-w-0 hidden lg:block">
                         <p className="text-[11px] uppercase tracking-[.14em] text-muted-ink">Period net</p>
                         <p className={cn(
                             'mt-1 text-[22px] font-medium leading-none tracking-[-0.02em] tabular-nums truncate',
@@ -185,80 +201,15 @@ export function SafeToSpendCard({
                     </div>
                 </div>
 
-                {/* Rows on a phone, where three full IDR amounts can't sit side by side. */}
-                <div className={cn(
-                    'mt-3 grid grid-cols-1 gap-px overflow-hidden rounded-[14px] border border-line-soft bg-line-soft',
-                    totalSavings > 0 ? 'sm:grid-cols-3' : 'sm:grid-cols-2'
-                )}>
-                    <SummaryCell
-                        icon={TrendingUp}
-                        tone="bg-positive/10 text-positive"
-                        valueClassName="text-positive"
-                        label="Income"
-                        value={formatCurrency(totalIncome)}
-                        diff={previousSummary ? <DiffValue pct={incomeDiffPct} goodWhenUp /> : null}
-                    />
-                    <SummaryCell
-                        icon={TrendingDown}
-                        tone="bg-negative/10 text-negative"
-                        valueClassName="text-negative"
-                        label={totalSavings > 0 ? 'Spent' : 'Expense'}
-                        value={formatCurrency(totalSpending)}
-                        diff={previousSummary ? <DiffValue pct={expenseDiffPct} goodWhenUp={false} /> : null}
-                    />
-                    {totalSavings > 0 && (
-                        <SummaryCell
-                            icon={PiggyBankIcon}
-                            tone="bg-info/10 text-info"
-                            valueClassName="text-info"
-                            label="To savings"
-                            value={formatCurrency(totalSavings)}
-                            diff={totalIncome > 0
-                                ? <span className="text-muted-ink">{Math.round((totalSavings / totalIncome) * 100)}% of income</span>
-                                : null}
-                        />
-                    )}
-                </div>
+                {/* On a phone these move to the top of Analytics, keeping this card about the money. */}
+                <PeriodTotals
+                    totalIncome={totalIncome}
+                    totalSpending={totalSpending}
+                    totalSavings={totalSavings}
+                    previousSummary={previousSummary}
+                    className="mt-3 hidden lg:grid"
+                />
             </div>
         </div>
-    )
-}
-
-interface SummaryCellProps {
-    /** A duotone icon on a tinted plate, like a category tile. */
-    icon: ElementType<SVGProps<SVGSVGElement>>
-    /** The plate's tint and the icon's color, e.g. 'bg-positive/10 text-positive'. */
-    tone: string
-    valueClassName: string
-    label: string
-    value: string
-    diff: ReactNode
-}
-
-function SummaryCell({ icon: Icon, tone, valueClassName, label, value, diff }: SummaryCellProps) {
-    return (
-        <div className="bg-surface-soft p-2.5 min-w-0 flex items-center gap-2.5">
-            <span className={cn('h-9 w-9 shrink-0 rounded-[11px] flex items-center justify-center', tone)}>
-                <Icon className="h-5 w-5" />
-            </span>
-            <div className="min-w-0 flex-1">
-                <p className="text-[11px] text-muted-ink leading-none">{label}</p>
-                <p className={cn('mt-1 text-[13.5px] font-medium tabular-nums truncate', valueClassName)}>{value}</p>
-                {diff && <p className="mt-0.5 text-[10.5px] truncate">{diff}</p>}
-            </div>
-        </div>
-    )
-}
-
-function DiffValue({ pct, goodWhenUp }: { pct: number | null; goodWhenUp: boolean }) {
-    if (pct === null) return <span className="text-muted-ink">—</span>
-    if (pct === 0) return <span className="text-muted-ink">same as last</span>
-    const isUp = pct > 0
-    const Icon = isUp ? TrendingUp : TrendingDown
-    return (
-        <span className={cn('inline-flex items-center gap-1', isUp === goodWhenUp ? 'text-positive' : 'text-negative')}>
-            <Icon className="h-3 w-3" />
-            {isUp ? '+' : ''}{pct}% vs last
-        </span>
     )
 }

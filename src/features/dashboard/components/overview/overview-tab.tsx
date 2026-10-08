@@ -104,6 +104,8 @@ export function OverviewTransaction({
                         unpaidBills={reserve.dues.filter(d => d.outstanding > 0).length}
                         previousSummary={data.previousSummary}
                         totalBalance={data.totalBalance}
+                        balance={isActivePeriod ? data.totalBalance : (closingBalance ?? data.totalBalance)}
+                        isActivePeriod={isActivePeriod}
                         totalDebt={data.totalDebt}
                     />
 
@@ -122,11 +124,14 @@ export function OverviewTransaction({
                 </div>
 
                 <div className="space-y-3">
-                    <BalancesCard
-                        accounts={accounts}
-                        isActivePeriod={isActivePeriod}
-                        closingBalance={closingBalance}
-                    />
+                    {/* On a phone the headline card already leads with the balance. */}
+                    <div className="hidden lg:block">
+                        <BalancesCard
+                            accounts={accounts}
+                            isActivePeriod={isActivePeriod}
+                            closingBalance={closingBalance}
+                        />
+                    </div>
 
                     {isActivePeriod && (
                         <TodayWeekCard
