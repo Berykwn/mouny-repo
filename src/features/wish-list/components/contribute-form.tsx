@@ -7,6 +7,7 @@ import { formatCurrency, formatCurrencyInput, parseCurrencyInput } from '@/lib/h
 import { ProgressBar } from '@/components/progress-bar'
 import { toast } from 'sonner'
 import type { WishListItem } from '@/types'
+import { partsBreakdown } from '../lib/wish-analytics'
 
 interface ContributeFormProps {
     item: WishListItem
@@ -20,8 +21,11 @@ export function ContributeForm({ item, onSuccess }: ContributeFormProps) {
     const [amount, setAmount] = useState('')
     const [loading, setLoading] = useState(false)
 
-    const hasTarget = !!item.estimated_price && item.estimated_price > 0
-    const percent = hasTarget ? Math.round((item.saved_amount / item.estimated_price!) * 100) : 0
+    // A split wish saves toward the parts still to buy.
+    const parts = partsBreakdown(item)
+    const goal = parts ? parts.openTotal : item.estimated_price ?? 0
+    const hasTarget = goal > 0
+    const percent = hasTarget ? Math.round((item.saved_amount / goal) * 100) : 0
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -50,13 +54,15 @@ export function ContributeForm({ item, onSuccess }: ContributeFormProps) {
             <div className="rounded-[20px] border border-line bg-surface p-4 space-y-3">
                 <div className="flex items-start justify-between">
                     <div>
-                        <p className="text-[11.5px] text-muted-ink">Saved toward {item.name}</p>
+                        <p className="text-[11.5px] text-muted-ink">
+                            {parts ? `Set aside for the rest of ${item.name}` : `Saved toward ${item.name}`}
+                        </p>
                         <p className="text-[22px] font-medium tracking-[-0.02em] text-ink mt-0.5 tabular-nums">
                             {formatCurrency(item.saved_amount)}
                         </p>
                     </div>
                     {hasTarget && (
-                        <p className="text-[11.5px] text-muted-ink tabular-nums">of {formatCurrency(item.estimated_price!)}</p>
+                        <p className="text-[11.5px] text-muted-ink tabular-nums">of {formatCurrency(goal)}</p>
                     )}
                 </div>
                 {hasTarget && (

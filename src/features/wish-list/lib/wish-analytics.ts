@@ -22,7 +22,58 @@ export interface WishProgress {
     ready: boolean
 }
 
+export interface PartsBreakdown {
+    total: number
+    bought: number
+    /** Paid for the parts already bought. */
+    spent: number
+    /** Estimated price of the parts still to buy (unpriced ones count as 0). */
+    openTotal: number
+    /** Parts still to buy that have no price yet. */
+    unpriced: number
+}
+
+/** A split wish's parts in numbers, or null when the wish isn't split. */
+export function partsBreakdown(item: WishListItem): PartsBreakdown | null {
+    const parts = item.parts ?? []
+    if (parts.length === 0) return null
+    let bought = 0, spent = 0, openTotal = 0, unpriced = 0
+    for (const part of parts) {
+        if (part.is_purchased) {
+            bought++
+            spent += part.paid_amount ?? 0
+        } else if (part.estimated_price && part.estimated_price > 0) {
+            openTotal += part.estimated_price
+        } else {
+            unpriced++
+        }
+    }
+    return { total: parts.length, bought, spent, openTotal, unpriced }
+}
+
+/**
+ * A split wish: the goal is what was paid for the bought parts plus the estimate of the
+ * rest, and progress counts both what was spent on parts and what's set aside. Ready once
+ * the savings cover every remaining part and each of them has a price.
+ */
+function splitProgress(item: WishListItem, b: PartsBreakdown): WishProgress {
+    const total = b.spent + b.openTotal
+    const target = total > 0 ? total : null
+    const saved = b.spent + item.saved_amount
+    const remaining = target === null ? null : Math.max(0, b.openTotal - item.saved_amount)
+    return {
+        target,
+        saved,
+        remaining,
+        percent: target ? Math.min(100, Math.round((saved / target) * 100)) : 0,
+        ready: b.unpriced === 0 && remaining === 0,
+    }
+}
+
 export function wishProgress(item: WishListItem): WishProgress {
+    const parts = partsBreakdown(item)
+    if (parts) return splitProgress(item, parts)
+
     if (item.quantity) {
         const savedQty = item.saved_quantity ?? 0
         const price = item.price_per_unit ?? 0

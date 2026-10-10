@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/supabase'
 import { handleError, invalidatesOnWrite, sessionUser, isMissingFunction, NULL_ARG, type ServiceResult, SIGNED_OUT_MESSAGE } from './_base'
-import type { WishListItem } from '@/types/'
+import type { WishListItem, WishPart } from '@/types/'
 
 export type WishListPurchased = WishListItem & {
     purchase: { date: string; amount: number } | null
@@ -8,21 +8,42 @@ export type WishListPurchased = WishListItem & {
 import { transactionsService } from './transactions.service'
 import { payPeriodsService } from './pay-periods.service'
 
+/**
+ * True when wish_parts isn't there, i.e. its migration hasn't been run: PostgREST can't
+ * embed it (PGRST200) or find it (PGRST205), or Postgres has no such table (42P01).
+ */
+const isMissingParts = (error: { code?: string } | null) =>
+    error?.code === 'PGRST200' || error?.code === 'PGRST205' || error?.code === '42P01'
+
+/** Parts in the order they were listed. */
+function withSortedParts<T extends WishListItem>(items: T[]): T[] {
+    for (const item of items) {
+        item.parts?.sort((a, b) => a.position - b.position || a.created_at.localeCompare(b.created_at))
+    }
+    return items
+}
+
+const PARTS_MIGRATION_MESSAGE = 'Splitting a wish needs the latest database update (wish_parts migration).'
+
 export const wishListService = invalidatesOnWrite({
     async getAll(): Promise<ServiceResult<WishListItem[]>> {
         try {
             const user = await sessionUser()
             if (!user) throw new Error(SIGNED_OUT_MESSAGE)
 
-            const { data, error } = await supabase
+            const query = (select: string) => supabase
                 .from('wish_list')
-                .select('*')
+                .select(select)
                 .eq('user_id', user.id)
                 .eq('is_purchased', false)
                 .order('created_at', { ascending: false })
 
+            let { data, error } = await query('*, parts:wish_parts(*)')
+            // Before the wish_parts migration, wishes still load, just without parts.
+            if (isMissingParts(error)) ({ data, error } = await query('*'))
+
             if (error) throw error
-            return { data, error: null }
+            return { data: withSortedParts((data ?? []) as unknown as WishListItem[]), error: null }
         } catch (err) {
             return { data: null, error: handleError(err) }
         }
@@ -34,17 +55,89 @@ export const wishListService = invalidatesOnWrite({
             const user = await sessionUser()
             if (!user) throw new Error(SIGNED_OUT_MESSAGE)
 
-            const { data, error } = await supabase
+            const query = (select: string) => supabase
                 .from('wish_list')
-                // transactions links to wish_list twice, so name the FK to embed through.
-                .select('*, purchase:transactions!wish_list_transaction_id_fkey(date, amount)')
+                .select(select)
                 .eq('user_id', user.id)
                 .eq('is_purchased', true)
                 .order('created_at', { ascending: false })
                 .limit(limit)
 
+            // transactions links to wish_list twice, so name the FK to embed through.
+            const purchase = 'purchase:transactions!wish_list_transaction_id_fkey(date, amount)'
+            let { data, error } = await query(`*, ${purchase}, parts:wish_parts(*)`)
+            if (isMissingParts(error)) ({ data, error } = await query(`*, ${purchase}`))
+
             if (error) throw error
-            return { data: data as WishListPurchased[], error: null }
+            return { data: withSortedParts((data ?? []) as unknown as WishListPurchased[]), error: null }
+        } catch (err) {
+            return { data: null, error: handleError(err) }
+        }
+    },
+
+    /**
+     * Save a wish's parts as listed, all or nothing: new ones (no id) are added, listed
+     * ones updated, and open parts left off the list removed. Bought parts aren't touched;
+     * leaving nothing to buy once some are bought finishes the wish.
+     */
+    async saveParts(item: WishListItem, parts: { id?: string; name: string; estimated_price: number | null }[]): Promise<ServiceResult<WishListItem>> {
+        try {
+            const { data, error } = await supabase.rpc('save_wish_parts', {
+                p_wish_id: item.id,
+                p_parts: parts.map(p => ({ id: p.id ?? null, name: p.name.trim(), estimated_price: p.estimated_price })),
+            })
+            if (isMissingFunction(error)) throw new Error(PARTS_MIGRATION_MESSAGE)
+            if (error) throw error
+            return { data, error: null }
+        } catch (err) {
+            return { data: null, error: handleError(err) }
+        }
+    },
+
+    /**
+     * Buy one part of a split wish. Recorded, it's an expense linked to the wish; not
+     * recorded, the part is only marked bought (it was paid for before being tracked).
+     */
+    async buyPart(
+        item: WishListItem,
+        part: WishPart,
+        input:
+            | { record: true; amount: number; account_id: string; category_id?: string; date: string }
+            | { record: false; amount: number; date: string },
+    ): Promise<ServiceResult<WishListItem>> {
+        try {
+            let periodId = NULL_ARG
+            if (input.record) {
+                const { data: period, error: periodError } = await payPeriodsService.getActive()
+                if (periodError || !period) throw new Error('No active period found')
+                periodId = period.id
+            }
+
+            const { data, error } = await supabase.rpc('buy_wish_part', {
+                p_part_id: part.id,
+                p_amount: input.amount,
+                p_record: input.record,
+                p_account_id: input.record ? input.account_id : NULL_ARG,
+                p_category_id: (input.record && input.category_id) || NULL_ARG,
+                p_date: input.date,
+                p_pay_period_id: periodId,
+                p_note: `Buy from wishlist: ${item.name} — ${part.name}`,
+            })
+            if (isMissingFunction(error)) throw new Error(PARTS_MIGRATION_MESSAGE)
+            if (error) throw error
+            return { data, error: null }
+        } catch (err) {
+            return { data: null, error: handleError(err) }
+        }
+    },
+
+    /** Undo a part's purchase; a recorded one's expense is deleted with it. */
+    async undoPart(part: WishPart): Promise<ServiceResult<WishListItem>> {
+        try {
+            const { data, error } = await supabase.rpc('undo_wish_part', { p_part_id: part.id })
+            if (isMissingFunction(error)) throw new Error(PARTS_MIGRATION_MESSAGE)
+            if (error) throw error
+            return { data, error: null }
         } catch (err) {
             return { data: null, error: handleError(err) }
         }

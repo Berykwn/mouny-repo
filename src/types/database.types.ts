@@ -639,6 +639,59 @@ export type Database = {
           },
         ]
       }
+      wish_parts: {
+        Row: {
+          created_at: string
+          estimated_price: number | null
+          from_saved: number
+          id: string
+          is_purchased: boolean
+          name: string
+          paid_amount: number | null
+          position: number
+          purchased_on: string | null
+          transaction_id: string | null
+          user_id: string
+          wish_id: string
+        }
+        Insert: {
+          created_at?: string
+          estimated_price?: number | null
+          from_saved?: number
+          id?: string
+          is_purchased?: boolean
+          name: string
+          paid_amount?: number | null
+          position?: number
+          purchased_on?: string | null
+          transaction_id?: string | null
+          user_id?: string
+          wish_id: string
+        }
+        Update: {
+          created_at?: string
+          estimated_price?: number | null
+          from_saved?: number
+          id?: string
+          is_purchased?: boolean
+          name?: string
+          paid_amount?: number | null
+          position?: number
+          purchased_on?: string | null
+          transaction_id?: string | null
+          user_id?: string
+          wish_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wish_parts_wish_id_fkey"
+            columns: ["wish_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "wish_list"
+            referencedColumns: ["id", "user_id"]
+          },
+        ]
+      }
     }
     Views: {
       active_period_summary: {
@@ -736,6 +789,25 @@ export type Database = {
           unit: string | null
           user_id: string
         }
+        SetofOptions: {
+          from: "*"
+          to: "wish_list"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      buy_wish_part: {
+        Args: {
+          p_account_id: string
+          p_amount: number
+          p_category_id: string
+          p_date: string
+          p_note: string
+          p_part_id: string
+          p_pay_period_id: string
+          p_record: boolean
+        }
+        Returns: Database["public"]["Tables"]["wish_list"]["Row"]
         SetofOptions: {
           from: "*"
           to: "wish_list"
@@ -972,6 +1044,16 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      save_wish_parts: {
+        Args: { p_parts: Json; p_wish_id: string }
+        Returns: Database["public"]["Tables"]["wish_list"]["Row"]
+        SetofOptions: {
+          from: "*"
+          to: "wish_list"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       save_push_subscription: {
         Args: {
           p_auth: string
@@ -993,6 +1075,16 @@ export type Database = {
           p_to_id: string
         }
         Returns: string
+      }
+      undo_wish_part: {
+        Args: { p_part_id: string }
+        Returns: Database["public"]["Tables"]["wish_list"]["Row"]
+        SetofOptions: {
+          from: "*"
+          to: "wish_list"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
     }
     Enums: {

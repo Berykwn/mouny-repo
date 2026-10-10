@@ -5,7 +5,7 @@ import SparkleIcon from '~icons/ph/sparkle-duotone'
 import { cn } from '@/lib/utils'
 import { ProgressBar } from '@/components/progress-bar'
 import {
-  formatMonthYear, sortWishes, targetPlan, wishProgress,
+  formatMonthYear, partsBreakdown, sortWishes, targetPlan, wishProgress,
   type RoadmapStop, type SavingsPace, type TargetPlan,
 } from '../lib/wish-analytics'
 import { WishTile } from './wish-tile'
@@ -89,6 +89,7 @@ export function WishListItems({ items, roadmap, pace, onOpen }: WishListItemsPro
       <div className="grid gap-3 sm:grid-cols-2">
         {filtered.map((item) => {
           const { target, remaining, percent, ready } = wishProgress(item)
+          const parts = partsBreakdown(item)
           const stop = stopById.get(item.id)
           const meta = ready ? null : metaLine(targetPlan(item, stop, pace), stop)
 
@@ -109,7 +110,7 @@ export function WishListItems({ items, roadmap, pace, onOpen }: WishListItemsPro
                   {ready ? (
                     <p className="mt-0.5 flex items-center gap-1 text-[16px] font-medium tracking-[-0.01em] text-positive">
                       <SparkleIcon className="w-4 h-4" />
-                      {item.quantity ? 'Target reached' : 'Ready to buy'}
+                      {item.quantity ? 'Target reached' : parts ? 'Ready to buy the rest' : 'Ready to buy'}
                     </p>
                   ) : remaining !== null ? (
                     <p className="mt-0.5 text-[16px] font-medium tracking-[-0.01em] text-ink tabular-nums truncate">
@@ -130,7 +131,9 @@ export function WishListItems({ items, roadmap, pace, onOpen }: WishListItemsPro
                     className="mt-3.5"
                   />
                   <div className="mt-2 flex items-center justify-between gap-2 text-[11px]">
-                    <span className="text-muted-ink tabular-nums shrink-0">{percent}% saved</span>
+                    <span className="text-muted-ink tabular-nums shrink-0">
+                      {percent}% saved{parts && ` · ${parts.bought}/${parts.total} parts`}
+                    </span>
                     {meta && <span className={cn('truncate', meta.className)}>{meta.text}</span>}
                   </div>
                 </>

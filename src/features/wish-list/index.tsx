@@ -11,10 +11,12 @@ import { WishRoadmap } from './components/wish-roadmap'
 import { WishAchieved } from './components/wish-achieved'
 import { WishEmpty } from './components/wish-empty'
 import { WishDetail } from './components/wish-detail'
+import { WishPartsForm } from './components/wish-parts-form'
 import { buildRoadmap, wishProgress } from './lib/wish-analytics'
 import { wishListService, type WishListPurchased } from '@/services/wish-list.service'
 import { usePeriods, usePurchasedWishes, useSavingsPace, useWishes } from '@/queries'
-import type { WishListItem } from '@/types'
+import { formatCurrency } from '@/lib/helpers'
+import type { WishListItem, WishPart } from '@/types'
 import { toast } from 'sonner'
 import { LoadingContent } from '@/components/loading-content'
 import { PageHeader } from '@/components/page-header'
@@ -41,6 +43,20 @@ export default function WishListPage() {
     const [editingItem, setEditingItem] = useState<WishListItem | null>(null)
     const [deletingId, setDeletingId] = useState<string | null>(null)
     const [deleteLoading, setDeleteLoading] = useState(false)
+    const [partsItem, setPartsItem] = useState<WishListItem | null>(null)
+    const [buyingPart, setBuyingPart] = useState<{ item: WishListItem; part: WishPart } | null>(null)
+    const [undoingPart, setUndoingPart] = useState<WishPart | null>(null)
+    const [undoLoading, setUndoLoading] = useState(false)
+
+    const handleUndoConfirm = async () => {
+        if (!undoingPart) return
+        setUndoLoading(true)
+        const { error } = await wishListService.undoPart(undoingPart)
+        setUndoLoading(false)
+        if (error) { toast.error(error); return }
+        toast.success(`${undoingPart.name} is back on the list.`)
+        setUndoingPart(null)
+    }
 
     const handleDeleteConfirm = async () => {
         if (!deletingId) return
@@ -156,9 +172,52 @@ export default function WishListPage() {
                             onBuy={() => { setBuyingItem(openItem); setOpenItem(null) }}
                             onEdit={() => { setEditingItem(openItem); setOpenItem(null) }}
                             onDelete={() => { setDeletingId(openItem.id); setOpenItem(null) }}
+                            onEditParts={() => { setPartsItem(openItem); setOpenItem(null) }}
+                            onBuyPart={(part) => { setBuyingPart({ item: openItem, part }); setOpenItem(null) }}
+                            onUndoPart={(part) => { setUndoingPart(part); setOpenItem(null) }}
                         />
                     )}
                 </BottomDrawer>
+
+                {/* Parts drawer */}
+                <BottomDrawer
+                    open={!!partsItem}
+                    onClose={() => setPartsItem(null)}
+                    title={partsItem?.parts?.length ? 'Edit Parts' : 'Split into Parts'}
+                >
+                    {partsItem && (
+                        <WishPartsForm item={partsItem} onSuccess={() => setPartsItem(null)} />
+                    )}
+                </BottomDrawer>
+
+                {/* Buy part drawer */}
+                <BottomDrawer
+                    open={!!buyingPart}
+                    onClose={() => setBuyingPart(null)}
+                    title="Buy Part"
+                >
+                    {buyingPart && periodStart && (
+                        <BuyItemForm
+                            item={buyingPart.item}
+                            part={buyingPart.part}
+                            periodStart={periodStart}
+                            onSuccess={() => setBuyingPart(null)}
+                        />
+                    )}
+                </BottomDrawer>
+
+                {/* Undo part confirm */}
+                <ConfirmDrawer
+                    open={!!undoingPart}
+                    title="Undo Purchase"
+                    description={undoingPart?.transaction_id
+                        ? `Mark ${undoingPart.name} as not bought? Its expense of ${formatCurrency(undoingPart.paid_amount ?? 0)} is deleted and the money goes back to the account.`
+                        : `Mark ${undoingPart?.name ?? 'this part'} as not bought?`}
+                    confirmLabel="Undo"
+                    loading={undoLoading}
+                    onConfirm={handleUndoConfirm}
+                    onClose={() => setUndoingPart(null)}
+                />
 
                 {/* Edit drawer */}
                 <BottomDrawer

@@ -35,6 +35,7 @@ const PRIORITIES: { value: WishListPriority; label: string; style: string }[] = 
 
 export function WishListForm({ payPeriodId, item, defaultName, onSuccess }: WishListFormProps) {
     const isEdit = !!item
+    const isSplit = !!item?.parts?.length
     const itemUnit = item?.unit ?? null
     const presetUnit = itemUnit && (WISH_LIST_UNITS as readonly string[]).includes(itemUnit) ? itemUnit : null
 
@@ -80,7 +81,9 @@ export function WishListForm({ payPeriodId, item, defaultName, onSuccess }: Wish
         if (targetDate || item?.target_date) payload.target_date = targetDate
         if (icon || item?.icon) payload.icon = icon
 
-        if (trackByQuantity) {
+        if (isSplit) {
+            // The price comes from the parts; leave the pricing columns as they are.
+        } else if (trackByQuantity) {
             const resolvedUnit = unit === 'custom' ? customUnit.trim() : unit
 
             if (quantityNum <= 0) {
@@ -263,111 +266,119 @@ export function WishListForm({ payPeriodId, item, defaultName, onSuccess }: Wish
                 <p className="text-[11px] text-muted-ink">We’ll tell you how much to set aside each period to make it.</p>
             </div>
 
-            <div className="flex items-center justify-between rounded-[14px] border border-line p-3 gap-3">
-                <div className="space-y-0.5">
-                    <p className="text-[13px] font-medium text-ink">Track by quantity</p>
-                    <p className="text-[11.5px] text-muted-ink">For items with a fluctuating price, like gold</p>
-                </div>
-                <Switch
-                    checked={trackByQuantity}
-                    onCheckedChange={setTrackByQuantity}
-                    disabled={loading}
-                    className="data-[state=checked]:bg-brand"
-                />
-            </div>
-
-            {trackByQuantity ? (
-                <div className="space-y-3">
-                    <div className="flex gap-3">
-                        <div className="space-y-2 flex-1">
-                            <Label className={FIELD_LABEL}>Quantity</Label>
-                            <Input
-                                type="text"
-                                inputMode="decimal"
-                                placeholder="0"
-                                value={quantity}
-                                onChange={(e) => setQuantity(toDecimalInput(e.target.value))}
-                                disabled={loading}
-                                className="h-12 rounded-[14px] border-line text-[13px] font-mono"
-                            />
+            {isSplit ? (
+                <p className="rounded-[14px] bg-surface-soft border border-line-soft px-3 py-2.5 text-[12px] text-muted-ink">
+                    Split into {item!.parts!.length} parts — its price comes from the parts. Change them from the wish’s details.
+                </p>
+            ) : (
+                <>
+                    <div className="flex items-center justify-between rounded-[14px] border border-line p-3 gap-3">
+                        <div className="space-y-0.5">
+                            <p className="text-[13px] font-medium text-ink">Track by quantity</p>
+                            <p className="text-[11.5px] text-muted-ink">For items with a fluctuating price, like gold</p>
                         </div>
-                        <div className="space-y-2 flex-1">
-                            <Label className={FIELD_LABEL}>Unit</Label>
-                            <div className="flex flex-wrap gap-1.5">
-                                {[...WISH_LIST_UNITS, 'custom'].map((u) => (
-                                    <button
-                                        key={u}
-                                        type="button"
-                                        onClick={() => setUnit(u)}
+                        <Switch
+                            checked={trackByQuantity}
+                            onCheckedChange={setTrackByQuantity}
+                            disabled={loading}
+                            className="data-[state=checked]:bg-brand"
+                        />
+                    </div>
+
+                    {trackByQuantity ? (
+                        <div className="space-y-3">
+                            <div className="flex gap-3">
+                                <div className="space-y-2 flex-1">
+                                    <Label className={FIELD_LABEL}>Quantity</Label>
+                                    <Input
+                                        type="text"
+                                        inputMode="decimal"
+                                        placeholder="0"
+                                        value={quantity}
+                                        onChange={(e) => setQuantity(toDecimalInput(e.target.value))}
                                         disabled={loading}
-                                        className={cn(
-                                            'px-2.5 py-1.5 rounded-[8px] text-[12px] font-medium border transition-all capitalize',
-                                            unit === u
-                                                ? 'bg-brand-tint text-brand-ink border-transparent'
-                                                : 'border-line text-muted-ink hover:text-ink'
-                                        )}
-                                    >
-                                        {u === 'custom' ? 'Other' : u}
-                                    </button>
-                                ))}
+                                        className="h-12 rounded-[14px] border-line text-[13px] font-mono"
+                                    />
+                                </div>
+                                <div className="space-y-2 flex-1">
+                                    <Label className={FIELD_LABEL}>Unit</Label>
+                                    <div className="flex flex-wrap gap-1.5">
+                                        {[...WISH_LIST_UNITS, 'custom'].map((u) => (
+                                            <button
+                                                key={u}
+                                                type="button"
+                                                onClick={() => setUnit(u)}
+                                                disabled={loading}
+                                                className={cn(
+                                                    'px-2.5 py-1.5 rounded-[8px] text-[12px] font-medium border transition-all capitalize',
+                                                    unit === u
+                                                        ? 'bg-brand-tint text-brand-ink border-transparent'
+                                                        : 'border-line text-muted-ink hover:text-ink'
+                                                )}
+                                            >
+                                                {u === 'custom' ? 'Other' : u}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {unit === 'custom' && (
+                                <Input
+                                    placeholder="Unit name (e.g. keping)"
+                                    value={customUnit}
+                                    onChange={(e) => setCustomUnit(e.target.value)}
+                                    disabled={loading}
+                                    className="h-12 rounded-[14px] border-line text-[13px]"
+                                />
+                            )}
+
+                            <div className="space-y-2">
+                                <Label className={FIELD_LABEL}>Price per unit</Label>
+                                <div className="relative">
+                                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[13px] text-muted-ink font-medium">
+                                        Rp
+                                    </span>
+                                    <Input
+                                        type="text"
+                                        inputMode="numeric"
+                                        placeholder="0"
+                                        value={formatCurrencyInput(pricePerUnit)}
+                                        onChange={(e) => setPricePerUnit(e.target.value.replace(/\D/g, ''))}
+                                        className="pl-10 h-12 rounded-[14px] border-line text-[13px] font-mono"
+                                        disabled={loading}
+                                    />
+                                </div>
+                            </div>
+
+                            {computedTarget > 0 && (
+                                <p className="text-[12px] text-muted-ink">
+                                    Target: <span className="font-medium text-ink">{formatCurrency(computedTarget)}</span>
+                                </p>
+                            )}
+                        </div>
+                    ) : (
+                        <div className="space-y-2">
+                            <Label className={FIELD_LABEL}>
+                                Estimated price <span className="normal-case tracking-normal font-normal">(optional)</span>
+                            </Label>
+                            <div className="relative">
+                                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[13px] text-muted-ink font-medium">
+                                    Rp
+                                </span>
+                                <Input
+                                    type="text"
+                                    inputMode="numeric"
+                                    placeholder="0"
+                                    value={formatCurrencyInput(price)}
+                                    onChange={(e) => setPrice(e.target.value.replace(/\D/g, ''))}
+                                    className="pl-10 h-12 rounded-[14px] border-line text-[13px] font-mono"
+                                    disabled={loading}
+                                />
                             </div>
                         </div>
-                    </div>
-
-                    {unit === 'custom' && (
-                        <Input
-                            placeholder="Unit name (e.g. keping)"
-                            value={customUnit}
-                            onChange={(e) => setCustomUnit(e.target.value)}
-                            disabled={loading}
-                            className="h-12 rounded-[14px] border-line text-[13px]"
-                        />
                     )}
-
-                    <div className="space-y-2">
-                        <Label className={FIELD_LABEL}>Price per unit</Label>
-                        <div className="relative">
-                            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[13px] text-muted-ink font-medium">
-                                Rp
-                            </span>
-                            <Input
-                                type="text"
-                                inputMode="numeric"
-                                placeholder="0"
-                                value={formatCurrencyInput(pricePerUnit)}
-                                onChange={(e) => setPricePerUnit(e.target.value.replace(/\D/g, ''))}
-                                className="pl-10 h-12 rounded-[14px] border-line text-[13px] font-mono"
-                                disabled={loading}
-                            />
-                        </div>
-                    </div>
-
-                    {computedTarget > 0 && (
-                        <p className="text-[12px] text-muted-ink">
-                            Target: <span className="font-medium text-ink">{formatCurrency(computedTarget)}</span>
-                        </p>
-                    )}
-                </div>
-            ) : (
-                <div className="space-y-2">
-                    <Label className={FIELD_LABEL}>
-                        Estimated price <span className="normal-case tracking-normal font-normal">(optional)</span>
-                    </Label>
-                    <div className="relative">
-                        <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[13px] text-muted-ink font-medium">
-                            Rp
-                        </span>
-                        <Input
-                            type="text"
-                            inputMode="numeric"
-                            placeholder="0"
-                            value={formatCurrencyInput(price)}
-                            onChange={(e) => setPrice(e.target.value.replace(/\D/g, ''))}
-                            className="pl-10 h-12 rounded-[14px] border-line text-[13px] font-mono"
-                            disabled={loading}
-                        />
-                    </div>
-                </div>
+                </>
             )}
 
             <div className="space-y-2">

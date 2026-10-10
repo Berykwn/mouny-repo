@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { period, wish } from '@/test/fixtures'
+import { part, period, wish } from '@/test/fixtures'
 import { EMPTY_PERIOD_SUMMARY } from '@/lib/period-summary'
-import { buildRoadmap, pacePeriods, savingsPace, sortWishes, targetPlan, wishProgress } from './wish-analytics'
+import { buildRoadmap, pacePeriods, partsBreakdown, savingsPace, sortWishes, targetPlan, wishProgress } from './wish-analytics'
 
 const TODAY = '2026-10-01'
 const pace = { perPeriod: 1_500_000, periodDays: 30, perDay: 50_000, basedOn: 3 }
@@ -24,6 +24,32 @@ describe('wishProgress', () => {
         expect(p.remaining).toBe(7_500_008)
         expect(p.percent).toBe(25)
         expect(wishProgress(wish({ quantity: 10, saved_quantity: 10, price_per_unit: 1 })).ready).toBe(true)
+    })
+
+    describe('split into parts', () => {
+        const pc = (saved_amount: number, parts: Parameters<typeof part>[0][]) =>
+            wish({ estimated_price: 99_999_999, saved_amount, parts: parts.map(part) })
+
+        it('counts what was paid for bought parts plus the estimate of the rest, ignoring the wish price', () => {
+            const item = pc(1_000_000, [
+                { name: 'Motherboard', is_purchased: true, paid_amount: 2_500_000 },
+                { name: 'CPU', is_purchased: true, paid_amount: 3_500_000 },
+                { name: 'GPU', estimated_price: 8_000_000 },
+            ])
+            expect(wishProgress(item)).toEqual({ target: 14_000_000, saved: 7_000_000, remaining: 7_000_000, percent: 50, ready: false })
+            expect(partsBreakdown(item)).toEqual({ total: 3, bought: 2, spent: 6_000_000, openTotal: 8_000_000, unpriced: 0 })
+        })
+
+        it('is ready once savings cover every remaining part, and only if each has a price', () => {
+            expect(wishProgress(pc(500_000, [{ name: 'RAM', estimated_price: 500_000 }])).ready).toBe(true)
+            const unpriced = pc(500_000, [{ name: 'RAM', estimated_price: 500_000 }, { name: 'Case' }])
+            expect(wishProgress(unpriced)).toMatchObject({ remaining: 0, ready: false })
+            expect(partsBreakdown(unpriced)?.unpriced).toBe(1)
+        })
+
+        it('has no target while no part has a price', () => {
+            expect(wishProgress(pc(0, [{ name: 'Case' }]))).toMatchObject({ target: null, remaining: null })
+        })
     })
 })
 

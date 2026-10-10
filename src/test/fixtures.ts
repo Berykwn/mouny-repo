@@ -1,4 +1,4 @@
-import type { DebtWithAccount, PayPeriod, TransactionWithDetails, WishListItem } from '@/types'
+import type { DebtWithAccount, PayPeriod, TransactionWithDetails, WishListItem, WishPart } from '@/types'
 
 let seq = 0
 const nextId = (prefix: string) => `${prefix}-${++seq}`
@@ -70,6 +70,24 @@ export function wish(overrides: Partial<WishListItem> = {}): WishListItem {
         is_purchased: false,
         target_date: null,
         icon: null,
+        transaction_id: null,
+        created_at: '2026-09-01T00:00:00Z',
+        ...overrides,
+    }
+}
+
+export function part(overrides: Partial<WishPart> = {}): WishPart {
+    return {
+        id: nextId('part'),
+        user_id: 'user-1',
+        wish_id: 'wish-1',
+        name: 'Part',
+        estimated_price: null,
+        position: 0,
+        is_purchased: false,
+        paid_amount: null,
+        from_saved: 0,
+        purchased_on: null,
         transaction_id: null,
         created_at: '2026-09-01T00:00:00Z',
         ...overrides,

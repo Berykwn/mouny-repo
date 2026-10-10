@@ -36,7 +36,9 @@ export type QuickTransactionWithCategory = QuickTransaction & {
 
 export type NotificationSettings = Database['public']['Tables']['notification_settings']['Row']
 
-export type WishListItem =Database['public']['Tables']['wish_list']['Row']
+export type WishPart = Database['public']['Tables']['wish_parts']['Row']
+/** A wish, with its parts when it's been split (see wish_parts). */
+export type WishListItem = Database['public']['Tables']['wish_list']['Row'] & { parts?: WishPart[] }
 export type WishListInsert = Database['public']['Tables']['wish_list']['Insert']
 export type WishListUpdate = Database['public']['Tables']['wish_list']['Update']
 
