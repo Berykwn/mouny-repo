@@ -110,7 +110,7 @@ export function KindSplitCard({ expenses, totalIncome, isClosed }: KindSplitCard
                             <div className="flex items-center justify-between gap-2">
                                 <p className="flex items-center gap-1.5 text-[11px] text-muted-ink">
                                     <span className="flex -space-x-0.5">
-                                        {row.colors.map(c => <span key={c} className="h-2 w-2 rounded-full ring-1 ring-white" style={{ backgroundColor: c }} />)}
+                                        {row.colors.map(c => <span key={c} className="h-2 w-2 rounded-full ring-1 ring-surface" style={{ backgroundColor: c }} />)}
                                     </span>
                                     {row.label}
                                 </p>

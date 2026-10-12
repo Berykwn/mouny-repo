@@ -73,6 +73,8 @@
   --tint-violet: #7c3aed;
   --tint-pink: #db2777;
   --tint-teal: #0f766e;
+  /* Money out in charts: warm, apart from the income green and the negative red. */
+  --chart-out: #c9977a;
 }
 
 .dark {
@@ -139,6 +141,7 @@
   --tint-violet: #a78bfa;
   --tint-pink: #f472b6;
   --tint-teal: #2dd4bf;
+  --chart-out: #d9aa8e;
 }
 
 @theme inline {
@@ -188,6 +191,7 @@
   --color-ink: var(--ink);
   --color-muted-ink: var(--muted-ink);
   --color-subtle-ink: var(--subtle-ink);
+  --color-chart-out: var(--chart-out);
   --color-line: var(--line);
   --color-line-soft: var(--line-soft);
   --color-surface-soft: var(--surface-soft);

@@ -1,12 +1,11 @@
-import { useMemo, type ElementType, type ReactNode, type SVGProps } from 'react'
+import type { ElementType, ReactNode, SVGProps } from 'react'
 import TrendingUp from '~icons/ph/trend-up-duotone'
 import TrendingDown from '~icons/ph/trend-down-duotone'
 import PiggyBankIcon from '~icons/ph/piggy-bank-duotone'
 import { formatCurrency } from '@/lib/helpers'
 import { cn } from '@/lib/utils'
-import { withSavingsMoves } from '@/lib/savings-moves'
+import { diffPct, type ComparableSpending } from '@/lib/comparable-spending'
 import type { PeriodSummary } from '@/lib/period-summary'
-import type { TransactionWithDetails } from '@/types'
 
 interface PeriodTotalsProps {
     totalIncome: number
@@ -14,18 +13,16 @@ interface PeriodTotalsProps {
     totalSpending: number
     totalSavings: number
     previousSummary: PeriodSummary | null
+    /** The spending that stands against the last period (a projection mid-period); null while it's too early. */
+    comparable: ComparableSpending | null
     className?: string
 }
 
 /** Income, spent and to-savings tiles, each against the last period. */
-export function PeriodTotals({ totalIncome, totalSpending, totalSavings, previousSummary, className }: PeriodTotalsProps) {
+export function PeriodTotals({ totalIncome, totalSpending, totalSavings, previousSummary, comparable, className }: PeriodTotalsProps) {
     // Spending vs spending — the previous period's savings mustn't count as its spend.
-    const expenseDiffPct = previousSummary && previousSummary.spending > 0
-        ? Math.round(((totalSpending - previousSummary.spending) / previousSummary.spending) * 100)
-        : null
-    const incomeDiffPct = previousSummary && previousSummary.income > 0
-        ? Math.round(((totalIncome - previousSummary.income) / previousSummary.income) * 100)
-        : null
+    const expenseDiffPct = comparable ? diffPct(comparable.spending, previousSummary?.spending) : null
+    const incomeDiffPct = diffPct(totalIncome, previousSummary?.income)
 
     return (
         // Rows on a phone, where three full IDR amounts can't sit side by side.
@@ -48,7 +45,9 @@ export function PeriodTotals({ totalIncome, totalSpending, totalSavings, previou
                 valueClassName="text-negative"
                 label={totalSavings > 0 ? 'Spent' : 'Expense'}
                 value={formatCurrency(totalSpending)}
-                diff={previousSummary ? <DiffValue pct={expenseDiffPct} goodWhenUp={false} /> : null}
+                diff={!previousSummary ? null
+                    : !comparable ? <span className="text-muted-ink">too early to compare</span>
+                        : <DiffValue pct={expenseDiffPct} goodWhenUp={false} onPace={comparable.projected} />}
             />
             {totalSavings > 0 && (
                 <SummaryCell
@@ -67,21 +66,11 @@ export function PeriodTotals({ totalIncome, totalSpending, totalSavings, previou
 }
 
 /** The same tiles as a card of their own, for the phone's analytics section. */
-export function PeriodTotalsCard({ transactions, previousSummary }: { transactions: TransactionWithDetails[]; previousSummary: PeriodSummary | null }) {
-    const totals = useMemo(() => {
-        // Money moved into savings accounts counts as saved, like a savings expense.
-        const rows = withSavingsMoves(transactions)
-        const totalIncome = rows.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0)
-        const expenses = rows.filter(t => t.type === 'expense')
-        const totalExpense = expenses.reduce((s, t) => s + t.amount, 0)
-        const totalSpending = expenses.filter(t => !t.category?.is_savings).reduce((s, t) => s + t.amount, 0)
-        return { totalIncome, totalSpending, totalSavings: totalExpense - totalSpending }
-    }, [transactions])
-
+export function PeriodTotalsCard(props: Omit<PeriodTotalsProps, 'className'>) {
     return (
         <div className="card p-4">
             <p className="text-[11px] uppercase tracking-[.14em] text-muted-ink mb-3">This period</p>
-            <PeriodTotals {...totals} previousSummary={previousSummary} />
+            <PeriodTotals {...props} />
         </div>
     )
 }
@@ -101,7 +90,7 @@ function SummaryCell({ icon: Icon, tone, valueClassName, label, value, diff }: S
     return (
         <div className="bg-surface-soft p-2.5 min-w-0 flex items-center gap-2.5">
             <span className={cn('h-9 w-9 shrink-0 rounded-[11px] flex items-center justify-center', tone)}>
-                <Icon className="h-5 w-5" />
+                <Icon aria-hidden="true" className="h-5 w-5" />
             </span>
             <div className="min-w-0 flex-1">
                 <p className="text-[11px] text-muted-ink leading-none">{label}</p>
@@ -112,15 +101,16 @@ function SummaryCell({ icon: Icon, tone, valueClassName, label, value, diff }: S
     )
 }
 
-function DiffValue({ pct, goodWhenUp }: { pct: number | null; goodWhenUp: boolean }) {
+/** onPace: the change is where this period's pace ends it, not what's happened so far. */
+function DiffValue({ pct, goodWhenUp, onPace = false }: { pct: number | null; goodWhenUp: boolean; onPace?: boolean }) {
     if (pct === null) return <span className="text-muted-ink">—</span>
-    if (pct === 0) return <span className="text-muted-ink">same as last</span>
+    if (pct === 0) return <span className="text-muted-ink">{onPace ? 'on pace to match last' : 'same as last'}</span>
     const isUp = pct > 0
     const Icon = isUp ? TrendingUp : TrendingDown
     return (
         <span className={cn('inline-flex items-center gap-1', isUp === goodWhenUp ? 'text-positive' : 'text-negative')}>
-            <Icon className="h-3 w-3" />
-            {isUp ? '+' : ''}{pct}% vs last
+            <Icon aria-hidden="true" className="h-3 w-3" />
+            {onPace && 'on pace '}{isUp ? '+' : ''}{pct}% vs last
         </span>
     )
 }

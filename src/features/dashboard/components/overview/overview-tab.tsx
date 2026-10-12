@@ -1,9 +1,10 @@
 import { useMemo } from 'react'
 import { useAccounts, useDebts, usePeriods, usePeriodSummary, usePeriodTransactions } from '@/queries'
 import { getDaysBetween } from '@/lib/helpers'
-import { LoadingContent } from '@/components/loading-content'
+import { OverviewSkeleton } from './overview-skeleton'
 import { OverviewData } from '@/types/overview.types'
 import { usePeriodStats } from '@/hooks/use-period-stats'
+import { comparableSpending } from '@/lib/comparable-spending'
 import { useBillReserve } from '@/hooks/use-bill-reserve'
 import { BillsDueCard } from '@/features/bills/components/bills-due-card'
 import { QuickAddCard } from '@/features/quick-transactions/components/quick-add-card'
@@ -19,7 +20,7 @@ import { AnalyticsSection } from '../analytics/analytics-section'
  * Each part refetches on its own after a write, and a failed background refetch keeps
  * the last data on screen.
  */
-function useOverviewData(periodId: string): { data: OverviewData | null; loading: boolean } {
+function useOverviewData(periodId: string): { data: OverviewData | null; loading: boolean; debtsFailed: boolean; retry: () => void } {
     const periodsQuery = usePeriods()
     const txsQuery = usePeriodTransactions(periodId)
     const accountsQuery = useAccounts()
@@ -61,7 +62,15 @@ function useOverviewData(periodId: string): { data: OverviewData | null; loading
     }, [txsQuery.data, accountsQuery.data, debtsQuery.data, previousQuery.data, currentPeriod, prevPeriod, allList])
 
     const loading = periodsQuery.isPending || txsQuery.isPending || accountsQuery.isPending
-    return { data, loading }
+    const retry = () => {
+        void periodsQuery.refetch()
+        void txsQuery.refetch()
+        void accountsQuery.refetch()
+        void debtsQuery.refetch()
+    }
+    // Debts only feed the health score, so their failure shows there, not as a failed page.
+    const debtsFailed = debtsQuery.isError && !debtsQuery.data
+    return { data, loading, debtsFailed, retry }
 }
 
 export function OverviewTransaction({
@@ -71,7 +80,7 @@ export function OverviewTransaction({
     periodId: string
     isActivePeriod: boolean
 }) {
-    const { data, loading } = useOverviewData(periodId)
+    const { data, loading, debtsFailed, retry } = useOverviewData(periodId)
     const reserve = useBillReserve(data?.period, data?.transactions)
 
     const stats = usePeriodStats({
@@ -80,12 +89,23 @@ export function OverviewTransaction({
         fallbackTotalDays: data?.fallbackTotalDays ?? null,
         reservedBills: reserve.reserved,
     })
+    // Every "vs last period" on the overview compares this, so they can't disagree.
+    const comparable = comparableSpending(stats)
 
-    if (loading) return <LoadingContent />
+    if (loading) return <OverviewSkeleton />
     if (!data) return (
-        <section className='card p-4 mt-1.5'>
-            <h2 className='text-[13px] font-medium text-ink'>Failed to load period data.</h2>
-            <p className='text-[11.5px] text-muted-ink mt-1'>Please try again.</p>
+        <section role='alert' className='card p-4 mt-1.5 flex items-center justify-between gap-3'>
+            <div className='min-w-0'>
+                <h2 className='text-[13px] font-medium text-ink'>Failed to load period data.</h2>
+                <p className='text-[11.5px] text-muted-ink mt-1'>Check your connection and try again.</p>
+            </div>
+            <button
+                type='button'
+                onClick={retry}
+                className='shrink-0 h-9 rounded-[10px] bg-brand px-4 text-[12.5px] font-semibold text-white transition-colors hover:bg-brand/90'
+            >
+                Retry
+            </button>
         </section>
     )
 
@@ -107,6 +127,9 @@ export function OverviewTransaction({
                         balance={isActivePeriod ? data.totalBalance : (closingBalance ?? data.totalBalance)}
                         isActivePeriod={isActivePeriod}
                         totalDebt={data.totalDebt}
+                        comparable={comparable}
+                        debtsFailed={debtsFailed}
+                        onRetry={retry}
                     />
 
                     {/* On mobile the bottom nav's + button already adds a transaction. */}
@@ -148,7 +171,7 @@ export function OverviewTransaction({
                 </div>
             </div>
 
-            <AnalyticsSection data={data} />
+            <AnalyticsSection data={data} stats={stats} comparable={comparable} />
         </div>
     )
 }

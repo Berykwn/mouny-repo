@@ -8,14 +8,26 @@ describe('calculateHealthScore', () => {
         const r = calculateHealthScore(base)
         expect(r.score).toBe(100)
         expect(r.label).toBe('Excellent')
-        expect(r.periodReasons).toEqual(['Savings rate 50%'])
+        expect(r.periodReasons).toEqual(['50% of income unspent'])
         expect(r.overallReasons).toEqual(['No debt'])
     })
 
     it('penalises overspending hardest', () => {
         const r = calculateHealthScore({ ...base, totalSpending: 12_000_000 })
         expect(r.score).toBe(50)
-        expect(r.periodReasons).toContain('Overspent budget')
+        expect(r.periodReasons).toContain('Spent more than income')
+    })
+
+    it('words a low rate as "only"', () => {
+        expect(calculateHealthScore({ ...base, totalSpending: 9_500_000 }).periodReasons).toEqual(['Only 5% of income unspent'])
+    })
+
+    it('says when the period part is a projection', () => {
+        const r = calculateHealthScore({ ...base, expenseDiffPct: 30, projected: true })
+        expect(r.score).toBe(90)
+        expect(r.periodReasons).toEqual(['On pace for 50% of income unspent', 'Spending on pace for +30% vs last'])
+        expect(calculateHealthScore({ ...base, totalSpending: 12_000_000, projected: true }).periodReasons)
+            .toEqual(['On pace to spend more than income'])
     })
 
     it('treats spending with no income as the worst case', () => {
@@ -37,7 +49,7 @@ describe('calculateHealthScore', () => {
         expect(calculateHealthScore({ ...base, expenseDiffPct: 30 }).score).toBe(90)
         const down = calculateHealthScore({ ...base, expenseDiffPct: -15 })
         expect(down.score).toBe(100)
-        expect(down.periodReasons).toContain('Expense down 15% vs last')
+        expect(down.periodReasons).toContain('Spending -15% vs last')
     })
 
     it('never goes below zero', () => {

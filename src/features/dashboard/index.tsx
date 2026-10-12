@@ -5,7 +5,7 @@ import { PeriodPickerDrawer } from '@/components/period-picker-drawer'
 import { OpenPeriodForm } from '@/features/periods/components/open-period-form'
 import { PeriodChip } from '@/features/transactions/components/period-chip'
 import { useSelectedPeriod } from '@/stores/period-store'
-import { LoadingContent } from '@/components/loading-content'
+import { OverviewSkeleton } from './components/overview/overview-skeleton'
 import { useTopBarSlotNode } from '@/contexts/TopBarSlotContext'
 import { OverviewTransaction } from './components/overview/overview-tab'
 import { TodayEmptyState } from './components/overview/today-empty-state'
@@ -36,7 +36,7 @@ export default function DashboardPage() {
             </header>
 
             <section className="px-4 pb-4 pt-2.5 lg:px-0 space-y-4">
-                {periodLoading ? <LoadingContent /> : (
+                {periodLoading ? <OverviewSkeleton /> : (
                     <>
                         {!selectedPeriod && (
                             <TodayEmptyState

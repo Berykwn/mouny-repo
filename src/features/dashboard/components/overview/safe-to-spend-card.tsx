@@ -4,6 +4,8 @@ import { ArrowRight, ChevronDown } from 'lucide-react'
 import { formatCurrency } from '@/lib/helpers'
 import { cn } from '@/lib/utils'
 import { calculateHealthScore } from '@/lib/calculate-health-score'
+import { MIN_PROJECTION_DAYS } from '@/hooks/use-period-stats'
+import { diffPct, type ComparableSpending } from '@/lib/comparable-spending'
 import type { PeriodSummary } from '@/lib/period-summary'
 import { PeriodTotals } from './period-totals'
 
@@ -23,11 +25,16 @@ interface SafeToSpendCardProps {
     isActivePeriod: boolean
     /** Null while debts are still loading or failed: the health score waits rather than guess "no debt". */
     totalDebt: number | null
+    /** What every "vs last period" here compares (a projection mid-period); null while it's too early. */
+    comparable: ComparableSpending | null
+    /** Debts failed to load, so the health score can't be worked out. */
+    debtsFailed?: boolean
+    onRetry?: () => void
 }
 
 /**
  * The overview's headline: what's safe to spend, where the income went, the period's net
- * against the last one, and the financial health score (its reasons open from the ring).
+ * against the last one, and the financial health score (its reasons open from its row).
  */
 export function SafeToSpendCard({
     totalIncome,
@@ -41,6 +48,9 @@ export function SafeToSpendCard({
     balance,
     isActivePeriod,
     totalDebt,
+    comparable,
+    debtsFailed = false,
+    onRetry,
 }: SafeToSpendCardProps) {
     const [reasonsOpen, setReasonsOpen] = useState(false)
     const isNegative = remaining < 0
@@ -49,20 +59,19 @@ export function SafeToSpendCard({
     // Share of income not spent: what's left plus what went into savings.
     const unspent = totalIncome - totalSpending
     const savingsRate = totalIncome > 0 ? (unspent / totalIncome) * 100 : null
-    const unspentDiffAbs = previousSummary ? unspent - previousSummary.unspent : null
-
-    // Spending vs spending — the previous period's savings mustn't count as its spend.
-    const expenseDiffPct = previousSummary && previousSummary.spending > 0
-        ? Math.round(((totalSpending - previousSummary.spending) / previousSummary.spending) * 100)
+    const spending = comparable?.spending ?? null
+    const projected = comparable?.projected ?? false
+    // Unspent by the end of the period against how the last one ended.
+    const unspentDiffAbs = previousSummary && spending !== null
+        ? totalIncome - spending - previousSummary.unspent
         : null
 
-    const health = useMemo(() => totalDebt === null ? null : calculateHealthScore({
-        totalIncome,
-        totalSpending,
-        totalBalance,
-        totalDebt,
-        expenseDiffPct,
-    }), [totalIncome, totalSpending, totalBalance, totalDebt, expenseDiffPct])
+    const health = useMemo(() => {
+        if (totalDebt === null || spending === null) return null
+        // Spending vs spending — the previous period's savings mustn't count as its spend.
+        const expenseDiffPct = diffPct(spending, previousSummary?.spending)
+        return calculateHealthScore({ totalIncome, totalSpending: spending, totalBalance, totalDebt, expenseDiffPct, projected })
+    }, [totalIncome, totalBalance, totalDebt, spending, projected, previousSummary])
 
     const healthColor = !health ? 'var(--line)'
         : health.score >= 80 ? 'var(--positive)'
@@ -105,7 +114,8 @@ export function SafeToSpendCard({
                 </p>
             )}
 
-            <div className="mt-4 flex h-2 w-full gap-[2px] overflow-hidden rounded-full bg-line-soft">
+            {/* The legend below reads out the same amounts. */}
+            <div aria-hidden="true" className="mt-4 flex h-2 w-full gap-[2px] overflow-hidden rounded-full bg-line-soft">
                 {base > 0 && segments.map(s => (
                     <div key={s.key} className="h-full" style={{ width: `${(s.amount / base) * 100}%`, background: s.fill }} />
                 ))}
@@ -113,7 +123,7 @@ export function SafeToSpendCard({
             <div className="mt-2.5 grid grid-cols-2 gap-x-4 gap-y-1.5 text-[11.5px] lg:flex lg:flex-wrap lg:gap-x-5">
                 {segments.map(s => (
                     <span key={s.key} className="flex items-center gap-1.5 min-w-0">
-                        <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: s.fill }} />
+                        <span aria-hidden="true" className="h-2 w-2 shrink-0 rounded-full" style={{ background: s.fill }} />
                         <span className="text-muted-ink truncate">{s.label}</span>
                         <span className="ml-auto font-medium text-ink tabular-nums lg:ml-1">{formatCurrency(s.amount)}</span>
                     </span>
@@ -149,12 +159,13 @@ export function SafeToSpendCard({
                         {savingsRate !== null && (
                             <p className={savingsRate < 0 ? 'text-negative' : 'text-positive'}>
                                 {savingsRate >= 0
-                                    ? `${Math.round(savingsRate)}% of income unspent`
+                                    ? `${Math.round(savingsRate)}% of income unspent${isActivePeriod ? ' so far' : ''}`
                                     : `Overspent by ${Math.abs(Math.round(savingsRate))}% of income`}
                             </p>
                         )}
                         {unspentDiffAbs !== null && (
                             <p className="text-muted-ink">
+                                {projected && 'On pace for '}
                                 <span className={unspentDiffAbs < 0 ? 'text-negative' : 'text-positive'}>
                                     {unspentDiffAbs >= 0 ? '+' : ''}{formatCurrency(unspentDiffAbs)}
                                 </span>
@@ -170,6 +181,7 @@ export function SafeToSpendCard({
                     totalSpending={totalSpending}
                     totalSavings={totalSavings}
                     previousSummary={previousSummary}
+                    comparable={comparable}
                     className="mt-3 hidden lg:grid"
                 />
             </div>
@@ -184,13 +196,13 @@ export function SafeToSpendCard({
                         className="w-full flex items-center gap-3 px-5 py-3 text-left hover:bg-surface-soft transition-colors"
                     >
                         <span className="text-[11px] uppercase tracking-[.14em] text-muted-ink shrink-0">Financial health</span>
-                        <span className="flex-1 h-1.5 rounded-full bg-line-soft overflow-hidden">
+                        <span aria-hidden="true" className="flex-1 h-1.5 rounded-full bg-line-soft overflow-hidden">
                             <span className="block h-full rounded-full" style={{ width: `${health.score}%`, backgroundColor: healthColor }} />
                         </span>
                         <span className="text-[13px] font-semibold tabular-nums shrink-0" style={{ color: healthColor }}>
-                            {health.score} <span className="font-medium">· {health.label}</span>
+                            {health.score}<span className="sr-only"> out of 100</span> <span className="font-medium">· {health.label}</span>
                         </span>
-                        <ChevronDown className={cn('h-4 w-4 shrink-0 text-muted-ink transition-transform', reasonsOpen && 'rotate-180')} />
+                        <ChevronDown aria-hidden="true" className={cn('h-4 w-4 shrink-0 text-muted-ink transition-transform', reasonsOpen && 'rotate-180')} />
                     </button>
                     {reasonsOpen && (
                         <div className="px-5 pb-3.5 -mt-1 space-y-1">
@@ -201,10 +213,28 @@ export function SafeToSpendCard({
                             )}
                             {health.overallReasons.length > 0 && (
                                 <p className="text-[12px] text-ink">
-                                    <span className="text-muted-ink">Overall:</span> {health.overallReasons.join(' · ')}
+                                    {/* Debt and balances are only known as they stand now, even for a past period. */}
+                                    <span className="text-muted-ink">{isActivePeriod ? 'Overall:' : 'Today:'}</span> {health.overallReasons.join(' · ')}
                                 </p>
                             )}
                         </div>
+                    )}
+                </div>
+            )}
+            {!health && (totalDebt !== null || debtsFailed) && (
+                <div className="mt-4 -mx-5 -mb-[22px] border-t border-line-soft flex items-center gap-3 px-5 py-3">
+                    <span className="text-[11px] uppercase tracking-[.14em] text-muted-ink shrink-0">Financial health</span>
+                    {debtsFailed ? (
+                        <span role="alert" className="flex-1 flex items-center justify-end gap-2 text-[12px] text-muted-ink">
+                            Couldn't load debts
+                            {onRetry && (
+                                <button type="button" onClick={onRetry} className="font-medium text-brand-ink underline underline-offset-2">
+                                    Retry
+                                </button>
+                            )}
+                        </span>
+                    ) : (
+                        <span className="flex-1 text-right text-[12px] text-muted-ink">Scored from day {MIN_PROJECTION_DAYS} of the period</span>
                     )}
                 </div>
             )}

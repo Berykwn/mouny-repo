@@ -43,6 +43,7 @@ export function TodayWeekCard({ transactions, periodStart, periodEnd }: TodayWee
                     <button
                         type="button"
                         onClick={() => setTab('today')}
+                        aria-pressed={tab === 'today'}
                         className={cn(
                             'text-[11px] uppercase tracking-[.14em] transition-colors',
                             tab === 'today' ? 'font-semibold text-ink' : 'font-normal text-muted-ink'
@@ -53,6 +54,7 @@ export function TodayWeekCard({ transactions, periodStart, periodEnd }: TodayWee
                     <button
                         type="button"
                         onClick={() => setTab('week')}
+                        aria-pressed={tab === 'week'}
                         className={cn(
                             'text-[11px] uppercase tracking-[.14em] transition-colors',
                             tab === 'week' ? 'font-semibold text-ink' : 'font-normal text-muted-ink'
@@ -62,7 +64,7 @@ export function TodayWeekCard({ transactions, periodStart, periodEnd }: TodayWee
                     </button>
                 </div>
                 <button type="button" onClick={() => navigate('/transactions')} aria-label="View all transactions">
-                    <ArrowRight className="h-[13px] w-[13px] text-muted-ink shrink-0" />
+                    <ArrowRight aria-hidden="true" className="h-[13px] w-[13px] text-muted-ink shrink-0" />
                 </button>
             </div>
 
@@ -78,9 +80,10 @@ export function TodayWeekCard({ transactions, periodStart, periodEnd }: TodayWee
                         type="button"
                         onClick={goToPrev}
                         disabled={!canGoPrev}
+                        aria-label="Previous week"
                         className="p-1 rounded-full disabled:opacity-30 text-muted-ink"
                     >
-                        <ChevronLeft className="h-4 w-4" />
+                        <ChevronLeft aria-hidden="true" className="h-4 w-4" />
                     </button>
                     <p className="text-[11px] text-muted-ink">
                         {formatDateShort(currentWeek.start)} – {formatDateShort(currentWeek.end)}
@@ -89,9 +92,10 @@ export function TodayWeekCard({ transactions, periodStart, periodEnd }: TodayWee
                         type="button"
                         onClick={goToNext}
                         disabled={!canGoNext}
+                        aria-label="Next week"
                         className="p-1 rounded-full disabled:opacity-30 text-muted-ink"
                     >
-                        <ChevronRight className="h-4 w-4" />
+                        <ChevronRight aria-hidden="true" className="h-4 w-4" />
                     </button>
                 </div>
             )}

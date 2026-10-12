@@ -42,7 +42,7 @@ export interface PeriodStats {
 }
 
 /** Days of data needed before pace is extrapolated into projections. */
-const MIN_PROJECTION_DAYS = 3
+export const MIN_PROJECTION_DAYS = 3
 
 /** Calendar days from start to end, both counted (a period's first day is day 1). */
 function inclusiveDays(start: string, end?: string) {

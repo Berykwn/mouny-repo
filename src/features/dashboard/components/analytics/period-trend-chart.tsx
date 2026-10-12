@@ -1,16 +1,24 @@
 import {
   ComposedChart, Bar, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
 } from 'recharts'
+import { Skeleton } from '@/components/ui/skeleton'
 import { formatCurrency, formatShortCurrency } from '@/lib/helpers'
 import type { TrendPoint } from '../../hooks/use-period-trend'
 
 interface PeriodTrendChartProps {
   trend: TrendPoint[]
+  loading?: boolean
+  /** The other periods couldn't be loaded. */
+  failed?: boolean
+  onRetry?: () => void
 }
 
 const INCOME_COLOR = 'var(--brand-ink)'
-const EXPENSE_COLOR = '#c9977a'
+const OUT_COLOR = 'var(--chart-out)'
 const NET_COLOR = 'var(--ink)'
+const TICK = { fontSize: 10.5, fill: 'var(--subtle-ink)' }
+
+const signed = (n: number) => `${n >= 0 ? '+' : '−'}${formatShortCurrency(Math.abs(n))}`
 
 function TrendTooltip({ active, payload, label }: {
   active?: boolean
@@ -31,9 +39,15 @@ function TrendTooltip({ active, payload, label }: {
           <span className="font-medium text-ink">{formatCurrency(p.income)}</span>
         </p>
         <p className="text-[11px] flex items-center justify-between gap-4">
-          <span style={{ color: EXPENSE_COLOR }}>Out</span>
-          <span className="font-medium text-ink">{formatCurrency(p.expense)}</span>
+          <span style={{ color: OUT_COLOR }}>Spent</span>
+          <span className="font-medium text-ink">{formatCurrency(p.expense - p.savings)}</span>
         </p>
+        {p.savings !== 0 && (
+          <p className="text-[11px] flex items-center justify-between gap-4">
+            <span style={{ color: OUT_COLOR }}>Saved</span>
+            <span className="font-medium text-ink">{formatCurrency(p.savings)}</span>
+          </p>
+        )}
         <p className="text-[11px] flex items-center justify-between gap-4 pt-0.5 border-t border-line-soft mt-1">
           <span className="text-muted-ink">Net</span>
           <span className={p.net < 0 ? 'font-medium text-negative' : 'font-medium text-brand-ink'}>
@@ -45,7 +59,22 @@ function TrendTooltip({ active, payload, label }: {
   )
 }
 
-export function PeriodTrendChart({ trend }: PeriodTrendChartProps) {
+export function PeriodTrendChart({ trend, loading = false, failed = false, onRetry }: PeriodTrendChartProps) {
+  if (loading) return <Skeleton className="mt-3 h-[180px] w-full rounded-[14px]" />
+
+  if (failed) {
+    return (
+      <div role="alert" className="flex flex-col items-center justify-center gap-2 text-center py-10 px-4">
+        <p className="text-[13px] text-muted-ink">Couldn't load your other periods.</p>
+        {onRetry && (
+          <button type="button" onClick={onRetry} className="text-[12.5px] font-medium text-brand-ink underline underline-offset-2">
+            Retry
+          </button>
+        )}
+      </div>
+    )
+  }
+
   if (trend.length < 2) {
     return (
       <div className="flex flex-col items-center justify-center text-center py-10 px-4">
@@ -56,21 +85,23 @@ export function PeriodTrendChart({ trend }: PeriodTrendChartProps) {
     )
   }
 
+  const hasSavings = trend.some(t => t.savings !== 0)
+  const nets = trend.map(t => t.net)
+  const summary = `Last ${trend.length} pay periods, ${trend[0].label} to ${trend[trend.length - 1].label}. `
+    + `Net from ${signed(Math.min(...nets))} to ${signed(Math.max(...nets))}; `
+    + `latest ${signed(nets[nets.length - 1])}${trend[trend.length - 1].isCurrent ? ' so far' : ''}.`
+
   return (
     <div>
-      <div style={{ width: '100%', height: 180 }}>
+      {/* The chart is drawn for the eye; the label carries the gist for a screen reader. */}
+      <div role="img" aria-label={summary} style={{ width: '100%', height: 180 }}>
         <ResponsiveContainer>
           <ComposedChart data={trend} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-            <XAxis
-              dataKey="label"
-              axisLine={false}
-              tickLine={false}
-              tick={{ fontSize: 10.5, fill: '#a3a3a3' }}
-            />
+            <XAxis dataKey="label" axisLine={false} tickLine={false} tick={TICK} />
             <YAxis
               axisLine={false}
               tickLine={false}
-              tick={{ fontSize: 10, fill: '#a3a3a3' }}
+              tick={{ ...TICK, fontSize: 10 }}
               tickFormatter={(v: number) => formatShortCurrency(v)}
               width={36}
             />
@@ -82,7 +113,7 @@ export function PeriodTrendChart({ trend }: PeriodTrendChartProps) {
             </Bar>
             <Bar dataKey="expense" name="Out" radius={[3, 3, 0, 0]} barSize={10}>
               {trend.map((d, i) => (
-                <Cell key={i} fill={EXPENSE_COLOR} fillOpacity={d.isCurrent ? 0.55 : 1} />
+                <Cell key={i} fill={OUT_COLOR} fillOpacity={d.isCurrent ? 0.55 : 1} />
               ))}
             </Bar>
             <Line
@@ -97,12 +128,13 @@ export function PeriodTrendChart({ trend }: PeriodTrendChartProps) {
         </ResponsiveContainer>
       </div>
 
-      <div className="flex items-center gap-4 mt-2 px-1">
+      <div aria-hidden="true" className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 px-1">
         <span className="inline-flex items-center gap-1.5 text-[10.5px] text-muted-ink">
           <span className="w-2 h-2 rounded-full" style={{ backgroundColor: INCOME_COLOR }} /> Income
         </span>
         <span className="inline-flex items-center gap-1.5 text-[10.5px] text-muted-ink">
-          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: EXPENSE_COLOR }} /> Expense
+          {/* Same as the projection's bar: the bar is everything that went out. */}
+          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: OUT_COLOR }} /> {hasSavings ? 'Spent + saved' : 'Spent'}
         </span>
         <span className="inline-flex items-center gap-1.5 text-[10.5px] text-muted-ink">
           <span className="w-2 h-2 rounded-full" style={{ backgroundColor: NET_COLOR }} /> Net

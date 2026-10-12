@@ -4,6 +4,7 @@ export function calculateHealthScore({
     totalBalance,
     totalDebt,
     expenseDiffPct,
+    projected = false,
 }: {
     totalIncome: number
     /** Expenses minus savings — savings transactions raise the rate, they don't lower it. */
@@ -11,6 +12,8 @@ export function calculateHealthScore({
     totalBalance: number
     totalDebt: number
     expenseDiffPct: number | null
+    /** totalSpending is where the current pace ends the period, not what's spent so far. */
+    projected?: boolean
 }): {
     score: number
     label: 'Poor' | 'Fair' | 'Good' | 'Excellent'
@@ -22,13 +25,17 @@ export function calculateHealthScore({
     const overallReasons: string[] = []
 
     if (totalIncome > 0) {
-        const savingsRate = (totalIncome - totalSpending) / totalIncome
-        const savingsPct = Math.round(savingsRate * 100)
-        if (savingsRate < 0) { score -= 50; periodReasons.push('Overspent budget') }
-        else if (savingsRate < 0.1) { score -= 30; periodReasons.push(`Savings rate only ${savingsPct}%`) }
-        else if (savingsRate < 0.2) { score -= 15; periodReasons.push(`Savings rate ${savingsPct}%`) }
-        else if (savingsRate < 0.3) { score -= 5; periodReasons.push(`Savings rate ${savingsPct}%`) }
-        else periodReasons.push(`Savings rate ${savingsPct}%`)
+        const unspentRate = (totalIncome - totalSpending) / totalIncome
+        const pct = `${Math.round(unspentRate * 100)}% of income unspent`
+        const unspent = projected ? `On pace for ${pct}` : pct
+        if (unspentRate < 0) {
+            score -= 50
+            periodReasons.push(projected ? 'On pace to spend more than income' : 'Spent more than income')
+        }
+        else if (unspentRate < 0.1) { score -= 30; periodReasons.push(projected ? `On pace for only ${pct}` : `Only ${pct}`) }
+        else if (unspentRate < 0.2) { score -= 15; periodReasons.push(unspent) }
+        else if (unspentRate < 0.3) { score -= 5; periodReasons.push(unspent) }
+        else periodReasons.push(unspent)
     } else if (totalSpending > 0) {
         // Spending with no income to cover it is the worst case, not a skipped check.
         score -= 50
@@ -50,11 +57,12 @@ export function calculateHealthScore({
     }
 
     if (expenseDiffPct !== null) {
-        if (expenseDiffPct > 50) { score -= 20; periodReasons.push(`Expense up ${expenseDiffPct}% vs last`) }
-        else if (expenseDiffPct > 20) { score -= 10; periodReasons.push(`Expense up ${expenseDiffPct}% vs last`) }
-        else if (expenseDiffPct > 0) { score -= 5; periodReasons.push(`Expense up ${expenseDiffPct}% vs last`) }
-        else if (expenseDiffPct < 0) periodReasons.push(`Expense down ${Math.abs(expenseDiffPct)}% vs last`)
-        else periodReasons.push('Expense same as last period')
+        const spending = projected ? 'Spending on pace for' : 'Spending'
+        if (expenseDiffPct > 50) { score -= 20; periodReasons.push(`${spending} +${expenseDiffPct}% vs last`) }
+        else if (expenseDiffPct > 20) { score -= 10; periodReasons.push(`${spending} +${expenseDiffPct}% vs last`) }
+        else if (expenseDiffPct > 0) { score -= 5; periodReasons.push(`${spending} +${expenseDiffPct}% vs last`) }
+        else if (expenseDiffPct < 0) periodReasons.push(`${spending} ${expenseDiffPct}% vs last`)
+        else periodReasons.push(`${spending} level with last`)
     }
 
     const clamped = Math.max(0, Math.min(100, score))

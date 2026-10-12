@@ -41,7 +41,7 @@ export function SpendingByAccountCard({ transactions }: { transactions: Transact
                                 </p>
                             </div>
                             <div className="h-1 rounded-full bg-line-soft overflow-hidden">
-                                <div className="h-full rounded-full bg-[#94a3b8]" style={{ width: `${pct}%` }} />
+                                <div className="h-full rounded-full bg-subtle-ink" style={{ width: `${pct}%` }} />
                             </div>
                         </div>
                     </div>

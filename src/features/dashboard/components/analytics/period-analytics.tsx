@@ -3,8 +3,7 @@ import { ChevronRight } from 'lucide-react'
 import { formatCurrency, formatDateShort, formatShortCurrency } from '@/lib/helpers'
 import { cn } from '@/lib/utils'
 import { categoryChartColor } from '@/features/categories/lib/category-colors'
-import { usePeriodStats } from '@/hooks/use-period-stats'
-import { useBillReserve } from '@/hooks/use-bill-reserve'
+import type { PeriodStats } from '@/hooks/use-period-stats'
 import { useBudgets } from '@/queries'
 import { usePeriodTrend } from '../../hooks/use-period-trend'
 import { PeriodTrendChart } from './period-trend-chart'
@@ -20,8 +19,8 @@ interface PeriodAnalyticsProps {
   transactions: TransactionWithDetails[]
   period: PayPeriod
   periods: PayPeriod[]
-  /** Length of the previous period, used to estimate an open period's end. */
-  fallbackTotalDays?: number | null
+  /** The overview's stats for this period, bills still due included. */
+  stats: PeriodStats
 }
 
 // Everyday spending per day against the safe daily amount: the bar is the pace, the tick is the limit.
@@ -153,7 +152,7 @@ function budgetColor(ratio: number): string {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export function PeriodAnalytics({ transactions, period, periods, fallbackTotalDays = null }: PeriodAnalyticsProps) {
+export function PeriodAnalytics({ transactions, period, periods, stats }: PeriodAnalyticsProps) {
   const [expandedCategoryId, setExpandedCategoryId] = useState<string | null>(null)
 
   const { data: budgetRows } = useBudgets()
@@ -164,17 +163,8 @@ export function PeriodAnalytics({ transactions, period, periods, fallbackTotalDa
   }, [budgetRows])
 
   // Money moved into savings accounts counts as saved, like a savings expense.
-  const rows = useMemo(() => withSavingsMoves(transactions), [transactions])
-  const expenses = useMemo(() => rows.filter(t => t.type === 'expense'), [rows])
-  const incomes  = useMemo(() => rows.filter(t => t.type === 'income'),  [rows])
-
-  const totalIncome  = useMemo(() => incomes.reduce((s, t) => s + t.amount, 0), [incomes])
-  const totalExpense = useMemo(() => expenses.reduce((s, t) => s + t.amount, 0), [expenses])
-
-  // Savings categories leave the account (so they count toward net) but aren't spending.
-  const spending = useMemo(() => expenses.filter(t => !t.category?.is_savings), [expenses])
-  const totalSpending = useMemo(() => spending.reduce((s, t) => s + t.amount, 0), [spending])
-  const totalSavings = totalExpense - totalSpending
+  const expenses = useMemo(() => withSavingsMoves(transactions).filter(t => t.type === 'expense'), [transactions])
+  const { totalIncome, totalExpense, totalSavings } = stats
 
   const categoriesByAmount = useMemo<CatEntry[]>(() => groupExpensesByCategory(expenses), [expenses])
 
@@ -207,26 +197,17 @@ export function PeriodAnalytics({ transactions, period, periods, fallbackTotalDa
     return [...budgeted, ...unbudgeted]
   }, [categoriesByAmount, budgets])
 
-  // ─── Period stats — delegated to the shared hook ───────────────────────────
-
-  const statsTransactions = useMemo(
-    () => [...incomes, ...expenses],
-    [incomes, expenses]
-  )
-
-  const billReserve = useBillReserve(period, transactions)
-  const stats = usePeriodStats({ period, transactions: statsTransactions, fallbackTotalDays, reservedBills: billReserve.reserved })
   const hasPredictive = !stats.isClosed && stats.totalIncome > 0 && stats.projectedSpend !== null
   const overSafePace = stats.safeDaily !== null && stats.dailyAvg > stats.safeDaily
 
   // ─── Multi-period trend ─────────────────────────────────────────────────────
 
-  const { trend } = usePeriodTrend(periods, period, transactions)
+  const { trend, loading: trendLoading, failed: trendFailed, retry: retryTrend } = usePeriodTrend(periods, period, transactions)
 
   // ─── Period comparison ──
 
   // Share of income not spent: what's left plus what went into savings.
-  const unspent = totalIncome - totalSpending
+  const unspent = totalIncome - stats.totalSpending
 
   const periodComparison = useMemo(() => {
     const others = trend.filter(t => t.periodId !== period.id)
@@ -276,17 +257,20 @@ export function PeriodAnalytics({ transactions, period, periods, fallbackTotalDa
 
               return (
                 <div key={cat.id} className={cn('border-b border-line-soft', isExpanded && 'sm:col-span-2')}>
-                  <div
+                  <button
+                    type="button"
                     onClick={() => setExpandedCategoryId(id => id === cat.id ? null : cat.id)}
-                    className="px-4 py-2.5 cursor-pointer hover:bg-surface-soft transition-colors"
+                    aria-expanded={isExpanded}
+                    className="block w-full text-left px-4 py-2.5 hover:bg-surface-soft transition-colors"
                   >
-                    <div className="flex items-center justify-between mb-1.5">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <div
+                    <span className="flex items-center justify-between mb-1.5">
+                      <span className="flex items-center gap-2 min-w-0">
+                        <span
+                          aria-hidden="true"
                           className="h-2 w-2 rounded-full shrink-0"
                           style={{ backgroundColor: categoryChartColor(cat) }}
                         />
-                        <p className="text-[13px] text-ink truncate">{cat.name}</p>
+                        <span className="text-[13px] text-ink truncate">{cat.name}</span>
                         {target !== undefined && ratio !== null && ratio >= 0.7 && (
                           <span
                             className="text-[10px] font-medium shrink-0 rounded-full px-1.5 py-[1px]"
@@ -295,8 +279,8 @@ export function PeriodAnalytics({ transactions, period, periods, fallbackTotalDa
                             {ratio >= 1 ? 'Over' : 'Near budget'}
                           </span>
                         )}
-                      </div>
-                      <div className="flex items-center gap-3 shrink-0">
+                      </span>
+                      <span className="flex items-center gap-3 shrink-0">
                         <span className="text-[12px] text-subtle-ink min-w-[28px] text-right">
                           {pct !== null ? `${pct}%` : '—'}
                         </span>
@@ -304,25 +288,26 @@ export function PeriodAnalytics({ transactions, period, periods, fallbackTotalDa
                           {formatCurrency(cat.amount)}
                         </span>
                         <ChevronRight
+                          aria-hidden="true"
                           className={cn('w-[13px] h-[13px] text-faint-ink shrink-0 transition-transform', isExpanded && 'rotate-90')}
                         />
-                      </div>
-                    </div>
+                      </span>
+                    </span>
 
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1 h-1 rounded-full bg-line-soft overflow-hidden">
-                        <div
-                          className="h-full rounded-full transition-all duration-300"
+                    <span className="flex items-center gap-2">
+                      <span aria-hidden="true" className="flex-1 h-1 rounded-full bg-line-soft overflow-hidden">
+                        <span
+                          className="block h-full rounded-full transition-all duration-300"
                           style={{ width: `${pct ?? 0}%`, backgroundColor: categoryChartColor(cat) }}
                         />
-                      </div>
+                      </span>
                       {target !== undefined && (
                         <span className="text-[10px] text-subtle-ink shrink-0">
                           {Math.round((ratio ?? 0) * 100)}% of {formatCurrency(target)} budget
                         </span>
                       )}
-                    </div>
-                  </div>
+                    </span>
+                  </button>
 
                   {isExpanded && <CategoryTransactionList transactions={categoryTransactions(cat)} />}
                 </div>
@@ -340,10 +325,10 @@ export function PeriodAnalytics({ transactions, period, periods, fallbackTotalDa
       {/* ── Spending trend card (Trends) ── */}
       <div className="rounded-[20px] border border-line bg-surface p-4 lg:col-span-2">
         <p className="text-[11px] uppercase tracking-[.14em] text-muted-ink">Spending trend</p>
-        {trend.length >= 2 && (
+        {!trendLoading && !trendFailed && trend.length >= 2 && (
           <p className="text-[11px] text-subtle-ink mt-0.5 mb-3">Last {trend.length} pay periods</p>
         )}
-        <PeriodTrendChart trend={trend} />
+        <PeriodTrendChart trend={trend} loading={trendLoading} failed={trendFailed} onRetry={retryTrend} />
 
         {/* How this period stacks up against the others */}
         {periodComparison && (
