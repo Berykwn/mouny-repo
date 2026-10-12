@@ -6,13 +6,13 @@ import { PeriodPickerDrawer } from '@/components/period-picker-drawer'
 import { useTopBarSlotNode } from '@/contexts/TopBarSlotContext'
 import { PeriodCalendar } from './components/period-calendar'
 import { PeriodChip } from './components/period-chip'
-import { LedgerTabs, type LedgerTab } from './components/ledger-tabs'
+import { LedgerTabs } from './components/ledger-tabs'
 import { TransactionListView } from './components/transaction-list-view'
 import { BulkCategoryDrawer } from './components/bulk-category-drawer'
 import { LedgerHero } from './components/ledger-hero'
 import { TransactionDetail } from './components/transaction-detail'
 import { AddTransactionFlow } from './components/add-transaction-flow'
-import { linkedTo } from './lib/ledger'
+import { dailyAllowance, LEDGER_PANEL_ID, ledgerTabId, linkedTo, type LedgerTab } from './lib/ledger'
 import { BottomDrawer } from '@/components/bottom-drawer'
 import { usePeriodStats } from '@/hooks/use-period-stats'
 import { useBillReserve } from '@/hooks/use-bill-reserve'
@@ -23,10 +23,13 @@ import { queryKeys, usePeriodTransactions } from '@/queries'
 import { useSelectedPeriod } from '@/stores/period-store'
 import type { TransactionWithDetails } from '@/types'
 import { toast } from 'sonner'
-import { LoadingContent } from '@/components/loading-content'
+import { Loader2 } from 'lucide-react'
+import { LedgerSkeleton } from './components/ledger-skeleton'
 
 const TABS: LedgerTab[] = ['calendar', 'all']
 const EMPTY_TXS: TransactionWithDetails[] = []
+
+const plural = (n: number) => `${n} transaction${n === 1 ? '' : 's'}`
 
 export default function TransactionsPage() {
     const [activeTab, setActiveTab] = useState<LedgerTab>('calendar')
@@ -69,19 +72,21 @@ export default function TransactionsPage() {
         fallbackTotalDays,
         reservedBills: billReserve.reserved,
     })
-    // The even daily share of what came in: the bar each day's spending is held against.
-    const dailyLimit = stats.totalIncome > 0 && stats.totalDays ? stats.totalIncome / stats.totalDays : null
+    // The hero's safe daily amount: what each day's everyday spending is held against.
+    const allowance = dailyAllowance(stats)
 
+    // The day rail and the filter chips scroll sideways themselves: a swipe there is theirs.
+    // (preventScrollOnSwipe would also cancel their scrolling, so it stays off.)
+    const fromSideScroller = ({ target }: { target: EventTarget | null }) => target instanceof Element && !!target.closest('[data-no-swipe]')
     const swipeHandlers = useSwipeable({
-        onSwipedLeft: () => {
+        onSwipedLeft: ({ event }) => {
             const i = TABS.indexOf(activeTab)
-            if (i < TABS.length - 1) setActiveTab(TABS[i + 1])
+            if (!fromSideScroller(event) && i < TABS.length - 1) setActiveTab(TABS[i + 1])
         },
-        onSwipedRight: () => {
+        onSwipedRight: ({ event }) => {
             const i = TABS.indexOf(activeTab)
-            if (i > 0) setActiveTab(TABS[i - 1])
+            if (!fromSideScroller(event) && i > 0) setActiveTab(TABS[i - 1])
         },
-        preventScrollOnSwipe: true,
         trackMouse: false,
         delta: 50,
     })
@@ -89,6 +94,8 @@ export default function TransactionsPage() {
     // Refetches after a write keep the current view mounted (no loader), so the calendar
     // keeps its selected day. Only a period with nothing cached yet shows a loader.
     const txLoading = !!selectedPeriod && txQuery.isPending
+    // No rows to show at all: an empty ledger and a Rp0 hero would look like real data.
+    const txFailed = !!selectedPeriod && txQuery.isError && !txQuery.data
 
 
     // A new period, or rows that are gone after a refetch: drop their selections.
@@ -130,6 +137,7 @@ export default function TransactionsPage() {
     }
 
     const selectedTxs = transactions.filter(t => selectedIds.includes(t.id))
+    const linkedSelected = selectedTxs.filter(t => linkedTo(t)).length
     // Categories belong to income or expenses; transfers have none to change.
     const commonType = new Set(selectedTxs.map(t => t.type)).size === 1 ? selectedTxs[0]?.type ?? null : null
     const commonSelectedType = commonType === 'income' || commonType === 'expense' ? commonType : null
@@ -142,7 +150,7 @@ export default function TransactionsPage() {
         removeFromCache(selectedIds)
         setSelectedIds([])
         setBulkDeleteOpen(false)
-        toast.success(`${selectedIds.length} transaction(s) deleted.`)
+        toast.success(`${plural(selectedIds.length)} deleted.`)
     }
 
     const handleBulkCategoryConfirm = async (categoryId: string) => {
@@ -175,7 +183,7 @@ export default function TransactionsPage() {
 
             <section className="px-4 pb-4 pt-3.5 lg:px-0 space-y-4">
                 {loading ? (
-                    <LoadingContent />
+                    <LedgerSkeleton />
                 ) : !selectedPeriod ? (
                     <div className="card p-6 text-center">
                         <p className="text-[16px] font-medium tracking-[-0.01em] text-ink">No pay period yet</p>
@@ -184,13 +192,29 @@ export default function TransactionsPage() {
                         </p>
                     </div>
                 ) : txLoading ? (
-                    <LoadingContent />
+                    <LedgerSkeleton />
+                ) : txFailed ? (
+                    <div role="alert" className="card p-4 flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                            <p className="text-[13px] font-medium text-ink">Couldn't load this period's transactions.</p>
+                            <p className="text-[11.5px] text-muted-ink mt-1">Check your connection and try again.</p>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => { void txQuery.refetch() }}
+                            disabled={txQuery.isFetching}
+                            className="shrink-0 h-9 min-w-[76px] rounded-[10px] bg-brand px-4 text-[12.5px] font-semibold text-white transition-colors hover:bg-brand/90 disabled:opacity-70"
+                        >
+                            {txQuery.isFetching ? <Loader2 aria-label="Retrying" className="w-4 h-4 animate-spin mx-auto" /> : 'Retry'}
+                        </button>
+                    </div>
                 ) : (
                     <section {...swipeHandlers} className="space-y-4">
                         <div className="lg:max-w-[856px]">
                             <LedgerHero stats={stats} />
                         </div>
                         <LedgerTabs active={activeTab} onChange={setActiveTab} />
+                        <div role="tabpanel" id={LEDGER_PANEL_ID} aria-labelledby={ledgerTabId(activeTab)}>
                         {activeTab === 'calendar' ? (
                             <PeriodCalendar
                                 transactions={transactions}
@@ -199,7 +223,8 @@ export default function TransactionsPage() {
                                 defaultDate={calendarDefaultDate}
                                 onDeleteRequest={isCurrentPeriod ? setDeletingId : undefined}
                                 onOpen={setOpenTx}
-                                dailyLimit={dailyLimit}
+                                allowance={allowance}
+                                periodIncome={stats.totalIncome}
                                 readOnly={!isCurrentPeriod}
                             />
                         ) : (
@@ -211,8 +236,10 @@ export default function TransactionsPage() {
                                 onOpen={setOpenTx}
                                 onBulkDeleteRequest={() => setBulkDeleteOpen(true)}
                                 onBulkCategoryRequest={() => setBulkCategoryOpen(true)}
+                                exportName={`transactions-${selectedPeriod.start_date}.csv`}
                             />
                         )}
+                        </div>
                     </section>
                 )}
             </section>
@@ -267,7 +294,11 @@ export default function TransactionsPage() {
             <ConfirmDrawer
                 open={bulkDeleteOpen}
                 title="Delete Transactions"
-                description={`Delete ${selectedIds.length} transaction(s)? This will also update your account balance.`}
+                description={`Delete ${plural(selectedIds.length)}? This will also update your account balance.`
+                    + (linkedSelected > 0
+                        // The same consequences the detail sheet spells out for one of them.
+                        ? ` ${linkedSelected === selectedIds.length ? 'They are' : `${linkedSelected} of them ${linkedSelected === 1 ? 'is' : 'are'}`} linked: a transfer loses both sides, and wish list or debt entries update those too.`
+                        : '')}
                 confirmLabel="Delete"
                 loading={bulkDeleteLoading}
                 onConfirm={handleBulkDeleteConfirm}

@@ -38,11 +38,14 @@ function message(s: PeriodStats): { text: string; className: string } {
 
 /** What's left this period, where the money went, and the daily allowance that makes it last. */
 export function LedgerHero({ stats }: LedgerHeroProps) {
-    const { totalIncome, totalSpending, totalSavings, remaining, isClosed, daysElapsed, totalDays } = stats
+    const { totalIncome, totalSpending, totalSavings, reservedBills, remaining, isClosed, daysElapsed, totalDays } = stats
     const msg = message(stats)
     // The composition bar is out of whichever is bigger, so overspending still fits.
-    const base = Math.max(totalIncome, totalSpending + totalSavings, 1)
+    const base = Math.max(totalIncome, totalSpending + totalSavings + reservedBills, 1)
     const left = Math.max(0, remaining)
+    // "Left" already has bills still due taken out, so they get their own slice: the parts
+    // then add up to what came in.
+    const bills = 'repeating-linear-gradient(135deg, var(--warning) 0 3px, color-mix(in srgb, var(--warning) 45%, transparent) 3px 6px)'
 
     return (
         <header className="card p-5 relative overflow-hidden">
@@ -63,15 +66,18 @@ export function LedgerHero({ stats }: LedgerHeroProps) {
                 </p>
                 <p className="text-[11px] text-muted-ink mt-2 tabular-nums">of {formatCurrency(totalIncome)} that came in</p>
 
-                <div className="mt-4 flex h-1.5 gap-[2px] overflow-hidden rounded-full bg-line-soft">
+                {/* The stats below read out the same amounts. */}
+                <div aria-hidden="true" className="mt-4 flex h-1.5 gap-[2px] overflow-hidden rounded-full bg-line-soft">
                     {totalSpending > 0 && <div className="h-full bg-ink/80" style={{ flexGrow: totalSpending / base }} />}
                     {totalSavings > 0 && <div className="h-full bg-info" style={{ flexGrow: totalSavings / base }} />}
+                    {reservedBills > 0 && <div className="h-full" style={{ flexGrow: reservedBills / base, background: bills }} />}
                     {left > 0 && <div className="h-full bg-brand" style={{ flexGrow: left / base }} />}
                 </div>
 
-                <div className="mt-3 grid grid-cols-3 gap-3">
+                <div className={cn('mt-3 grid gap-3', reservedBills > 0 ? 'grid-cols-4' : 'grid-cols-3')}>
                     <Stat dot="bg-ink/80" label="Spent" value={totalSpending} />
                     <Stat dot="bg-info" label="Saved" value={totalSavings} />
+                    {reservedBills > 0 && <Stat dot={bills} label="Bills due" value={reservedBills} />}
                     <Stat dot="bg-brand" label="Left" value={left} />
                 </div>
 
@@ -81,11 +87,15 @@ export function LedgerHero({ stats }: LedgerHeroProps) {
     )
 }
 
+/** dot: a class like 'bg-info', or a CSS background for a fill no class covers. */
 function Stat({ dot, label, value }: { dot: string; label: string; value: number }) {
+    const isClass = dot.startsWith('bg-')
     return (
         <div className="min-w-0">
-            <p className="flex items-center gap-1.5 text-[11px] text-muted-ink">
-                <span className={cn('w-2 h-2 rounded-full shrink-0', dot)} /> {label}
+            <p className="flex items-center gap-1.5 text-[11px] text-muted-ink min-w-0">
+                <span aria-hidden="true" className={cn('w-2 h-2 rounded-full shrink-0', isClass && dot)} style={isClass ? undefined : { background: dot }} />
+                {/* Four columns on a narrow phone: a long label ends in … rather than running into the next. */}
+                <span className="truncate">{label}</span>
             </p>
             <p className="text-[13px] font-medium text-ink tabular-nums truncate mt-0.5">{formatShortCurrency(value)}</p>
         </div>

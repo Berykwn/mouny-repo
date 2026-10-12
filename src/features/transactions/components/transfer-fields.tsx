@@ -86,10 +86,11 @@ export function TransferFields({
             </div>
 
             <div className="space-y-1.5">
-                <Label className={FIELD_LABEL}>Amount</Label>
+                <Label htmlFor="transfer-amount" className={FIELD_LABEL}>Amount</Label>
                 <div className="flex items-baseline gap-1.5 border-b border-line pb-2">
-                    <span className="text-[20px] font-medium text-faint-ink">Rp</span>
+                    <span aria-hidden="true" className="text-[20px] font-medium text-faint-ink">Rp</span>
                     <input
+                        id="transfer-amount"
                         type="text"
                         inputMode="numeric"
                         value={formatCurrencyInput(amount)}

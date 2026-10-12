@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils'
 import { Checkbox } from '@/components/ui/checkbox'
 import { CategoryTile } from '@/features/categories/components/category-icon'
 import type { TransactionWithDetails, TransactionType } from '@/types'
-import { applyFilter, categoryFacets, groupByDate, txTitle, type TypeFilter } from '../lib/ledger'
+import { applyFilter, categoryFacets, groupByDate, isSaving, isSpending, txTitle, type TypeFilter } from '../lib/ledger'
 
 interface TransactionListViewProps {
     transactions: TransactionWithDetails[]
@@ -19,6 +19,8 @@ interface TransactionListViewProps {
     onOpen: (tx: TransactionWithDetails) => void
     onBulkDeleteRequest: () => void
     onBulkCategoryRequest: () => void
+    /** The CSV's file name, naming the period it came from. */
+    exportName: string
 }
 
 const CHIP = 'shrink-0 px-3 py-1.5 rounded-full text-[12px] font-medium border transition-colors'
@@ -44,6 +46,7 @@ export function TransactionListView({
     onOpen,
     onBulkDeleteRequest,
     onBulkCategoryRequest,
+    exportName,
 }: TransactionListViewProps) {
     const [query, setQuery] = useState('')
     const [type, setType] = useState<TypeFilter>('all')
@@ -63,7 +66,9 @@ export function TransactionListView({
     )
     const groups = useMemo(() => groupByDate(filtered), [filtered])
     const filteredIncome = filtered.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0)
-    const filteredExpense = filtered.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0)
+    // Spending as the hero counts it; savings show on their own.
+    const filteredSpending = filtered.filter(isSpending).reduce((s, t) => s + t.amount, 0)
+    const filteredSavings = filtered.filter(isSaving).reduce((s, t) => s + t.amount, 0)
     const isFiltered = !!query.trim() || type !== 'all' || !!categoryId
 
     const selectedTxs = transactions.filter(tx => selectedIds.includes(tx.id))
@@ -91,7 +96,7 @@ export function TransactionListView({
     }
 
     const handleExport = () => {
-        downloadCsv('transactions.csv', toCsv(selectedTxs.length > 0 ? selectedTxs : filtered))
+        downloadCsv(exportName, toCsv(selectedTxs.length > 0 ? selectedTxs : filtered))
     }
 
     const clearFilters = () => {
@@ -105,9 +110,10 @@ export function TransactionListView({
             {/* Search + tools */}
             <div className="flex items-center gap-2">
                 <label className="flex-1 flex items-center gap-2 h-10 px-3 rounded-[12px] border border-line bg-surface focus-within:border-ink/40 transition-colors">
-                    <Search className="w-4 h-4 text-subtle-ink shrink-0" />
+                    <Search aria-hidden="true" className="w-4 h-4 text-subtle-ink shrink-0" />
                     <input
                         type="search"
+                        aria-label="Search transactions"
                         value={query}
                         onChange={(e) => setQuery(e.target.value)}
                         placeholder="Search note, category, account"
@@ -122,6 +128,7 @@ export function TransactionListView({
                 <button
                     type="button"
                     title="Export CSV"
+                    aria-label={selectedTxs.length > 0 ? `Export ${selectedTxs.length} selected as CSV` : 'Export as CSV'}
                     onClick={handleExport}
                     disabled={filtered.length === 0}
                     className="w-10 h-10 rounded-[12px] border border-line bg-surface flex items-center justify-center text-muted-ink hover:text-ink transition-colors disabled:opacity-40"
@@ -132,6 +139,8 @@ export function TransactionListView({
                     <button
                         type="button"
                         onClick={() => selecting ? exitSelect() : setSelectMode(true)}
+                        aria-label={selecting ? 'Done selecting' : 'Select transactions'}
+                        aria-pressed={selecting}
                         className={cn(
                             'h-10 px-3 rounded-[12px] border flex items-center gap-1.5 text-[12px] font-medium transition-colors',
                             selecting ? 'bg-ink text-on-ink border-ink' : 'bg-surface text-ink border-line hover:bg-surface-soft'
@@ -144,11 +153,12 @@ export function TransactionListView({
             </div>
 
             {/* Filters: type, then the categories in play */}
-            <div className="flex gap-2 overflow-x-auto -mx-4 px-4 lg:mx-0 lg:px-0 [&::-webkit-scrollbar]:hidden">
+            <div data-no-swipe role="group" aria-label="Filter" className="flex gap-2 overflow-x-auto -mx-4 px-4 lg:mx-0 lg:px-0 [&::-webkit-scrollbar]:hidden">
                 {(['all', 'expense', 'income'] as TypeFilter[]).map(t => (
                     <button
                         key={t}
                         type="button"
+                        aria-pressed={type === t}
                         onClick={() => { setType(t); setCategoryId(null) }}
                         className={cn(CHIP, type === t ? CHIP_ON : CHIP_OFF)}
                     >
@@ -160,6 +170,7 @@ export function TransactionListView({
                     <button
                         key={f.id}
                         type="button"
+                        aria-pressed={categoryId === f.id}
                         onClick={() => setCategoryId(categoryId === f.id ? null : f.id)}
                         className={cn(CHIP, categoryId === f.id ? CHIP_ON : CHIP_OFF)}
                     >
@@ -171,7 +182,11 @@ export function TransactionListView({
             <div className="card overflow-hidden">
                 {selecting ? (
                     <div className="sticky top-0 z-10 flex items-center gap-3 px-4 py-2.5 bg-surface-hover border-b border-line">
-                        <Checkbox checked={allSelected ? true : selectedIds.length > 0 ? 'indeterminate' : false} onCheckedChange={toggleAll} />
+                        <Checkbox
+                            aria-label={allSelected ? 'Deselect all shown' : 'Select all shown'}
+                            checked={allSelected ? true : selectedIds.length > 0 ? 'indeterminate' : false}
+                            onCheckedChange={toggleAll}
+                        />
                         <p className="flex-1 text-[13px] font-medium text-ink">
                             {selectedIds.length > 0 ? `${selectedIds.length} selected` : 'Select transactions'}
                         </p>
@@ -180,6 +195,7 @@ export function TransactionListView({
                                 type="button"
                                 disabled={!commonType}
                                 title={!commonType ? 'Select transactions of only one type' : 'Change category'}
+                                aria-label={!commonType ? 'Change category (select transactions of only one type)' : 'Change category'}
                                 onClick={onBulkCategoryRequest}
                                 className={cn(TOOL_BTN, 'text-ink hover:bg-surface disabled:opacity-40 disabled:pointer-events-none')}
                             >
@@ -188,6 +204,7 @@ export function TransactionListView({
                             <button
                                 type="button"
                                 title="Delete"
+                                aria-label={`Delete ${selectedIds.length} selected`}
                                 disabled={selectedIds.length === 0}
                                 onClick={onBulkDeleteRequest}
                                 className={cn(TOOL_BTN, 'text-negative hover:bg-surface disabled:opacity-40 disabled:pointer-events-none')}
@@ -213,7 +230,8 @@ export function TransactionListView({
                             )}
                         </p>
                         <p className="text-[11.5px] tabular-nums shrink-0">
-                            <span className="text-ink">−{formatShortCurrency(filteredExpense)}</span>
+                            <span className="text-ink">−{formatShortCurrency(filteredSpending)}</span>
+                            {filteredSavings > 0 && <span className="text-info"> · {formatShortCurrency(filteredSavings)} saved</span>}
                             {filteredIncome > 0 && <span className="text-positive"> · +{formatShortCurrency(filteredIncome)}</span>}
                         </p>
                     </div>
@@ -232,9 +250,11 @@ export function TransactionListView({
                             <div className="flex items-center justify-between gap-3 px-4 pt-3 pb-1.5">
                                 <p className="text-[11px] font-medium text-muted-ink">{dayLabel(group.date)}</p>
                                 <p className="text-[11px] text-subtle-ink tabular-nums">
-                                    {group.expense > 0 && <>−{formatShortCurrency(group.expense)}</>}
-                                    {group.expense > 0 && group.income > 0 && ' · '}
-                                    {group.income > 0 && <span className="text-positive">+{formatShortCurrency(group.income)}</span>}
+                                    {[
+                                        group.spending > 0 && <span key="s">−{formatShortCurrency(group.spending)}</span>,
+                                        group.savings > 0 && <span key="v" className="text-info">{formatShortCurrency(group.savings)} saved</span>,
+                                        group.income > 0 && <span key="i" className="text-positive">+{formatShortCurrency(group.income)}</span>,
+                                    ].filter(Boolean).flatMap((part, i) => i === 0 ? [part] : [' · ', part])}
                                 </p>
                             </div>
                             <div className="divide-y divide-line-soft border-b border-line-soft">

@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase'
-import { handleError, invalidatesOnWrite, sessionUser, type ServiceResult, SIGNED_OUT_MESSAGE } from './_base'
+import { handleError, invalidatesOnWrite, isMissingFunction, sessionUser, type ServiceResult, SIGNED_OUT_MESSAGE } from './_base'
 import type { Account } from '@/types/'
 import type { Category } from '@/types/'
 import { COLORS } from '@/lib/static-colors'
@@ -150,7 +150,11 @@ export const accountsService = invalidatesOnWrite({
         }
     },
 
-    async transfer(fromId: string, toId: string, amount: number): Promise<ServiceResult<null>> {
+    /**
+     * `date` puts the transfer in that day's period; today when left out. `note` goes on
+     * both legs instead of "Transfer to / from …".
+     */
+    async transfer(fromId: string, toId: string, amount: number, date?: string, note?: string): Promise<ServiceResult<null>> {
         try {
             const { data: accounts, error: fetchError } = await supabase
                 .from('accounts')
@@ -166,12 +170,14 @@ export const accountsService = invalidatesOnWrite({
             if (from.balance < amount) throw new Error('Insufficient balance')
 
             // Dated in the user's own time zone; the database's "today" is UTC.
-            const { error } = await supabase.rpc('transfer_balance', {
-                p_from_id: fromId,
-                p_to_id: toId,
-                p_amount: amount,
-                p_date: toISODate(),
-            })
+            const args = { p_from_id: fromId, p_to_id: toId, p_amount: amount, p_date: date ?? toISODate() }
+            const trimmed = note?.trim()
+            let { error } = await supabase.rpc('transfer_balance', trimmed ? { ...args, p_note: trimmed } : args)
+            // A database without 20261012000100_transfer_note: the transfer still goes
+            // through, with the usual notes, rather than failing over the note.
+            if (trimmed && isMissingFunction(error)) {
+                ({ error } = await supabase.rpc('transfer_balance', args))
+            }
 
             if (error) throw error
             return { data: null, error: null }

@@ -5,11 +5,22 @@ const escape = (v: string) => /[",\r\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` 
 /** Free text starting with = + - @ runs as a formula in Excel/Sheets; a leading ' keeps it text. */
 const text = (v: string) => /^[=+\-@]/.test(v) ? `'${v}` : v
 
+/** The type in the ledger's words, so a sheet can tell savings from spending. */
+function typeLabel(t: Pick<TransactionWithDetails, 'type' | 'category'>): string {
+    if (t.type === 'income') return 'Income'
+    if (t.type === 'expense') return t.category?.is_savings ? 'Saved' : 'Expense'
+    if (t.type === 'transfer_in') return 'Transfer in'
+    if (t.type === 'transfer_out') return 'Transfer out'
+    return t.type
+}
+
+/** Oldest first, the order a spreadsheet reads naturally. */
 export function toCsv(rows: TransactionWithDetails[]): string {
     const header = ['Date', 'Type', 'Category', 'Note', 'Account', 'Amount']
-    const lines = rows.map(t => [
+    const sorted = [...rows].sort((a, b) => a.date.localeCompare(b.date) || (a.created_at ?? '').localeCompare(b.created_at ?? ''))
+    const lines = sorted.map(t => [
         t.date,
-        t.type,
+        typeLabel(t),
         text(t.category?.name ?? ''),
         text(t.note ?? ''),
         text(t.account?.name ?? ''),

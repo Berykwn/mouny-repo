@@ -1072,6 +1072,7 @@ export type Database = {
           p_amount: number
           p_date?: string
           p_from_id: string
+          p_note?: string
           p_to_id: string
         }
         Returns: string

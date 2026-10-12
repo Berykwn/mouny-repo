@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Calendar as CalendarIcon, ChevronDown, Loader2, Pencil } from 'lucide-react'
+import { Calendar as CalendarIcon, Check, ChevronDown, Loader2, Pencil } from 'lucide-react'
 import { AccountTypeIcon } from '@/components/account-type-icon'
 import { toast } from 'sonner'
 import { Input } from '@/components/ui/input'
@@ -13,13 +13,15 @@ import { QuickPills } from '@/features/quick-transactions/components/quick-pills
 import { QuickConfirm } from '@/features/quick-transactions/components/quick-confirm'
 import { transactionsService, type CreateTransactionInput } from '@/services/transactions.service'
 import { accountsService } from '@/services/accounts-categories.service'
-import { formatCurrency, formatCurrencyInput, parseCurrencyInput, toISODate } from '@/lib/helpers'
+import { formatCurrency, formatCurrencyInput, formatShortCurrency, parseCurrencyInput, toISODate } from '@/lib/helpers'
+import { shortDate } from '@/features/bills/lib/bill-labels'
+import type { BillDue } from '@/features/bills/lib/bills'
 import { summarizeTransactions } from '@/lib/period-summary'
 import { useBillReserve } from '@/hooks/use-bill-reserve'
 import { cn } from '@/lib/utils'
 import { useAccounts, useCategories, usePeriods, usePeriodTransactions, useQuickTransactions } from '@/queries'
 import type { Account, Category, QuickTransactionWithCategory, TransactionWithDetails } from '@/types'
-import { linkedTo } from '../lib/ledger'
+import { linkedTo, unpaidBillsFor } from '../lib/ledger'
 
 type TxType = 'income' | 'expense' | 'transfer'
 
@@ -35,13 +37,14 @@ interface AddTransactionFormProps {
     periodStart: string
     maxDate: string
     defaultDate?: string
-    onClose: () => void
     onSuccess: () => void
+    /** Whether closing now would lose what's been entered. */
+    onDirtyChange?: (dirty: boolean) => void
     /** Edit this transaction instead of adding a new one. */
     initial?: TransactionWithDetails
 }
 
-export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultDate, onClose, onSuccess, initial }: AddTransactionFormProps) {
+export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultDate, onSuccess, onDirtyChange, initial }: AddTransactionFormProps) {
     // A wish or debt payment's amount, account and type belong to that record; only the
     // note, date and category can change here without the two falling out of step.
     const linked = initial ? linkedTo(initial) : null
@@ -81,6 +84,9 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
     // Bills still due are held back, as on the dashboard. Worked out from every transaction,
     // so editing a bill's payment doesn't count that bill as due again.
     const billReserve = useBillReserve(periodIndex >= 0 ? periods[periodIndex] : null, periodTxs)
+    // The bill this expense pays, when the user says so. That link is what marks the bill
+    // paid; without it the bill stays held back on top of the payment, counted twice.
+    const [billId, setBillId] = useState<string | null>(null)
 
     // Transfer-only state
     const [fromAccountId, setFromAccountId] = useState('')
@@ -94,14 +100,6 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
         setDate(resolveDate(defaultDate))
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [defaultDate, periodStart, maxDate])
-
-    useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.key === 'Escape') onClose()
-        }
-        window.addEventListener('keydown', handleKeyDown)
-        return () => window.removeEventListener('keydown', handleKeyDown)
-    }, [onClose])
 
     // Default accounts once they're known; later refetches mustn't undo the user's pick.
     const accountsSeeded = useRef(false)
@@ -126,9 +124,11 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
         }
         if (!typeCategories || categoriesSeededFor.current === type) return
         categoriesSeededFor.current = type
-        // Editing: keep the transaction's own category while its type is unchanged.
-        const keep = initial && type === initial.type && typeCategories.some(c => c.id === initial.category_id)
-        setCategoryId(keep ? initial.category_id! : typeCategories[0]?.id ?? '')
+        // Editing: keep the transaction's own category while its type is unchanged, none
+        // included: an uncategorised entry isn't quietly given the first category on save.
+        const keep = initial && type === initial.type
+            && (!initial.category_id || typeCategories.some(c => c.id === initial.category_id))
+        setCategoryId(keep ? initial.category_id ?? '' : typeCategories[0]?.id ?? '')
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [type, typeCategories])
 
@@ -159,6 +159,35 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
         setTransferAmount(amount)
         setType('transfer')
     }
+    // Bills still due in the picked category. Offered, never assumed; an expense already
+    // paying a bill keeps its link and isn't offered another.
+    const billChoices = type === 'expense' && !moneyLocked && !initial?.recurring_bill_id
+        ? unpaidBillsFor(billReserve.dues, categoryId)
+        : []
+    // A pick that no longer fits (another category or type) doesn't ride along.
+    const billDue = billChoices.find((d) => d.bill.id === billId) ?? null
+    // Paying it frees one due date's worth of what's held back.
+    const freedReserve = billDue ? Math.min(billDue.reserved, billDue.bill.amount) : 0
+    const pickBill = (due: BillDue) => {
+        const on = billDue?.bill.id === due.bill.id
+        setBillId(on ? null : due.bill.id)
+        // A tap on the bill, with no amount typed yet, means its amount.
+        if (!on && !amount) setAmount(String(Math.round(due.bill.amount)))
+    }
+
+    // Something typed or changed that a stray tap outside the drawer would throw away.
+    // Defaults the form fills in itself (date, first account and category) don't count.
+    const dirty = initial
+        ? amount !== String(Math.round(initial.amount))
+            || note !== (initial.note ?? '')
+            || date !== resolveDate(initial.date)
+            || type !== initial.type
+            || accountId !== initial.account_id
+            || categoryId !== (initial.category_id ?? '')
+            || !!billDue
+        : amount !== '' || note.trim() !== '' || transferAmount !== '' || !!billDue
+    useEffect(() => { onDirtyChange?.(dirty) }, [dirty, onDirtyChange])
+
     const transferFrom = accounts.find((a) => a.id === fromAccountId)
     const transferTo = accounts.find((a) => a.id === toAccountId)
     const transferSaves = !!transferTo?.is_savings && !!transferFrom && !transferFrom.is_savings
@@ -175,9 +204,10 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
 
             const fromAccount = accounts.find((a) => a.id === fromAccountId)
             if (fromAccount && parsedTransfer > fromAccount.balance) { toast.error('Insufficient balance.'); return }
+            if (date < periodStart || date > maxDate) { toast.error('Pick a date in this period.'); return }
 
             setLoading(true)
-            const { error } = await accountsService.transfer(fromAccountId, toAccountId, parsedTransfer)
+            const { error } = await accountsService.transfer(fromAccountId, toAccountId, parsedTransfer, date, note)
             setLoading(false)
 
             if (error) { toast.error(error); return }
@@ -191,6 +221,7 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
             }
 
             setTransferAmount('')
+            setNote('')
             return
         }
 
@@ -202,7 +233,9 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
             toast.error('Please select an account.')
             return
         }
-        if (!categoryId) {
+        // An uncategorised entry being edited may stay that way; a new one needs a category.
+        const staysUncategorised = !!initial && !initial.category_id && type === initial.type
+        if (!categoryId && !staysUncategorised) {
             toast.error('Please select a category.')
             return
         }
@@ -220,11 +253,13 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
         const input: CreateTransactionInput = {
             pay_period_id: payPeriodId,
             account_id: accountId,
-            category_id: categoryId === 'none' ? undefined : categoryId,
+            // No category goes as none at all: an empty string isn't a uuid.
+            category_id: categoryId && categoryId !== 'none' ? categoryId : undefined,
             type,
             amount: parsedAmount,
             note: note || undefined,
             date,
+            recurring_bill_id: billDue?.bill.id,
         }
 
         if (initial) {
@@ -237,13 +272,26 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
                     category_id: input.category_id ?? null,
                     note: note || null,
                     date,
+                    ...(billDue ? { recurring_bill_id: billDue.bill.id } : {}),
                 })
-            setLoading(false)
             if (error) {
+                setLoading(false)
                 toast.error(/insufficient|balance/i.test(error) ? `Insufficient balance in ${selectedAccount?.name ?? 'that account'}.` : error)
                 return
             }
-            toast.success('Transaction updated.')
+            // Replacing moves the money only; the bill link is a second write. If that one
+            // fails the edit itself is saved, so say exactly that rather than "failed".
+            if (moneyChanged && billDue) {
+                const { error: linkError } = await transactionsService.update(initial.id, { recurring_bill_id: billDue.bill.id })
+                if (linkError) {
+                    setLoading(false)
+                    toast.error(`Changes saved, but ${billDue.bill.name} couldn't be marked paid. Edit it again to retry.`)
+                    onSuccess()
+                    return
+                }
+            }
+            setLoading(false)
+            toast.success(billDue ? `Transaction updated, ${billDue.bill.name} marked paid.` : 'Transaction updated.')
             onSuccess()
             return
         }
@@ -256,7 +304,7 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
             return
         }
 
-        toast.success('Transaction saved successfully.')
+        toast.success(billDue ? `Saved, ${billDue.bill.name} marked paid.` : 'Transaction saved successfully.')
 
         if (mode === 'save') {
             onSuccess()
@@ -265,6 +313,7 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
 
         setAmount('')
         setNote('')
+        setBillId(null)
         amountInputRef.current?.focus()
     }
 
@@ -281,7 +330,11 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
     }
 
     return (
-        <div className="flex flex-col gap-[18px]">
+        // A form, so the keyboard's Enter / Go saves.
+        <form
+            className="flex flex-col gap-[18px]"
+            onSubmit={(e) => { e.preventDefault(); if (!loading) void handleSubmit('save') }}
+        >
             {!initial && quicks && quicks.length > 0 && (
                 <div className="space-y-1.5">
                     <Label className={FIELD_LABEL}>Quick</Label>
@@ -290,7 +343,7 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
             )}
 
             {/* Type segmented control */}
-            <div className="relative flex w-full rounded-xl bg-surface-hover p-[3px] gap-1">
+            <div role="group" aria-label="Transaction type" className="relative flex w-full rounded-xl bg-surface-hover p-[3px] gap-1">
                 <div
                     className={cn(
                         'absolute top-[3px] bottom-[3px] rounded-[9px] bg-raised shadow-sm transition-transform duration-200 ease-out',
@@ -303,6 +356,7 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
                     <button
                         key={t}
                         type="button"
+                        aria-pressed={type === t}
                         disabled={loading || moneyLocked}
                         onClick={() => setType(t)}
                         className={cn(
@@ -319,10 +373,11 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
                 <>
                     {/* Amount */}
                     <div className="space-y-1.5">
-                        <Label className={FIELD_LABEL}>Amount</Label>
+                        <Label htmlFor="tx-amount" className={FIELD_LABEL}>Amount</Label>
                         <div className="flex items-baseline gap-1.5 border-b border-line pb-2">
-                            <span className="text-[20px] font-medium text-faint-ink">Rp</span>
+                            <span aria-hidden="true" className="text-[20px] font-medium text-faint-ink">Rp</span>
                             <input
+                                id="tx-amount"
                                 ref={amountInputRef}
                                 type="text"
                                 inputMode="numeric"
@@ -345,6 +400,36 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
                             disabled={loading}
                         />
                     </div>
+
+                    {billChoices.length > 0 && (
+                        <div className="rounded-xl border border-line-soft bg-surface-soft px-3.5 py-3">
+                            <p className="text-[12px] text-muted-ink leading-relaxed">
+                                Paying a bill? Mark it, so it stops being held back from safe to spend.
+                            </p>
+                            <div role="group" aria-label="Bill this pays" className="mt-2 flex flex-wrap gap-2">
+                                {billChoices.map((d) => {
+                                    const on = billDue?.bill.id === d.bill.id
+                                    return (
+                                        <button
+                                            key={d.bill.id}
+                                            type="button"
+                                            aria-pressed={on}
+                                            disabled={loading}
+                                            onClick={() => pickBill(d)}
+                                            className={cn(
+                                                'inline-flex items-center gap-1.5 px-3 h-8 rounded-full border text-[12px] font-medium transition-colors',
+                                                on ? 'border-brand bg-brand-tint text-brand-ink' : 'border-line bg-surface text-ink'
+                                            )}
+                                        >
+                                            {on && <Check aria-hidden="true" className="w-3.5 h-3.5" />}
+                                            {d.bill.name} · {formatShortCurrency(d.bill.amount)}
+                                            {d.nextDue && <span className="font-normal text-muted-ink">· due {shortDate(d.nextDue)}</span>}
+                                        </button>
+                                    )
+                                })}
+                            </div>
+                        </div>
+                    )}
 
                     {suggestSavingsTransfer && (
                         <div className="rounded-xl bg-info/10 px-3.5 py-3 text-[12px] text-info leading-relaxed">
@@ -399,10 +484,11 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
 
                         <div className="py-[13px] border-t border-line-soft flex flex-col gap-2">
                             <div className="flex items-center gap-2.5">
-                                <Pencil className="w-4 h-4 text-muted-ink shrink-0" strokeWidth={2} />
-                                <span className="text-[13px] text-muted-ink">Note</span>
+                                <Pencil aria-hidden="true" className="w-4 h-4 text-muted-ink shrink-0" strokeWidth={2} />
+                                <label htmlFor="tx-note" className="text-[13px] text-muted-ink">Note</label>
                             </div>
                             <Input
+                                id="tx-note"
                                 type="text"
                                 placeholder="Lunch, fuel, etc (optional)"
                                 value={note}
@@ -415,7 +501,13 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
 
                     {/* Live consequence */}
                     {safeToSpend !== null && parsedAmount > 0 && (
-                        <ConsequenceStrip safeToSpend={safeToSpend} amount={parsedAmount} type={type} />
+                        <ConsequenceStrip
+                            safeToSpend={safeToSpend}
+                            amount={parsedAmount}
+                            type={type}
+                            freed={freedReserve}
+                            billName={billDue?.bill.name}
+                        />
                     )}
                 </>
             ) : (
@@ -430,6 +522,35 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
                         onAmountChange={setTransferAmount}
                         disabled={loading}
                     />
+                    {/* A transfer made yesterday belongs to yesterday, like any other entry. */}
+                    <div className="py-[13px] border-t border-line-soft flex flex-col gap-2">
+                        <div className="flex items-center gap-2.5">
+                            <CalendarIcon aria-hidden="true" className="w-4 h-4 text-muted-ink shrink-0" strokeWidth={2} />
+                            <span className="text-[13px] text-muted-ink">Date</span>
+                        </div>
+                        <DateQuickPicker
+                            date={date}
+                            periodStart={periodStart}
+                            maxDate={maxDate}
+                            onChange={setDate}
+                            disabled={loading}
+                        />
+                    </div>
+                    <div className="py-[13px] border-t border-line-soft flex flex-col gap-2">
+                        <div className="flex items-center gap-2.5">
+                            <Pencil aria-hidden="true" className="w-4 h-4 text-muted-ink shrink-0" strokeWidth={2} />
+                            <label htmlFor="transfer-note" className="text-[13px] text-muted-ink">Note</label>
+                        </div>
+                        <Input
+                            id="transfer-note"
+                            type="text"
+                            placeholder="Rent pot, trip top-up (optional)"
+                            value={note}
+                            onChange={(e) => setNote(e.target.value)}
+                            disabled={loading}
+                            className="h-11 rounded-[12px] border-line text-[13.5px]"
+                        />
+                    </div>
                     {(transferSaves || transferUnsaves) && (
                         <p className="rounded-xl bg-info/10 px-3.5 py-3 text-[12px] text-info leading-relaxed">
                             {transferSaves
@@ -460,9 +581,8 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
                     </button>
                 )}
                 <button
-                    type="button"
+                    type="submit"
                     disabled={loading}
-                    onClick={() => handleSubmit('save')}
                     className={FILLED_BUTTON}
                 >
                     {loading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : initial ? 'Save changes' : 'Save'}
@@ -479,6 +599,6 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
                     setAccountPickerOpen(false)
                 }}
             />
-        </div>
+        </form>
     )
 }

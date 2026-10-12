@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { BottomDrawer } from '@/components/bottom-drawer'
 import { toISODate } from '@/lib/helpers'
 import type { TransactionWithDetails } from '@/types'
@@ -16,6 +17,7 @@ interface AddTransactionFlowProps {
 
 export function AddTransactionFlow({ payPeriodId, periodStart, periodEnd, defaultDate, initial, onClose, onSuccess }: AddTransactionFlowProps) {
     const maxDate = periodEnd ?? toISODate()
+    const [dirty, setDirty] = useState(false)
 
     return (
         <BottomDrawer
@@ -24,6 +26,7 @@ export function AddTransactionFlow({ payPeriodId, periodStart, periodEnd, defaul
             title={initial ? 'Edit transaction' : 'New transaction'}
             maxHeightClassName="max-h-[92%]"
             titleClassName="font-semibold text-[17px] text-ink"
+            confirmDiscard={dirty ? (initial ? 'Discard your changes?' : 'Discard this transaction?') : null}
         >
             <AddTransactionForm
                 key={initial?.id}
@@ -32,8 +35,8 @@ export function AddTransactionFlow({ payPeriodId, periodStart, periodEnd, defaul
                 maxDate={maxDate}
                 defaultDate={defaultDate}
                 initial={initial}
-                onClose={onClose}
                 onSuccess={onSuccess}
+                onDirtyChange={setDirty}
             />
         </BottomDrawer>
     )

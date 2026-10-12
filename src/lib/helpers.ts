@@ -1,7 +1,8 @@
+/** A spending bar's colour by its share of the heaviest day, from the theme so dark mode follows. */
 export function heatBarColor(ratio: number): string {
-    if (ratio >= 0.7) return '#dc2626'
-    if (ratio >= 0.4) return '#e8973a'
-    return '#c9d6b4'
+    if (ratio >= 0.7) return 'var(--negative)'
+    if (ratio >= 0.4) return 'var(--warning)'
+    return 'color-mix(in srgb, var(--brand) 40%, var(--line-soft))'
 }
 
 export function formatCurrency(amount: number): string {

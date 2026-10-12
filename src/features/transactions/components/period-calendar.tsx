@@ -6,7 +6,9 @@ import { cn } from '@/lib/utils'
 import { TypeIcon } from './type-icon'
 import { CategoryTile } from '@/features/categories/components/category-icon'
 import { useLongPress } from '@/hooks/use-long-press'
-import { dailySpending, txTitle } from '../lib/ledger'
+import {
+    dailyEverydaySpending, dailySpending, isOverAllowance, isSaving, latestFirst, txTitle, type DailyAllowance,
+} from '../lib/ledger'
 
 interface PeriodCalendarProps {
     transactions: TransactionWithDetails[]
@@ -18,8 +20,29 @@ interface PeriodCalendarProps {
     onDateSelect?: (date: string) => void
     /** Tapping a transaction opens its detail sheet. */
     onOpen?: (tx: TransactionWithDetails) => void
-    /** The even daily share of the period's income; days spending past it get a mark. */
-    dailyLimit?: number | null
+    /** What a day's everyday spending is held against; days past it get a mark. */
+    allowance?: DailyAllowance | null
+    /** The period's income, which decides what counts as a one-off. */
+    periodIncome?: number
+}
+
+const allowanceName = (a: DailyAllowance) => a.kind === 'safe' ? 'safe daily amount' : 'everyday share'
+
+function readMode(): CalendarMode {
+    try {
+        return localStorage.getItem(CALENDAR_MODE_KEY) === 'days' ? 'days' : 'month'
+    } catch {
+        return 'month'
+    }
+}
+
+function saveMode(mode: CalendarMode) {
+    // Private browsing can refuse storage; the mode just isn't remembered then.
+    try { localStorage.setItem(CALENDAR_MODE_KEY, mode) } catch { /* not remembered */ }
+}
+
+function dayName(date: string) {
+    return new Date(date + 'T00:00:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })
 }
 
 type CalendarMode = 'month' | 'days'
@@ -141,10 +164,12 @@ function DayTransactions({
 
 function ModeSwitch({ mode, onChange }: { mode: CalendarMode; onChange: (m: CalendarMode) => void }) {
     return (
-        <div className="flex p-[2px] rounded-[9px] bg-surface-hover shrink-0">
+        <div role="group" aria-label="Calendar view" className="flex p-[2px] rounded-[9px] bg-surface-hover shrink-0">
             {(['month', 'days'] as const).map(m => (
                 <button
                     key={m}
+                    type="button"
+                    aria-pressed={mode === m}
                     onClick={() => onChange(m)}
                     className={cn(
                         'px-2.5 py-[5px] rounded-[7px] text-[11px] capitalize',
@@ -169,16 +194,14 @@ export function PeriodCalendar({
     readOnly,
     onDateSelect,
     onOpen,
-    dailyLimit = null,
+    allowance = null,
+    periodIncome = 0,
 }: PeriodCalendarProps) {
-    const [mode, setMode] = useState<CalendarMode>(() => {
-        if (typeof localStorage === 'undefined') return 'month'
-        return localStorage.getItem(CALENDAR_MODE_KEY) === 'days' ? 'days' : 'month'
-    })
+    const [mode, setMode] = useState<CalendarMode>(readMode)
 
     const handleModeChange = (m: CalendarMode) => {
         setMode(m)
-        localStorage.setItem(CALENDAR_MODE_KEY, m)
+        saveMode(m)
     }
 
     const clamp = (d: string) => {
@@ -198,16 +221,24 @@ export function PeriodCalendar({
         txByDate.get(tx.date)!.push(tx)
     }
 
-    const dailyExpense = new Map<string, number>()
-    for (const [date, txs] of txByDate) {
-        dailyExpense.set(date, txs.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0))
-    }
+    // Bars are spending as the hero counts it: savings set aside aren't a heavy day.
+    const dailyExpense = dailySpending(transactions)
     const maxExpense = Math.max(0, ...dailyExpense.values())
 
-    // Days whose spending (savings excluded) went past the even daily share of income.
-    const spendingByDay = dailySpending(transactions)
-    const isOverDay = (date: string) => dailyLimit !== null && dailyLimit > 0 && (spendingByDay.get(date) ?? 0) > dailyLimit
-    const overDays = dailyLimit ? [...spendingByDay.keys()].filter(isOverDay).length : 0
+    // Marks are everyday spending against the allowance, which is worked out for that part:
+    // rent paid on the 1st makes a tall bar, not a day "over".
+    const everydayByDay = dailyEverydaySpending(transactions, periodIncome)
+    const isOverDay = (date: string) => isOverAllowance(everydayByDay.get(date) ?? 0, allowance)
+    const overDays = [...everydayByDay.keys()].filter(isOverDay).length
+
+    const dayLabel = (date: string) => {
+        const spent = dailyExpense.get(date) ?? 0
+        return [
+            dayName(date),
+            spent > 0 ? `spent ${formatCurrency(spent)}` : date > today ? null : 'no spending',
+            isOverDay(date) && allowance ? `over the ${allowanceName(allowance)}` : null,
+        ].filter(Boolean).join(', ')
+    }
 
     const dates = getDatesInRange(periodStart, periodEnd)
     const firstDayOfWeek = new Date(periodStart + 'T00:00:00').getDay()
@@ -215,15 +246,11 @@ export function PeriodCalendar({
     const remainder = paddedDates.length % 7
     if (remainder !== 0) paddedDates.push(...Array(7 - remainder).fill(null))
 
-    const selectedTxs = (txByDate.get(validSelected) ?? [])
-        .slice()
-        .sort((a, b) => {
-            const aTime = a.created_at ? new Date(a.created_at).getTime() : 0
-            const bTime = b.created_at ? new Date(b.created_at).getTime() : 0
-            return aTime - bTime
-        })
+    // Latest first, as in the All list.
+    const selectedTxs = (txByDate.get(validSelected) ?? []).slice().sort(latestFirst)
 
     const dailyIncomeSummary = selectedTxs.filter(tx => tx.type === 'income').reduce((sum, tx) => sum + tx.amount, 0)
+    const dailySavingsSummary = selectedTxs.filter(isSaving).reduce((sum, tx) => sum + tx.amount, 0)
     const dailyExpenseSummary = dailyExpense.get(validSelected) ?? 0
 
     const handleSelectDate = (date: string) => {
@@ -255,10 +282,10 @@ export function PeriodCalendar({
                     <div>
                         <p className="text-[11px] tracking-[.14em] uppercase text-muted-ink">{rangeCaption}</p>
                         <p className="mt-0.5 text-[11px] text-subtle-ink">
-                            {dailyLimit && dailyLimit > 0
+                            {allowance
                                 ? overDays > 0
-                                    ? <><span className="text-negative">{overDays} day{overDays === 1 ? '' : 's'}</span> over {formatShortCurrency(Math.round(dailyLimit))}/day</>
-                                    : `every day under ${formatShortCurrency(Math.round(dailyLimit))}/day`
+                                    ? <><span className="text-negative">{overDays} day{overDays === 1 ? '' : 's'}</span> over {formatShortCurrency(Math.round(allowance.amount))}/day {allowance.kind === 'safe' ? 'safe' : 'share'}</>
+                                    : `every day within ${formatShortCurrency(Math.round(allowance.amount))}/day ${allowance.kind === 'safe' ? 'safe' : 'share'}`
                                 : mode === 'month'
                                     ? `tallest day ${formatCompact(maxExpense)}`
                                     : 'swipe the rail, tap a day'}
@@ -293,7 +320,11 @@ export function PeriodCalendar({
                                 return (
                                     <button
                                         key={date}
+                                        type="button"
                                         onClick={() => handleSelectDate(date)}
+                                        aria-label={dayLabel(date)}
+                                        aria-pressed={isSelected}
+                                        aria-current={isToday ? 'date' : undefined}
                                         className={cn(
                                             'aspect-square rounded-[9px] p-1 flex flex-col items-center justify-between border',
                                             highlighted
@@ -311,10 +342,11 @@ export function PeriodCalendar({
                                         >
                                             {dayNum}
                                             {isOverDay(date) && (
-                                                <span aria-label="over daily allowance" className="absolute -top-0.5 -right-1.5 w-1 h-1 rounded-full bg-negative" />
+                                                <span aria-hidden="true" className="absolute -top-0.5 -right-1.5 w-1 h-1 rounded-full bg-negative" />
                                             )}
                                         </span>
                                         <div
+                                            aria-hidden="true"
                                             className="w-[70%] rounded-[2px_2px_1px_1px]"
                                             style={{
                                                 height: `${height || 2}px`,
@@ -327,7 +359,7 @@ export function PeriodCalendar({
                         </div>
                     </>
                 ) : (
-                    <div ref={railRef} className="flex gap-[7px] overflow-x-auto px-[18px] pt-0.5 pb-1 [scroll-snap-type:x_mandatory] [&::-webkit-scrollbar]:hidden">
+                    <div ref={railRef} data-no-swipe className="flex gap-[7px] overflow-x-auto px-[18px] pt-0.5 pb-1 [scroll-snap-type:x_mandatory] [&::-webkit-scrollbar]:hidden">
                         {dates.map(date => {
                             const d = new Date(date + 'T00:00:00')
                             const expense = dailyExpense.get(date) ?? 0
@@ -339,7 +371,11 @@ export function PeriodCalendar({
                                 <button
                                     key={date}
                                     ref={isSelected ? selectedPillRef : undefined}
+                                    type="button"
                                     onClick={() => handleSelectDate(date)}
+                                    aria-label={dayLabel(date)}
+                                    aria-pressed={isSelected}
+                                    aria-current={date === today ? 'date' : undefined}
                                     className={cn(
                                         'shrink-0 w-[46px] rounded-[14px] border py-[9px] flex flex-col items-center gap-[5px] [scroll-snap-align:center]',
                                         isSelected ? 'bg-ink border-ink' : 'bg-surface border-line-soft',
@@ -351,15 +387,15 @@ export function PeriodCalendar({
                                     <span className={cn('relative text-[16px] font-semibold tabular-nums', isSelected ? 'text-on-ink' : 'text-ink')}>
                                         {d.getDate()}
                                         {isOverDay(date) && (
-                                            <span aria-label="over daily allowance" className="absolute -top-0.5 -right-2 w-1.5 h-1.5 rounded-full bg-negative" />
+                                            <span aria-hidden="true" className="absolute -top-0.5 -right-2 w-1.5 h-1.5 rounded-full bg-negative" />
                                         )}
                                     </span>
-                                    <div className="w-[14px] h-[26px] flex items-end justify-center">
+                                    <div aria-hidden="true" className="w-[14px] h-[26px] flex items-end justify-center">
                                         <div
                                             className="w-full rounded-[2px_2px_1px_1px]"
                                             style={{
                                                 height: `${height || 2}px`,
-                                                backgroundColor: !height ? 'var(--line-soft)' : isSelected ? '#a3d16a' : heatBarColor(ratio),
+                                                backgroundColor: !height ? 'var(--line-soft)' : isSelected ? 'var(--brand)' : heatBarColor(ratio),
                                             }}
                                         />
                                     </div>
@@ -373,18 +409,15 @@ export function PeriodCalendar({
             <div className="card overflow-hidden lg:sticky lg:top-4">
                 <div className="flex items-center justify-between gap-2.5 px-5 pt-4 pb-3.5">
                     <div>
-                        <p className="text-[14px] font-semibold text-ink">
-                            {new Date(validSelected + 'T00:00:00').toLocaleDateString('en-GB', {
-                                weekday: 'long', day: 'numeric', month: 'long'
-                            })}
-                        </p>
+                        <p aria-live="polite" className="text-[14px] font-semibold text-ink">{dayName(validSelected)}</p>
 
                         {selectedTxs.length > 0 && (
                             <p className="mt-0.5 text-[11px]">
                                 <span className="text-muted-ink">
-                                    {selectedTxs.length} transaction{selectedTxs.length === 1 ? '' : 's'} ·{' '}
+                                    {selectedTxs.length} transaction{selectedTxs.length === 1 ? '' : 's'}
                                 </span>
-                                <span className="text-ink">−{formatCurrency(dailyExpenseSummary)}</span>
+                                {dailyExpenseSummary > 0 && <span className="text-ink"> · −{formatCurrency(dailyExpenseSummary)}</span>}
+                                {dailySavingsSummary > 0 && <span className="text-info"> · {formatCurrency(dailySavingsSummary)} saved</span>}
                                 {dailyIncomeSummary > 0 && (
                                     <span className="text-positive"> · +{formatCurrency(dailyIncomeSummary)}</span>
                                 )}
@@ -394,8 +427,8 @@ export function PeriodCalendar({
 
                 </div>
 
-                {dailyLimit !== null && dailyLimit > 0 && validSelected <= today && (
-                    <DayAllowance spent={spendingByDay.get(validSelected) ?? 0} limit={dailyLimit} />
+                {allowance && validSelected <= today && (
+                    <DayAllowance spent={everydayByDay.get(validSelected) ?? 0} allowance={allowance} />
                 )}
 
                 {selectedTxs.length === 0 ? (
@@ -415,21 +448,27 @@ export function PeriodCalendar({
     )
 }
 
-/** The selected day's spending against the even daily share — a bar that turns red past it. */
-function DayAllowance({ spent, limit }: { spent: number; limit: number }) {
-    const over = spent > limit
-    const pct = Math.min(100, Math.round((spent / limit) * 100))
+/** The selected day's everyday spending against the allowance — a bar that turns red past it. */
+function DayAllowance({ spent, allowance }: { spent: number; allowance: DailyAllowance }) {
+    const limit = allowance.amount
+    const over = isOverAllowance(spent, allowance)
+    const pct = limit > 0 ? Math.min(100, Math.round((spent / limit) * 100)) : spent > 0 ? 100 : 0
+    const name = `${formatShortCurrency(Math.round(limit))} ${allowanceName(allowance)}`
     return (
         <div className="px-5 pb-3.5">
-            <div className="h-1 rounded-full bg-line-soft overflow-hidden">
+            <div aria-hidden="true" className="h-1 rounded-full bg-line-soft overflow-hidden">
                 <div className={cn('h-full rounded-full', over ? 'bg-negative' : 'bg-brand')} style={{ width: `${pct}%` }} />
             </div>
             <p className={cn('mt-1.5 text-[11px] tabular-nums', over ? 'text-negative' : 'text-muted-ink')}>
-                {over
-                    ? `${formatShortCurrency(spent - limit)} over the ${formatShortCurrency(Math.round(limit))} daily share`
-                    : spent === 0
-                        ? `No spending — ${formatShortCurrency(Math.round(limit))} daily share untouched`
-                        : `${formatShortCurrency(Math.round(limit - spent))} under the ${formatShortCurrency(Math.round(limit))} daily share`}
+                {limit <= 0
+                    ? spent > 0
+                        ? `${formatShortCurrency(spent)} everyday spending with no safe room left`
+                        : 'No everyday spending, and no safe room left this period'
+                    : over
+                        ? `${formatShortCurrency(spent - limit)} over the ${name}`
+                        : spent === 0
+                            ? `No everyday spending — ${name} untouched`
+                            : `${formatShortCurrency(Math.round(limit - spent))} under the ${name}`}
             </p>
         </div>
     )

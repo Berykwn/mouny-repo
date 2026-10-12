@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { tx } from '@/test/fixtures'
-import { applyFilter, categoryFacets, dailySpending, groupByDate, linkedTo, txTitle } from './ledger'
+import type { BillDue } from '@/features/bills/lib/bills'
+import {
+    applyFilter, categoryFacets, dailyAllowance, dailyEverydaySpending, dailySpending, groupByDate, isOverAllowance,
+    linkedTo, txTitle, unpaidBillsFor,
+} from './ledger'
 
 describe('linkedTo', () => {
     it('recognises transfer, wish and debt transactions', () => {
@@ -35,9 +39,11 @@ describe('groupByDate', () => {
             tx({ id: 'late', date: '2026-09-15', amount: 20_000, created_at: '2026-09-15T09:00:00Z' }),
             tx({ id: 'pay', date: '2026-09-15', type: 'income', amount: 100_000 }),
             tx({ id: 'xfer', date: '2026-09-15', type: 'transfer_out', amount: 500_000 }),
+            tx({ id: 'saved', date: '2026-09-15', amount: 2_000_000, category: { is_savings: true } }),
         ])
         expect(groups.map(g => g.date)).toEqual(['2026-09-15', '2026-09-14'])
-        expect(groups[0]).toMatchObject({ income: 100_000, expense: 30_000 })
+        // Savings aren't spending, as in the hero's "Spent".
+        expect(groups[0]).toMatchObject({ income: 100_000, spending: 30_000, savings: 2_000_000 })
         expect(groups[0].txs.map(t => t.id).indexOf('late')).toBeLessThan(groups[0].txs.map(t => t.id).indexOf('early'))
     })
 })
@@ -61,6 +67,11 @@ describe('applyFilter', () => {
         expect(ids({ query: 'food', type: 'all', categoryId: null })).toEqual(['coffee'])
         expect(ids({ query: 'bca', type: 'all', categoryId: null })).toHaveLength(3)
         expect(ids({ query: '7000', type: 'all', categoryId: null })).toEqual(['loose'])
+    })
+
+    it('matches an amount typed the way it is shown', () => {
+        expect(ids({ query: '25.000', type: 'all', categoryId: null })).toEqual(['coffee'])
+        expect(ids({ query: 'Rp 10.000.000', type: 'all', categoryId: null })).toEqual(['salary'])
     })
 })
 
@@ -88,5 +99,50 @@ describe('dailySpending', () => {
             tx({ date: '2026-09-16', amount: 3_000 }),
         ])
         expect(Object.fromEntries(map)).toEqual({ '2026-09-15': 10_000, '2026-09-16': 3_000 })
+    })
+
+    it('leaves bills and big one-offs out of the everyday part', () => {
+        const map = dailyEverydaySpending([
+            tx({ date: '2026-09-15', amount: 10_000 }),
+            tx({ date: '2026-09-15', amount: 3_000_000, category: { kind: 'fixed' } }),
+            tx({ date: '2026-09-16', amount: 2_000_000 }),
+        ], 10_000_000)
+        expect(Object.fromEntries(map)).toEqual({ '2026-09-15': 10_000 })
+    })
+})
+
+describe('unpaidBillsFor', () => {
+    const due = (id: string, category_id: string | null, outstanding: number) =>
+        ({ bill: { id, category_id }, outstanding }) as unknown as BillDue
+    const dues = [due('rent', 'housing', 1), due('wifi', 'housing', 0), due('gym', 'health', 1), due('loose', null, 1)]
+
+    it('offers only bills still due in that category', () => {
+        expect(unpaidBillsFor(dues, 'housing').map(d => d.bill.id)).toEqual(['rent'])
+        expect(unpaidBillsFor(dues, 'food')).toEqual([])
+        expect(unpaidBillsFor(dues, null)).toEqual([])
+    })
+})
+
+describe('dailyAllowance', () => {
+    const stats = { isClosed: false, safeDaily: 150_000, totalIncome: 10_000_000, totalSavings: 1_000_000, oneOffSpending: 3_000_000, totalDays: 30 }
+
+    it('is the hero’s safe daily amount for an open period, never below zero', () => {
+        expect(dailyAllowance(stats)).toEqual({ amount: 150_000, kind: 'safe' })
+        expect(dailyAllowance({ ...stats, safeDaily: -20_000 })).toEqual({ amount: 0, kind: 'safe' })
+    })
+
+    it('spreads a closed period’s everyday money evenly', () => {
+        expect(dailyAllowance({ ...stats, isClosed: true, safeDaily: null })).toEqual({ amount: 200_000, kind: 'share' })
+    })
+
+    it('is null with no income to share', () => {
+        expect(dailyAllowance({ ...stats, totalIncome: 0 })).toBeNull()
+    })
+
+    it('marks any everyday spending once there is no room left', () => {
+        expect(isOverAllowance(1, { amount: 0, kind: 'safe' })).toBe(true)
+        expect(isOverAllowance(0, { amount: 0, kind: 'safe' })).toBe(false)
+        expect(isOverAllowance(100, { amount: 150, kind: 'safe' })).toBe(false)
+        expect(isOverAllowance(100, null)).toBe(false)
     })
 })

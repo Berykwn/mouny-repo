@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Loader2, Pencil, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
-import { useAccounts } from '@/queries'
+import { useAccounts, useBills } from '@/queries'
 import { transactionsService } from '@/services/transactions.service'
 import { formatCurrency, formatDate } from '@/lib/helpers'
 import { amountColor, amountSign, isTransfer } from '@/lib/transaction-type'
@@ -89,12 +89,16 @@ function addedAt(createdAt: string | null): string | null {
 export function TransactionDetail({ tx, readOnly, onEdit, onDelete, onMoved }: TransactionDetailProps) {
     const linked = linkedTo(tx)
     const added = addedAt(tx.created_at)
+    const { data: bills } = useBills()
+    const paysBill = tx.recurring_bill_id ? bills?.find(b => b.id === tx.recurring_bill_id) : undefined
     // A transfer row has no category and its money belongs to the transfer or debt, so
     // there's nothing the edit form could change; delete it and record it again instead.
     const editable = !isTransfer(tx.type)
 
     const facts: { label: string; value: string }[] = [
         ...(isTransfer(tx.type) ? [] : [{ label: 'Category', value: tx.category?.name ?? 'Uncategorised' }]),
+        // Deleting it makes the bill due again, which the bills card then shows.
+        ...(paysBill ? [{ label: 'Pays bill', value: paysBill.name }] : []),
         { label: 'Account', value: tx.account.name },
         { label: 'Date', value: formatDate(tx.date) },
         ...(added ? [{ label: 'Added', value: added }] : []),
@@ -133,6 +137,12 @@ export function TransactionDetail({ tx, readOnly, onEdit, onDelete, onMoved }: T
             {linked && (
                 <p className="rounded-[14px] bg-info/10 text-info px-3 py-2.5 text-[12px] leading-relaxed">
                     {linkNote(linked, tx)}
+                </p>
+            )}
+
+            {paysBill && !readOnly && (
+                <p className="rounded-[14px] bg-info/10 text-info px-3 py-2.5 text-[12px] leading-relaxed">
+                    Pays {paysBill.name}. Deleting it makes the bill due again, and held back from safe to spend.
                 </p>
             )}
 

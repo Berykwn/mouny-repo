@@ -109,8 +109,11 @@ export const transactionsService = invalidatesOnWrite({
         }
     },
 
-    /** Edits that don't move money: category, note and date (cleared values saved as null). */
-    async updateDetails(id: string, input: { category_id: string | null; note: string | null; date: string }): Promise<ServiceResult<Transaction>> {
+    /**
+     * Edits that don't move money: category, note and date (cleared values saved as null),
+     * and which bill it pays, when that's given.
+     */
+    async updateDetails(id: string, input: { category_id: string | null; note: string | null; date: string; recurring_bill_id?: string | null }): Promise<ServiceResult<Transaction>> {
         try {
             const { data, error } = await supabase
                 .from('transactions')
