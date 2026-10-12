@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowRight } from 'lucide-react'
+import { ArrowRight, ChevronDown } from 'lucide-react'
 import { formatCurrency } from '@/lib/helpers'
 import { cn } from '@/lib/utils'
 import { calculateHealthScore } from '@/lib/calculate-health-score'
@@ -87,59 +87,22 @@ export function SafeToSpendCard({
     ].filter(s => s.amount > 0)
 
     return (
-        <div className="card px-5 py-[22px]">
-            <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                    <p className="text-[11px] font-normal uppercase tracking-[.14em] text-muted-ink">
-                        Safe to spend
-                    </p>
-                    <p
-                        className={cn(
-                            // Scales down on narrow phones so a 7–8 digit amount clears the health ring.
-                            'mt-1.5 text-[clamp(28px,9vw,38px)] font-medium leading-none tracking-[-.03em] tabular-nums',
-                            isNegative ? 'text-negative' : 'text-ink'
-                        )}
-                    >
-                        {formatCurrency(remaining)}
-                    </p>
-                    {reservedBills > 0 && (
-                        <p className="mt-1.5 text-[11.5px] text-muted-ink">
-                            {formatCurrency(reservedBills)} set aside for {unpaidBills} bill{unpaidBills === 1 ? '' : 's'} still due
-                        </p>
-                    )}
-                </div>
-
-                {health && (
-                    <button
-                        type="button"
-                        onClick={() => setReasonsOpen(o => !o)}
-                        aria-expanded={reasonsOpen}
-                        aria-label={`Financial health ${health.score}, ${health.label}. ${reasonsOpen ? 'Hide' : 'Show'} why`}
-                        className="shrink-0 h-14 w-14 rounded-full p-[5px]"
-                        style={{ background: `conic-gradient(${healthColor} 0 ${health.score}%, var(--line-soft) ${health.score}% 100%)` }}
-                    >
-                        <span className="flex h-full w-full flex-col items-center justify-center rounded-full bg-surface leading-none">
-                            <span className="text-[17px] font-semibold tabular-nums" style={{ color: healthColor }}>{health.score}</span>
-                            <span className="mt-0.5 text-[8.5px] font-semibold" style={{ color: healthColor }}>{health.label}</span>
-                        </span>
-                    </button>
+        <div className="card px-5 py-[22px] overflow-hidden">
+            <p className="text-[11px] font-normal uppercase tracking-[.14em] text-muted-ink">
+                Safe to spend
+            </p>
+            <p
+                className={cn(
+                    'mt-1.5 text-[38px] font-medium leading-none tracking-[-.03em] tabular-nums',
+                    isNegative ? 'text-negative' : 'text-ink'
                 )}
-            </div>
-
-            {health && reasonsOpen && (health.periodReasons.length > 0 || health.overallReasons.length > 0) && (
-                <div className="mt-3 rounded-[12px] bg-surface-soft border border-line-soft px-3 py-2.5 space-y-1">
-                    <p className="text-[11px] uppercase tracking-[.14em] text-muted-ink">Financial health</p>
-                    {health.periodReasons.length > 0 && (
-                        <p className="text-[12px] text-ink">
-                            <span className="text-muted-ink">This period:</span> {health.periodReasons.join(' · ')}
-                        </p>
-                    )}
-                    {health.overallReasons.length > 0 && (
-                        <p className="text-[12px] text-ink">
-                            <span className="text-muted-ink">Overall:</span> {health.overallReasons.join(' · ')}
-                        </p>
-                    )}
-                </div>
+            >
+                {formatCurrency(remaining)}
+            </p>
+            {reservedBills > 0 && (
+                <p className="mt-1.5 text-[11.5px] text-muted-ink">
+                    {formatCurrency(reservedBills)} set aside for {unpaidBills} bill{unpaidBills === 1 ? '' : 's'} still due
+                </p>
             )}
 
             <div className="mt-4 flex h-2 w-full gap-[2px] overflow-hidden rounded-full bg-line-soft">
@@ -210,6 +173,41 @@ export function SafeToSpendCard({
                     className="mt-3 hidden lg:grid"
                 />
             </div>
+
+            {/* Health closes the card as a full-width row; its reasons open in place. */}
+            {health && (
+                <div className="mt-4 -mx-5 -mb-[22px] border-t border-line-soft">
+                    <button
+                        type="button"
+                        onClick={() => setReasonsOpen(o => !o)}
+                        aria-expanded={reasonsOpen}
+                        className="w-full flex items-center gap-3 px-5 py-3 text-left hover:bg-surface-soft transition-colors"
+                    >
+                        <span className="text-[11px] uppercase tracking-[.14em] text-muted-ink shrink-0">Financial health</span>
+                        <span className="flex-1 h-1.5 rounded-full bg-line-soft overflow-hidden">
+                            <span className="block h-full rounded-full" style={{ width: `${health.score}%`, backgroundColor: healthColor }} />
+                        </span>
+                        <span className="text-[13px] font-semibold tabular-nums shrink-0" style={{ color: healthColor }}>
+                            {health.score} <span className="font-medium">· {health.label}</span>
+                        </span>
+                        <ChevronDown className={cn('h-4 w-4 shrink-0 text-muted-ink transition-transform', reasonsOpen && 'rotate-180')} />
+                    </button>
+                    {reasonsOpen && (
+                        <div className="px-5 pb-3.5 -mt-1 space-y-1">
+                            {health.periodReasons.length > 0 && (
+                                <p className="text-[12px] text-ink">
+                                    <span className="text-muted-ink">This period:</span> {health.periodReasons.join(' · ')}
+                                </p>
+                            )}
+                            {health.overallReasons.length > 0 && (
+                                <p className="text-[12px] text-ink">
+                                    <span className="text-muted-ink">Overall:</span> {health.overallReasons.join(' · ')}
+                                </p>
+                            )}
+                        </div>
+                    )}
+                </div>
+            )}
         </div>
     )
 }
