@@ -11,9 +11,58 @@ All notable changes to Mouny, newest first. The format follows [Keep a Changelog
 
 ## [Unreleased]
 
-The app now works offline, the sign-in pages match the rest of the app, categories have kinds, and balances, debts and wishes can no longer drift out of step.
+Nothing yet.
 
-> **Migrations required, in order:** `20261005000100_ledger_integrity.sql`, `20261005000200_archive_and_unperiodized_transfers.sql`, `20261005000300_savings_accounts.sql`, `20261005000400_move_to_savings.sql`, `20261006000100_calculation_fixes.sql`, `20261007000100_recurring_bills.sql`, `20261007000200_quick_transactions.sql`. Run them before deploying this version: transfers, collections, balance adjustments, archiving and savings accounts depend on them. They keep every current balance as it is.
+---
+
+## [1.17.0] — 2026-10-12
+
+Wishes can be split into parts, bills can be marked paid from the add form, and the overview and ledger compare like with like.
+
+> **Migrations required, in order:** `20261009000100_wish_parts.sql`, `20261012000100_transfer_note.sql`. Run them before deploying. Without the first, the wishlist loads as before but parts can't be saved; without the second, a transfer's note is left off and the transfer still goes through.
+
+### Added
+- **Wish parts.** Split a wish like *Rakit PC* into its parts (motherboard, CPU, …), each with its own price, and buy them one at a time. Buying a part records an expense on the wish, or marks something bought before it was tracked. Money saved for the wish goes toward its parts; undoing a part puts it back. The wish is done when every part is bought.
+- **Mark an expense as a bill's payment.** Adding an expense in a category with a bill still due offers that bill (*Rent · 2jt · due 5 Oct*). Picking it marks the bill paid, so it stops being held back from *Safe to spend*. Works when editing too, to fix entries made before.
+- **Transfers take a date and a note.** A transfer made yesterday can be dated yesterday, and a note (*rent pot*) replaces the plain "Transfer to …".
+- **Discard check.** Tapping outside a half-filled transaction form, or pressing Escape, asks before throwing it away.
+
+### Changed
+- **Balances lead on a phone.** The overview's headline card shows what your accounts hold (the closing balance for a closed period) and taps through to Accounts. The income, spent and to-savings tiles move to a *This period* card at the top of analytics.
+- **Financial health is a full-width row** closing the headline card; its reasons open in place.
+- **Comparisons with last period are like for like.** Mid-period, the overview set spending so far against last period's whole total, so it read as "down" every time and the health score started each period at Excellent. The health score, *unspent vs last period* and the Spent tile now use where this period's pace ends it (marked *on pace*), and wait until day 3.
+- **One "spent" across the ledger.** Calendar bars, day and list totals now leave savings out, as the hero's *Spent* does; savings show beside them.
+- **The calendar's daily mark matches the hero.** Days are marked against the same safe daily amount the hero shows, on everyday spending only, so paying rent doesn't mark the day as over.
+- The ledger hero shows bills still due, so its parts add up to what came in.
+- Loading shows the shape of the page instead of grey lines. A trend that can't load says so, with Retry, instead of charting periods as Rp0.
+- CSV exports name the period, list oldest first, and say *Saved* / *Transfer in* instead of raw types.
+
+### Fixed
+- **Swiping the day rail or filter chips scrolls them again.** On phones those swipes were taken for switching tabs.
+- A bill paid from the add form counted twice in *Safe to spend* (the payment, and the bill still held back). Mark it as the bill's payment to fix it.
+- Escape in a nested picker closed the whole form behind it. It now closes only the top drawer; a date popover's Escape closes only the popover.
+- Editing an uncategorised expense no longer gives it the first category on save.
+- A period's transactions or debts that fail to load show an error with Retry, instead of an empty ledger, Rp0 or a missing health score.
+- Drawers are dialogs to screen readers, keep focus inside while open and return it after; tabs, filters, calendar days and icon buttons are labelled.
+
+---
+
+## [1.16.0] — 2026-10-07
+
+### Changed
+- **One headline card on the overview.** *Safe to spend*, financial health and the period summary are one card. Its bar splits income into spent, saved, bills due and safe.
+- The mobile header is the logo and the period chip on one row. Quick add is desktop-only, since the bottom nav has the **+** button.
+- On desktop the right column holds balances (with accounts), today/week and spending by account.
+- The stats card is gone: pace moved into the projection, and the period ranking into the spending trend, where an open period is ranked by its projected end. The by-day-of-week chart and the savings-rate insight were removed.
+- The health score waits for debts to load instead of assuming there are none.
+
+---
+
+## [1.15.0] — 2026-10-07
+
+The app now works offline, the sign-in pages match the rest of the app, categories have kinds, bills and quick amounts arrive, and balances, debts and wishes can no longer drift out of step.
+
+> **Migrations required, in order:** `20261005000100_ledger_integrity.sql`, `20261005000200_archive_and_unperiodized_transfers.sql`, `20261005000300_savings_accounts.sql`, `20261005000400_move_to_savings.sql`, `20261006000100_calculation_fixes.sql`, `20261007000100_recurring_bills.sql`, `20261007000200_quick_transactions.sql`, `20261008000100_reminders.sql`. Run them before deploying this version: transfers, collections, balance adjustments, archiving and savings accounts depend on them. They keep every current balance as it is.
 
 ### Added
 - **Every balance change is in the ledger.** Transfers between accounts, collected receivables and balance adjustments now show up as transactions. An account's balance always equals its opening balance plus its transactions. Transfers and adjustments still work between pay periods; they're then recorded outside any period.
@@ -34,6 +83,7 @@ The app now works offline, the sign-in pages match the rest of the app, categori
 - **Smarter insights.** The overview’s insight card now ranks what matters most and shows up to four lines: when your money runs out at this pace (with a date), bills that are overdue or due this week, a category well above or below your usual for this point in the period, spending against last period at the same day, and what your subscriptions cost a year.
 - **Quick amounts.** Set up one-tap amounts on a category (open it from Categories), like *Parkir 2rb* and *Parkir 5rb*, optionally named (*Kopi* under Food & Drinks). They show as pills on the overview and at the top of the add form. A tap asks only which account paid and an optional note; the date is today, and the account you used last time is picked for you.
 - **Appearance setting.** Choose Auto, Light or Dark from the Menu. Auto follows your device, and now switches as soon as the device does.
+- **Reminders.** Push notifications for bills coming due, debts, budgets running out and a daily check-in, turned on per device from the Menu. An hourly job sends each one once.
 
 ### Changed
 - **Debt money no longer skews your stats.** Lending money used to count as spending, and borrowing as income. Both now count as transfers, and so do collections and transfers between your own accounts. They move your balance but stay out of income, spending, savings rate and the health score. Debt payments still count as bills. Existing lending and borrowing transactions are converted automatically.
