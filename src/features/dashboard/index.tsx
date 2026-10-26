@@ -29,7 +29,7 @@ export default function DashboardPage() {
             )}
 
             {/* Brand, the period, and the avatar that opens Settings. Accounts open from the balances row. */}
-            <header className="flex items-center justify-between gap-3 px-5 pt-[22px] bg-neutral-50 dark:bg-neutral-950 lg:hidden">
+            <header className="flex items-center justify-between gap-3 px-5 pt-[22px] lg:hidden">
                 <div className="flex items-center gap-2">
                     <img src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" className="w-6 h-6" />
                     <span className="text-[16px] font-semibold tracking-[-0.02em] text-ink">Mouny.</span>

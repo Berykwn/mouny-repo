@@ -1,18 +1,25 @@
+import { Link } from 'react-router-dom'
 import { OverviewSkeleton } from './overview-skeleton'
 import { useOverviewData } from '../../hooks/use-overview-data'
+import { useCashOutlook } from '../../hooks/use-cash-outlook'
 import { usePeriodStats } from '@/hooks/use-period-stats'
-import { comparableSpending } from '@/lib/comparable-spending'
 import { useBillReserve } from '@/hooks/use-bill-reserve'
-import { BillsDueCard } from '@/features/bills/components/bills-due-card'
+import { formatShortCurrency, toISODate } from '@/lib/helpers'
+import { shortDate } from '@/features/bills/lib/bill-labels'
 import { QuickAddCard } from '@/features/quick-transactions/components/quick-add-card'
-import { SafeToSpendCard } from './safe-to-spend-card'
-import { PeriodInsights } from './period-insights'
-import { TodayWeekCard } from './today-week-card'
-import { BalancesCard } from './balances-card'
-import { SpendingByAccountCard } from './spending-by-account-card'
-import { Link } from 'react-router-dom'
-import { ChartLine, ChevronRight } from 'lucide-react'
+import { BalancesList, BalancesRow } from './balances-card'
+import { HomeHero } from '../home/home-hero'
+import { SmartLineSlot } from '../home/smart-line'
+import { DueSoonList } from '../home/due-soon-list'
+import { LatestList, TodayList } from '../home/today-list'
+import { HomeSection } from '../home/home-section'
+import { CashOutlookChart } from '../cash-outlook-chart'
+import { heroNumbers } from '../../lib/home'
 
+/**
+ * Home answers "what can I spend today?": the hero, at most one line worth acting on,
+ * then balances, today's entries and the bills before payday. The analysis is on Insights.
+ */
 export function OverviewTransaction({
     periodId,
     isActivePeriod,
@@ -20,7 +27,7 @@ export function OverviewTransaction({
     periodId: string
     isActivePeriod: boolean
 }) {
-    const { data, loading, debtsFailed, retry } = useOverviewData(periodId)
+    const { data, loading, retry } = useOverviewData(periodId)
     const reserve = useBillReserve(data?.period, data?.transactions)
 
     const stats = usePeriodStats({
@@ -29,8 +36,7 @@ export function OverviewTransaction({
         fallbackTotalDays: data?.fallbackTotalDays ?? null,
         reservedBills: reserve.reserved,
     })
-    // Every "vs last period" on the overview compares this, so they can't disagree.
-    const comparable = comparableSpending(stats)
+    const outlook = useCashOutlook(data?.period, data?.accounts, stats, reserve)
 
     if (loading) return <OverviewSkeleton />
     if (!data) return (
@@ -50,76 +56,67 @@ export function OverviewTransaction({
     )
 
     const { transactions, accounts, closingBalance } = data
+    const today = toISODate()
 
     return (
-        <div className="mt-1.5">
-            <div className="space-y-3 lg:space-y-0 lg:grid lg:grid-cols-[1fr_360px] lg:gap-4 lg:items-start">
-                <div className="space-y-3">
-                    <SafeToSpendCard
-                        totalIncome={stats.totalIncome}
-                        totalSpending={stats.totalSpending}
-                        totalSavings={stats.totalSavings}
-                        remaining={stats.remaining}
-                        reservedBills={stats.reservedBills}
-                        unpaidBills={reserve.dues.filter(d => d.outstanding > 0).length}
-                        previousSummary={data.previousSummary}
-                        totalBalance={data.totalBalance}
-                        balance={isActivePeriod ? data.totalBalance : (closingBalance ?? data.totalBalance)}
-                        isActivePeriod={isActivePeriod}
-                        totalDebt={data.totalDebt}
-                        comparable={comparable}
-                        debtsFailed={debtsFailed}
-                        onRetry={retry}
-                    />
+        <div className="mt-1.5 space-y-6 lg:space-y-0 lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-10 lg:items-start">
+            <div className="space-y-6">
+                <HomeHero stats={stats} />
 
-                    {/* On mobile the bottom nav's + button already adds a transaction. */}
-                    {isActivePeriod && (
-                        <div className="hidden lg:block">
-                            <QuickAddCard period={data.period} />
-                        </div>
-                    )}
-
-                    {isActivePeriod && reserve.dues.length > 0 && (
-                        <BillsDueCard dues={reserve.dues} period={data.period} />
-                    )}
-
-                    {isActivePeriod && <PeriodInsights period={data.period} transactions={transactions} stats={stats} dues={reserve.dues} />}
-                </div>
-
-                <div className="space-y-3">
-                    {/* Accounts open from here; they have no tab of their own. */}
-                    <BalancesCard
+                {isActivePeriod && (
+                    <SmartLineSlot
+                        period={data.period}
+                        transactions={transactions}
                         accounts={accounts}
-                        isActivePeriod={isActivePeriod}
-                        closingBalance={closingBalance}
+                        dues={reserve.dues}
+                        daysLeft={heroNumbers(stats).daysLeft}
                     />
+                )}
 
-                    {isActivePeriod && (
-                        <TodayWeekCard
-                            key={data.period.start_date}
-                            transactions={transactions}
-                            periodStart={data.period.start_date}
-                            periodEnd={data.period.end_date}
-                        />
-                    )}
-
-                    <div className="hidden lg:block">
-                        <SpendingByAccountCard transactions={transactions} />
-                    </div>
+                {/* Desktop lists each account in the side column instead. */}
+                <div className={isActivePeriod ? 'lg:hidden' : undefined}>
+                    <BalancesRow accounts={accounts} isActivePeriod={isActivePeriod} closingBalance={closingBalance} />
                 </div>
+
+                {isActivePeriod && (
+                    <div className="lg:hidden">
+                        <DueSoonList dues={reserve.dues} period={data.period} />
+                    </div>
+                )}
+
+                {isActivePeriod
+                    ? <TodayList transactions={transactions} today={today} />
+                    : <LatestList transactions={transactions} />}
+
+                {/* On a phone the bottom nav's + button already adds a transaction. */}
+                {isActivePeriod && (
+                    <div className="hidden lg:block">
+                        <QuickAddCard period={data.period} />
+                    </div>
+                )}
             </div>
 
-            {/* The deep analysis lives on Insights; Home stays about today. */}
-            <Link to='/insights' className='card mt-3 flex items-center gap-3 px-5 py-4 hover:bg-surface-soft transition-colors'>
-                <span className='w-8 h-8 rounded-[10px] flex items-center justify-center shrink-0 bg-brand-tint text-brand-ink'>
-                    <ChartLine className='w-4 h-4' strokeWidth={1.9} />
-                </span>
-                <span className='flex-1 min-w-0'>
-                    <span className='block text-[13.5px] font-medium text-ink'>Insights</span>
-                    <span className='block text-[11.5px] text-muted-ink truncate'>Habits, cash flow and trends across your periods</span>
-                </span>
-                <ChevronRight className='w-4 h-4 text-faint-ink shrink-0' />
-            </Link>
+            {isActivePeriod && (
+                <aside className="hidden lg:block space-y-8">
+                    <DueSoonList dues={reserve.dues} period={data.period} />
+                    <BalancesList accounts={accounts} />
+                    {outlook && (
+                        <HomeSection
+                            title="Next 6 weeks"
+                            aside={<Link to="/insights?tab=cash-flow" className="text-[13px] font-medium text-brand-ink">Insights</Link>}
+                        >
+                            <p className="mb-2 text-[13px] text-muted-ink">
+                                Lowest point{' '}
+                                <span className={outlook.lowest.balance < 0 ? 'font-semibold text-negative' : 'font-semibold text-ink'}>
+                                    {formatShortCurrency(outlook.lowest.balance)}
+                                </span>
+                                {' '}on {shortDate(outlook.lowest.date)}.
+                            </p>
+                            <CashOutlookChart outlook={outlook} height={150} />
+                        </HomeSection>
+                    )}
+                </aside>
+            )}
         </div>
     )
 }

@@ -11,7 +11,10 @@ import { useSeedOnce } from '@/hooks/use-seed-once'
 import { recurringBillsService } from '@/services/recurring-bills.service'
 import { formatCurrency, formatCurrencyInput, parseCurrencyInput, toISODate } from '@/lib/helpers'
 import type { Account, RecurringBill } from '@/types'
-import { dueLabel, scheduleLabel } from '../lib/bill-labels'
+import LightbulbIcon from '~icons/ph/lightbulb-duotone'
+import { SmartLine } from '@/features/plan/components/smart-line'
+import type { BillPayment } from '../lib/bill-history'
+import { dayDate, scheduleLabel } from '../lib/bill-labels'
 
 const FIELD_LABEL = 'text-[11px] font-medium uppercase tracking-[.14em] text-muted-ink'
 const SUBMIT_BUTTON = 'w-full h-12 rounded-[14px] text-[13px] font-semibold text-on-action bg-action hover:bg-action/90 transition-colors disabled:opacity-50 disabled:pointer-events-none'
@@ -23,17 +26,22 @@ interface PayBillFormProps {
     nextDue: string | null
     payPeriodId: string
     periodStart: string
+    /** The bill's latest payment, to notice when it came out different from the usual amount. */
+    lastPaid?: BillPayment | null
     onSuccess: () => void
 }
 
 /** Records the bill's payment as an expense; the usual amount is a starting point. */
-export function PayBillForm({ bill, nextDue, payPeriodId, periodStart, onSuccess }: PayBillFormProps) {
+export function PayBillForm({ bill, nextDue, payPeriodId, periodStart, lastPaid, onSuccess }: PayBillFormProps) {
     const today = toISODate()
     const [amount, setAmount] = useState(String(Math.round(bill.amount)))
     const [date, setDate] = useState(today < periodStart ? periodStart : today)
     const [accountId, setAccountId] = useState(bill.account_id ?? '')
     const [pickerOpen, setPickerOpen] = useState(false)
     const [loading, setLoading] = useState(false)
+    // Set only from the smart line's action: the usual amount never changes on its own.
+    const [updateBill, setUpdateBill] = useState(false)
+    const changed = lastPaid && Math.round(lastPaid.amount) !== Math.round(bill.amount) ? lastPaid : null
 
     const { data: accountsData } = useAccounts()
     const accounts = accountsData ?? NO_ACCOUNTS
@@ -56,17 +64,39 @@ export function PayBillForm({ bill, nextDue, payPeriodId, periodStart, onSuccess
             toast.error(/insufficient|balance/i.test(error) ? `Insufficient balance in ${account.name}.` : error)
             return
         }
-        toast.success(`${bill.name} paid.`)
+        if (updateBill && Math.round(parsed) !== Math.round(bill.amount)) {
+            const { error: updateError } = await recurringBillsService.update(bill.id, { amount: parsed })
+            if (updateError) toast.error(`Paid, but the bill wasn’t updated: ${updateError}`)
+            else toast.success(`${bill.name} paid. Its usual amount is now ${formatCurrency(parsed)}.`)
+        } else {
+            toast.success(`${bill.name} paid.`)
+        }
         onSuccess()
     }
 
     return (
         <form onSubmit={handleSubmit} className="space-y-4 pb-2">
-            <div className="rounded-[20px] border border-line bg-surface p-4">
-                <p className="text-[11.5px] text-muted-ink">{scheduleLabel(bill)}</p>
-                <p className="text-[22px] font-medium tracking-[-0.02em] text-ink mt-0.5">{formatCurrency(bill.amount)}</p>
-                {nextDue && <p className="text-[11.5px] text-muted-ink mt-1">{dueLabel(nextDue)}</p>}
+            <div>
+                <p className="text-[12.5px] text-muted-ink">
+                    {scheduleLabel(bill)}{nextDue && <> · due {dayDate(nextDue)}</>}
+                </p>
+                <p className="text-[32px] font-semibold tracking-[-0.03em] leading-tight text-ink tabular-nums mt-0.5">
+                    {formatCurrency(parseCurrencyInput(amount))}
+                </p>
             </div>
+
+            {changed && (
+                <SmartLine
+                    icon={LightbulbIcon}
+                    actions={updateBill
+                        ? [{ label: 'Keep the bill as it is', onClick: () => { setUpdateBill(false); setAmount(String(Math.round(bill.amount))) } }]
+                        : [{ label: 'Pay this and update the bill', onClick: () => { setUpdateBill(true); setAmount(String(Math.round(changed.amount))) } }]}
+                >
+                    {updateBill
+                        ? <>Paying <b>{formatCurrency(changed.amount)}</b>, and the bill’s usual amount changes to match.</>
+                        : <>The last payment was <b>{formatCurrency(changed.amount)}</b>, not {formatCurrency(bill.amount)}.</>}
+                </SmartLine>
+            )}
 
             <div className="space-y-1.5">
                 <Label className={FIELD_LABEL}>Amount paid</Label>

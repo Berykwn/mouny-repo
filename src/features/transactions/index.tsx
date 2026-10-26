@@ -1,18 +1,16 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { useSwipeable } from 'react-swipeable'
 import { ConfirmDrawer } from '@/components/confirmation-drawer'
 import { PeriodPickerDrawer } from '@/components/period-picker-drawer'
 import { useTopBarSlotNode } from '@/contexts/TopBarSlotContext'
 import { PeriodCalendar } from './components/period-calendar'
 import { PeriodChip } from './components/period-chip'
-import { LedgerTabs } from './components/ledger-tabs'
 import { TransactionListView } from './components/transaction-list-view'
 import { BulkCategoryDrawer } from './components/bulk-category-drawer'
-import { LedgerHero } from './components/ledger-hero'
 import { TransactionDetail } from './components/transaction-detail'
 import { AddTransactionFlow } from './components/add-transaction-flow'
-import { dailyAllowance, LEDGER_PANEL_ID, ledgerTabId, linkedTo, type LedgerTab } from './lib/ledger'
+import { dailyAllowance, linkedTo, type LedgerView } from './lib/ledger'
+import { useIsDesktop } from './lib/use-is-desktop'
 import { BottomDrawer } from '@/components/bottom-drawer'
 import { usePeriodStats } from '@/hooks/use-period-stats'
 import { useBillReserve } from '@/hooks/use-bill-reserve'
@@ -23,16 +21,31 @@ import { queryKeys, usePeriodTransactions } from '@/queries'
 import { useSelectedPeriod } from '@/stores/period-store'
 import type { TransactionWithDetails } from '@/types'
 import { toast } from 'sonner'
-import { Loader2 } from 'lucide-react'
+import { CalendarDays, Loader2, X } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import { LedgerSkeleton } from './components/ledger-skeleton'
 
-const TABS: LedgerTab[] = ['calendar', 'all']
 const EMPTY_TXS: TransactionWithDetails[] = []
+const VIEW_KEY = 'mouny.ledgerView'
 
 const plural = (n: number) => `${n} transaction${n === 1 ? '' : 's'}`
 
+function readView(): LedgerView {
+    try {
+        return localStorage.getItem(VIEW_KEY) === 'calendar' ? 'calendar' : 'list'
+    } catch {
+        return 'list'
+    }
+}
+
+function saveView(view: LedgerView) {
+    // Private browsing can refuse storage; the view just isn't remembered then.
+    try { localStorage.setItem(VIEW_KEY, view) } catch { /* not remembered */ }
+}
+
 export default function TransactionsPage() {
-    const [activeTab, setActiveTab] = useState<LedgerTab>('calendar')
+    // The list (with search) first; the calendar is one tap away, and remembered.
+    const [view, setView] = useState<LedgerView>(readView)
     // Shared with Overview: the period picked there is the one shown here, and back.
     const {
         periods: allPeriods,
@@ -45,7 +58,10 @@ export default function TransactionsPage() {
     const txQuery = usePeriodTransactions(selectedPeriod?.id)
     const transactions = txQuery.data ?? EMPTY_TXS
     const [periodPickerOpen, setPeriodPickerOpen] = useState(false)
-    const [openTx, setOpenTx] = useState<TransactionWithDetails | null>(null)
+    // By id, so the detail follows a refetch (an edit) and goes away with a delete.
+    const [openId, setOpenId] = useState<string | null>(null)
+    const openTx = openId ? transactions.find(t => t.id === openId) ?? null : null
+    const setOpenTx = (tx: TransactionWithDetails | null) => setOpenId(tx?.id ?? null)
     const [editingTx, setEditingTx] = useState<TransactionWithDetails | null>(null)
     const [deletingId, setDeletingId] = useState<string | null>(null)
     const [deleteLoading, setDeleteLoading] = useState(false)
@@ -54,6 +70,8 @@ export default function TransactionsPage() {
     const [bulkDeleteLoading, setBulkDeleteLoading] = useState(false)
     const [bulkCategoryOpen, setBulkCategoryOpen] = useState(false)
     const [bulkCategoryLoading, setBulkCategoryLoading] = useState(false)
+    // A wide screen shows the detail in a panel beside the list; a phone, in a sheet.
+    const isDesktop = useIsDesktop()
 
     const today = toISODate()
     const topBarSlotNode = useTopBarSlotNode()
@@ -72,31 +90,20 @@ export default function TransactionsPage() {
         fallbackTotalDays,
         reservedBills: billReserve.reserved,
     })
-    // The hero's safe daily amount: what each day's everyday spending is held against.
+    // The safe daily amount: what each day's everyday spending is held against.
     const allowance = dailyAllowance(stats)
 
-    // The day rail and the filter chips scroll sideways themselves: a swipe there is theirs.
-    // (preventScrollOnSwipe would also cancel their scrolling, so it stays off.)
-    const fromSideScroller = ({ target }: { target: EventTarget | null }) => target instanceof Element && !!target.closest('[data-no-swipe]')
-    const swipeHandlers = useSwipeable({
-        onSwipedLeft: ({ event }) => {
-            const i = TABS.indexOf(activeTab)
-            if (!fromSideScroller(event) && i < TABS.length - 1) setActiveTab(TABS[i + 1])
-        },
-        onSwipedRight: ({ event }) => {
-            const i = TABS.indexOf(activeTab)
-            if (!fromSideScroller(event) && i > 0) setActiveTab(TABS[i - 1])
-        },
-        trackMouse: false,
-        delta: 50,
-    })
+    const toggleView = () => {
+        const next = view === 'calendar' ? 'list' : 'calendar'
+        setView(next)
+        saveView(next)
+    }
 
     // Refetches after a write keep the current view mounted (no loader), so the calendar
     // keeps its selected day. Only a period with nothing cached yet shows a loader.
     const txLoading = !!selectedPeriod && txQuery.isPending
-    // No rows to show at all: an empty ledger and a Rp0 hero would look like real data.
+    // No rows to show at all: an empty ledger would look like real data.
     const txFailed = !!selectedPeriod && txQuery.isError && !txQuery.data
-
 
     // A new period, or rows that are gone after a refetch: drop their selections.
     useEffect(() => {
@@ -165,6 +172,17 @@ export default function TransactionsPage() {
 
     const calendarDefaultDate = isCurrentPeriod ? today : selectedPeriod?.start_date
 
+    // Each action closes the detail and hands off.
+    const detail = openTx && (
+        <TransactionDetail
+            tx={openTx}
+            readOnly={!isCurrentPeriod}
+            onEdit={() => { setEditingTx(openTx); setOpenTx(null) }}
+            onDelete={() => { setDeletingId(openTx.id); setOpenTx(null) }}
+            onMoved={() => setOpenTx(null)}
+        />
+    )
+
     return (
         <>
             {topBarSlotNode && selectedPeriod && createPortal(
@@ -172,16 +190,33 @@ export default function TransactionsPage() {
                 topBarSlotNode
             )}
 
-            <header className="flex flex-col gap-[14px] px-5 pt-[22px] lg:px-0 lg:pt-0 bg-neutral-50 dark:bg-neutral-950">
-                <div className="lg:hidden flex items-center justify-between">
-                    <span className="text-[20px] font-semibold tracking-[-0.02em]">Ledger.</span>
+            <header className="flex items-center justify-between gap-3 px-5 pt-[22px] lg:px-0 lg:pt-0">
+                <h1 className="text-[24px] font-semibold tracking-[-0.02em] text-ink">Ledger</h1>
+                <div className="flex items-center gap-2">
                     {selectedPeriod && (
-                        <PeriodChip period={selectedPeriod} onClick={() => setPeriodPickerOpen(true)} />
+                        <span className="lg:hidden">
+                            <PeriodChip period={selectedPeriod} onClick={() => setPeriodPickerOpen(true)} />
+                        </span>
+                    )}
+                    {selectedPeriod && !loading && (
+                        <button
+                            type="button"
+                            onClick={toggleView}
+                            aria-pressed={view === 'calendar'}
+                            aria-label="Calendar view"
+                            title={view === 'calendar' ? 'Back to the list' : 'Calendar'}
+                            className={cn(
+                                'w-10 h-10 rounded-[12px] border flex items-center justify-center shrink-0 transition-colors',
+                                view === 'calendar' ? 'bg-ink border-ink text-on-ink' : 'bg-surface border-line text-ink hover:bg-surface-soft',
+                            )}
+                        >
+                            <CalendarDays className="w-[18px] h-[18px]" />
+                        </button>
                     )}
                 </div>
             </header>
 
-            <section className="px-4 pb-4 pt-3.5 lg:px-0 space-y-4">
+            <section className="px-4 pb-4 pt-4 lg:px-0">
                 {loading ? (
                     <LedgerSkeleton />
                 ) : !selectedPeriod ? (
@@ -209,38 +244,57 @@ export default function TransactionsPage() {
                         </button>
                     </div>
                 ) : (
-                    <section {...swipeHandlers} className="space-y-4">
-                        <div className="lg:max-w-[856px]">
-                            <LedgerHero stats={stats} />
+                    <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-8 lg:items-start">
+                        <div className="min-w-0">
+                            {view === 'calendar' ? (
+                                <PeriodCalendar
+                                    transactions={transactions}
+                                    periodStart={selectedPeriod.start_date}
+                                    periodEnd={selectedPeriod.end_date ?? today}
+                                    defaultDate={calendarDefaultDate}
+                                    onDeleteRequest={isCurrentPeriod ? setDeletingId : undefined}
+                                    onOpen={setOpenTx}
+                                    openId={isDesktop ? openId : null}
+                                    allowance={allowance}
+                                    periodIncome={stats.totalIncome}
+                                    readOnly={!isCurrentPeriod}
+                                />
+                            ) : (
+                                <TransactionListView
+                                    transactions={transactions}
+                                    selectedIds={selectedIds}
+                                    onSelectedIdsChange={setSelectedIds}
+                                    readOnly={!isCurrentPeriod}
+                                    onOpen={setOpenTx}
+                                    openId={isDesktop ? openId : null}
+                                    onBulkDeleteRequest={() => setBulkDeleteOpen(true)}
+                                    onBulkCategoryRequest={() => setBulkCategoryOpen(true)}
+                                    exportName={`transactions-${selectedPeriod.start_date}.csv`}
+                                />
+                            )}
                         </div>
-                        <LedgerTabs active={activeTab} onChange={setActiveTab} />
-                        <div role="tabpanel" id={LEDGER_PANEL_ID} aria-labelledby={ledgerTabId(activeTab)}>
-                        {activeTab === 'calendar' ? (
-                            <PeriodCalendar
-                                transactions={transactions}
-                                periodStart={selectedPeriod.start_date}
-                                periodEnd={selectedPeriod.end_date ?? today}
-                                defaultDate={calendarDefaultDate}
-                                onDeleteRequest={isCurrentPeriod ? setDeletingId : undefined}
-                                onOpen={setOpenTx}
-                                allowance={allowance}
-                                periodIncome={stats.totalIncome}
-                                readOnly={!isCurrentPeriod}
-                            />
-                        ) : (
-                            <TransactionListView
-                                transactions={transactions}
-                                selectedIds={selectedIds}
-                                onSelectedIdsChange={setSelectedIds}
-                                readOnly={!isCurrentPeriod}
-                                onOpen={setOpenTx}
-                                onBulkDeleteRequest={() => setBulkDeleteOpen(true)}
-                                onBulkCategoryRequest={() => setBulkCategoryOpen(true)}
-                                exportName={`transactions-${selectedPeriod.start_date}.csv`}
-                            />
-                        )}
-                        </div>
-                    </section>
+
+                        {/* Wide screens: the detail stays beside the list instead of covering it */}
+                        <aside aria-label="Transaction detail" className="hidden lg:block sticky top-6 border-l border-line pl-8 min-h-[240px]">
+                            {isDesktop && detail ? (
+                                <div className="relative">
+                                    <button
+                                        type="button"
+                                        aria-label="Close detail"
+                                        onClick={() => setOpenTx(null)}
+                                        className="absolute -top-1 right-0 w-8 h-8 rounded-full bg-surface-hover flex items-center justify-center text-muted-ink hover:text-ink transition-colors"
+                                    >
+                                        <X className="w-4 h-4" />
+                                    </button>
+                                    {detail}
+                                </div>
+                            ) : (
+                                <p className="pt-1 text-[13px] text-muted-ink leading-relaxed">
+                                    Pick a transaction to see it in full, edit or delete it.
+                                </p>
+                            )}
+                        </aside>
+                    </div>
                 )}
             </section>
 
@@ -257,17 +311,9 @@ export default function TransactionsPage() {
                 }}
             />
 
-            {/* Detail sheet — each action closes it and hands off */}
-            <BottomDrawer open={!!openTx} onClose={() => setOpenTx(null)} title="Transaction">
-                {openTx && (
-                    <TransactionDetail
-                        tx={openTx}
-                        readOnly={!isCurrentPeriod}
-                        onEdit={() => { setEditingTx(openTx); setOpenTx(null) }}
-                        onDelete={() => { setDeletingId(openTx.id); setOpenTx(null) }}
-                        onMoved={() => setOpenTx(null)}
-                    />
-                )}
+            {/* Phones: the detail as a sheet */}
+            <BottomDrawer open={!!openTx && !isDesktop} onClose={() => setOpenTx(null)} title="Transaction">
+                {!isDesktop && detail}
             </BottomDrawer>
 
             {editingTx && selectedPeriod && (

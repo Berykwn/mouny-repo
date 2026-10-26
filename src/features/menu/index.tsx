@@ -1,45 +1,32 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Tag, History, LogOut, CalendarCheck, CalendarPlus, Monitor, Sun, Moon, Palette } from 'lucide-react'
+import { Tag, History, LogOut, Download, ChevronRight, Loader2 } from 'lucide-react'
+import { toast } from 'sonner'
 import { useTheme, type Theme } from '@/contexts/ThemeContext'
 import { supabase } from '@/lib/supabase'
+import { queryClient } from '@/lib/query-client'
+import { downloadCsv, toCsv } from '@/lib/csv'
 import { ConfirmDrawer } from '@/components/confirmation-drawer'
-import { BottomDrawer } from '@/components/bottom-drawer'
-import { HeroGlow } from '@/components/hero'
-import { ClosePeriodForm } from '@/features/periods/components/close-period-form'
-import { OpenPeriodForm } from '@/features/periods/components/open-period-form'
-import { useBudgets, useCategories, usePeriods } from '@/queries'
+import { PeriodPickerDrawer } from '@/components/period-picker-drawer'
+import { queryKeys, useBudgets, useCategories, usePeriods } from '@/queries'
+import { transactionsService } from '@/services/transactions.service'
+import { notificationsService } from '@/services/notifications.service'
 import { useAuth } from '@/hooks/use-auth'
-import { useMoneyGlance } from '@/hooks/use-money-glance'
-import { formatCurrency, getDaysBetween, getInitials } from '@/lib/helpers'
+import { getInitials } from '@/lib/helpers'
 import type { PayPeriod } from '@/types'
 import { cn } from '@/lib/utils'
 import { PageHeader } from '@/components/page-header'
-import { NotificationsRow } from '@/features/notifications/notification-settings'
-import { notificationsService } from '@/services/notifications.service'
-import { Group, Row } from './rows'
-import { TINT } from './tint'
-
-interface Counts {
-    categories: number
-    budgets: number
-    closedPeriods: number
-}
+import { RemindersSection } from '@/features/notifications/notification-settings'
+import { Row } from './rows'
 
 export default function MenuPage() {
     const navigate = useNavigate()
     const { user } = useAuth()
     const [logoutConfirm, setLogoutConfirm] = useState(false)
-    const [periodDrawer, setPeriodDrawer] = useState<'open' | 'close' | null>(null)
     const { periods, activePeriod, isSuccess: periodsLoaded } = usePeriods()
     const { data: categories } = useCategories()
     const { data: budgets } = useBudgets()
-    const counts: Counts | null = periodsLoaded && categories && budgets ? {
-        categories: categories.length,
-        budgets: budgets.length,
-        closedPeriods: periods.filter(p => p.status === 'closed').length,
-    } : null
-    const { summary, left } = useMoneyGlance(activePeriod)
+    const closedPeriods = periods.filter(p => p.status === 'closed').length
 
     async function handleLogout() {
         setLogoutConfirm(false)
@@ -51,90 +38,63 @@ export default function MenuPage() {
 
     const name = user?.user_metadata?.full_name as string | undefined
     const memberSince = user?.created_at
-        ? new Date(user.created_at).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })
+        ? new Date(user.created_at).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })
         : null
 
     return (
         <>
-            <PageHeader title="Settings" />
-            <section className="px-4 pb-4 lg:px-0 space-y-4">
-                <div className="space-y-4 lg:space-y-0 lg:grid lg:grid-cols-[1fr_360px] lg:gap-4 lg:items-start">
-                    {/* Who and when — the hero, on the right on desktop like every other page */}
-                    <div className="space-y-4 lg:order-2">
-                        <header className="card p-5 relative overflow-hidden">
-                            <HeroGlow />
-                            <div className="relative flex items-center gap-3.5">
-                                <div className="w-12 h-12 rounded-full bg-ink flex items-center justify-center shrink-0">
-                                    <span className="text-[15px] font-semibold text-on-ink">{getInitials(user)}</span>
-                                </div>
-                                <div className="min-w-0">
-                                    <p className="text-[16px] font-medium tracking-[-0.01em] text-ink truncate">{name || 'Your account'}</p>
-                                    <p className="text-[12px] text-muted-ink truncate">{user?.email}</p>
-                                </div>
-                            </div>
-                            {memberSince && (
-                                <p className="relative mt-4 pt-3 border-t border-line-soft text-[11.5px] text-muted-ink">
-                                    Tracking with Mouny since {memberSince}
-                                </p>
-                            )}
-                        </header>
-
-                        <PeriodCard
-                            period={activePeriod}
-                            left={left}
-                            usedPct={summary && summary.income > 0 ? Math.min(100, Math.round((summary.expense / summary.income) * 100)) : null}
-                            onOpen={() => setPeriodDrawer('open')}
-                            onClose={() => setPeriodDrawer('close')}
-                        />
+            <PageHeader title="Settings" back="/" />
+            <section className="px-4 pb-6 lg:px-0 lg:max-w-[600px]">
+                {/* Who's signed in */}
+                <div className="flex items-center gap-3.5 py-3 border-b border-line-soft">
+                    <div className="w-11 h-11 rounded-full bg-ink flex items-center justify-center shrink-0">
+                        <span className="text-[15px] font-semibold text-on-ink">{getInitials(user)}</span>
                     </div>
-
-                    <div className="space-y-4 lg:order-1">
-                        <Group label="Settings">
-                            <Row
-                                to="/category" icon={Tag} tint="info" label="Categories"
-                                sub={counts ? `${counts.categories} categories · ${counts.budgets} with a budget` : 'Icons, colors and budgets'}
-                            />
-                            <Row
-                                to="/period-history" icon={History} tint="info" label="Period History"
-                                sub={counts ? `${counts.closedPeriods} closed period${counts.closedPeriods === 1 ? '' : 's'}` : 'Past pay periods'}
-                            />
-                            <NotificationsRow />
-                            <AppearanceRow />
-                        </Group>
-
-                        <div className="space-y-2">
-                            <button
-                                type="button"
-                                onClick={() => setLogoutConfirm(true)}
-                                className="card w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-surface-soft transition-colors"
-                            >
-                                <span className="w-9 h-9 rounded-[10px] flex items-center justify-center shrink-0 bg-negative/10 text-negative">
-                                    <LogOut className="w-4 h-4" strokeWidth={1.9} />
-                                </span>
-                                <span className="flex-1 text-[13px] font-medium text-negative">Log out</span>
-                            </button>
-                            <p className="text-center text-[11px] text-subtle-ink tabular-nums">Mouny v{__APP_VERSION__}</p>
-                        </div>
+                    <div className="min-w-0">
+                        <p className="text-[16px] font-medium text-ink truncate">{name || 'Your account'}</p>
+                        <p className="text-[13px] text-subtle-ink truncate">
+                            {user?.email}{memberSince && ` · since ${memberSince}`}
+                        </p>
                     </div>
                 </div>
 
-                <BottomDrawer
-                    open={periodDrawer === 'close'}
-                    onClose={() => setPeriodDrawer(null)}
-                    title="Close Period"
-                >
-                    {activePeriod && periodDrawer === 'close' && (
-                        <ClosePeriodForm period={activePeriod} onSuccess={() => setPeriodDrawer(null)} />
-                    )}
-                </BottomDrawer>
+                {/* The sidebar has these on desktop */}
+                <div className="lg:hidden mt-6">
+                    <h2 className="text-[17px] font-semibold text-ink mb-1">Money</h2>
+                    <nav className="-mx-4 divide-y divide-line-soft">
+                        <Row
+                            to="/category" icon={Tag} tint="neutral" label="Categories"
+                            sub={categories && budgets ? `${categories.length} categories · ${budgets.length} budget${budgets.length === 1 ? '' : 's'}` : 'Icons, kinds and budgets'}
+                        />
+                        <Row
+                            to="/period-history" icon={History} tint="neutral" label="Periods"
+                            sub={periodsLoaded ? (activePeriod ? `1 running · ${closedPeriods} closed` : `${closedPeriods} closed`) : 'Open, close and look back'}
+                        />
+                    </nav>
+                </div>
 
-                <BottomDrawer
-                    open={periodDrawer === 'open'}
-                    onClose={() => setPeriodDrawer(null)}
-                    title="Open New Period"
+                <div className="mt-6">
+                    <h2 className="text-[17px] font-semibold text-ink mb-2">Appearance</h2>
+                    <ThemeSegment />
+                </div>
+
+                <div className="mt-7">
+                    <RemindersSection />
+                </div>
+
+                <div className="mt-7">
+                    <h2 className="text-[17px] font-semibold text-ink mb-1">Data</h2>
+                    <ExportRow periods={periods} activePeriodId={activePeriod?.id ?? null} />
+                </div>
+
+                <button
+                    type="button"
+                    onClick={() => setLogoutConfirm(true)}
+                    className="mt-6 w-full h-12 rounded-[14px] bg-line-soft text-[15px] font-semibold text-ink hover:bg-surface-hover transition-colors flex items-center justify-center gap-2"
                 >
-                    {periodDrawer === 'open' && <OpenPeriodForm onSuccess={() => setPeriodDrawer(null)} />}
-                </BottomDrawer>
+                    <LogOut className="w-4 h-4" strokeWidth={2} /> Log out
+                </button>
+                <p className="mt-3 text-center text-[12.5px] text-subtle-ink tabular-nums">Mouny v{__APP_VERSION__}</p>
 
                 <ConfirmDrawer
                     open={logoutConfirm}
@@ -150,115 +110,88 @@ export default function MenuPage() {
     )
 }
 
-interface PeriodCardProps {
-    period: PayPeriod | null
-    left: number | null
-    usedPct: number | null
-    onOpen: () => void
-    onClose: () => void
-}
-
-function PeriodCard({ period, left, usedPct, onOpen, onClose }: PeriodCardProps) {
-    if (!period) {
-        return (
-            <div className="card p-5">
-                <p className="text-[11px] uppercase tracking-[.14em] text-muted-ink">Pay period</p>
-                <p className="mt-2 text-[14px] font-medium text-ink">No period running</p>
-                <p className="mt-0.5 text-[12px] text-muted-ink leading-relaxed">Open one when your salary comes in — every transaction lands in it.</p>
-                <button
-                    type="button"
-                    onClick={onOpen}
-                    className="mt-4 w-full h-11 rounded-[14px] text-[13px] font-semibold text-on-action bg-action hover:bg-action/90 transition-colors flex items-center justify-center gap-2"
-                >
-                    <CalendarPlus className="w-4 h-4" /> Open new period
-                </button>
-            </div>
-        )
-    }
-
-    const month = new Date(period.start_date + 'T00:00:00').toLocaleDateString('en-GB', { month: 'long' })
-    const day = Math.max(1, getDaysBetween(period.start_date) + 1)
-
-    return (
-        <div className="card p-5">
-            <div className="flex items-center justify-between">
-                <p className="flex items-center gap-1.5 text-[11px] uppercase tracking-[.14em] text-muted-ink">
-                    <span className="w-1.5 h-1.5 rounded-full bg-brand" /> {month} period
-                </p>
-                <p className="text-[11px] text-subtle-ink tabular-nums">Day {day}</p>
-            </div>
-            <p className="mt-3 text-[11px] text-muted-ink">Left this period</p>
-            <p className={cn(
-                'text-[22px] font-medium tracking-[-0.02em] leading-tight tabular-nums',
-                left !== null && left < 0 ? 'text-negative' : 'text-ink'
-            )}>
-                {left === null ? '—' : formatCurrency(left)}
-            </p>
-            {usedPct !== null && (
-                <>
-                    <div className="mt-3 h-1.5 rounded-full bg-line-soft overflow-hidden">
-                        <div
-                            className={cn('h-full rounded-full', usedPct >= 90 ? 'bg-negative' : usedPct >= 75 ? 'bg-warning' : 'bg-brand')}
-                            style={{ width: `${usedPct}%` }}
-                        />
-                    </div>
-                    <p className="mt-1.5 text-[11px] text-subtle-ink tabular-nums">{usedPct}% of income used</p>
-                </>
-            )}
-            {/* Closing is deliberate and rare: a quiet outline button, never the green primary */}
-            <button
-                type="button"
-                onClick={onClose}
-                className="mt-4 w-full h-11 rounded-[14px] text-[13px] font-semibold border border-line text-ink hover:bg-surface-hover transition-colors flex items-center justify-center gap-2"
-            >
-                <CalendarCheck className="w-4 h-4" /> Close period
-            </button>
-        </div>
-    )
-}
-
-const THEME_OPTIONS: { value: Theme; label: string; icon: typeof Tag }[] = [
-    { value: 'system', label: 'Auto', icon: Monitor },
-    { value: 'light', label: 'Light', icon: Sun },
-    { value: 'dark', label: 'Dark', icon: Moon },
+const THEME_OPTIONS: { value: Theme; label: string }[] = [
+    { value: 'system', label: 'Auto' },
+    { value: 'light', label: 'Light' },
+    { value: 'dark', label: 'Dark' },
 ]
 
-function AppearanceRow() {
+function ThemeSegment() {
     const { theme, setTheme } = useTheme()
-
     return (
-        <div className="flex items-center gap-3 px-4 py-3">
-            <span className={cn('w-9 h-9 rounded-[10px] flex items-center justify-center shrink-0', TINT.info)}>
-                <Palette className="w-4 h-4" strokeWidth={1.9} />
-            </span>
-            <span className="flex-1 min-w-0">
-                <span className="block text-[13px] font-medium text-ink">Appearance</span>
-                <span className="block text-[11.5px] text-muted-ink truncate">
-                    {theme === 'system' ? 'Follows your device' : `Always ${theme}`}
-                </span>
-            </span>
-            <div role="radiogroup" aria-label="Theme" className="flex shrink-0 rounded-[10px] bg-line-soft p-0.5">
-                {THEME_OPTIONS.map(({ value, label, icon: Icon }) => (
-                    <button
-                        key={value}
-                        type="button"
-                        role="radio"
-                        aria-checked={theme === value}
-                        aria-label={label}
-                        title={label}
-                        onClick={() => setTheme(value)}
-                        className={cn(
-                            'w-8 h-7 rounded-[8px] flex items-center justify-center transition-colors',
-                            theme === value
-                                ? 'bg-raised text-ink shadow-sm'
-                                : 'text-muted-ink hover:text-ink'
-                        )}
-                    >
-                        <Icon className="w-3.5 h-3.5" strokeWidth={1.9} />
-                    </button>
-                ))}
-            </div>
+        <div role="radiogroup" aria-label="Theme" className="flex rounded-[12px] bg-line-soft p-[3px]">
+            {THEME_OPTIONS.map(({ value, label }) => (
+                <button
+                    key={value}
+                    type="button"
+                    role="radio"
+                    aria-checked={theme === value}
+                    onClick={() => setTheme(value)}
+                    className={cn(
+                        'flex-1 h-10 rounded-[9px] text-[14px] font-semibold transition-colors',
+                        theme === value ? 'bg-surface text-ink shadow-[0_1px_2px_rgba(0,0,0,.1)]' : 'text-muted-ink hover:text-ink'
+                    )}
+                >
+                    {label}
+                </button>
+            ))}
         </div>
     )
 }
 
+/** Export CSV: pick a period, and its transactions (notes included) download as a sheet. */
+function ExportRow({ periods, activePeriodId }: { periods: PayPeriod[]; activePeriodId: string | null }) {
+    const [picking, setPicking] = useState(false)
+    const [exporting, setExporting] = useState(false)
+
+    async function exportPeriod(period: PayPeriod) {
+        setPicking(false)
+        setExporting(true)
+        try {
+            // The ledger's own cache entry, so a period already open there isn't fetched again.
+            const txs = await queryClient.fetchQuery({
+                queryKey: queryKeys.transactions(period.id),
+                queryFn: async () => {
+                    const { data, error } = await transactionsService.getByPeriod(period.id)
+                    if (error) throw new Error(error)
+                    return data ?? []
+                },
+            })
+            if (txs.length === 0) { toast('That period has no transactions to export.'); return }
+            downloadCsv(`transactions-${period.start_date}.csv`, toCsv(txs))
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : 'The export didn’t work.')
+        } finally {
+            setExporting(false)
+        }
+    }
+
+    return (
+        <>
+            <button
+                type="button"
+                onClick={() => setPicking(true)}
+                disabled={exporting || periods.length === 0}
+                className="w-full flex items-center gap-3 py-3 text-left rounded-[12px] hover:bg-surface-soft transition-colors disabled:opacity-60"
+            >
+                <span className="w-9 h-9 rounded-[10px] flex items-center justify-center shrink-0 bg-line-soft text-ink/70">
+                    {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" strokeWidth={1.9} />}
+                </span>
+                <span className="flex-1 min-w-0">
+                    <span className="block text-[15px] text-ink">Export CSV</span>
+                    <span className="block text-[13px] text-subtle-ink truncate">
+                        {periods.length === 0 ? 'Nothing to export yet' : 'Any period, notes included'}
+                    </span>
+                </span>
+                <ChevronRight className="w-4 h-4 text-faint-ink shrink-0" />
+            </button>
+            <PeriodPickerDrawer
+                open={picking}
+                onClose={() => setPicking(false)}
+                periods={periods}
+                activePeriodId={activePeriodId}
+                onSelect={p => void exportPeriod(p)}
+            />
+        </>
+    )
+}

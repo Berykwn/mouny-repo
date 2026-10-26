@@ -1,25 +1,26 @@
 import { useState, useMemo } from 'react'
 import { BottomDrawer } from '@/components/bottom-drawer'
 import { ConfirmDrawer } from '@/components/confirmation-drawer'
-import { WishListItems } from './components/wish-list-items'
 import { WishListForm } from './components/wish-list-form'
 import { BuyItemForm } from './components/buy-item-form'
 import { ContributeForm } from './components/contribute-form'
 import { ContributeQuantityForm } from './components/contribute-quantity-form'
-import { WishHero } from './components/wish-hero'
-import { WishRoadmap } from './components/wish-roadmap'
+import { WishCard } from './components/wish-card'
+import { AffordSheet } from './components/afford-sheet'
 import { WishAchieved } from './components/wish-achieved'
 import { WishEmpty } from './components/wish-empty'
 import { WishDetail } from './components/wish-detail'
 import { WishPartsForm } from './components/wish-parts-form'
-import { buildRoadmap, wishProgress } from './lib/wish-analytics'
+import { buildRoadmap, sortWishes, wishProgress } from './lib/wish-analytics'
 import { wishListService, type WishListPurchased } from '@/services/wish-list.service'
 import { usePeriods, usePurchasedWishes, useSavingsPace, useWishes } from '@/queries'
-import { formatCurrency } from '@/lib/helpers'
+import { formatCurrency, formatShortCurrency, toISODate } from '@/lib/helpers'
 import type { WishListItem, WishPart } from '@/types'
 import { toast } from 'sonner'
 import { LoadingContent } from '@/components/loading-content'
-import { PageHeader } from '@/components/page-header'
+import { Kpis, OutlineButton, PlanHeader } from '@/features/plan/components/layout'
+
+const plain = (n: number) => new Intl.NumberFormat('id-ID').format(Math.round(n))
 
 const NO_WISHES: WishListItem[] = []
 const NO_PURCHASED: WishListPurchased[] = []
@@ -37,6 +38,8 @@ export default function WishListPage() {
     const pace = useSavingsPace()
     const [addDrawerOpen, setAddDrawerOpen] = useState(false)
     const [addDefaultName, setAddDefaultName] = useState<string | undefined>(undefined)
+    const [addDefaultPrice, setAddDefaultPrice] = useState<number | undefined>(undefined)
+    const [affordOpen, setAffordOpen] = useState(false)
     const [openItem, setOpenItem] = useState<WishListItem | null>(null)
     const [buyingItem, setBuyingItem] = useState<WishListItem | null>(null)
     const [contributingItem, setContributingItem] = useState<WishListItem | null>(null)
@@ -68,8 +71,9 @@ export default function WishListPage() {
         toast.success('Item removed from wish list.')
     }
 
-    const openAdd = (name?: string) => {
+    const openAdd = (name?: string, price?: number) => {
         setAddDefaultName(name)
+        setAddDefaultPrice(price)
         setAddDrawerOpen(true)
     }
 
@@ -89,68 +93,93 @@ export default function WishListPage() {
         return { saved, target, remaining, ready }
     }, [items])
 
-    const hero = (
-        <WishHero
-            saved={totals.saved}
-            target={totals.target}
-            remaining={totals.remaining}
-            goalCount={items.length}
-            readyCount={totals.ready}
-            pace={pace}
-            roadmap={roadmap}
-            canAdd={!!periodId}
-            onAdd={() => openAdd()}
-        />
-    )
+    const today = toISODate()
+    const sorted = useMemo(() => sortWishes(items), [items])
+    const stopById = useMemo(() => new Map(roadmap.map(s => [s.item.id, s])), [roadmap])
+    const affordButton = <OutlineButton onClick={() => setAffordOpen(true)}>Can I afford it?</OutlineButton>
+
+    // How the months are worked out, said once, plainly.
+    const etaNote = pace && pace.perDay > 0
+        ? `Months are estimates: your usual leftover, averaged over your last ${pace.basedOn} closed period${pace.basedOn === 1 ? '' : 's'}, goes to wishes one at a time, urgent first.`
+        : pace
+            ? 'Recent periods spent everything that came in, so there are no month estimates yet.'
+            : 'Month estimates start once you’ve closed a period: they come from what you usually have left over.'
 
     return (
         <>
-            <PageHeader title="Wishlist" />
+            <PlanHeader title="Wishlist" add={{ label: 'Add wish', onClick: () => openAdd(), disabled: !periodId }} extra={affordButton} />
             <section className="px-4 pb-4 lg:px-0 space-y-4">
                 {loading ? (
                     <LoadingContent />
                 ) : periodId ? (
-                    <div className="space-y-4 lg:space-y-0 lg:grid lg:grid-cols-[1fr_360px] lg:gap-4 lg:items-start">
-                        <div className="space-y-4 lg:order-2">
-                            {hero}
-                            {items.length > 0 && <WishRoadmap roadmap={roadmap} pace={pace} />}
-                            <div className="hidden lg:block"><WishAchieved items={purchased} /></div>
-                        </div>
+                    <>
+                        <Kpis className="lg:hidden" items={[
+                            { label: 'Saved toward wishes', value: formatShortCurrency(totals.saved) },
+                            { label: 'Usual leftover', value: pace ? `~${formatShortCurrency(Math.max(0, Math.round(pace.perPeriod)))}` : '—', sub: 'per period' },
+                        ]} />
+                        <Kpis className="hidden lg:grid" items={[
+                            { label: 'Wishes', value: items.length },
+                            { label: 'Saved toward wishes', value: plain(totals.saved) },
+                            { label: 'Usual leftover', value: pace ? `~${plain(Math.max(0, pace.perPeriod))}` : '—', sub: 'per period' },
+                        ]} />
 
-                        <div className="space-y-4 lg:order-1">
-                            {items.length === 0 ? (
-                                <WishEmpty onAdd={openAdd} />
-                            ) : (
-                                <WishListItems
-                                    items={items}
-                                    roadmap={roadmap}
-                                    pace={pace}
-                                    onOpen={setOpenItem}
-                                />
-                            )}
-                            <div className="lg:hidden"><WishAchieved items={purchased} /></div>
-                        </div>
-                    </div>
+                        <button
+                            type="button"
+                            onClick={() => setAffordOpen(true)}
+                            className="lg:hidden w-full h-11 rounded-[14px] bg-surface-hover text-ink text-[13px] font-semibold hover:bg-line-soft transition-colors"
+                        >
+                            Can I afford it?
+                        </button>
+
+                        {items.length === 0 ? (
+                            <WishEmpty onAdd={openAdd} />
+                        ) : (
+                            <>
+                                <div className="grid gap-3 lg:grid-cols-2 lg:items-start">
+                                    {sorted.map(item => (
+                                        <WishCard
+                                            key={item.id}
+                                            item={item}
+                                            stop={stopById.get(item.id)}
+                                            pace={pace}
+                                            today={today}
+                                            onOpen={() => setOpenItem(item)}
+                                            onBuy={() => setBuyingItem(item)}
+                                        />
+                                    ))}
+                                </div>
+                                <p className="px-1 text-[11.5px] text-subtle-ink leading-relaxed">{etaNote}</p>
+                            </>
+                        )}
+                        <div className="lg:max-w-xl"><WishAchieved items={purchased} /></div>
+                    </>
                 ) : (
-                    <div className="space-y-4 lg:max-w-[360px]">
-                        {hero}
-                        <p className="text-[11.5px] text-muted-ink px-1">Open a pay period to start adding wishes.</p>
-                    </div>
+                    <p className="text-[13px] text-muted-ink px-1">Open a pay period to start adding wishes.</p>
                 )}
+
+                <BottomDrawer open={affordOpen} onClose={() => setAffordOpen(false)} title="Can I afford it?">
+                    {affordOpen && (
+                        <AffordSheet
+                            onClose={() => setAffordOpen(false)}
+                            onAddToWishlist={(name, price) => { setAffordOpen(false); openAdd(name || undefined, price) }}
+                        />
+                    )}
+                </BottomDrawer>
 
                 {/* Add drawer */}
                 {periodId && (
                     <BottomDrawer
                         open={addDrawerOpen}
                         onClose={() => setAddDrawerOpen(false)}
-                        title="Add to Wish List"
+                        title="Add wish"
                     >
                         {/* Keyed so each open starts fresh with the chosen suggestion. */}
                         {addDrawerOpen && (
                             <WishListForm
-                                key={addDefaultName ?? ''}
+                                key={`${addDefaultName ?? ''}-${addDefaultPrice ?? ''}`}
                                 payPeriodId={periodId}
                                 defaultName={addDefaultName}
+                                defaultPrice={addDefaultPrice}
                                 onSuccess={() => setAddDrawerOpen(false)}
                             />
                         )}
@@ -183,7 +212,7 @@ export default function WishListPage() {
                 <BottomDrawer
                     open={!!partsItem}
                     onClose={() => setPartsItem(null)}
-                    title={partsItem?.parts?.length ? 'Edit Parts' : 'Split into Parts'}
+                    title={partsItem?.parts?.length ? 'Edit parts' : 'Split into parts'}
                 >
                     {partsItem && (
                         <WishPartsForm item={partsItem} onSuccess={() => setPartsItem(null)} />
@@ -194,7 +223,7 @@ export default function WishListPage() {
                 <BottomDrawer
                     open={!!buyingPart}
                     onClose={() => setBuyingPart(null)}
-                    title="Buy Part"
+                    title="Buy part"
                 >
                     {buyingPart && periodStart && (
                         <BuyItemForm
@@ -209,7 +238,7 @@ export default function WishListPage() {
                 {/* Undo part confirm */}
                 <ConfirmDrawer
                     open={!!undoingPart}
-                    title="Undo Purchase"
+                    title="Undo purchase"
                     description={undoingPart?.transaction_id
                         ? `Mark ${undoingPart.name} as not bought? Its expense of ${formatCurrency(undoingPart.paid_amount ?? 0)} is deleted and the money goes back to the account.`
                         : `Mark ${undoingPart?.name ?? 'this part'} as not bought?`}
@@ -223,7 +252,7 @@ export default function WishListPage() {
                 <BottomDrawer
                     open={!!editingItem}
                     onClose={() => setEditingItem(null)}
-                    title="Edit Wish Item"
+                    title="Edit wish"
                 >
                     {editingItem && periodId && (
                         <WishListForm
@@ -238,7 +267,7 @@ export default function WishListPage() {
                 <BottomDrawer
                     open={!!contributingItem}
                     onClose={() => setContributingItem(null)}
-                    title={contributingItem?.quantity ? 'Cicil' : 'Add Funds'}
+                    title={contributingItem?.quantity ? 'Cicil' : 'Add funds'}
                 >
                     {contributingItem && (
                         contributingItem.quantity && periodStart ? (
@@ -260,7 +289,7 @@ export default function WishListPage() {
                 <BottomDrawer
                     open={!!buyingItem}
                     onClose={() => setBuyingItem(null)}
-                    title="Record Purchase"
+                    title="Record purchase"
                 >
                     {buyingItem && periodStart && (
                         <BuyItemForm
@@ -274,7 +303,7 @@ export default function WishListPage() {
                 {/* Delete confirm */}
                 <ConfirmDrawer
                     open={!!deletingId}
-                    title="Remove Item"
+                    title="Remove wish"
                     description="Remove this item from your wish list? This action cannot be undone."
                     confirmLabel="Remove"
                     loading={deleteLoading}

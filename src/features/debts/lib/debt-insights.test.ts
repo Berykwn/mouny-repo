@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { debt } from '@/test/fixtures'
-import { debtProgress, dueStatus, payoffPlan, sortByUrgency, summarize, upcoming } from './debt-insights'
+import { debtProgress, dueStatus, fasterPayoff, payoffPlan, payoffSchedule, sortByUrgency, summarize, upcoming } from './debt-insights'
 
 const TODAY = '2026-10-01'
 // A steady 50k/day leftover over 30-day periods.
@@ -95,6 +95,7 @@ describe('payoffPlan', () => {
         // 60 days left at 30 days a period: 61/30 rounds up to 3 periods.
         const dated = payoffPlan([debt({ remaining_amount: 900_000, due_date: '2026-11-30' })], pace, TODAY)
         expect(dated.stops[0].perPeriodNeeded).toBe(300_000)
+        expect(dated.stops[0].periodsLeft).toBe(3)
         expect(dated.thisPeriod).toBe(300_000)
 
         const overdue = payoffPlan([debt({ remaining_amount: 900_000, due_date: '2026-09-01' })], pace, TODAY)
@@ -115,5 +116,34 @@ describe('payoffPlan', () => {
         const plan = payoffPlan([debt({ remaining_amount: 1_000_000_000 })], { ...pace, perDay: 1 }, TODAY)
         expect(plan.stops[0].date).toBeNull()
         expect(plan.debtFreeDate).toBeNull()
+    })
+})
+
+describe('fasterPayoff', () => {
+    it('says what a period sooner takes on top of the leftover', () => {
+        // 4.5m at 50k a day: 90 days. A period sooner is 60 days: 75k a day, 25k more, 750k a period.
+        const faster = fasterPayoff([debt({ remaining_amount: 4_500_000 })], pace, TODAY)
+        expect(faster).toEqual({ current: '2026-12-30', sooner: '2026-11-30', extraPerPeriod: 750_000 })
+    })
+
+    it('stays quiet without a pace, or when the end is under two periods away', () => {
+        expect(fasterPayoff([debt({ remaining_amount: 4_500_000 })], null, TODAY)).toBeNull()
+        expect(fasterPayoff([debt({ remaining_amount: 1_000_000 })], pace, TODAY)).toBeNull()
+        expect(fasterPayoff([debt({ type: 'receivable', remaining_amount: 4_500_000 })], pace, TODAY)).toBeNull()
+    })
+})
+
+describe('payoffSchedule', () => {
+    it('splits evenly in round steps, the last taking what is left', () => {
+        const steps = payoffSchedule({ debt: debt({ remaining_amount: 1_000_000 }), periodsLeft: 3, perPeriodNeeded: 1_000_000 / 3 })
+        expect(steps).toEqual([
+            { label: 'This period', amount: 334_000, last: false },
+            { label: 'Next period', amount: 334_000, last: false },
+            { label: 'Period 3', amount: 332_000, last: true },
+        ])
+    })
+
+    it('is empty without a due date', () => {
+        expect(payoffSchedule({ debt: debt(), periodsLeft: null, perPeriodNeeded: null })).toEqual([])
     })
 })

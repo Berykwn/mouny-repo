@@ -4,11 +4,11 @@ import { toast } from 'sonner'
 import { useAccounts, useBills } from '@/queries'
 import { transactionsService } from '@/services/transactions.service'
 import { formatCurrency, formatDate } from '@/lib/helpers'
-import { amountColor, amountSign, isTransfer } from '@/lib/transaction-type'
+import { isTransfer } from '@/lib/transaction-type'
 import { cn } from '@/lib/utils'
 import { CategoryTile } from '@/features/categories/components/category-icon'
 import type { TransactionWithDetails } from '@/types'
-import { linkedTo, type TransactionLink } from '../lib/ledger'
+import { entryTime, linkedTo, txTitle, type TransactionLink } from '../lib/ledger'
 import { TypeIcon } from './type-icon'
 
 /** What deleting a linked transaction also does, in the words the sheet shows. */
@@ -26,7 +26,7 @@ function typeLabel(tx: TransactionWithDetails): string {
     return tx.category?.is_savings ? 'Saved' : 'Expense'
 }
 
-const PRIMARY_BTN = 'w-full h-12 rounded-[14px] text-[13px] font-semibold text-on-action bg-action hover:bg-action/90 transition-colors flex items-center justify-center gap-2'
+const ACTION_BTN = 'flex-1 h-12 rounded-[14px] bg-surface-hover text-[13.5px] font-semibold text-ink hover:bg-line-soft transition-colors flex items-center justify-center gap-2'
 
 interface TransactionDetailProps {
     tx: TransactionWithDetails
@@ -95,44 +95,46 @@ export function TransactionDetail({ tx, readOnly, onEdit, onDelete, onMoved }: T
     // there's nothing the edit form could change; delete it and record it again instead.
     const editable = !isTransfer(tx.type)
 
+    const time = entryTime(tx)
+    const day = new Date(tx.date + 'T00:00:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })
+    // The note is the title; with none, the category (or type) already is, so it isn't repeated.
+    const kicker = [tx.note ? (tx.category?.name ?? typeLabel(tx)) : typeLabel(tx), time ? `${day}, ${time}` : day].join(' · ')
+
     const facts: { label: string; value: string }[] = [
         ...(isTransfer(tx.type) ? [] : [{ label: 'Category', value: tx.category?.name ?? 'Uncategorised' }]),
         // Deleting it makes the bill due again, which the bills card then shows.
         ...(paysBill ? [{ label: 'Pays bill', value: paysBill.name }] : []),
-        { label: 'Account', value: tx.account.name },
+        { label: tx.type === 'income' || tx.type === 'transfer_in' ? 'Into' : 'Paid from', value: tx.account.name },
         { label: 'Date', value: formatDate(tx.date) },
         ...(added ? [{ label: 'Added', value: added }] : []),
     ]
 
     return (
         <div className="space-y-4 pb-2">
-            <div className="flex items-center gap-3">
-                <CategoryTile category={tx.category} className="w-12 h-12 rounded-[14px]">
-                    {!tx.category && <TypeIcon type={tx.type} className="w-5 h-5" />}
-                </CategoryTile>
-                <div className="min-w-0">
-                    <p className="text-[11px] text-muted-ink">{typeLabel(tx)}</p>
-                    <p className={cn(
-                        'text-[24px] font-medium tracking-[-0.02em] leading-tight tabular-nums',
-                        amountColor(tx.type)
-                    )}>
-                        {amountSign(tx.type)}{formatCurrency(tx.amount)}
-                    </p>
+            <div>
+                <div className="flex items-center gap-2.5">
+                    <CategoryTile category={tx.category} className="w-7 h-7 rounded-[9px]">
+                        {!tx.category && <TypeIcon type={tx.type} className="w-4 h-4" />}
+                    </CategoryTile>
+                    <p className="text-[12.5px] text-muted-ink truncate">{kicker}</p>
                 </div>
+                <p className="mt-3 text-[20px] font-semibold tracking-[-0.01em] leading-snug text-ink break-words">{txTitle(tx)}</p>
+                <p className={cn(
+                    'mt-1 text-[32px] font-semibold tracking-[-0.02em] leading-tight tabular-nums',
+                    isTransfer(tx.type) ? 'text-muted-ink' : tx.type === 'income' ? 'text-brand' : 'text-ink'
+                )}>
+                    {tx.type === 'income' ? '+' : ''}{formatCurrency(tx.amount)}
+                </p>
             </div>
 
-            {tx.note && (
-                <p className="text-[13px] text-ink leading-relaxed">{tx.note}</p>
-            )}
-
-            <div className="rounded-[20px] bg-surface-soft border border-line-soft divide-y divide-line-soft">
+            <dl className="divide-y divide-line-soft">
                 {facts.map(f => (
-                    <div key={f.label} className="flex items-center justify-between gap-3 px-4 py-2.5">
-                        <p className="text-[11.5px] text-muted-ink">{f.label}</p>
-                        <p className="text-[12.5px] font-medium text-ink text-right truncate">{f.value}</p>
+                    <div key={f.label} className="flex items-center justify-between gap-3 py-3">
+                        <dt className="text-[13px] text-muted-ink">{f.label}</dt>
+                        <dd className="text-[13.5px] font-medium text-ink text-right truncate">{f.value}</dd>
                     </div>
                 ))}
-            </div>
+            </dl>
 
             {linked && (
                 <p className="rounded-[14px] bg-info/10 text-info px-3 py-2.5 text-[12px] leading-relaxed">
@@ -153,17 +155,15 @@ export function TransactionDetail({ tx, readOnly, onEdit, onDelete, onMoved }: T
             {readOnly ? (
                 <p className="text-center text-[11.5px] text-muted-ink pt-1">This period is closed, so its transactions are read-only.</p>
             ) : (
-                <div className="space-y-2 pt-1">
+                <div className="flex gap-2.5 pt-1">
+                    <button type="button" onClick={onDelete} className={cn(ACTION_BTN, 'hover:text-negative')}>
+                        <Trash2 aria-hidden="true" className="w-4 h-4" /> Delete
+                    </button>
                     {editable && (
-                        <button type="button" onClick={onEdit} className={PRIMARY_BTN}>
-                            <Pencil className="w-4 h-4" /> Edit
+                        <button type="button" onClick={onEdit} className={ACTION_BTN}>
+                            <Pencil aria-hidden="true" className="w-4 h-4" /> Edit
                         </button>
                     )}
-                    <div className="flex items-center justify-center pt-1">
-                        <button type="button" onClick={onDelete} className="flex items-center gap-1.5 text-[12px] font-medium text-muted-ink hover:text-negative py-2">
-                            <Trash2 className="w-3.5 h-3.5" /> Delete
-                        </button>
-                    </div>
                 </div>
             )}
         </div>

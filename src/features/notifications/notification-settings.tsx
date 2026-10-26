@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Bell, BellOff, Loader2, Send } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useQueryClient } from '@tanstack/react-query'
-import { BottomDrawer } from '@/components/bottom-drawer'
 import { Switch } from '@/components/ui/switch'
 import { queryKeys, useNotificationSettings } from '@/queries'
 import { DEFAULT_PREFS, notificationsService, type NotificationPrefs } from '@/services/notifications.service'
@@ -24,66 +23,26 @@ function useDeviceEnabled() {
 }
 
 const TOPICS: { key: 'bills' | 'debts' | 'budgets' | 'daily_log'; label: string; sub: string }[] = [
-    { key: 'bills', label: 'Bills', sub: 'The evening before and the morning they’re due' },
-    { key: 'debts', label: 'Debts', sub: 'Money you owe or are owed, when it’s due' },
+    { key: 'bills', label: 'Bills coming due', sub: 'The evening before and the morning they’re due' },
+    { key: 'debts', label: 'Debts & receivables', sub: 'On the due date' },
     { key: 'budgets', label: 'Budgets', sub: 'When a category passes 80% and 100%' },
-    { key: 'daily_log', label: 'Daily check-in', sub: 'If nothing’s logged for the day by the evening' },
+    { key: 'daily_log', label: 'Daily check-in', sub: 'In the evening, if nothing was recorded' },
 ]
 
 const EVENING_HOURS = [19, 20, 21, 22]
 
-/** The Menu row: what's on, and the drawer to change it. */
-export function NotificationsRow() {
-    const [open, setOpen] = useState(false)
-    const [enabled, setEnabled] = useDeviceEnabled()
-    const support = pushSupport()
+const ROW = 'flex items-center gap-3 py-3 border-b border-line-soft last:border-0'
 
-    const sub = support === 'unsupported'
-        ? 'Not available in this browser'
-        : support === 'needs-install'
-            ? 'Add Mouny to your Home Screen first'
-            : enabled === null
-                ? 'Reminders for bills, debts and budgets'
-                : enabled ? 'On for this device' : 'Off on this device'
-
-    return (
-        <>
-            <button
-                type="button"
-                onClick={() => setOpen(true)}
-                className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-surface-soft transition-colors"
-            >
-                <span className="w-9 h-9 rounded-[10px] flex items-center justify-center shrink-0 bg-info/10 text-info">
-                    {enabled === false && support === 'supported'
-                        ? <BellOff className="w-4 h-4" strokeWidth={1.9} />
-                        : <Bell className="w-4 h-4" strokeWidth={1.9} />}
-                </span>
-                <span className="flex-1 min-w-0">
-                    <span className="block text-[13px] font-medium text-ink">Notifications</span>
-                    <span className="block text-[11.5px] text-muted-ink truncate">{sub}</span>
-                </span>
-                {enabled && (
-                    <span className="text-[10.5px] font-semibold px-2 py-0.5 rounded-full shrink-0 bg-positive/10 text-positive">On</span>
-                )}
-            </button>
-
-            <BottomDrawer open={open} onClose={() => setOpen(false)} title="Notifications">
-                <NotificationSettingsForm enabled={enabled} onEnabledChange={setEnabled} />
-            </BottomDrawer>
-        </>
-    )
-}
-
-interface FormProps {
-    enabled: boolean | null
-    onEnabledChange: (enabled: boolean) => void
-}
-
-function NotificationSettingsForm({ enabled, onEnabledChange }: FormProps) {
+/**
+ * Settings' Reminders: this device on or off, then what to be reminded about and when. The
+ * topics are saved for the account; each device that's turned on gets the same ones.
+ */
+export function RemindersSection() {
     const queryClient = useQueryClient()
     const { data: saved } = useNotificationSettings()
     const prefs = saved ?? DEFAULT_PREFS
     const support = pushSupport()
+    const [enabled, setEnabled] = useDeviceEnabled()
     const [busy, setBusy] = useState<'device' | 'test' | null>(null)
 
     async function update(change: Partial<NotificationPrefs>) {
@@ -97,28 +56,24 @@ function NotificationSettingsForm({ enabled, onEnabledChange }: FormProps) {
         }
     }
 
-    async function turnOn() {
+    async function setDevice(on: boolean) {
         setBusy('device')
         try {
-            const subscription = await subscribe()
-            const { error } = await notificationsService.enableDevice(subscription, prefs)
-            if (error) throw new Error(error)
-            onEnabledChange(true)
-            toast.success('Notifications are on for this device.')
+            if (on) {
+                const subscription = await subscribe()
+                const { error } = await notificationsService.enableDevice(subscription, prefs)
+                if (error) throw new Error(error)
+            } else {
+                const { error } = await notificationsService.disableDevice()
+                if (error) throw new Error(error)
+            }
+            setEnabled(on)
+            toast.success(on ? 'Reminders are on for this device.' : 'Reminders are off for this device.')
         } catch (err) {
-            toast.error(err instanceof Error ? err.message : 'Notifications couldn’t be turned on.')
+            toast.error(err instanceof Error ? err.message : 'Reminders couldn’t be changed.')
         } finally {
             setBusy(null)
         }
-    }
-
-    async function turnOff() {
-        setBusy('device')
-        const { error } = await notificationsService.disableDevice()
-        setBusy(null)
-        if (error) { toast.error(error); return }
-        onEnabledChange(false)
-        toast.success('Notifications are off for this device.')
     }
 
     async function sendTest() {
@@ -129,100 +84,83 @@ function NotificationSettingsForm({ enabled, onEnabledChange }: FormProps) {
         else toast.success('Test sent. It should arrive in a few seconds.')
     }
 
+    const deviceSub = support === 'unsupported'
+        ? 'This browser can’t show notifications. Try Chrome, or install Mouny.'
+        : support === 'needs-install'
+            ? 'On iPhone and iPad: Share, then “Add to Home Screen”, and open Mouny from there.'
+            : enabled ? 'Reminders arrive here' : 'Turn on to get reminders here'
+
     return (
-        <div className="space-y-4 pb-2">
-            <div className="rounded-[14px] bg-surface-soft p-4">
-                {support === 'unsupported' ? (
-                    <p className="text-[12.5px] text-muted-ink leading-relaxed">
-                        This browser can’t show notifications from Mouny. Try Chrome, or install Mouny from your browser’s menu.
-                    </p>
-                ) : support === 'needs-install' ? (
-                    <p className="text-[12.5px] text-muted-ink leading-relaxed">
-                        On iPhone and iPad, notifications work once Mouny is on your Home Screen: tap Share, then “Add to Home Screen”, and open it from there.
-                    </p>
-                ) : enabled ? (
-                    <>
-                        <p className="text-[13px] font-medium text-ink">On for this device</p>
-                        <p className="mt-0.5 text-[12px] text-muted-ink leading-relaxed">Each device you turn it on for gets the same reminders.</p>
-                        <div className="mt-3 flex gap-2">
-                            <button
-                                type="button"
-                                onClick={sendTest}
-                                disabled={busy !== null}
-                                className="flex-1 h-10 rounded-[12px] text-[12.5px] font-semibold border border-line text-ink hover:bg-surface-hover transition-colors flex items-center justify-center gap-1.5 disabled:opacity-60"
-                            >
-                                {busy === 'test' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />} Send a test
-                            </button>
-                            <button
-                                type="button"
-                                onClick={turnOff}
-                                disabled={busy !== null}
-                                className="flex-1 h-10 rounded-[12px] text-[12.5px] font-semibold text-muted-ink hover:text-ink hover:bg-surface-hover transition-colors flex items-center justify-center gap-1.5 disabled:opacity-60"
-                            >
-                                {busy === 'device' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <BellOff className="w-3.5 h-3.5" />} Turn off
-                            </button>
-                        </div>
-                    </>
-                ) : (
-                    <>
-                        <p className="text-[13px] font-medium text-ink">Get reminded before it’s too late</p>
-                        <p className="mt-0.5 text-[12px] text-muted-ink leading-relaxed">
-                            Bills and debts coming due, budgets running out, and a nudge when the day isn’t logged.
-                        </p>
-                        <button
-                            type="button"
-                            onClick={turnOn}
-                            disabled={busy !== null || enabled === null}
-                            className="mt-3 w-full h-11 rounded-[14px] text-[13px] font-semibold text-on-action bg-action hover:bg-action/90 transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
-                        >
-                            {busy === 'device' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Bell className="w-4 h-4" />} Turn on for this device
-                        </button>
-                    </>
-                )}
+        <section>
+            <div className="flex items-baseline justify-between">
+                <h2 className="text-[17px] font-semibold text-ink">Reminders</h2>
+                <span className="text-[13px] text-subtle-ink">This device</span>
             </div>
 
-            <div>
-                <p className="text-[11px] uppercase tracking-[.14em] text-muted-ink px-1 mb-1.5">Remind me about</p>
-                <div className="rounded-[14px] border border-line divide-y divide-line-soft">
-                    {TOPICS.map(topic => (
-                        <label key={topic.key} className="flex items-center gap-3 px-4 py-3 cursor-pointer">
-                            <span className="flex-1 min-w-0">
-                                <span className="block text-[13px] font-medium text-ink">{topic.label}</span>
-                                <span className="block text-[11.5px] text-muted-ink">{topic.sub}</span>
-                            </span>
-                            <Switch
-                                checked={prefs[topic.key]}
-                                onCheckedChange={checked => void update({ [topic.key]: checked })}
-                                className="data-[state=checked]:bg-brand"
-                            />
-                        </label>
-                    ))}
+            <div className="mt-1">
+                <label className={ROW}>
+                    <span className="flex-1 min-w-0">
+                        <span className="block text-[15px] text-ink">On this device</span>
+                        <span className="block text-[13px] text-subtle-ink">{deviceSub}</span>
+                    </span>
+                    {busy === 'device' && <Loader2 className="w-4 h-4 animate-spin text-muted-ink" />}
+                    <Switch
+                        checked={!!enabled}
+                        disabled={support !== 'supported' || enabled === null || busy !== null}
+                        onCheckedChange={on => void setDevice(on)}
+                        className="data-[state=checked]:bg-brand"
+                    />
+                </label>
+
+                {TOPICS.map(topic => (
+                    <label key={topic.key} className={cn(ROW, 'cursor-pointer')}>
+                        <span className="flex-1 min-w-0">
+                            <span className={cn('block text-[15px]', enabled ? 'text-ink' : 'text-muted-ink')}>{topic.label}</span>
+                            <span className="block text-[13px] text-subtle-ink">{topic.sub}</span>
+                        </span>
+                        <Switch
+                            checked={prefs[topic.key]}
+                            onCheckedChange={checked => void update({ [topic.key]: checked })}
+                            className="data-[state=checked]:bg-brand"
+                        />
+                    </label>
+                ))}
+
+                <div className={cn(ROW, 'flex-wrap')}>
+                    <span className="flex-1 min-w-[200px]">
+                        <span className="block text-[15px] text-ink">Evening reminder</span>
+                        <span className="block text-[13px] text-subtle-ink">Tomorrow’s dues and the check-in; today’s come at 08:00</span>
+                    </span>
+                    <div role="radiogroup" aria-label="Evening reminder time" className="flex shrink-0 rounded-[10px] bg-line-soft p-[3px]">
+                        {EVENING_HOURS.map(hour => (
+                            <button
+                                key={hour}
+                                type="button"
+                                role="radio"
+                                aria-checked={prefs.daily_hour === hour}
+                                onClick={() => void update({ daily_hour: hour })}
+                                className={cn(
+                                    'h-8 px-2.5 rounded-[8px] text-[13px] font-semibold tabular-nums transition-colors',
+                                    prefs.daily_hour === hour ? 'bg-surface text-ink shadow-sm' : 'text-muted-ink hover:text-ink'
+                                )}
+                            >
+                                {String(hour).padStart(2, '0')}:00
+                            </button>
+                        ))}
+                    </div>
                 </div>
             </div>
 
-            <div>
-                <p className="text-[11px] uppercase tracking-[.14em] text-muted-ink px-1 mb-1.5">Evening reminder</p>
-                <div role="radiogroup" aria-label="Evening reminder time" className="flex rounded-[12px] bg-line-soft p-0.5">
-                    {EVENING_HOURS.map(hour => (
-                        <button
-                            key={hour}
-                            type="button"
-                            role="radio"
-                            aria-checked={prefs.daily_hour === hour}
-                            onClick={() => void update({ daily_hour: hour })}
-                            className={cn(
-                                'flex-1 h-9 rounded-[10px] text-[12.5px] font-medium tabular-nums transition-colors',
-                                prefs.daily_hour === hour ? 'bg-raised text-ink shadow-sm' : 'text-muted-ink hover:text-ink'
-                            )}
-                        >
-                            {String(hour).padStart(2, '0')}:00
-                        </button>
-                    ))}
-                </div>
-                <p className="mt-1.5 px-1 text-[11.5px] text-muted-ink leading-relaxed">
-                    What’s due tomorrow and the daily check-in come then; what’s due today comes at 08:00.
-                </p>
-            </div>
-        </div>
+            {enabled && (
+                <button
+                    type="button"
+                    onClick={sendTest}
+                    disabled={busy !== null}
+                    className="mt-2 text-[13.5px] font-semibold text-brand-ink hover:text-brand transition-colors disabled:opacity-50 flex items-center gap-1.5"
+                >
+                    {busy === 'test' && <Loader2 className="w-3.5 h-3.5 animate-spin" />} Send a test
+                </button>
+            )}
+        </section>
     )
 }

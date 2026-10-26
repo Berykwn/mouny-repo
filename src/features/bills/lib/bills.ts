@@ -10,7 +10,7 @@ type BillDates = Pick<RecurringBill, 'frequency' | 'due_day' | 'due_month' | 'st
 const pad = (n: number) => String(n).padStart(2, '0')
 const daysInMonth = (year: number, month: number) => new Date(Date.UTC(year, month, 0)).getUTCDate()
 
-function addDays(date: string, days: number): string {
+export function addDays(date: string, days: number): string {
     const [y, m, d] = date.split('-').map(Number)
     const t = new Date(Date.UTC(y, m - 1, d + days))
     return `${t.getUTCFullYear()}-${pad(t.getUTCMonth() + 1)}-${pad(t.getUTCDate())}`

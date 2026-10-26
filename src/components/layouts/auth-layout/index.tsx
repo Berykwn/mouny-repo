@@ -1,129 +1,77 @@
 import type { ReactNode } from 'react'
-import { CalendarCheck, CreditCard, Tag, type LucideIcon } from 'lucide-react'
-import { HeroGlow } from '@/components/hero'
-import { formatCurrency } from '@/lib/helpers'
+import type { LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 type AuthLayoutProps = {
     children: ReactNode
+    /** Hide the phone-sized logo above the form (a page that opens with a back link instead). */
+    hideMobileLogo?: boolean
 }
-
-const FEATURES: { icon: LucideIcon; tint: string; label: string; sub: string }[] = [
-    { icon: CalendarCheck, tint: 'bg-brand/10 text-brand', label: 'Pay periods', sub: 'Salary to salary, not calendar months' },
-    { icon: Tag, tint: 'bg-info/10 text-info', label: 'Budgets', sub: 'A limit per category, and the pace to keep it' },
-    { icon: CreditCard, tint: 'bg-warning/10 text-warning', label: 'Debts & wishes', sub: 'What you owe and what you’re saving toward' },
-]
 
 /**
- * Signed-out pages in the app's own frame: on desktop a panel in the sidebar's style beside
- * the form, on mobile a plain page under the same logo row as Overview.
+ * Signed-out pages: one calm column. On desktop a quiet panel beside it holds only the logo
+ * and one sentence about what the app is for.
  */
-export default function AuthLayout({ children }: AuthLayoutProps) {
+export default function AuthLayout({ children, hideMobileLogo = false }: AuthLayoutProps) {
     return (
-        <div className="min-h-[100dvh] bg-neutral-50 dark:bg-neutral-950 flex">
-            <aside className="hidden lg:flex lg:flex-col w-[400px] shrink-0 bg-surface-soft border-r border-line px-8 py-6">
-                <Logo size="lg" />
-
-                <div className="my-auto space-y-6">
-                    <div className="space-y-2">
-                        <p className="text-[11px] uppercase tracking-[.14em] text-muted-ink">Mindful money</p>
-                        <p className="text-[26px] font-semibold tracking-[-0.02em] leading-[1.15] text-ink">
-                            Know what’s left before you spend it.
-                        </p>
-                    </div>
-
-                    <PeriodPreview />
-
-                    <ul className="space-y-1">
-                        {FEATURES.map(({ icon: Icon, tint, label, sub }) => (
-                            <li key={label} className="flex items-center gap-3 py-2">
-                                <span className={cn('w-9 h-9 rounded-[10px] flex items-center justify-center shrink-0', tint)}>
-                                    <Icon className="w-4 h-4" strokeWidth={1.9} />
-                                </span>
-                                <span className="min-w-0">
-                                    <span className="block text-[13px] font-medium text-ink">{label}</span>
-                                    <span className="block text-[11.5px] text-muted-ink">{sub}</span>
-                                </span>
-                            </li>
-                        ))}
-                    </ul>
+        <div className="min-h-[100dvh] bg-surface flex">
+            <aside className="hidden lg:flex lg:flex-col w-1/2 max-w-[760px] shrink-0 bg-line-soft px-12 py-12 xl:px-[84px] xl:py-[72px]">
+                <div className="flex items-center gap-3">
+                    <Logo className="w-12 h-12" />
+                    <span className="text-[26px] font-bold tracking-[-0.01em] text-ink">Mouny</span>
                 </div>
 
-                <p className="text-[11px] text-subtle-ink tabular-nums">Mouny v{__APP_VERSION__}</p>
+                <div className="my-auto max-w-[620px]">
+                    <p className="text-[40px] xl:text-[52px] font-semibold tracking-[-0.025em] leading-[1.15] text-ink">
+                        Know what you can spend today.
+                    </p>
+                    <p className="mt-4 text-[17px] xl:text-[20px] leading-relaxed text-muted-ink">
+                        Your pay period, bills, savings and the patterns behind them, on your phone and here.
+                    </p>
+                </div>
+
+                <p className="text-[15px] text-subtle-ink tabular-nums">Mouny v{__APP_VERSION__}</p>
             </aside>
 
-            <div className="flex-1 flex flex-col min-w-0">
-                <header className="lg:hidden px-5 pt-[22px]">
-                    <Logo size="sm" />
-                </header>
-
-                <main className="flex-1 flex lg:items-center justify-center px-5 pt-10 pb-8 lg:p-8">
-                    <div className="w-full max-w-sm space-y-6">
+            <main className="flex-1 flex flex-col min-w-0">
+                <div className="flex-1 flex lg:items-center justify-center px-6 pt-14 pb-8 lg:p-8">
+                    <div className="w-full max-w-[400px] space-y-5">
+                        {!hideMobileLogo && <Logo className="lg:hidden w-[72px] h-[72px] -ml-1" />}
                         {children}
                     </div>
-                </main>
-            </div>
-        </div>
-    )
-}
-
-/** The logo row of the sidebar (desktop) and the Overview header (mobile). */
-function Logo({ size }: { size: 'sm' | 'lg' }) {
-    return (
-        <div className="flex items-center gap-2">
-            <img src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" className="w-6 h-6 shrink-0" />
-            <span className={cn('font-semibold tracking-[-0.02em] text-ink', size === 'lg' ? 'text-[20px]' : 'text-[16px]')}>
-                Mouny.
-            </span>
-        </div>
-    )
-}
-
-/** The sidebar's period card with example numbers — what the app shows once you're in. */
-function PeriodPreview() {
-    return (
-        <div aria-hidden className="card p-4 relative overflow-hidden">
-            <HeroGlow />
-            <div className="relative flex items-center justify-between">
-                <p className="flex items-center gap-1.5 text-[10.5px] uppercase tracking-[.14em] text-muted-ink">
-                    <span className="w-1.5 h-1.5 rounded-full bg-brand" /> Example period
-                </p>
-                <p className="text-[10.5px] text-subtle-ink tabular-nums">Day 12</p>
-            </div>
-            <p className="relative mt-2.5 text-[11px] text-muted-ink">Left this period</p>
-            <p className="relative text-[22px] font-medium tracking-[-0.02em] leading-tight tabular-nums text-ink">
-                {formatCurrency(4_250_000)}
-            </p>
-            <div className="relative mt-2.5">
-                <div className="h-1.5 rounded-full bg-line-soft overflow-hidden">
-                    <div className="h-full w-[38%] rounded-full bg-brand" />
                 </div>
-                <p className="mt-1.5 text-[10.5px] text-subtle-ink tabular-nums">38% of income used</p>
-            </div>
+                <p className="lg:hidden pb-[calc(env(safe-area-inset-bottom)+20px)] text-center text-[13px] text-subtle-ink">
+                    Accounts are created by your admin.
+                </p>
+            </main>
         </div>
     )
+}
+
+function Logo({ className }: { className?: string }) {
+    return <img src={`${import.meta.env.BASE_URL}favicon.svg`} alt="Mouny" className={cn('shrink-0', className)} />
 }
 
 interface AuthHeadingProps {
-    eyebrow: string
+    /** Kept for older callers; no longer shown, the title says enough. */
+    eyebrow?: string
     title: string
     description: string
 }
 
-/** The label, title and one-line explanation that open every auth page. */
-export function AuthHeading({ eyebrow, title, description }: AuthHeadingProps) {
+/** The title and one-line explanation that open every auth page. */
+export function AuthHeading({ title, description }: AuthHeadingProps) {
     return (
         <div className="space-y-1.5">
-            <p className="text-[11px] uppercase tracking-[.14em] text-muted-ink">{eyebrow}</p>
-            <h1 className="text-[22px] font-semibold tracking-[-0.02em] text-ink">{title}</h1>
-            <p className="text-[13px] text-muted-ink leading-relaxed">{description}</p>
+            <h1 className="text-[30px] lg:text-[34px] font-semibold tracking-[-0.02em] leading-tight text-ink">{title}</h1>
+            <p className="text-[15px] text-muted-ink leading-relaxed">{description}</p>
         </div>
     )
 }
 
 const NOTICE_TINT = {
-    positive: 'bg-positive/10 text-positive',
-    negative: 'bg-negative/10 text-negative',
+    positive: 'text-brand',
+    negative: 'text-negative',
 }
 
 interface AuthNoticeProps {
@@ -131,18 +79,31 @@ interface AuthNoticeProps {
     tone: keyof typeof NOTICE_TINT
     title: string
     children: ReactNode
+    /** A follow-up, e.g. "Send again". */
+    action?: { label: string; onClick: () => void; disabled?: boolean }
 }
 
-/** A result that replaces the form — a sent link, an expired one — in the menu rows' tile style. */
-export function AuthNotice({ icon: Icon, tone, title, children }: AuthNoticeProps) {
+/** A result next to (or instead of) the form: a sent link, an expired one. */
+export function AuthNotice({ icon: Icon, tone, title, children, action }: AuthNoticeProps) {
     return (
-        <div className="card p-3.5 flex items-start gap-3">
-            <span className={cn('w-9 h-9 rounded-[10px] flex items-center justify-center shrink-0', NOTICE_TINT[tone])}>
+        <div className="flex items-start gap-3 rounded-[16px] bg-line-soft p-4">
+            <span className={cn('w-8 h-8 rounded-full bg-surface flex items-center justify-center shrink-0', NOTICE_TINT[tone])}>
                 <Icon className="w-4 h-4" strokeWidth={1.9} />
             </span>
-            <div className="min-w-0 pt-0.5">
-                <p className="text-[13px] font-medium text-ink">{title}</p>
-                <p className="text-[11.5px] text-muted-ink mt-0.5 leading-relaxed">{children}</p>
+            <div className="min-w-0 pt-1">
+                <p className="text-[14px] leading-snug text-muted-ink">
+                    <span className="font-semibold text-ink">{title}.</span> {children}
+                </p>
+                {action && (
+                    <button
+                        type="button"
+                        onClick={action.onClick}
+                        disabled={action.disabled}
+                        className="mt-2 text-[14px] font-semibold text-brand-ink hover:text-brand transition-colors disabled:opacity-50"
+                    >
+                        {action.label}
+                    </button>
+                )}
             </div>
         </div>
     )

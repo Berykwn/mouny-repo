@@ -1,18 +1,19 @@
-import { ArrowLeftRight, Pencil, Trash2 } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { Trash2 } from 'lucide-react'
 import { formatCurrency, formatDateShort } from '@/lib/helpers'
-import { amountColor, amountSign } from '@/lib/transaction-type'
+import { amountColor, isInflow } from '@/lib/transaction-type'
 import { cn } from '@/lib/utils'
 import { AccountTypeTile } from '@/components/account-type-icon'
 import { CategoryTile } from '@/features/categories/components/category-icon'
 import { TypeIcon } from '@/features/transactions/components/type-icon'
 import { txTitle } from '@/features/transactions/lib/ledger'
-import type { Account, AccountType } from '@/types'
-import { LOW_RUNWAY_DAYS, type AccountInsight } from '../lib/account-insights'
+import type { Account } from '@/types'
+import type { AccountInsight } from '../lib/account-insights'
 
-const TYPE_LABEL = { bank: 'Bank account', cash: 'Cash' }
+const TYPE_LABEL: Record<string, string> = { bank: 'Bank', cash: 'Cash' }
 const RECENT_COUNT = 5
 
-const PRIMARY_BTN = 'w-full h-12 rounded-[14px] text-[13px] font-semibold text-on-action bg-action hover:bg-action/90 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:pointer-events-none'
+const BUTTON = 'h-12 rounded-[14px] text-[15px] font-semibold transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:pointer-events-none'
 
 interface AccountDetailProps {
     account: Account
@@ -20,34 +21,29 @@ interface AccountDetailProps {
     canTransfer: boolean
     hasActivePeriod: boolean
     onTransfer: () => void
+    /** Opens the edit form on its balance adjustment. */
+    onAdjust?: () => void
     onEdit: () => void
     onDelete: () => void
 }
 
-/** One account's period activity and recent transactions, with its actions. */
-export function AccountDetail({ account, insight, canTransfer, hasActivePeriod, onTransfer, onEdit, onDelete }: AccountDetailProps) {
+/** One account: its balance and how long it lasts, the three things to do with it, and its recent activity. */
+export function AccountDetail({ account, insight, canTransfer, hasActivePeriod, onTransfer, onAdjust, onEdit, onDelete }: AccountDetailProps) {
     const recent = insight?.recent.slice(0, RECENT_COUNT) ?? []
-    const moneyIn = insight?.moneyIn ?? 0
-    const moneyOut = insight?.moneyOut ?? 0
-
-    let healthNote: { text: string; className: string } | null = null
-    if (insight?.health === 'overdrawn') {
-        healthNote = { text: 'This account is below zero. Transfer money in to cover it.', className: 'bg-negative/10 text-negative' }
-    } else if (insight?.health === 'low' && insight.runwayDays !== null) {
-        healthNote = {
-            text: `At this period’s pace it runs out in about ${insight.runwayDays} day${insight.runwayDays === 1 ? '' : 's'} (under ${LOW_RUNWAY_DAYS}).`,
-            className: 'bg-warning/10 text-warning',
-        }
-    }
+    const facts = [
+        TYPE_LABEL[account.type] ?? 'Account',
+        account.is_savings ? 'savings' : 'everyday',
+        !account.is_savings && insight?.runwayDays != null ? `lasts ~${insight.runwayDays} day${insight.runwayDays === 1 ? '' : 's'}` : null,
+    ].filter(Boolean).join(' · ')
 
     return (
-        <div className="space-y-4 pb-2">
+        <div className="space-y-5 pb-2">
             <div className="flex items-center gap-3">
-                <AccountTypeTile type={account.type} savings={account.is_savings} className="w-12 h-12 rounded-[14px]" />
+                <AccountTypeTile type={account.type} savings={account.is_savings} className="w-12 h-12 rounded-[14px] [&_svg]:w-9 [&_svg]:h-9" />
                 <div className="min-w-0">
-                    <p className="text-[11px] text-muted-ink">{TYPE_LABEL[account.type as AccountType]}</p>
+                    <p className="text-[13px] text-subtle-ink">{facts}</p>
                     <p className={cn(
-                        'text-[24px] font-medium tracking-[-0.02em] leading-tight tabular-nums',
+                        'text-[30px] font-semibold tracking-[-0.02em] leading-tight tabular-nums',
                         account.balance < 0 ? 'text-negative' : 'text-ink'
                     )}>
                         {formatCurrency(account.balance)}
@@ -55,62 +51,54 @@ export function AccountDetail({ account, insight, canTransfer, hasActivePeriod, 
                 </div>
             </div>
 
-            {healthNote && (
-                <p className={cn('rounded-[14px] px-3 py-2.5 text-[12px] leading-relaxed', healthNote.className)}>{healthNote.text}</p>
+            <div className="grid grid-cols-3 gap-2">
+                <button type="button" onClick={onTransfer} disabled={!canTransfer} className={cn(BUTTON, 'bg-action text-on-action hover:bg-action/90')}>
+                    Transfer
+                </button>
+                <button type="button" onClick={onAdjust ?? onEdit} className={cn(BUTTON, 'bg-line-soft text-ink hover:bg-surface-hover')}>
+                    Adjust
+                </button>
+                <button type="button" onClick={onEdit} className={cn(BUTTON, 'bg-line-soft text-ink hover:bg-surface-hover')}>
+                    Edit
+                </button>
+            </div>
+            {!canTransfer && (
+                <p className="-mt-3 text-[12.5px] text-subtle-ink">Add a second account to move money between them.</p>
             )}
 
             {hasActivePeriod && (
-                <div className="grid grid-cols-2 gap-px overflow-hidden rounded-[14px] border border-line-soft bg-line-soft">
-                    <div className="bg-surface p-3">
-                        <p className="text-[11px] text-muted-ink">In this period</p>
-                        <p className="text-[15px] font-medium text-positive tabular-nums mt-1">+{formatCurrency(moneyIn)}</p>
+                <div>
+                    <div className="flex items-baseline justify-between">
+                        <h3 className="text-[17px] font-semibold text-ink">Recent</h3>
+                        <Link to="/transactions" className="text-[14px] font-semibold text-brand-ink hover:text-brand">Ledger</Link>
                     </div>
-                    <div className="bg-surface p-3">
-                        <p className="text-[11px] text-muted-ink">Out this period</p>
-                        <p className="text-[15px] font-medium text-ink tabular-nums mt-1">−{formatCurrency(moneyOut)}</p>
-                    </div>
+                    {recent.length === 0 ? (
+                        <p className="py-3 text-[13.5px] text-subtle-ink">Nothing from this account this period yet.</p>
+                    ) : (
+                        <ul>
+                            {recent.map(tx => (
+                                <li key={tx.id} className="flex items-center gap-3 py-2.5 border-b border-line-soft last:border-0">
+                                    <CategoryTile category={tx.category} className="w-10 h-10 rounded-[12px]">
+                                        {!tx.category && <TypeIcon type={tx.type} />}
+                                    </CategoryTile>
+                                    <div className="min-w-0 flex-1">
+                                        <p className="truncate text-[15px] text-ink">{txTitle(tx)}</p>
+                                        <p className="text-[13px] text-subtle-ink">{formatDateShort(tx.date)}</p>
+                                    </div>
+                                    <p className={cn('text-[15px] tabular-nums shrink-0', amountColor(tx.type))}>
+                                        {isInflow(tx.type) ? '+' : ''}{tx.amount.toLocaleString('id-ID')}
+                                    </p>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
                 </div>
             )}
 
-            <div className="rounded-[20px] border border-line overflow-hidden">
-                <p className="px-4 pt-3 pb-2 text-[11px] uppercase tracking-[.14em] text-muted-ink">Recent this period</p>
-                {recent.length === 0 ? (
-                    <p className="px-4 pb-3 text-[12px] text-muted-ink">No transactions from this account yet.</p>
-                ) : (
-                    <ul className="divide-y divide-line-soft border-t border-line-soft">
-                        {recent.map(tx => (
-                            <li key={tx.id} className="flex items-center gap-2.5 px-4 py-2">
-                                <CategoryTile category={tx.category}>
-                                    {!tx.category && <TypeIcon type={tx.type} />}
-                                </CategoryTile>
-                                <div className="min-w-0 flex-1">
-                                    <p className="truncate text-[12.5px] font-medium text-ink">{txTitle(tx)}</p>
-                                    <p className="text-[10.5px] text-subtle-ink">{formatDateShort(tx.date)}</p>
-                                </div>
-                                <p className={cn('text-[12.5px] tabular-nums shrink-0', amountColor(tx.type))}>
-                                    {amountSign(tx.type)}{formatCurrency(tx.amount)}
-                                </p>
-                            </li>
-                        ))}
-                    </ul>
-                )}
-            </div>
-
-            <div className="space-y-2 pt-1">
-                <button type="button" onClick={onTransfer} disabled={!canTransfer} className={PRIMARY_BTN}>
-                    <ArrowLeftRight className="w-4 h-4" /> Transfer
+            <div className="flex justify-center pt-1">
+                <button type="button" onClick={onDelete} className="flex items-center gap-1.5 text-[13px] font-medium text-subtle-ink hover:text-negative py-2">
+                    <Trash2 className="w-3.5 h-3.5" /> Delete account
                 </button>
-                {!canTransfer && (
-                    <p className="text-center text-[11px] text-muted-ink">Add a second account to transfer between them.</p>
-                )}
-                <div className="flex items-center justify-center gap-6 pt-1">
-                    <button type="button" onClick={onEdit} className="flex items-center gap-1.5 text-[12px] font-medium text-muted-ink hover:text-ink py-2">
-                        <Pencil className="w-3.5 h-3.5" /> Edit
-                    </button>
-                    <button type="button" onClick={onDelete} className="flex items-center gap-1.5 text-[12px] font-medium text-muted-ink hover:text-negative py-2">
-                        <Trash2 className="w-3.5 h-3.5" /> Delete
-                    </button>
-                </div>
             </div>
         </div>
     )

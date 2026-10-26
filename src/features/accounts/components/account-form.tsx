@@ -17,6 +17,9 @@ interface AccountFormProps {
     allAccounts?: Account[]
     /** Which tab an edit opens on (e.g. Transfer from the account detail sheet). */
     initialTab?: Tab
+    /** A transfer opened from a suggestion arrives with its destination and amount filled in, to check and confirm. */
+    initialToAccountId?: string
+    initialAmount?: number
 }
 
 type Tab = 'edit' | 'transfer'
@@ -24,7 +27,7 @@ type Tab = 'edit' | 'transfer'
 const FIELD_LABEL = 'text-[11px] font-medium uppercase tracking-[.14em] text-muted-ink'
 const SUBMIT_BUTTON = 'w-full h-12 rounded-[14px] text-[13px] font-semibold text-on-action bg-action hover:bg-action/90 transition-colors disabled:opacity-50 disabled:pointer-events-none'
 
-export function AccountForm({ onSuccess, initial, allAccounts = [], initialTab = 'edit' }: AccountFormProps) {
+export function AccountForm({ onSuccess, initial, allAccounts = [], initialTab = 'edit', initialToAccountId = '', initialAmount }: AccountFormProps) {
     const isEdit = !!initial
 
     const [tab, setTab] = useState<Tab>(initialTab)
@@ -33,8 +36,8 @@ export function AccountForm({ onSuccess, initial, allAccounts = [], initialTab =
     const [isSavings, setIsSavings] = useState(initial?.is_savings ?? false)
     const [initialBalance, setInitialBalance] = useState('')
     const [adjustment, setAdjustment] = useState('')
-    const [toAccountId, setToAccountId] = useState('')
-    const [transferAmount, setTransferAmount] = useState('')
+    const [toAccountId, setToAccountId] = useState(initialToAccountId)
+    const [transferAmount, setTransferAmount] = useState(initialAmount ? String(initialAmount) : '')
     const [loading, setLoading] = useState(false)
 
     const transferTargets = allAccounts.filter(a => a.id !== initial?.id)
@@ -106,7 +109,7 @@ export function AccountForm({ onSuccess, initial, allAccounts = [], initialTab =
                                 tab === t ? 'text-ink font-semibold' : 'text-muted-ink font-medium'
                             )}
                         >
-                            {t === 'edit' ? 'Edit account' : '⇄  Transfer'}
+                            {t === 'edit' ? 'Edit account' : 'Transfer'}
                         </button>
                     ))}
                 </div>

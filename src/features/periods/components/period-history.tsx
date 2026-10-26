@@ -1,147 +1,95 @@
-import { useMemo, useState } from 'react'
-import { formatCurrency, formatDate } from '@/lib/helpers'
+import { formatShortCurrency } from '@/lib/helpers'
 import type { PayPeriod } from '@/types'
-import { History, ChevronDown, Wallet, StickyNote } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { usePeriodSummaries } from '@/queries'
 import { unspentPct, type PeriodSummary } from '@/lib/period-summary'
+import { periodMonth, periodRange } from '../lib/period-progress'
+
+/** A kept share this high reads as a good period: the 20% of the 50/30/20 guide. */
+const GOOD_KEPT_PCT = 20
 
 interface PeriodHistoryProps {
+    /** Closed periods, newest first. */
     periods: PayPeriod[]
+    summaries: Record<string, PeriodSummary>
+    onOpen: (period: PayPeriod) => void
 }
 
-export function PeriodHistory({ periods }: PeriodHistoryProps) {
-    const closed = useMemo(() => periods.filter(p => p.status === 'closed'), [periods])
-    const [openId, setOpenId] = useState<string | null>(null)
-    const { data } = usePeriodSummaries(closed.map(p => p.id))
-    const summaryMap: Record<string, PeriodSummary> = data ?? {}
-
-    if (closed.length === 0) return null
+/** Past periods, one line each (a table on desktop): what came in, went out, and was kept. */
+export function PeriodHistory({ periods, summaries, onOpen }: PeriodHistoryProps) {
+    if (periods.length === 0) return null
 
     return (
-        <div className="space-y-2">
-            <div className="flex items-center gap-2 px-1">
-                <History className="w-3.5 h-3.5 text-muted-ink" />
-                <p className="text-[11px] uppercase tracking-[.14em] text-muted-ink">Period History</p>
-            </div>
-
-            <div className="card overflow-hidden divide-y divide-line-soft">
-                {closed.map((p) => {
-                    const summary = summaryMap[p.id]
-                    const isOpen = openId === p.id
-                    // Income not spent — savings transactions plus leftover — so it holds whether
-                    // the money was logged in a savings category or moved out by transfer.
-                    const unspent = summary?.unspent ?? null
-                    // Income can include refunds or side money, so salary gives a steadier base across periods.
-                    const incomePct = summary ? unspentPct(summary.unspent, summary.income) : null
-                    const salaryPct = summary ? unspentPct(summary.unspent, p.salary_amount) : null
-
+        <div>
+            {/* Phone: one row per period */}
+            <ul className="lg:hidden">
+                {periods.map(p => {
+                    const s = summaries[p.id]
+                    const pct = s ? unspentPct(s.unspent, s.income) : null
                     return (
-                        <div
-                            key={p.id}
-                            className={cn('transition-colors duration-200', isOpen && 'bg-surface-hover')}
-                        >
-                            <button
-                                onClick={() => setOpenId(isOpen ? null : p.id)}
-                                className={cn(
-                                    'w-full flex items-center justify-between px-4 py-3.5 transition-colors',
-                                    !isOpen && 'hover:bg-surface-soft'
-                                )}
-                            >
-                                <div className="text-left">
-                                    <p className="text-[11.5px] font-medium text-ink">
-                                        {formatDate(p.start_date)}
-                                        {p.end_date && ` — ${formatDate(p.end_date)}`}
-                                    </p>
-                                    <p className="text-[11.5px] mt-0.5">
-                                        <span className={cn(unspent === null ? 'text-muted-ink' : unspent >= 0 ? 'text-positive' : 'text-negative')}>
-                                            {unspent === null ? '—' : `${unspent >= 0 ? 'Unspent' : 'Overspent'} ${formatCurrency(Math.abs(unspent))}`}
-                                        </span>
-                                        {incomePct !== null && (
-                                            <span className="text-muted-ink"> · {Math.abs(incomePct)}% income</span>
-                                        )}
-                                        {salaryPct !== null && (
-                                            <span className="text-muted-ink"> · {Math.abs(salaryPct)}% salary</span>
-                                        )}
-                                    </p>
-                                </div>
-
-                                <div>
-                                    <ChevronDown className={cn(
-                                        'w-3.5 h-3.5 text-muted-ink transition-transform shrink-0',
-                                        isOpen && 'rotate-180'
-                                    )} />
-                                </div>
+                        <li key={p.id} className="border-b border-line-soft last:border-0">
+                            <button type="button" onClick={() => onOpen(p)} className="w-full flex items-center gap-3 py-3 text-left">
+                                <span className="w-11 h-11 rounded-[12px] bg-line-soft flex items-center justify-center shrink-0 text-[12.5px] font-bold text-ink/70">
+                                    {periodMonth(p.start_date, p.end_date, true).split(' ')[0]}
+                                </span>
+                                <span className="flex-1 min-w-0">
+                                    <span className="block text-[15.5px] font-medium text-ink truncate">{periodMonth(p.start_date, p.end_date, true)}</span>
+                                    <span className="block text-[13px] text-subtle-ink truncate">
+                                        {periodRange(p.start_date, p.end_date)}{s && ` · spent ${formatShortCurrency(s.spending)}`}
+                                    </span>
+                                </span>
+                                <span className="text-right shrink-0">
+                                    <span className={cn('block text-[15.5px] font-medium tabular-nums', pct !== null && pct >= GOOD_KEPT_PCT ? 'text-brand-ink' : 'text-ink')}>
+                                        {pct !== null ? `${pct}% kept` : '—'}
+                                    </span>
+                                    {s && <span className="block text-[12px] text-subtle-ink tabular-nums">{formatShortCurrency(s.unspent)}</span>}
+                                </span>
                             </button>
-
-                            {isOpen && (
-                                <div className="px-4 pb-4 pt-1 space-y-3">
-                                    {/* Salary & Closing Balance */}
-                                    <div className="flex justify-between text-[11.5px]">
-                                        <div>
-                                            <p className="text-muted-ink flex items-center gap-1">
-                                                <Wallet className="w-3 h-3" /> Salary
-                                            </p>
-                                            <p className="font-medium text-ink mt-0.5">{formatCurrency(p.salary_amount)}</p>
-                                        </div>
-                                        {p.closing_balance !== null && (
-                                            <div className="text-right">
-                                                <p className="text-muted-ink">Closing Balance</p>
-                                                <p className={cn('font-medium mt-0.5', p.closing_balance >= 0 ? 'text-positive' : 'text-negative')}>
-                                                    {formatCurrency(p.closing_balance)}
-                                                </p>
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    {/* Income / Spending / To savings / Leftover */}
-                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11.5px] pt-2 border-t border-line-soft">
-                                        <div className="bg-positive/10 rounded-[10px] px-2.5 py-2">
-                                            <p className="text-muted-ink">Income</p>
-                                            <p className="font-semibold text-positive mt-0.5">
-                                                {summary ? formatCurrency(summary.income) : '—'}
-                                            </p>
-                                        </div>
-                                        <div className="bg-negative/10 rounded-[10px] px-2.5 py-2">
-                                            <p className="text-muted-ink">Spending</p>
-                                            <p className="font-semibold text-negative mt-0.5">
-                                                {summary ? formatCurrency(summary.spending) : '—'}
-                                            </p>
-                                        </div>
-                                        <div className="bg-brand/10 rounded-[10px] px-2.5 py-2">
-                                            <p className="text-muted-ink">To savings</p>
-                                            <p className="font-semibold text-brand mt-0.5">
-                                                {summary ? formatCurrency(summary.savings) : '—'}
-                                            </p>
-                                        </div>
-                                        <div className={cn(
-                                            'rounded-[10px] px-2.5 py-2',
-                                            (summary?.net ?? 0) >= 0 ? 'bg-positive/10' : 'bg-negative/10'
-                                        )}>
-                                            <p className="text-muted-ink">Leftover</p>
-                                            <p className={cn('font-semibold mt-0.5', (summary?.net ?? 0) >= 0 ? 'text-positive' : 'text-negative')}>
-                                                {summary ? formatCurrency(summary.net) : '—'}
-                                            </p>
-                                        </div>
-                                    </div>
-
-                                    <p className="text-[11px] text-muted-ink">
-                                        Unspent = To savings + Leftover. Leftover counts as unspent even if it's still in your accounts.
-                                    </p>
-
-                                    {/* Notes */}
-                                    {p.notes && (
-                                        <div className="flex items-start gap-1.5 text-[11.5px] text-muted-ink bg-surface-hover rounded-[14px] px-3 py-2">
-                                            <StickyNote className="w-3 h-3 shrink-0 mt-0.5" />
-                                            <p>{p.notes}</p>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-                        </div>
+                        </li>
                     )
                 })}
-            </div>
+            </ul>
+
+            {/* Desktop: the same as a table */}
+            <table className="hidden lg:table w-full text-[14.5px]">
+                <thead>
+                    <tr className="text-[12px] font-semibold uppercase tracking-[.06em] text-subtle-ink">
+                        <th className="text-left font-semibold py-2">Period</th>
+                        <th className="text-right font-semibold py-2">Income</th>
+                        <th className="text-right font-semibold py-2">Spent</th>
+                        <th className="text-right font-semibold py-2">Saved</th>
+                        <th className="text-right font-semibold py-2">Left</th>
+                        <th className="text-right font-semibold py-2">Kept</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {periods.map(p => {
+                        const s = summaries[p.id]
+                        const pct = s ? unspentPct(s.unspent, s.income) : null
+                        const n = (v: number | undefined) => v === undefined ? '—' : v.toLocaleString('id-ID')
+                        return (
+                            <tr
+                                key={p.id}
+                                onClick={() => onOpen(p)}
+                                className="border-t border-line-soft cursor-pointer hover:bg-surface-soft transition-colors tabular-nums"
+                            >
+                                <td className="py-3.5">
+                                    <button type="button" onClick={e => { e.stopPropagation(); onOpen(p) }} className="text-left">
+                                        <span className="text-ink">{periodMonth(p.start_date, p.end_date, true)}</span>
+                                        <span className="ml-2.5 text-[13px] text-subtle-ink">{periodRange(p.start_date, p.end_date)}</span>
+                                    </button>
+                                </td>
+                                <td className="py-3.5 text-right font-semibold text-ink">{n(s?.income)}</td>
+                                <td className="py-3.5 text-right font-semibold text-ink">{n(s?.spending)}</td>
+                                <td className="py-3.5 text-right font-semibold text-ink">{n(s?.savings)}</td>
+                                <td className={cn('py-3.5 text-right font-semibold', s && s.net < 0 ? 'text-negative' : 'text-ink')}>{n(s?.net)}</td>
+                                <td className={cn('py-3.5 text-right font-semibold', pct !== null && pct >= GOOD_KEPT_PCT ? 'text-brand-ink' : 'text-ink')}>
+                                    {pct !== null ? `${pct}%` : '—'}
+                                </td>
+                            </tr>
+                        )
+                    })}
+                </tbody>
+            </table>
         </div>
     )
 }

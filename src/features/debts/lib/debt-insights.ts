@@ -96,6 +96,8 @@ export interface PayoffStop {
     status: PayoffStatus
     /** What this debt alone needs each period to be paid by its due date; null without one. */
     perPeriodNeeded: number | null
+    /** Periods left before its due date, at least 1; null without one or once it's passed. */
+    periodsLeft: number | null
 }
 
 export interface PayoffPlan {
@@ -146,6 +148,7 @@ export function payoffPlan(debts: DebtWithAccount[], pace: SavingsPace | null, t
         if (!date) reachable = false
 
         let perPeriodNeeded: number | null = null
+        let periodsLeft: number | null = null
         let status: PayoffStatus
         if (!debt.due_date) {
             status = 'no-date'
@@ -155,13 +158,14 @@ export function payoffPlan(debts: DebtWithAccount[], pace: SavingsPace | null, t
                 status = 'overdue'
                 perPeriodNeeded = debt.remaining_amount
             } else {
-                perPeriodNeeded = debt.remaining_amount / Math.max(1, Math.ceil((daysLeft + 1) / periodDays))
+                periodsLeft = Math.max(1, Math.ceil((daysLeft + 1) / periodDays))
+                perPeriodNeeded = debt.remaining_amount / periodsLeft
                 status = !canEstimate ? 'unknown' : date && date <= debt.due_date ? 'on-track' : 'behind'
             }
             thisPeriod += perPeriodNeeded
         }
 
-        stops.push({ debt, date, status, perPeriodNeeded })
+        stops.push({ debt, date, status, perPeriodNeeded, periodsLeft })
     }
 
     return {
@@ -169,4 +173,61 @@ export function payoffPlan(debts: DebtWithAccount[], pace: SavingsPace | null, t
         debtFreeDate: reachable && stops.length > 0 ? stops[stops.length - 1].date : null,
         thisPeriod: Math.ceil(thisPeriod),
     }
+}
+
+export interface FasterPayoff {
+    /** When the leftover alone clears every debt. */
+    current: string
+    /** One period sooner. */
+    sooner: string
+    /** What it takes on top of the usual leftover each period, rounded up to a thousand. */
+    extraPerPeriod: number
+}
+
+/**
+ * What it takes to be debt-free a period sooner: the same plan, with a bit more each period
+ * than is usually left over. Null when there's no pace, or the end is under two periods away
+ * (a period sooner would mean paying almost everything now).
+ */
+export function fasterPayoff(debts: DebtWithAccount[], pace: SavingsPace | null, today = toISODate()): FasterPayoff | null {
+    if (!pace || pace.perDay <= 0 || pace.periodDays <= 0) return null
+    const total = debts.filter(d => d.type === 'debt' && d.status === 'active').reduce((s, d) => s + d.remaining_amount, 0)
+    if (total <= 0) return null
+    const days = Math.ceil(total / pace.perDay)
+    if (days > MAX_ETA_DAYS || days < pace.periodDays * 2) return null
+    const soonerDays = Math.max(1, days - Math.round(pace.periodDays))
+    const extraPerDay = total / soonerDays - pace.perDay
+    return {
+        current: addDays(today, days),
+        sooner: addDays(today, soonerDays),
+        extraPerPeriod: Math.ceil((extraPerDay * pace.periodDays) / 1000) * 1000,
+    }
+}
+
+export interface ScheduleStep {
+    /** "This period", "Next period", "Period 3". */
+    label: string
+    amount: number
+    /** The last step lands on the due date. */
+    last: boolean
+}
+
+/**
+ * A dated debt split evenly over the periods left before its due date, rounded up to a
+ * thousand so each step is a sensible amount; the last one takes what's left.
+ */
+export function payoffSchedule(stop: Pick<PayoffStop, 'debt' | 'periodsLeft' | 'perPeriodNeeded'>): ScheduleStep[] {
+    const { periodsLeft, perPeriodNeeded } = stop
+    const remaining = stop.debt.remaining_amount
+    if (!periodsLeft || !perPeriodNeeded || remaining <= 0) return []
+    const each = Math.min(remaining, Math.ceil(perPeriodNeeded / 1000) * 1000)
+    const steps: ScheduleStep[] = []
+    let left = remaining
+    for (let i = 0; i < periodsLeft && left > 0; i++) {
+        const last = i === periodsLeft - 1 || left <= each
+        const amount = last ? left : each
+        steps.push({ label: i === 0 ? 'This period' : i === 1 ? 'Next period' : `Period ${i + 1}`, amount, last })
+        left -= amount
+    }
+    return steps
 }

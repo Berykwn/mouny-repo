@@ -16,7 +16,7 @@ export function WishEmpty({ onAdd, disabled }: WishEmptyProps) {
                     <WishTile
                         key={name}
                         name={name}
-                        className="w-11 h-11 rounded-[14px] ring-4 ring-white"
+                        className="w-11 h-11 rounded-[14px] ring-4 ring-surface"
                         iconClassName={i % 2 ? 'w-6 h-6' : 'w-[22px] h-[22px]'}
                     />
                 ))}

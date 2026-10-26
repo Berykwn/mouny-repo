@@ -10,7 +10,7 @@ type ThemeType = {
 export const ThemeContext = createContext<ThemeType | null>(null)
 
 /** The page background per theme (neutral-50 / neutral-950), used for the status bar. */
-const THEME_COLORS = { light: '#fafafa', dark: '#0a0a0a' }
+const THEME_COLORS = { light: '#ffffff', dark: '#141414' }
 
 /**
  * index.html picks the status bar colour from the system theme; when the app's own theme

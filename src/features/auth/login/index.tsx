@@ -5,9 +5,8 @@ export default function LoginPage() {
     return (
         <AuthLayout>
             <AuthHeading
-                eyebrow="Sign in"
-                title="Welcome back!"
-                description="Enter your email and password to sign in to your account."
+                title="Welcome back"
+                description="Sign in to see what you can spend today."
             />
 
             <LoginForm />

@@ -1,6 +1,6 @@
 import { getDaysBetween, toISODate } from '@/lib/helpers'
 import type { PeriodSummary } from '@/lib/period-summary'
-import type { PayPeriod, WishListItem } from '@/types'
+import type { PayPeriod, WishListItem, WishPart } from '@/types'
 
 const PRIORITY_ORDER: Record<string, number> = { high: 0, medium: 1, low: 2 }
 
@@ -240,4 +240,41 @@ export function targetPlan(
     else status = stop.date <= item.target_date ? 'on-track' : 'behind'
 
     return { targetDate: item.target_date, status, daysLeft, periodsLeft, perPeriodNeeded }
+}
+
+export interface NextPart {
+    part: WishPart
+    /** Set aside toward the open parts so far. */
+    saved: number
+    /** Still to save for this part; null when it has no price. */
+    remaining: number | null
+    /** When the usual leftover would cover it, if it all went here; null without a pace. */
+    date: string | null
+}
+
+/** A split wish's first part still to buy, and when it fits at the usual pace. */
+export function nextPart(item: WishListItem, pace: SavingsPace | null, today = toISODate()): NextPart | null {
+    const part = (item.parts ?? []).find(p => !p.is_purchased)
+    if (!part) return null
+    const price = part.estimated_price && part.estimated_price > 0 ? part.estimated_price : null
+    const remaining = price === null ? null : Math.max(0, price - item.saved_amount)
+    let date: string | null = null
+    if (remaining === 0) date = today
+    else if (remaining !== null && pace && pace.perDay > 0) {
+        const days = Math.ceil(remaining / pace.perDay)
+        if (days <= MAX_ETA_DAYS) {
+            const d = new Date(today + 'T00:00:00')
+            d.setDate(d.getDate() + days)
+            date = toISODate(d)
+        }
+    }
+    return { part, saved: item.saved_amount, remaining, date }
+}
+
+const SHORT_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+/** An estimate's month: "Dec" within this year, "Mar 2027" after it. */
+export function etaMonth(date: string, today = toISODate()): string {
+    const [y, m] = date.split('-').map(Number)
+    return y === Number(today.slice(0, 4)) ? SHORT_MONTHS[m - 1] : `${SHORT_MONTHS[m - 1]} ${y}`
 }

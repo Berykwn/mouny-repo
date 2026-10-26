@@ -20,6 +20,8 @@ interface WishListFormProps {
     item?: WishListItem
     /** Prefills the name of a new wish (e.g. from an empty-state suggestion). */
     defaultName?: string
+    /** Prefills the price of a new wish (e.g. from "Can I afford it?"). */
+    defaultPrice?: number
     onSuccess: () => void
 }
 
@@ -33,7 +35,7 @@ const PRIORITIES: { value: WishListPriority; label: string; style: string }[] = 
     { value: 'high', label: 'High', style: 'bg-negative-soft text-negative' },
 ]
 
-export function WishListForm({ payPeriodId, item, defaultName, onSuccess }: WishListFormProps) {
+export function WishListForm({ payPeriodId, item, defaultName, defaultPrice, onSuccess }: WishListFormProps) {
     const isEdit = !!item
     const isSplit = !!item?.parts?.length
     const itemUnit = item?.unit ?? null
@@ -41,7 +43,7 @@ export function WishListForm({ payPeriodId, item, defaultName, onSuccess }: Wish
 
     const [name, setName] = useState(item?.name ?? defaultName ?? '')
     // Whole rupiah: the field drops anything after a decimal point, which would read 10x too much.
-    const [price, setPrice] = useState(item?.estimated_price ? String(Math.round(item.estimated_price)) : '')
+    const [price, setPrice] = useState(item?.estimated_price ? String(Math.round(item.estimated_price)) : defaultPrice ? String(Math.round(defaultPrice)) : '')
     const [priority, setPriority] = useState<WishListPriority>((item?.priority as WishListPriority) ?? 'low')
     const [notes, setNotes] = useState(item?.notes ?? '')
     const [icon, setIcon] = useState<string | null>(item?.icon ?? null)

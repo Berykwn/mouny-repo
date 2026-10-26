@@ -1,23 +1,50 @@
 import { useState } from 'react'
-import { ChevronDown } from 'lucide-react'
+import { ArrowRight } from 'lucide-react'
 import { AccountTypeIcon } from '@/components/account-type-icon'
-import { Label } from '@/components/ui/label'
 import { AccountPickerDrawer } from '@/components/account-picker-drawer'
-import { formatCurrency, formatCurrencyInput, parseCurrencyInput } from '@/lib/helpers'
+import { formatCurrency, parseCurrencyInput } from '@/lib/helpers'
 import { cn } from '@/lib/utils'
 import type { Account } from '@/types'
-
-const FIELD_LABEL = 'text-[11px] font-medium uppercase tracking-[.14em] text-muted-ink'
 
 interface TransferFieldsProps {
     accounts: Account[]
     fromAccountId: string
     toAccountId: string
+    /** The amount typed above, for each side's balance after the transfer. */
     amount: string
     onFromChange: (id: string) => void
     onToChange: (id: string) => void
-    onAmountChange: (value: string) => void
     disabled?: boolean
+}
+
+/** One side of a transfer: the account, its balance, and where the balance ends up. */
+function AccountCard({ label, account, after, onClick, disabled }: {
+    label: string
+    account: Account | undefined
+    after: number | null
+    onClick: () => void
+    disabled?: boolean
+}) {
+    return (
+        <button
+            type="button"
+            disabled={disabled}
+            onClick={onClick}
+            aria-label={`${label}: ${account?.name ?? 'select account'}`}
+            className="flex-1 min-w-0 rounded-[16px] border border-line bg-surface p-3.5 text-left transition-colors hover:bg-surface-soft disabled:opacity-50 disabled:pointer-events-none"
+        >
+            <span className="block text-[11.5px] text-muted-ink">{label}</span>
+            <AccountTypeIcon type={account?.type ?? 'cash'} savings={account?.is_savings} className="mt-2 w-6 h-6" />
+            <span className="mt-2 block text-[14px] font-semibold text-ink truncate">{account?.name ?? 'Select'}</span>
+            {account && (
+                <span className="block text-[11.5px] text-muted-ink tabular-nums truncate">
+                    {after === null ? formatCurrency(account.balance) : (
+                        <>→ <span className={cn(after < 0 ? 'text-negative' : 'text-ink')}>{formatCurrency(after)}</span></>
+                    )}
+                </span>
+            )}
+        </button>
+    )
 }
 
 export function TransferFields({
@@ -27,7 +54,6 @@ export function TransferFields({
     amount,
     onFromChange,
     onToChange,
-    onAmountChange,
     disabled,
 }: TransferFieldsProps) {
     const [pickerOpen, setPickerOpen] = useState<'from' | 'to' | null>(null)
@@ -36,93 +62,17 @@ export function TransferFields({
     const toAccount = accounts.find((a) => a.id === toAccountId)
     const parsedAmount = parseCurrencyInput(amount)
 
-    const previewFrom = fromAccount && amount !== '' ? fromAccount.balance - parsedAmount : null
-    const previewTo = toAccount && amount !== '' ? toAccount.balance + parsedAmount : null
+    // Each side's balance once the money has moved, as soon as there's an amount.
+    const afterFrom = fromAccount && parsedAmount > 0 ? fromAccount.balance - parsedAmount : null
+    const afterTo = toAccount && parsedAmount > 0 ? toAccount.balance + parsedAmount : null
 
     return (
-        <div className="flex flex-col gap-4">
-            <div className="flex flex-col">
-                <button
-                    type="button"
-                    disabled={disabled}
-                    onClick={() => setPickerOpen('from')}
-                    className="flex items-center gap-2.5 py-[13px] text-left w-full disabled:opacity-50 disabled:pointer-events-none"
-                >
-                    <AccountTypeIcon type={fromAccount?.type ?? 'cash'} savings={fromAccount?.is_savings} className="w-[18px] h-[18px] shrink-0" />
-                    <span className="text-[13px] text-muted-ink shrink-0">From</span>
-                    <span className="ml-auto flex items-center gap-1.5 min-w-0">
-                        <span className="flex flex-col items-end min-w-0">
-                            <span className="text-[13.5px] font-medium text-ink truncate max-w-[160px]">
-                                {fromAccount?.name ?? 'Select account'}
-                            </span>
-                            {fromAccount && (
-                                <span className="text-[11.5px] text-faint-ink">{formatCurrency(fromAccount.balance)}</span>
-                            )}
-                        </span>
-                        <ChevronDown className="w-3.5 h-3.5 text-subtle-ink shrink-0" />
-                    </span>
-                </button>
-
-                <button
-                    type="button"
-                    disabled={disabled}
-                    onClick={() => setPickerOpen('to')}
-                    className="flex items-center gap-2.5 py-[13px] border-t border-line-soft text-left w-full disabled:opacity-50 disabled:pointer-events-none"
-                >
-                    <AccountTypeIcon type={toAccount?.type ?? 'cash'} savings={toAccount?.is_savings} className="w-[18px] h-[18px] shrink-0" />
-                    <span className="text-[13px] text-muted-ink shrink-0">To</span>
-                    <span className="ml-auto flex items-center gap-1.5 min-w-0">
-                        <span className="flex flex-col items-end min-w-0">
-                            <span className="text-[13.5px] font-medium text-ink truncate max-w-[160px]">
-                                {toAccount?.name ?? 'Select account'}
-                            </span>
-                            {toAccount && (
-                                <span className="text-[11.5px] text-faint-ink">{formatCurrency(toAccount.balance)}</span>
-                            )}
-                        </span>
-                        <ChevronDown className="w-3.5 h-3.5 text-subtle-ink shrink-0" />
-                    </span>
-                </button>
+        <div>
+            <div className="flex items-stretch gap-2">
+                <AccountCard label="From" account={fromAccount} after={afterFrom} onClick={() => setPickerOpen('from')} disabled={disabled} />
+                <ArrowRight aria-hidden="true" className="self-center w-4 h-4 text-muted-ink shrink-0" />
+                <AccountCard label="To" account={toAccount} after={afterTo} onClick={() => setPickerOpen('to')} disabled={disabled} />
             </div>
-
-            <div className="space-y-1.5">
-                <Label htmlFor="transfer-amount" className={FIELD_LABEL}>Amount</Label>
-                <div className="flex items-baseline gap-1.5 border-b border-line pb-2">
-                    <span aria-hidden="true" className="text-[20px] font-medium text-faint-ink">Rp</span>
-                    <input
-                        id="transfer-amount"
-                        type="text"
-                        inputMode="numeric"
-                        value={formatCurrencyInput(amount)}
-                        onChange={(e) => onAmountChange(e.target.value.replace(/\D/g, '').slice(0, 12))}
-                        placeholder="0"
-                        disabled={disabled}
-                        className="flex-1 min-w-0 bg-transparent outline-none text-[34px] font-medium tracking-[-0.02em] text-ink placeholder:text-faint-ink"
-                    />
-                </div>
-            </div>
-
-            {amount !== '' && (previewFrom !== null || previewTo !== null) && (
-                <div className="flex flex-col gap-1 px-3 py-2.5 rounded-[14px] bg-surface-hover border border-line">
-                    <p className="text-[10px] uppercase tracking-[.14em] text-muted-ink font-medium mb-0.5">After transfer</p>
-                    {fromAccount && previewFrom !== null && (
-                        <div className="flex items-center justify-between">
-                            <span className="text-[11.5px] text-muted-ink truncate max-w-[160px]">{fromAccount.name}</span>
-                            <span className={cn('text-[11.5px] font-semibold', previewFrom < 0 ? 'text-negative' : 'text-ink')}>
-                                {formatCurrency(previewFrom)}
-                            </span>
-                        </div>
-                    )}
-                    {toAccount && previewTo !== null && (
-                        <div className="flex items-center justify-between">
-                            <span className="text-[11.5px] text-muted-ink truncate max-w-[160px]">{toAccount.name}</span>
-                            <span className="text-[11.5px] font-semibold text-positive">
-                                {formatCurrency(previewTo)}
-                            </span>
-                        </div>
-                    )}
-                </div>
-            )}
 
             <AccountPickerDrawer
                 open={pickerOpen === 'from'}

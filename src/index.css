@@ -224,7 +224,7 @@
 @media (prefers-color-scheme: dark) {
   :root:not(.light) {
     color-scheme: dark;
-    background-color: #0a0a0a;
+    background-color: #141414;
   }
 }
 

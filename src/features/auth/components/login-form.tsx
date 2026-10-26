@@ -5,7 +5,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
-import { FIELD_INPUT, FIELD_LABEL, SUBMIT_BUTTON } from './auth-styles'
+import { ACCENT_LINK, FIELD_INPUT, FIELD_LABEL, SUBMIT_BUTTON } from './auth-styles'
+import { PasswordInput } from './password-input'
 
 export function LoginForm() {
     const navigate = useNavigate()
@@ -58,18 +59,9 @@ export function LoginForm() {
             </div>
 
             <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                    <Label htmlFor="password" className={FIELD_LABEL}>Password</Label>
-                    <Link
-                        to="/forgot-password"
-                        className="text-[11.5px] text-muted-ink hover:text-ink transition-colors"
-                    >
-                        Forgot password?
-                    </Link>
-                </div>
-                <Input
+                <Label htmlFor="password" className={FIELD_LABEL}>Password</Label>
+                <PasswordInput
                     id="password"
-                    type="password"
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
@@ -77,8 +69,10 @@ export function LoginForm() {
                     autoComplete="current-password"
                     disabled={loading}
                     minLength={6}
-                    className={FIELD_INPUT}
                 />
+                <div className="pt-1.5 text-right">
+                    <Link to="/forgot-password" className={ACCENT_LINK}>Forgot password?</Link>
+                </div>
             </div>
 
             <button type="submit" className={SUBMIT_BUTTON} disabled={loading}>

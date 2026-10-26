@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Calendar as CalendarIcon, Check, ChevronDown, Loader2, Pencil } from 'lucide-react'
+import { Calendar as CalendarIcon, Check, ChevronDown, Loader2 } from 'lucide-react'
 import { AccountTypeIcon } from '@/components/account-type-icon'
 import { toast } from 'sonner'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { AccountPickerDrawer } from '@/components/account-picker-drawer'
 import { DateQuickPicker } from '@/components/date-quick-picker'
+import { AmountField } from './amount-field'
 import { CategoryTileRail } from './category-tile-rail'
 import { ConsequenceStrip } from './consequence-strip'
 import { TransferFields } from './transfer-fields'
@@ -13,7 +13,7 @@ import { QuickPills } from '@/features/quick-transactions/components/quick-pills
 import { QuickConfirm } from '@/features/quick-transactions/components/quick-confirm'
 import { transactionsService, type CreateTransactionInput } from '@/services/transactions.service'
 import { accountsService } from '@/services/accounts-categories.service'
-import { formatCurrency, formatCurrencyInput, formatShortCurrency, parseCurrencyInput, toISODate } from '@/lib/helpers'
+import { formatCurrency, formatShortCurrency, parseCurrencyInput, toISODate } from '@/lib/helpers'
 import { shortDate } from '@/features/bills/lib/bill-labels'
 import type { BillDue } from '@/features/bills/lib/bills'
 import { summarizeTransactions } from '@/lib/period-summary'
@@ -21,15 +21,17 @@ import { useBillReserve } from '@/hooks/use-bill-reserve'
 import { cn } from '@/lib/utils'
 import { useAccounts, useCategories, usePeriods, usePeriodTransactions, useQuickTransactions } from '@/queries'
 import type { Account, Category, QuickTransactionWithCategory, TransactionWithDetails } from '@/types'
-import { linkedTo, unpaidBillsFor } from '../lib/ledger'
+import { linkedTo, recentNotes, unpaidBillsFor } from '../lib/ledger'
 
 type TxType = 'income' | 'expense' | 'transfer'
 
 const NO_ACCOUNTS: Account[] = []
 const NO_CATEGORIES: Category[] = []
 
-const FIELD_LABEL = 'text-[11px] font-medium uppercase tracking-[.14em] text-muted-ink'
-const OUTLINE_BUTTON = 'flex-1 h-[52px] rounded-[14px] border border-line text-[14px] font-semibold text-[#5b5b55] dark:text-neutral-300 transition-colors hover:bg-surface-soft disabled:opacity-50 disabled:pointer-events-none'
+// Phones read the form top to bottom without labels; a wide screen shows them.
+const FIELD_LABEL = 'sr-only lg:not-sr-only lg:block text-[12px] font-medium text-muted-ink'
+const NOTE_INPUT = 'w-full h-12 rounded-[14px] bg-surface-hover border border-transparent px-4 text-[15px] text-ink placeholder:text-muted-ink outline-none transition-colors focus:border-line-strong disabled:opacity-60'
+const OUTLINE_BUTTON = 'flex-1 h-[52px] rounded-[14px] border border-line text-[14px] font-semibold text-muted-ink transition-colors hover:bg-surface-soft hover:text-ink disabled:opacity-50 disabled:pointer-events-none'
 const FILLED_BUTTON = 'flex-1 h-[52px] rounded-[14px] text-[14px] font-semibold text-on-action bg-action hover:bg-action/90 transition-colors disabled:opacity-50 disabled:pointer-events-none'
 
 interface AddTransactionFormProps {
@@ -94,6 +96,9 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
     const [transferAmount, setTransferAmount] = useState('')
 
     const amountInputRef = useRef<HTMLInputElement>(null)
+    // The note comes right after the amount: Enter on the amount lands here.
+    const noteInputRef = useRef<HTMLInputElement>(null)
+    const focusNote = () => noteInputRef.current?.focus()
 
     useEffect(() => {
         if (initial) return
@@ -175,6 +180,13 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
         if (!on && !amount) setAmount(String(Math.round(due.bill.amount)))
     }
 
+    // What was last written for this category, from the period already loaded: offered as
+    // faint text to tap, never filled in. The one already in the field isn't offered again.
+    const noteSuggestions = type === 'transfer'
+        ? []
+        : recentNotes(periodTxs, categoryId, { exclude: initial?.id })
+            .filter((n) => n.toLowerCase() !== note.trim().toLowerCase())
+
     // Something typed or changed that a stray tap outside the drawer would throw away.
     // Defaults the form fills in itself (date, first account and category) don't count.
     const dirty = initial
@@ -222,6 +234,7 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
 
             setTransferAmount('')
             setNote('')
+            amountInputRef.current?.focus()
             return
         }
 
@@ -329,24 +342,74 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
         )
     }
 
+    const noteField = (
+        <div>
+            <label htmlFor="tx-note" className={cn(FIELD_LABEL, 'lg:mb-1.5')}>Note</label>
+            <input
+                id="tx-note"
+                ref={noteInputRef}
+                type="text"
+                enterKeyHint="done"
+                autoComplete="off"
+                placeholder={type === 'transfer' ? 'Top up, rent pot, trip (optional)' : 'What was it for?'}
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                disabled={loading}
+                className={NOTE_INPUT}
+            />
+            {noteSuggestions.length > 0 && (
+                <div className="mt-1.5 flex items-baseline gap-x-3 gap-y-1 flex-wrap px-1 text-[12.5px]">
+                    <span className="text-subtle-ink">Recent{selectedCategory ? ` for ${selectedCategory.name}` : ''}:</span>
+                    {noteSuggestions.map((n) => (
+                        <button
+                            key={n}
+                            type="button"
+                            disabled={loading}
+                            onClick={() => { setNote(n); focusNote() }}
+                            className="max-w-[180px] truncate text-muted-ink hover:text-ink underline-offset-2 hover:underline transition-colors"
+                        >
+                            {n}
+                        </button>
+                    ))}
+                </div>
+            )}
+        </div>
+    )
+
+    const dateRow = (
+        <div className="py-3 border-t border-line-soft flex flex-col gap-2">
+            <div className="flex items-center gap-2.5">
+                <CalendarIcon aria-hidden="true" className="w-4 h-4 text-muted-ink shrink-0" strokeWidth={2} />
+                <span className="text-[13px] text-muted-ink">Date</span>
+            </div>
+            <DateQuickPicker
+                date={date}
+                periodStart={periodStart}
+                maxDate={maxDate}
+                onChange={setDate}
+                disabled={loading}
+            />
+        </div>
+    )
+
     return (
         // A form, so the keyboard's Enter / Go saves.
         <form
-            className="flex flex-col gap-[18px]"
+            className="flex flex-col gap-4"
             onSubmit={(e) => { e.preventDefault(); if (!loading) void handleSubmit('save') }}
         >
             {!initial && quicks && quicks.length > 0 && (
                 <div className="space-y-1.5">
-                    <Label className={FIELD_LABEL}>Quick</Label>
+                    <Label className="text-[12px] font-medium text-muted-ink">Quick amounts</Label>
                     <QuickPills quicks={quicks} onPick={setQuick} disabled={loading} />
                 </div>
             )}
 
             {/* Type segmented control */}
-            <div role="group" aria-label="Transaction type" className="relative flex w-full rounded-xl bg-surface-hover p-[3px] gap-1">
+            <div role="group" aria-label="Transaction type" className="relative flex w-full rounded-[14px] bg-surface-hover p-[3px] gap-1">
                 <div
                     className={cn(
-                        'absolute top-[3px] bottom-[3px] rounded-[9px] bg-raised shadow-sm transition-transform duration-200 ease-out',
+                        'absolute top-[3px] bottom-[3px] rounded-[11px] bg-raised shadow-sm transition-transform duration-200 ease-out',
                         initial ? 'w-[calc((100%-4px)/2)]' : 'w-[calc((100%-8px)/3)]',
                         type === 'income' && 'translate-x-[calc(100%+4px)]',
                         type === 'transfer' && 'translate-x-[calc(200%+8px)]',
@@ -360,7 +423,7 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
                         disabled={loading || moneyLocked}
                         onClick={() => setType(t)}
                         className={cn(
-                            'relative z-10 flex-1 py-2 text-[13px] rounded-[9px] transition-colors duration-150',
+                            'relative z-10 flex-1 py-2.5 text-[13.5px] rounded-[11px] transition-colors duration-150',
                             type === t ? 'text-ink font-semibold' : 'text-muted-ink font-medium'
                         )}
                     >
@@ -369,28 +432,20 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
                 ))}
             </div>
 
+            {/* Amount, then the note, then the category */}
             {type !== 'transfer' ? (
                 <>
-                    {/* Amount */}
-                    <div className="space-y-1.5">
-                        <Label htmlFor="tx-amount" className={FIELD_LABEL}>Amount</Label>
-                        <div className="flex items-baseline gap-1.5 border-b border-line pb-2">
-                            <span aria-hidden="true" className="text-[20px] font-medium text-faint-ink">Rp</span>
-                            <input
-                                id="tx-amount"
-                                ref={amountInputRef}
-                                type="text"
-                                inputMode="numeric"
-                                value={formatCurrencyInput(amount)}
-                                onChange={(e) => setAmount(e.target.value.replace(/\D/g, '').slice(0, 12))}
-                                placeholder="0"
-                                disabled={loading || moneyLocked}
-                                className="flex-1 min-w-0 bg-transparent outline-none text-[34px] font-medium tracking-[-0.02em] text-ink placeholder:text-faint-ink"
-                            />
-                        </div>
-                    </div>
+                    <AmountField
+                        id="tx-amount"
+                        inputRef={amountInputRef}
+                        value={amount}
+                        onChange={setAmount}
+                        onNext={focusNote}
+                        disabled={loading || moneyLocked}
+                    />
 
-                    {/* Category */}
+                    {noteField}
+
                     <div className="space-y-1.5">
                         <Label className={FIELD_LABEL}>Category</Label>
                         <CategoryTileRail
@@ -401,38 +456,49 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
                         />
                     </div>
 
+                    {/* Asked, never assumed: only the user knows this expense is the bill */}
                     {billChoices.length > 0 && (
-                        <div className="rounded-xl border border-line-soft bg-surface-soft px-3.5 py-3">
-                            <p className="text-[12px] text-muted-ink leading-relaxed">
-                                Paying a bill? Mark it, so it stops being held back from safe to spend.
-                            </p>
-                            <div role="group" aria-label="Bill this pays" className="mt-2 flex flex-wrap gap-2">
-                                {billChoices.map((d) => {
-                                    const on = billDue?.bill.id === d.bill.id
-                                    return (
-                                        <button
-                                            key={d.bill.id}
-                                            type="button"
-                                            aria-pressed={on}
-                                            disabled={loading}
-                                            onClick={() => pickBill(d)}
+                        <div role="group" aria-label="Bill this pays" className="space-y-2">
+                            {billChoices.map((d) => {
+                                const on = billDue?.bill.id === d.bill.id
+                                return (
+                                    <button
+                                        key={d.bill.id}
+                                        type="button"
+                                        role="checkbox"
+                                        aria-checked={on}
+                                        disabled={loading}
+                                        onClick={() => pickBill(d)}
+                                        className={cn(
+                                            'w-full flex items-center gap-3 rounded-[14px] border px-3.5 py-3 text-left transition-colors disabled:opacity-50',
+                                            on ? 'border-brand bg-brand-tint' : 'border-line bg-surface hover:bg-surface-soft'
+                                        )}
+                                    >
+                                        <span
+                                            aria-hidden="true"
                                             className={cn(
-                                                'inline-flex items-center gap-1.5 px-3 h-8 rounded-full border text-[12px] font-medium transition-colors',
-                                                on ? 'border-brand bg-brand-tint text-brand-ink' : 'border-line bg-surface text-ink'
+                                                'w-5 h-5 rounded-[6px] border flex items-center justify-center shrink-0',
+                                                on ? 'bg-brand border-brand text-white' : 'border-line-strong bg-surface'
                                             )}
                                         >
-                                            {on && <Check aria-hidden="true" className="w-3.5 h-3.5" />}
-                                            {d.bill.name} · {formatShortCurrency(d.bill.amount)}
-                                            {d.nextDue && <span className="font-normal text-muted-ink">· due {shortDate(d.nextDue)}</span>}
-                                        </button>
-                                    )
-                                })}
-                            </div>
+                                            {on && <Check className="w-3.5 h-3.5" strokeWidth={3} />}
+                                        </span>
+                                        <span className="min-w-0">
+                                            <span className="block text-[13.5px] font-semibold text-ink truncate">
+                                                Pays {d.bill.name} <span className="font-normal text-muted-ink">· {formatShortCurrency(d.bill.amount)}</span>
+                                            </span>
+                                            <span className="block text-[12px] text-muted-ink">
+                                                {d.nextDue ? `Due ${shortDate(d.nextDue)} · ` : ''}stops being held back
+                                            </span>
+                                        </span>
+                                    </button>
+                                )
+                            })}
                         </div>
                     )}
 
                     {suggestSavingsTransfer && (
-                        <div className="rounded-xl bg-info/10 px-3.5 py-3 text-[12px] text-info leading-relaxed">
+                        <div className="rounded-[14px] bg-info/10 px-3.5 py-3 text-[12px] text-info leading-relaxed">
                             Putting it into {savingsTarget!.name}? Record it as a transfer instead: the money stays in your balance and still counts as saved.
                             <button
                                 type="button"
@@ -445,58 +511,30 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
                         </div>
                     )}
 
-                    {/* Account / Date / Note rows */}
+                    {/* Account and date */}
                     <div className="flex flex-col">
                         <button
                             type="button"
                             disabled={loading || moneyLocked}
                             onClick={() => setAccountPickerOpen(true)}
-                            className="flex items-center gap-2.5 py-[13px] text-left w-full disabled:opacity-50 disabled:pointer-events-none"
+                            className="flex items-center gap-2.5 py-3 border-t border-line-soft text-left w-full disabled:opacity-50 disabled:pointer-events-none"
                         >
                             <AccountTypeIcon type={selectedAccount?.type ?? 'cash'} savings={selectedAccount?.is_savings} className="w-[18px] h-[18px] shrink-0" />
-                            <span className="text-[13px] text-muted-ink shrink-0">Account</span>
+                            <span className="text-[13px] text-muted-ink shrink-0">{type === 'income' ? 'Into' : 'Paid from'}</span>
                             <span className="ml-auto flex items-center gap-1.5 min-w-0">
                                 <span className="flex flex-col items-end min-w-0">
                                     <span className="text-[13.5px] font-medium text-ink truncate max-w-[160px]">
                                         {selectedAccount?.name ?? 'Select'}
                                     </span>
                                     {selectedAccount && (
-                                        <span className="text-[11.5px] text-faint-ink">{formatCurrency(selectedAccount.balance)}</span>
+                                        <span className="text-[11.5px] text-faint-ink tabular-nums">{formatCurrency(selectedAccount.balance)}</span>
                                     )}
                                 </span>
                                 <ChevronDown className="w-3.5 h-3.5 text-subtle-ink shrink-0" />
                             </span>
                         </button>
 
-                        <div className="py-[13px] border-t border-line-soft flex flex-col gap-2">
-                            <div className="flex items-center gap-2.5">
-                                <CalendarIcon className="w-4 h-4 text-muted-ink shrink-0" strokeWidth={2} />
-                                <span className="text-[13px] text-muted-ink">Date</span>
-                            </div>
-                            <DateQuickPicker
-                                date={date}
-                                periodStart={periodStart}
-                                maxDate={maxDate}
-                                onChange={setDate}
-                                disabled={loading}
-                            />
-                        </div>
-
-                        <div className="py-[13px] border-t border-line-soft flex flex-col gap-2">
-                            <div className="flex items-center gap-2.5">
-                                <Pencil aria-hidden="true" className="w-4 h-4 text-muted-ink shrink-0" strokeWidth={2} />
-                                <label htmlFor="tx-note" className="text-[13px] text-muted-ink">Note</label>
-                            </div>
-                            <Input
-                                id="tx-note"
-                                type="text"
-                                placeholder="Lunch, fuel, etc (optional)"
-                                value={note}
-                                onChange={(e) => setNote(e.target.value)}
-                                disabled={loading}
-                                className="h-11 rounded-[12px] border-line text-[13.5px]"
-                            />
-                        </div>
+                        {dateRow}
                     </div>
 
                     {/* Live consequence */}
@@ -512,6 +550,17 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
                 </>
             ) : (
                 <>
+                    <AmountField
+                        id="transfer-amount"
+                        inputRef={amountInputRef}
+                        value={transferAmount}
+                        onChange={setTransferAmount}
+                        onNext={focusNote}
+                        disabled={loading}
+                    />
+
+                    {noteField}
+
                     <TransferFields
                         accounts={accounts}
                         fromAccountId={fromAccountId}
@@ -519,40 +568,14 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
                         amount={transferAmount}
                         onFromChange={setFromAccountId}
                         onToChange={setToAccountId}
-                        onAmountChange={setTransferAmount}
                         disabled={loading}
                     />
+
                     {/* A transfer made yesterday belongs to yesterday, like any other entry. */}
-                    <div className="py-[13px] border-t border-line-soft flex flex-col gap-2">
-                        <div className="flex items-center gap-2.5">
-                            <CalendarIcon aria-hidden="true" className="w-4 h-4 text-muted-ink shrink-0" strokeWidth={2} />
-                            <span className="text-[13px] text-muted-ink">Date</span>
-                        </div>
-                        <DateQuickPicker
-                            date={date}
-                            periodStart={periodStart}
-                            maxDate={maxDate}
-                            onChange={setDate}
-                            disabled={loading}
-                        />
-                    </div>
-                    <div className="py-[13px] border-t border-line-soft flex flex-col gap-2">
-                        <div className="flex items-center gap-2.5">
-                            <Pencil aria-hidden="true" className="w-4 h-4 text-muted-ink shrink-0" strokeWidth={2} />
-                            <label htmlFor="transfer-note" className="text-[13px] text-muted-ink">Note</label>
-                        </div>
-                        <Input
-                            id="transfer-note"
-                            type="text"
-                            placeholder="Rent pot, trip top-up (optional)"
-                            value={note}
-                            onChange={(e) => setNote(e.target.value)}
-                            disabled={loading}
-                            className="h-11 rounded-[12px] border-line text-[13.5px]"
-                        />
-                    </div>
+                    {dateRow}
+
                     {(transferSaves || transferUnsaves) && (
-                        <p className="rounded-xl bg-info/10 px-3.5 py-3 text-[12px] text-info leading-relaxed">
+                        <p className="rounded-[14px] bg-info/10 px-3.5 py-3 text-[12px] text-info leading-relaxed">
                             {transferSaves
                                 ? `${transferTo!.name} is a savings account, so this counts as saved this period.`
                                 : `${transferFrom!.name} is a savings account, so this takes it off what you’ve saved this period.`}
@@ -562,14 +585,14 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
             )}
 
             {linked && (
-                <p className="rounded-xl bg-surface-soft border border-line-soft px-3.5 py-3 text-[12px] text-muted-ink leading-relaxed">
+                <p className="rounded-[14px] bg-surface-soft border border-line-soft px-3.5 py-3 text-[12px] text-muted-ink leading-relaxed">
                     This is a {linked === 'wish' ? 'wish list' : 'debt'} payment, so its amount and account stay in step with that record.
                     You can still change the note, date and category.
                 </p>
             )}
 
             {/* Actions */}
-            <div className="flex gap-2.5">
+            <div className="flex gap-2.5 pt-1">
                 {!initial && (
                     <button
                         type="button"
@@ -585,7 +608,11 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
                     disabled={loading}
                     className={FILLED_BUTTON}
                 >
-                    {loading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : initial ? 'Save changes' : 'Save'}
+                    {loading
+                        ? <Loader2 className="w-4 h-4 animate-spin mx-auto" />
+                        : type === 'transfer' ? 'Transfer'
+                            : billDue ? 'Save & mark paid'
+                                : initial ? 'Save changes' : 'Save'}
                 </button>
             </div>
 

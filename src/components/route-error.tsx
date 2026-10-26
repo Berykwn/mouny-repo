@@ -1,4 +1,5 @@
 import { useRouteError } from 'react-router-dom'
+import { RotateCw } from 'lucide-react'
 
 /** A page's code from an older deploy that the server no longer has. */
 function isStaleChunk(error: unknown): boolean {
@@ -17,21 +18,23 @@ export function RouteError() {
     if (!stale) console.error(error)
 
     return (
-        <div className="min-h-[100dvh] flex items-center justify-center p-6 bg-neutral-50 dark:bg-neutral-950">
-            <div className="card p-6 max-w-[340px] w-full text-center">
-                <p className="text-[16px] font-medium tracking-[-0.01em] text-ink">
-                    {stale ? 'A new version is ready' : 'Something went wrong'}
-                </p>
-                <p className="mt-1 text-[12px] text-muted-ink leading-relaxed">
+        <div className="min-h-[100dvh] flex items-center justify-center p-6 bg-surface">
+            <div className="max-w-[340px] w-full flex flex-col items-center text-center">
+                <img src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" className="w-16 h-16" />
+                <h1 className="mt-4 text-[20px] font-semibold tracking-[-0.01em] text-ink">
+                    {stale ? 'A new version is ready' : 'This page didn’t load'}
+                </h1>
+                <p className="mt-1.5 text-[14px] text-muted-ink leading-relaxed">
                     {stale
                         ? 'Mouny was updated while this page was open. Reload to continue.'
-                        : 'This page couldn’t be shown. Reloading usually fixes it; your data is safe.'}
+                        : 'Something went wrong showing it. Your data is safe; trying again usually fixes it.'}
                 </p>
                 <button
                     onClick={() => window.location.reload()}
-                    className="mt-4 h-10 w-full rounded-[12px] bg-action text-on-action text-[13px] font-semibold hover:bg-action/90 transition-colors"
+                    className="mt-5 h-11 px-5 rounded-[12px] bg-action text-on-action text-[14px] font-semibold hover:bg-action/90 transition-colors flex items-center gap-2"
                 >
-                    Reload
+                    <RotateCw className="w-4 h-4" />
+                    {stale ? 'Reload' : 'Try again'}
                 </button>
             </div>
         </div>

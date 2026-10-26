@@ -3,28 +3,15 @@ import { ChevronRight } from 'lucide-react'
 import { formatCurrency, formatDateShort, formatShortCurrency } from '@/lib/helpers'
 import { cn } from '@/lib/utils'
 import { categoryChartColor } from '@/features/categories/lib/category-colors'
-import type { PeriodStats } from '@/hooks/use-period-stats'
 import { useBudgets } from '@/queries'
-import { usePeriodTrend } from '../../hooks/use-period-trend'
-import { PeriodTrendChart } from './period-trend-chart'
 import { groupExpensesByCategory, UNCATEGORIZED_ID, type CategoryTotal } from '../../lib/group-expenses-by-category'
 import { CategoryDonutChart } from './category-donut-chart'
-import { KindSplitCard } from './kind-split-card'
-import { withSavingsMoves } from '@/lib/savings-moves'
-import type { PayPeriod, TransactionWithDetails } from '@/types'
+import type { TransactionWithDetails } from '@/types'
 
 type CatEntry = CategoryTotal
 
-interface PeriodAnalyticsProps {
-  transactions: TransactionWithDetails[]
-  period: PayPeriod
-  periods: PayPeriod[]
-  /** The overview's stats for this period, bills still due included. */
-  stats: PeriodStats
-}
-
 // Everyday spending per day against the safe daily amount: the bar is the pace, the tick is the limit.
-function PaceGauge({ daily, safe }: { daily: number; safe: number }) {
+export function PaceGauge({ daily, safe }: { daily: number; safe: number }) {
   const scale = Math.max(daily, safe) * 1.15
   const over = daily > safe
   return (
@@ -54,6 +41,7 @@ function PaceGauge({ daily, safe }: { daily: number; safe: number }) {
 interface PeriodRangeProps {
   worst: number
   best: number
+  /** The middle tick: the median of the other periods. */
   average: number
   current: number
   currentLabel: string
@@ -62,7 +50,7 @@ interface PeriodRangeProps {
 }
 
 // Where the average and this period sit between the worst and best of the other periods.
-function PeriodRange({ worst, best, average, current, currentLabel, worstText, bestText }: PeriodRangeProps) {
+export function PeriodRange({ worst, best, average, current, currentLabel, worstText, bestText }: PeriodRangeProps) {
   const span = best - worst
   if (span <= 0) return null
   const frac = (v: number) => Math.min(1, Math.max(0, (v - worst) / span))
@@ -72,7 +60,7 @@ function PeriodRange({ worst, best, average, current, currentLabel, worstText, b
 
   return (
     <div className="px-1 pt-5 pb-1">
-      <div className="relative h-1.5 rounded-full bg-gradient-to-r from-negative/35 via-line to-positive/35">
+      <div className="relative h-1.5 rounded-full bg-gradient-to-r from-line-soft via-line to-brand/40">
         <div
           className="absolute top-1/2 h-3 w-[2px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-muted-ink"
           style={{ left: pos(average) }}
@@ -91,7 +79,7 @@ function PeriodRange({ worst, best, average, current, currentLabel, worstText, b
       <div className="mt-2 flex items-center justify-between gap-2 text-[10.5px] text-muted-ink">
         <span className="truncate">Worst {worstText}</span>
         <span className="inline-flex items-center gap-1 shrink-0">
-          <span className="inline-block h-2.5 w-[2px] rounded-full bg-muted-ink" /> Avg
+          <span className="inline-block h-2.5 w-[2px] rounded-full bg-muted-ink" /> Usual
         </span>
         <span className="truncate text-right">Best {bestText}</span>
       </div>
@@ -150,9 +138,17 @@ function budgetColor(ratio: number): string {
   return 'var(--brand-ink)'
 }
 
-// ─── Main Component ───────────────────────────────────────────────────────────
+// ─── Category breakdown ───────────────────────────────────────────────────────
 
-export function PeriodAnalytics({ transactions, period, periods, stats }: PeriodAnalyticsProps) {
+interface CategoryBreakdownProps {
+  /** The period's expenses, savings moves included (withSavingsMoves). */
+  expenses: TransactionWithDetails[]
+  /** Every expense, savings included. */
+  totalExpense: number
+}
+
+/** The period's expenses by category, with a donut and each budget's progress; a row opens its transactions. */
+export function CategoryBreakdown({ expenses, totalExpense }: CategoryBreakdownProps) {
   const [expandedCategoryId, setExpandedCategoryId] = useState<string | null>(null)
 
   const { data: budgetRows } = useBudgets()
@@ -161,10 +157,6 @@ export function PeriodAnalytics({ transactions, period, periods, stats }: Period
     for (const b of budgetRows ?? []) map[b.category_id] = b.amount
     return map
   }, [budgetRows])
-
-  // Money moved into savings accounts counts as saved, like a savings expense.
-  const expenses = useMemo(() => withSavingsMoves(transactions).filter(t => t.type === 'expense'), [transactions])
-  const { totalIncome, totalExpense, totalSavings } = stats
 
   const categoriesByAmount = useMemo<CatEntry[]>(() => groupExpensesByCategory(expenses), [expenses])
 
@@ -179,11 +171,6 @@ export function PeriodAnalytics({ transactions, period, periods, stats }: Period
     return map
   }, [expenses])
 
-  // Tapping a category row expands it in place to the transactions behind its total.
-  function categoryTransactions(cat: CatEntry): TransactionWithDetails[] {
-    return expensesByCategoryId.get(cat.id) ?? []
-  }
-
   // Categories at/near their target float to the top — the first thing you see
   // is what's about to blow its budget. Un-targeted categories come next.
   const sortedCategories = useMemo(() => {
@@ -197,287 +184,82 @@ export function PeriodAnalytics({ transactions, period, periods, stats }: Period
     return [...budgeted, ...unbudgeted]
   }, [categoriesByAmount, budgets])
 
-  const hasPredictive = !stats.isClosed && stats.totalIncome > 0 && stats.projectedSpend !== null
-  const overSafePace = stats.safeDaily !== null && stats.dailyAvg > stats.safeDaily
-
-  // ─── Multi-period trend ─────────────────────────────────────────────────────
-
-  const { trend, loading: trendLoading, failed: trendFailed, retry: retryTrend } = usePeriodTrend(periods, period, transactions)
-
-  // ─── Period comparison ──
-
-  // Share of income not spent: what's left plus what went into savings.
-  const unspent = totalIncome - stats.totalSpending
-
-  const periodComparison = useMemo(() => {
-    const others = trend.filter(t => t.periodId !== period.id)
-    if (others.length === 0) return null
-    // Ranked by unspent, so a period that moved money into savings isn't marked down for it.
-    const best = others.reduce((mx, t) => t.unspent > mx.unspent ? t : mx, others[0])
-    const worst = others.reduce((mn, t) => t.unspent < mn.unspent ? t : mn, others[0])
-    const average = others.reduce((s, t) => s + t.unspent, 0) / others.length
-    // An open period's unspent-so-far would beat every full period early on, so it's
-    // compared by where it's projected to end; until there's a projection, not at all.
-    const current = stats.isClosed
-      ? unspent
-      : stats.projectedClose !== null ? stats.projectedClose + stats.totalSavings : null
-    const beaten = current === null ? 0 : others.filter(t => current > t.unspent).length
-    return { best, worst, average, current, beaten, others: others.length }
-  }, [trend, period.id, stats.isClosed, stats.projectedClose, stats.totalSavings, unspent])
+  if (sortedCategories.length === 0) return null
 
   return (
-    <>
-    <div className="space-y-2.5 pt-3 lg:grid lg:grid-cols-2 lg:gap-4 lg:space-y-0 lg:items-start">
-
-      {/* ── Needs / wants / savings split (Categories) ── */}
-      <KindSplitCard expenses={expenses} totalIncome={totalIncome} isClosed={stats.isClosed} />
-
-      {/* ── Budgets card (Categories) ── */}
-      {sortedCategories.length > 0 && (
-        <div className="rounded-[20px] border border-line bg-surface overflow-hidden lg:col-span-2">
-          <div className="flex items-center justify-between px-4 pt-4 pb-3">
-            <p className="text-[11px] uppercase tracking-[.14em] text-muted-ink">Budgets</p>
-            <p className="text-[11px] text-subtle-ink">tap a row for detail</p>
-          </div>
-
-          <div className="px-4 pb-1">
-            <div className="max-w-[220px] mx-auto">
-              <CategoryDonutChart categories={categoriesByAmount} total={totalExpense} />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2">
-            {sortedCategories.map(cat => {
-              const isExpanded = expandedCategoryId === cat.id
-              const pct = totalExpense > 0
-                ? Math.round((cat.amount / totalExpense) * 100)
-                : null
-              const target = budgets[cat.id]
-              const ratio = target ? cat.amount / target : null
-
-              return (
-                <div key={cat.id} className={cn('border-b border-line-soft', isExpanded && 'sm:col-span-2')}>
-                  <button
-                    type="button"
-                    onClick={() => setExpandedCategoryId(id => id === cat.id ? null : cat.id)}
-                    aria-expanded={isExpanded}
-                    className="block w-full text-left px-4 py-2.5 hover:bg-surface-soft transition-colors"
-                  >
-                    <span className="flex items-center justify-between mb-1.5">
-                      <span className="flex items-center gap-2 min-w-0">
-                        <span
-                          aria-hidden="true"
-                          className="h-2 w-2 rounded-full shrink-0"
-                          style={{ backgroundColor: categoryChartColor(cat) }}
-                        />
-                        <span className="text-[13px] text-ink truncate">{cat.name}</span>
-                        {target !== undefined && ratio !== null && ratio >= 0.7 && (
-                          <span
-                            className="text-[10px] font-medium shrink-0 rounded-full px-1.5 py-[1px]"
-                            style={{ color: budgetColor(ratio), backgroundColor: `color-mix(in srgb, ${budgetColor(ratio)} 10%, transparent)` }}
-                          >
-                            {ratio >= 1 ? 'Over' : 'Near budget'}
-                          </span>
-                        )}
-                      </span>
-                      <span className="flex items-center gap-3 shrink-0">
-                        <span className="text-[12px] text-subtle-ink min-w-[28px] text-right">
-                          {pct !== null ? `${pct}%` : '—'}
-                        </span>
-                        <span className="text-[13px] font-medium text-ink min-w-[82px] text-right">
-                          {formatCurrency(cat.amount)}
-                        </span>
-                        <ChevronRight
-                          aria-hidden="true"
-                          className={cn('w-[13px] h-[13px] text-faint-ink shrink-0 transition-transform', isExpanded && 'rotate-90')}
-                        />
-                      </span>
-                    </span>
-
-                    <span className="flex items-center gap-2">
-                      <span aria-hidden="true" className="flex-1 h-1 rounded-full bg-line-soft overflow-hidden">
-                        <span
-                          className="block h-full rounded-full transition-all duration-300"
-                          style={{ width: `${pct ?? 0}%`, backgroundColor: categoryChartColor(cat) }}
-                        />
-                      </span>
-                      {target !== undefined && (
-                        <span className="text-[10px] text-subtle-ink shrink-0">
-                          {Math.round((ratio ?? 0) * 100)}% of {formatCurrency(target)} budget
-                        </span>
-                      )}
-                    </span>
-                  </button>
-
-                  {isExpanded && <CategoryTransactionList transactions={categoryTransactions(cat)} />}
-                </div>
-              )
-            })}
-          </div>
-
-          <div className="flex items-center justify-between px-4 py-2.5 bg-surface-hover">
-            <p className="text-[12px] text-muted-ink">Total spent</p>
-            <p className="text-[13px] font-medium text-ink">{formatCurrency(totalExpense)}</p>
-          </div>
-        </div>
-      )}
-
-      {/* ── Spending trend card (Trends) ── */}
-      <div className="rounded-[20px] border border-line bg-surface p-4 lg:col-span-2">
-        <p className="text-[11px] uppercase tracking-[.14em] text-muted-ink">Spending trend</p>
-        {!trendLoading && !trendFailed && trend.length >= 2 && (
-          <p className="text-[11px] text-subtle-ink mt-0.5 mb-3">Last {trend.length} pay periods</p>
-        )}
-        <PeriodTrendChart trend={trend} loading={trendLoading} failed={trendFailed} onRetry={retryTrend} />
-
-        {/* How this period stacks up against the others */}
-        {periodComparison && (
-          <div className="mt-3 pt-3 border-t border-line-soft">
-            <p className="text-[13px] text-ink">
-              {periodComparison.current === null
-                ? 'Too early to compare with your other periods.'
-                : <>
-                    {stats.isClosed ? 'Better than ' : 'On pace to beat '}
-                    <span className="font-medium">{periodComparison.beaten} of your other {periodComparison.others}</span>
-                    {' '}period{periodComparison.others !== 1 ? 's' : ''}
-                  </>}
-            </p>
-            <p className="text-[11.5px] text-muted-ink mt-0.5">Ranked by income left unspent</p>
-            {periodComparison.current !== null && (
-              <PeriodRange
-                worst={periodComparison.worst.unspent}
-                best={periodComparison.best.unspent}
-                average={periodComparison.average}
-                current={periodComparison.current}
-                currentLabel={stats.isClosed ? 'This period' : 'This period, projected'}
-                worstText={`${periodComparison.worst.label} · ${formatShortCurrency(periodComparison.worst.unspent)}`}
-                bestText={`${periodComparison.best.label} · ${formatShortCurrency(periodComparison.best.unspent)}`}
-              />
-            )}
-          </div>
-        )}
+    <div>
+      <div className="max-w-[220px] mx-auto">
+        <CategoryDonutChart categories={categoriesByAmount} total={totalExpense} />
       </div>
 
-      {/* ── Projection card (Overview) — open periods only: where this period lands if today's pace holds ── */}
-      {hasPredictive && stats.projectedSpend !== null && stats.projectedClose !== null && stats.totalDays !== null && (() => {
-        const projectedSpend = stats.projectedSpend
-        const projectedClose = stats.projectedClose
-        const overIncome = projectedSpend > totalIncome
-        // One scale for spent-so-far, the projected rest, and income, so the three read against each other.
-        const scale = Math.max(totalIncome, projectedSpend)
-        const spentPct = (totalExpense / scale) * 100
-        const restPct = ((projectedSpend - totalExpense) / scale) * 100
-        const incomePct = (totalIncome / scale) * 100
-        const daysLeft = stats.daysRemaining ?? 0
-        const runway = stats.runwayDays
+      <div className="-mx-1 grid grid-cols-1 sm:grid-cols-2 sm:gap-x-4">
+        {sortedCategories.map(cat => {
+          const isExpanded = expandedCategoryId === cat.id
+          const pct = totalExpense > 0
+            ? Math.round((cat.amount / totalExpense) * 100)
+            : null
+          const target = budgets[cat.id]
+          const ratio = target ? cat.amount / target : null
 
-        return (
-          <div className="rounded-[20px] border border-brand-line bg-brand-tint p-4 lg:col-span-2">
-            <div className="flex items-baseline justify-between gap-3">
-              <p className="text-[11px] uppercase tracking-[.14em] text-brand-ink">Projection</p>
-              {stats.isEndDateEstimated && (
-                <p className="text-[10.5px] text-brand-muted">assuming a {stats.totalDays}-day period, like the last one</p>
-              )}
-            </div>
-
-            {/* Pace: everyday spending per day against what keeps the period on track */}
-            {stats.safeDaily !== null && (
-              <div className="mt-3 rounded-[14px] bg-surface/70 p-3">
-                <div className="flex items-baseline justify-between gap-3">
-                  <p className={cn('text-[18px] font-medium tabular-nums leading-none', overSafePace ? 'text-warning' : 'text-ink')}>
-                    {formatCurrency(stats.dailyAvg)}<span className="text-[12px] font-normal text-muted-ink"> / day</span>
-                  </p>
-                  <span className={cn(
-                    'text-[11px] font-medium rounded-full px-2 py-[2px] shrink-0',
-                    overSafePace ? 'bg-warning/10 text-warning' : 'bg-positive/10 text-positive'
-                  )}>
-                    {stats.safeDaily <= 0
-                      ? 'no safe room left'
-                      : overSafePace
-                        ? `${Math.round((stats.dailyAvg / stats.safeDaily - 1) * 100)}% over safe pace`
-                        : 'within safe pace'}
+          return (
+            <div key={cat.id} className={cn('border-b border-line-soft', isExpanded && 'sm:col-span-2')}>
+              <button
+                type="button"
+                onClick={() => setExpandedCategoryId(id => id === cat.id ? null : cat.id)}
+                aria-expanded={isExpanded}
+                className="block w-full text-left px-1 py-2.5 rounded-[10px] hover:bg-surface-soft transition-colors"
+              >
+                <span className="flex items-center justify-between mb-1.5">
+                  <span className="flex items-center gap-2 min-w-0">
+                    <span
+                      aria-hidden="true"
+                      className="h-2 w-2 rounded-full shrink-0"
+                      style={{ backgroundColor: categoryChartColor(cat) }}
+                    />
+                    <span className="text-[13px] text-ink truncate">{cat.name}</span>
+                    {target !== undefined && ratio !== null && ratio >= 0.7 && (
+                      <span
+                        className="text-[10px] font-medium shrink-0 rounded-full px-1.5 py-[1px]"
+                        style={{ color: budgetColor(ratio), backgroundColor: `color-mix(in srgb, ${budgetColor(ratio)} 10%, transparent)` }}
+                      >
+                        {ratio >= 1 ? 'Over' : 'Near budget'}
+                      </span>
+                    )}
                   </span>
-                </div>
-                {stats.safeDaily > 0 && <PaceGauge daily={stats.dailyAvg} safe={stats.safeDaily} />}
-                <p className="mt-1.5 text-[11px] text-muted-ink">
-                  Day {Math.min(stats.daysElapsed, stats.totalDays)} of {stats.totalDays} · {daysLeft} day{daysLeft !== 1 ? 's' : ''} left
-                </p>
-              </div>
-            )}
+                  <span className="flex items-center gap-3 shrink-0">
+                    <span className="text-[12px] text-subtle-ink min-w-[28px] text-right">
+                      {pct !== null ? `${pct}%` : '—'}
+                    </span>
+                    <span className="text-[13px] font-medium text-ink min-w-[82px] text-right tabular-nums">
+                      {formatCurrency(cat.amount)}
+                    </span>
+                    <ChevronRight
+                      aria-hidden="true"
+                      className={cn('w-[13px] h-[13px] text-faint-ink shrink-0 transition-transform', isExpanded && 'rotate-90')}
+                    />
+                  </span>
+                </span>
 
-            <p className="text-[12.5px] text-brand-ink mt-3">
-              If you keep spending <span className="font-semibold text-ink">{formatCurrency(stats.dailyAvg)}/day</span> on everyday things
-              {stats.oneOffSpending > 0 ? <> (the {formatCurrency(stats.oneOffSpending)} in bills &amp; one-offs so far counts once{totalSavings > 0 ? ', savings not counted' : ''})</> : totalSavings > 0 ? ' (savings not counted)' : ''}:
-            </p>
+                <span className="flex items-center gap-2">
+                  <span aria-hidden="true" className="flex-1 h-1 rounded-full bg-line-soft overflow-hidden">
+                    <span
+                      className="block h-full rounded-full transition-all duration-300"
+                      style={{ width: `${pct ?? 0}%`, backgroundColor: categoryChartColor(cat) }}
+                    />
+                  </span>
+                  {target !== undefined && (
+                    <span className="text-[10.5px] text-subtle-ink shrink-0">
+                      {Math.round((ratio ?? 0) * 100)}% of {formatCurrency(target)} budget
+                    </span>
+                  )}
+                </span>
+              </button>
 
-            {/* Spent so far → projected rest, against this period's income */}
-            <div className="relative mt-4 h-2.5 rounded-full bg-surface/80">
-              <div className="absolute inset-y-0 left-0 flex overflow-hidden rounded-full" style={{ width: `${spentPct + restPct}%` }}>
-                <div className="h-full bg-brand-ink" style={{ width: `${(spentPct / (spentPct + restPct || 1)) * 100}%` }} />
-                <div
-                  className={cn('h-full flex-1', overIncome ? 'bg-negative/45' : 'bg-brand-ink/35')}
-                />
-              </div>
-              {overIncome && (
-                <div
-                  className="absolute -top-1 -bottom-1 w-[2px] -translate-x-1/2 rounded-full bg-ink"
-                  style={{ left: `${incomePct}%` }}
-                  title="Income"
-                />
-              )}
+              {isExpanded && <CategoryTransactionList transactions={expensesByCategoryId.get(cat.id) ?? []} />}
             </div>
-            <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[10.5px] text-brand-muted">
-              <span className="inline-flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-full bg-brand-ink" /> {totalSavings > 0 ? 'Spent + saved' : 'Spent'} {formatCurrency(totalExpense)}
-              </span>
-              <span className="inline-flex items-center gap-1.5">
-                <span className={cn('h-2 w-2 rounded-full', overIncome ? 'bg-negative/45' : 'bg-brand-ink/35')} />
-                Still to come ~{formatCurrency(projectedSpend - totalExpense)}
-              </span>
-              <span className="inline-flex items-center gap-1.5">
-                {overIncome ? <span className="h-2.5 w-[2px] rounded-full bg-ink" /> : <span className="h-2 w-2 rounded-full border border-brand-line bg-surface" />}
-                Income {formatCurrency(totalIncome)}
-              </span>
-            </div>
-
-            <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-px overflow-hidden rounded-[14px] border border-brand-line bg-brand-line">
-              <div className="bg-brand-tint p-3">
-                <p className="text-[11px] text-brand-muted">You'll spend about</p>
-                <p className={cn('text-[17px] font-medium mt-1 tabular-nums', overIncome ? 'text-negative' : 'text-ink')}>
-                  {formatCurrency(projectedSpend)}
-                </p>
-                <p className="text-[10.5px] text-brand-muted mt-1">
-                  {totalSavings > 0 ? `in total, incl. ${formatCurrency(totalSavings)} saved` : 'in total this period'}
-                </p>
-              </div>
-              <div className="bg-brand-tint p-3">
-                <p className="text-[11px] text-brand-muted">You'll end with</p>
-                <p className={cn('text-[17px] font-medium mt-1 tabular-nums', projectedClose < 0 ? 'text-negative' : 'text-positive')}>
-                  {projectedClose >= 0 ? '' : '−'}{formatCurrency(Math.abs(projectedClose))}
-                </p>
-                <p className="text-[10.5px] text-brand-muted mt-1">
-                  {projectedClose >= 0 ? "of this period's income left over" : 'more than this period\'s income'}
-                </p>
-              </div>
-              <div className="bg-brand-tint p-3">
-                <p className="text-[11px] text-brand-muted">Money lasts</p>
-                <p className={cn('text-[17px] font-medium mt-1 tabular-nums', runway !== null && runway < daysLeft ? 'text-negative' : 'text-ink')}>
-                  {runway === null ? '—' : runway <= 0 ? 'Already out' : `${runway} day${runway !== 1 ? 's' : ''}`}
-                </p>
-                <p className="text-[10.5px] text-brand-muted mt-1">
-                  {runway === null
-                    ? 'no spending yet'
-                    : runway >= daysLeft
-                      ? `past the period end (${daysLeft} day${daysLeft !== 1 ? 's' : ''} left)`
-                      : `runs out ${daysLeft - runway} day${daysLeft - runway !== 1 ? 's' : ''} before the period ends`}
-                </p>
-              </div>
-            </div>
-          </div>
-        )
-      })()}
-
+          )
+        })}
+      </div>
     </div>
-    </>
   )
 }

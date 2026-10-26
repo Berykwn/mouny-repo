@@ -5,6 +5,28 @@ const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', '
 
 export const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+
+/** "Wed 22 Oct" */
+export function dayDate(date: string): string {
+    const [y, m, d] = date.split('-').map(Number)
+    return `${WEEKDAYS[new Date(Date.UTC(y, m - 1, d)).getUTCDay()]} ${d} ${MONTHS[m - 1]}`
+}
+
+/** "in 3 days", "today", "tomorrow", "2 days late": the tail after a date. */
+export function relativeDays(days: number): string {
+    if (days === 0) return 'today'
+    if (days === 1) return 'tomorrow'
+    if (days > 0) return `in ${days} days`
+    return `${-days} day${days === -1 ? '' : 's'} late`
+}
+
+/** "Oct 2026" */
+export function monthYear(date: string): string {
+    const [y, m] = date.split('-').map(Number)
+    return `${MONTHS[m - 1]} ${y}`
+}
+
 /** "5 Oct" */
 export function shortDate(date: string): string {
     const [, m, d] = date.split('-').map(Number)

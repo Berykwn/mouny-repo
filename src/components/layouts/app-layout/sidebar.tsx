@@ -1,14 +1,13 @@
 import { NavLink } from 'react-router-dom'
-import { House, List, Wallet, CreditCard, Receipt, ShoppingBag, Tag, History, ChevronRight, ChartLine } from 'lucide-react'
+import { House, List, Wallet, CreditCard, Receipt, ShoppingBag, Tag, History, ChartLine, CalendarClock, Settings } from 'lucide-react'
 import type { User } from '@supabase/supabase-js'
 import { cn } from '@/lib/utils'
-import { formatCurrency, getDaysBetween, getInitials } from '@/lib/helpers'
-import { HeroGlow } from '@/components/hero'
+import { getInitials } from '@/lib/helpers'
 import { useMoneyGlance, type MoneyGlance } from '@/hooks/use-money-glance'
-import type { PeriodSummary } from '@/lib/period-summary'
+import { usePeriods } from '@/queries'
+import { periodProgress, periodRange } from '@/features/periods/lib/period-progress'
 import type { PayPeriod } from '@/types'
 
-type Tint = 'brand' | 'info' | 'warning' | 'violet'
 type BadgeKey = 'debts' | 'wishes' | 'bills'
 
 interface SidebarItem {
@@ -16,59 +15,53 @@ interface SidebarItem {
     label: string
     icon: typeof House
     end?: boolean
-    tint: Tint
     badge?: BadgeKey
-}
-
-// Same tinted tiles as the mobile Menu, so a route looks the same on both.
-const TINT: Record<Tint, string> = {
-    brand: 'bg-brand/10 text-brand',
-    info: 'bg-info/10 text-info',
-    warning: 'bg-warning/10 text-warning',
-    violet: 'bg-[#8b5cf6]/10 text-[#7c3aed] dark:text-violet-400',
 }
 
 const GROUPS: { label: string | null; items: SidebarItem[] }[] = [
     {
         label: null,
         items: [
-            { to: '/', label: 'Home', icon: House, end: true, tint: 'brand' },
-            { to: '/transactions', label: 'Ledger', icon: List, tint: 'brand' },
-            { to: '/insights', label: 'Insights', icon: ChartLine, tint: 'brand' },
-            { to: '/accounts', label: 'Accounts', icon: Wallet, tint: 'brand' },
+            { to: '/', label: 'Home', icon: House, end: true },
+            { to: '/transactions', label: 'Ledger', icon: List },
+            { to: '/insights', label: 'Insights', icon: ChartLine },
+            { to: '/accounts', label: 'Accounts', icon: Wallet },
         ],
     },
     {
         label: 'Plan',
         items: [
-            { to: '/debts', label: 'Debts', icon: CreditCard, tint: 'warning', badge: 'debts' },
-            { to: '/bills', label: 'Bills', icon: Receipt, tint: 'info', badge: 'bills' },
-            { to: '/wish-list', label: 'Wishlist', icon: ShoppingBag, tint: 'brand', badge: 'wishes' },
+            { to: '/plan', label: 'Upcoming', icon: CalendarClock },
+            { to: '/bills', label: 'Bills', icon: Receipt, badge: 'bills' },
+            { to: '/debts', label: 'Debts', icon: CreditCard, badge: 'debts' },
+            { to: '/wish-list', label: 'Wishlist', icon: ShoppingBag, badge: 'wishes' },
         ],
     },
     {
         label: 'Settings',
         items: [
-            { to: '/category', label: 'Categories', icon: Tag, tint: 'info' },
-            { to: '/period-history', label: 'Period History', icon: History, tint: 'info' },
+            { to: '/category', label: 'Categories', icon: Tag },
+            { to: '/period-history', label: 'Periods', icon: History },
+            { to: '/menu', label: 'Settings', icon: Settings },
         ],
     },
 ]
 
 interface Badge {
-    count: number
+    text: string
     /** Short reason, shown as the pill's tooltip. */
     title: string
     className: string
 }
 
-/** What needs attention on the Debts and Wishlist pages, as nav badges. */
+/** What needs attention on the Plan pages, as quiet pills in words. */
 function badgesFrom({ debts, wishes, bills }: MoneyGlance): Partial<Record<BadgeKey, Badge>> {
     const badges: Partial<Record<BadgeKey, Badge>> = {}
-    if (debts?.overdue) badges.debts = { count: debts.overdue, title: `${debts.overdue} overdue`, className: 'bg-negative text-white' }
-    else if (debts?.dueSoon) badges.debts = { count: debts.dueSoon, title: `${debts.dueSoon} due this week`, className: 'bg-warning/15 text-warning' }
-    if (bills?.overdue) badges.bills = { count: bills.overdue, title: `${bills.overdue} overdue`, className: 'bg-negative text-white' }
-    if (wishes?.ready) badges.wishes = { count: wishes.ready, title: `${wishes.ready} ready to buy`, className: 'bg-positive/10 text-positive' }
+    if (debts?.overdue) badges.debts = { text: String(debts.overdue), title: `${debts.overdue} overdue`, className: 'bg-negative-soft text-negative-ink' }
+    else if (debts?.dueSoon) badges.debts = { text: String(debts.dueSoon), title: `${debts.dueSoon} due this week`, className: 'bg-warning-soft text-warning-ink' }
+    if (bills?.overdue) badges.bills = { text: `${bills.overdue} overdue`, title: `${bills.overdue} overdue`, className: 'bg-negative-soft text-negative-ink' }
+    else if (bills?.due) badges.bills = { text: `${bills.due} due`, title: `${bills.due} still to pay this period`, className: 'bg-warning-soft text-warning-ink' }
+    if (wishes?.ready) badges.wishes = { text: `${wishes.ready} ready`, title: `${wishes.ready} ready to buy`, className: 'bg-brand-tint text-brand-ink' }
     return badges
 }
 
@@ -79,27 +72,23 @@ interface SidebarProps {
 
 export function Sidebar({ activePeriod, user }: SidebarProps) {
     const glance = useMoneyGlance(activePeriod)
-    const { summary } = glance
     const badges = badgesFrom(glance)
     const name = user?.user_metadata?.full_name as string | undefined
 
     return (
-        <aside className="hidden lg:flex lg:flex-col fixed inset-y-0 left-0 z-30 w-64 bg-surface-soft border-r border-line px-3 py-5">
-            <div className="flex items-center gap-2 px-2">
-                <img src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" className="w-6 h-6 shrink-0" />
-                <span className="text-[20px] font-semibold tracking-[-0.02em] text-ink">Mouny.</span>
-                <span className="ml-auto px-1.5 py-0.5 rounded-md border border-line bg-surface text-[10px] text-muted-ink tabular-nums">
-                    v{__APP_VERSION__}
-                </span>
+        <aside className="hidden lg:flex lg:flex-col fixed inset-y-0 left-0 z-30 w-64 bg-surface border-r border-line px-3 pt-4 pb-3">
+            <div className="flex items-center gap-2.5 px-2 pb-3">
+                <img src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" className="w-8 h-8 shrink-0" />
+                <span className="text-[18px] font-bold tracking-[-0.01em] text-ink">Mouny</span>
             </div>
 
-            <PeriodCard period={activePeriod} summary={summary} left={glance.left} />
+            <PeriodCard period={activePeriod} />
 
-            <nav className="mt-5 flex flex-col gap-4 flex-1 overflow-y-auto -mx-1 px-1">
+            <nav className="mt-3 flex flex-col flex-1 overflow-y-auto -mx-1 px-1">
                 {GROUPS.map((group, i) => (
-                    <div key={group.label ?? i} className="space-y-0.5">
+                    <div key={group.label ?? i} className="flex flex-col gap-0.5">
                         {group.label && (
-                            <p className="text-[10.5px] uppercase tracking-[.14em] text-subtle-ink px-2.5 mb-1.5">{group.label}</p>
+                            <p className="mt-4 mb-1 px-2.5 text-[11px] font-semibold uppercase tracking-[.08em] text-subtle-ink">{group.label}</p>
                         )}
                         {group.items.map(item => (
                             <SidebarNavItem key={item.to} item={item} badge={item.badge ? badges[item.badge] : undefined} />
@@ -110,66 +99,45 @@ export function Sidebar({ activePeriod, user }: SidebarProps) {
 
             <NavLink
                 to="/menu"
-                className={({ isActive }) => cn(
-                    'mt-3 flex items-center gap-2.5 rounded-[14px] border p-2.5 transition-colors',
-                    isActive ? 'bg-surface border-line shadow-[0_1px_2px_rgba(0,0,0,.05)]' : 'border-transparent hover:bg-surface hover:border-line'
-                )}
+                className="mt-3 pt-3 border-t border-line flex items-center gap-2.5 px-2 rounded-[10px] hover:bg-line-soft/60 transition-colors"
             >
-                <div className="w-8 h-8 rounded-full bg-ink flex items-center justify-center shrink-0">
-                    <span className="text-[11.5px] font-semibold text-on-ink">{getInitials(user)}</span>
+                <div className="w-9 h-9 rounded-full bg-ink flex items-center justify-center shrink-0 my-1">
+                    <span className="text-[12px] font-semibold text-on-ink">{getInitials(user)}</span>
                 </div>
                 <div className="min-w-0 flex-1">
-                    <p className="text-[12.5px] font-medium text-ink truncate">{name || 'Your account'}</p>
-                    <p className="text-[10.5px] text-muted-ink truncate">{user?.email ?? 'Menu & settings'}</p>
+                    <p className="text-[13.5px] font-semibold text-ink truncate">{name || 'Your account'}</p>
+                    <p className="text-[12px] text-subtle-ink truncate">{user?.email ?? 'Settings'}</p>
                 </div>
-                <ChevronRight className="w-4 h-4 text-subtle-ink shrink-0" />
             </NavLink>
         </aside>
     )
 }
 
-function PeriodCard({ period, summary, left }: { period: PayPeriod | null; summary: PeriodSummary | null; left: number | null }) {
+/** The running period at a glance: its dates, the day, and how far to payday. */
+function PeriodCard({ period }: { period: PayPeriod | null }) {
+    const { periods } = usePeriods()
+
     if (!period) {
         return (
-            <NavLink to="/period-history" className="mt-5 block rounded-[16px] border border-dashed border-line bg-surface p-3.5 hover:border-ink/20 transition-colors">
-                <p className="text-[12.5px] font-medium text-ink">No active period</p>
-                <p className="text-[11px] text-muted-ink mt-0.5">Start one when your salary comes in.</p>
+            <NavLink to="/period-history" className="mx-1 block rounded-[12px] bg-line-soft p-3 hover:bg-surface-hover transition-colors">
+                <p className="text-[13.5px] font-semibold text-ink">No period yet</p>
+                <p className="text-[12px] text-subtle-ink mt-0.5">Open one when your pay arrives.</p>
             </NavLink>
         )
     }
 
-    const month = new Date(period.start_date + 'T00:00:00').toLocaleDateString('en-GB', { month: 'short' })
-    const day = Math.max(1, getDaysBetween(period.start_date) + 1)
-    const usedPct = summary && summary.income > 0 ? Math.min(100, Math.round((summary.expense / summary.income) * 100)) : null
+    const progress = periodProgress(period, periods)
+    const days = progress.totalDays !== null
+        ? `Day ${progress.day} of ${progress.totalDays}${progress.daysToPayday ? ` · payday in ${progress.daysToPayday} day${progress.daysToPayday === 1 ? '' : 's'}` : ''}`
+        : `Day ${progress.day}`
 
     return (
-        <NavLink
-            to="/transactions"
-            className="mt-5 block card p-3.5 relative overflow-hidden hover:border-ink/15 transition-colors"
-        >
-            <HeroGlow />
-            <div className="relative flex items-center justify-between">
-                <p className="flex items-center gap-1.5 text-[10.5px] uppercase tracking-[.14em] text-muted-ink">
-                    <span className="w-1.5 h-1.5 rounded-full bg-brand" /> {month} period
-                </p>
-                <p className="text-[10.5px] text-subtle-ink tabular-nums">Day {day}</p>
-            </div>
-            <p className="relative mt-2.5 text-[11px] text-muted-ink">Left this period</p>
-            <p className={cn(
-                'relative text-[19px] font-medium tracking-[-0.02em] leading-tight tabular-nums truncate',
-                left !== null && left < 0 ? 'text-negative' : 'text-ink'
-            )}>
-                {left === null ? '—' : formatCurrency(left)}
-            </p>
-            {usedPct !== null && (
-                <div className="relative mt-2.5">
-                    <div className="h-1 rounded-full bg-line-soft overflow-hidden">
-                        <div
-                            className={cn('h-full rounded-full', usedPct >= 90 ? 'bg-negative' : usedPct >= 75 ? 'bg-warning' : 'bg-brand')}
-                            style={{ width: `${usedPct}%` }}
-                        />
-                    </div>
-                    <p className="mt-1.5 text-[10.5px] text-subtle-ink tabular-nums">{usedPct}% of income used</p>
+        <NavLink to="/period-history" className="mx-1 block rounded-[12px] bg-line-soft p-3 hover:bg-surface-hover transition-colors">
+            <p className="text-[14px] font-semibold text-ink tabular-nums">{periodRange(period.start_date, progress.endDate)}</p>
+            <p className="text-[12px] text-subtle-ink tabular-nums mt-0.5">{days}</p>
+            {progress.fraction !== null && (
+                <div className="mt-2 h-1 rounded-full bg-line overflow-hidden">
+                    <div className="h-full rounded-full bg-ink" style={{ width: `${Math.round(progress.fraction * 100)}%` }} />
                 </div>
             )}
         </NavLink>
@@ -177,35 +145,22 @@ function PeriodCard({ period, summary, left }: { period: PayPeriod | null; summa
 }
 
 function SidebarNavItem({ item, badge }: { item: SidebarItem; badge?: Badge }) {
-    const { to, label, icon: Icon, end, tint } = item
+    const { to, label, icon: Icon, end } = item
     return (
         <NavLink
             to={to}
             end={end}
             className={({ isActive }) => cn(
-                'flex items-center gap-2.5 h-10 px-2 rounded-[12px] border transition-colors',
-                isActive
-                    ? 'bg-surface border-line shadow-[0_1px_2px_rgba(0,0,0,.05)]'
-                    : 'border-transparent hover:bg-surface/70'
+                'flex items-center gap-2.5 h-[38px] px-2.5 rounded-[10px] text-[14px] transition-colors',
+                isActive ? 'bg-brand-tint text-brand-ink font-semibold' : 'text-ink/75 font-medium hover:bg-line-soft hover:text-ink'
             )}
         >
-            {({ isActive }) => (
-                <>
-                    <span className={cn(
-                        'w-7 h-7 rounded-[9px] flex items-center justify-center shrink-0 transition-colors',
-                        isActive ? TINT[tint] : 'bg-line-soft text-muted-ink'
-                    )}>
-                        <Icon className="w-[15px] h-[15px]" strokeWidth={1.9} />
-                    </span>
-                    <span className={cn('flex-1 text-[13px] truncate', isActive ? 'font-semibold text-ink' : 'text-muted-ink')}>
-                        {label}
-                    </span>
-                    {badge && (
-                        <span title={badge.title} className={cn('min-w-5 h-5 px-1.5 rounded-full text-[10.5px] font-semibold tabular-nums flex items-center justify-center', badge.className)}>
-                            {badge.count}
-                        </span>
-                    )}
-                </>
+            <Icon className="w-[18px] h-[18px] shrink-0" strokeWidth={1.9} />
+            <span className="flex-1 truncate">{label}</span>
+            {badge && (
+                <span title={badge.title} className={cn('h-5 px-1.5 rounded-[6px] text-[11px] font-semibold tabular-nums flex items-center', badge.className)}>
+                    {badge.text}
+                </span>
             )}
         </NavLink>
     )

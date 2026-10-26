@@ -1,4 +1,4 @@
-import { CircleAlert, CircleCheck } from 'lucide-react'
+import { CircleAlert } from 'lucide-react'
 import { formatCurrency } from '@/lib/helpers'
 
 interface ConsequenceStripProps {
@@ -10,6 +10,7 @@ interface ConsequenceStripProps {
     billName?: string
 }
 
+/** One quiet line under the form: where this entry leaves safe to spend. */
 export function ConsequenceStrip({ safeToSpend, amount, type, freed = 0, billName }: ConsequenceStripProps) {
     const after = type === 'expense' ? safeToSpend - amount + freed : safeToSpend + amount
     const isOver = type === 'expense' && after < 0
@@ -17,25 +18,20 @@ export function ConsequenceStrip({ safeToSpend, amount, type, freed = 0, billNam
 
     if (isOver) {
         return (
-            <div role="status" className="flex items-center gap-2.5 rounded-xl bg-negative-soft px-3.5 py-3">
-                <CircleAlert aria-hidden="true" className="w-[15px] h-[15px] text-negative-ink shrink-0" strokeWidth={2} />
-                <p className="text-[12px] text-negative-ink">
-                    {pays}Puts you <span className="font-semibold">{formatCurrency(Math.abs(after))}</span> over.
-                </p>
-            </div>
+            <p role="status" className="flex items-center gap-1.5 text-[13px] text-negative-ink">
+                <CircleAlert aria-hidden="true" className="w-[15px] h-[15px] shrink-0" strokeWidth={2} />
+                <span>{pays}Puts you <span className="font-semibold">{formatCurrency(Math.abs(after))}</span> over.</span>
+            </p>
         )
     }
 
     return (
-        <div role="status" className="flex items-center gap-2.5 rounded-xl bg-brand-tint px-3.5 py-3">
-            <CircleCheck aria-hidden="true" className="w-[15px] h-[15px] text-brand shrink-0" strokeWidth={2} />
-            <p className="text-[12px] text-brand-ink">
-                {type === 'expense' ? (
-                    <>{pays}Leaves <span className="font-semibold">{formatCurrency(after)}</span> safe to spend this period.</>
-                ) : (
-                    <>Adds <span className="font-semibold">{formatCurrency(amount)}</span> to safe to spend this period.</>
-                )}
-            </p>
-        </div>
+        <p role="status" className="text-[13px] text-muted-ink">
+            {type === 'expense' ? (
+                <>{pays}Leaves <span className="font-semibold text-ink">{formatCurrency(after)}</span> safe to spend this period.</>
+            ) : (
+                <>Adds <span className="font-semibold text-ink">{formatCurrency(amount)}</span> to safe to spend this period.</>
+            )}
+        </p>
     )
 }

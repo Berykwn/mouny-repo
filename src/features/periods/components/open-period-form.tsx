@@ -25,7 +25,7 @@ interface OpenPeriodFormProps {
     onSuccess: () => void
 }
 
-const FIELD_LABEL = 'text-[11px] font-medium uppercase tracking-[.14em] text-muted-ink'
+const FIELD_LABEL = 'text-[13px] font-semibold text-muted-ink'
 
 const NO_ACCOUNTS: Account[] = []
 
@@ -127,7 +127,7 @@ export function OpenPeriodForm({ onSuccess }: OpenPeriodFormProps) {
             </div>
 
             <div className="space-y-1.5">
-                <Label className={FIELD_LABEL}>Expected Income / Salary</Label>
+                <Label className={FIELD_LABEL}>Expected income</Label>
                 <div className="relative">
                     <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[13px] text-muted-ink font-medium">
                         Rp
@@ -143,8 +143,8 @@ export function OpenPeriodForm({ onSuccess }: OpenPeriodFormProps) {
                         disabled={loading}
                     />
                 </div>
-                <span className="text-[11px] text-warning">
-                    Expected income cannot be edited after the pay period is opened.
+                <span className="text-[12px] text-subtle-ink">
+                    This can’t be changed once the period is open.
                 </span>
             </div>
 
@@ -181,7 +181,7 @@ export function OpenPeriodForm({ onSuccess }: OpenPeriodFormProps) {
             <div className="space-y-1.5">
                 <Label className={FIELD_LABEL}>
                     Notes{' '}
-                    <span className="normal-case tracking-normal font-normal">(optional)</span>
+                    <span className="font-normal text-subtle-ink">(optional)</span>
                 </Label>
                 <Input
                     placeholder="April salary, bonus, etc."
@@ -195,11 +195,11 @@ export function OpenPeriodForm({ onSuccess }: OpenPeriodFormProps) {
             <button
                 type="submit"
                 disabled={loading || accounts.length === 0}
-                className="w-full h-12 rounded-[14px] text-[13px] font-semibold text-on-action bg-action hover:bg-action/90 transition-colors disabled:opacity-50 disabled:pointer-events-none"
+                className="w-full h-12 rounded-[14px] text-[15px] font-semibold text-on-action bg-action hover:bg-action/90 transition-colors disabled:opacity-50 disabled:pointer-events-none"
             >
                 {loading
                     ? <Loader2 className="w-4 h-4 animate-spin mx-auto" />
-                    : 'Open Pay Period'}
+                    : 'Open period'}
             </button>
         </form>
     )

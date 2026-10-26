@@ -1,68 +1,69 @@
-import { formatCurrency, formatShortCurrency } from '@/lib/helpers'
-import type { Account, AccountType } from '@/types'
+import type { Account } from '@/types'
 import { AccountTypeTile } from '@/components/account-type-icon'
 import { cn } from '@/lib/utils'
-import type { AccountInsight } from '../lib/account-insights'
+import { accountLine, type AccountInsight } from '../lib/account-insights'
 
 interface AccountListProps {
     accounts: Account[]
     insights: Map<string, AccountInsight>
-    /** Tapping a row opens its detail sheet, where edit / transfer / delete live. */
+    /** Tapping a row opens its detail sheet, where transfer / adjust / edit live. */
     onOpen: (account: Account) => void
 }
 
-const TYPE_LABEL = {
-    bank: 'Bank account',
-    cash: 'Cash',
-}
+const amount = (n: number) => n.toLocaleString('id-ID')
 
+/**
+ * Accounts in two groups, everyday then savings, each with its total. Rows on a phone,
+ * cards on desktop.
+ */
 export function AccountList({ accounts, insights, onOpen }: AccountListProps) {
-    return (
-        <div className="card overflow-hidden divide-y divide-line-soft">
-            {accounts.map((acc) => {
-                const label = TYPE_LABEL[acc.type as AccountType]
-                const info = insights.get(acc.id)
-                const net = info ? info.moneyIn - info.moneyOut : 0
+    const groups = [
+        { label: 'Everyday', items: accounts.filter(a => !a.is_savings) },
+        { label: 'Savings', items: accounts.filter(a => a.is_savings) },
+    ].filter(g => g.items.length > 0)
 
-                return (
-                    <button
-                        key={acc.id}
-                        type="button"
-                        onClick={() => onOpen(acc)}
-                        className="w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-surface-soft active:bg-surface-hover"
-                    >
-                        <AccountTypeTile type={acc.type} savings={acc.is_savings} className="w-8 h-8" />
-                        <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-1.5">
-                                <p className="text-[13px] font-medium text-ink truncate">{acc.name}</p>
-                                {acc.is_savings && (
-                                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-info/10 text-info shrink-0">Savings</span>
-                                )}
-                                {info?.health === 'overdrawn' && (
-                                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-negative/10 text-negative shrink-0">Overdrawn</span>
-                                )}
-                                {info?.health === 'low' && (
-                                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-warning/10 text-warning shrink-0">Low</span>
-                                )}
-                            </div>
-                            <p className="text-[11px] text-muted-ink">{label}</p>
-                        </div>
-                        <div className="text-right shrink-0">
-                            <p className={cn(
-                                'text-[13px] font-medium tabular-nums',
-                                acc.balance < 0 ? 'text-negative' : 'text-ink'
-                            )}>
-                                {formatCurrency(acc.balance)}
-                            </p>
-                            {net !== 0 && (
-                                <p className={cn('text-[10.5px] tabular-nums', net > 0 ? 'text-positive' : 'text-muted-ink')}>
-                                    {net > 0 ? '+' : '−'}{formatShortCurrency(Math.abs(net))} this period
-                                </p>
-                            )}
-                        </div>
-                    </button>
-                )
-            })}
+    return (
+        <div className="space-y-6">
+            {groups.map(group => (
+                <section key={group.label}>
+                    <div className="flex items-baseline justify-between pb-1 lg:pb-3">
+                        <h2 className="text-[17px] font-semibold text-ink">{group.label}</h2>
+                        <span className="text-[13px] text-subtle-ink tabular-nums">{amount(group.items.reduce((s, a) => s + a.balance, 0))}</span>
+                    </div>
+
+                    <ul className="lg:grid lg:grid-cols-2 lg:gap-4">
+                        {group.items.map(acc => {
+                            const line = accountLine(acc, insights.get(acc.id))
+                            return (
+                                <li key={acc.id} className="border-b border-line-soft last:border-0 lg:border-0">
+                                    <button
+                                        type="button"
+                                        onClick={() => onOpen(acc)}
+                                        className={cn(
+                                            'w-full flex items-center gap-3 py-3 text-left transition-colors',
+                                            'lg:flex-col lg:items-stretch lg:gap-3 lg:p-4 lg:rounded-[16px] lg:border lg:border-line lg:hover:border-line-strong',
+                                        )}
+                                    >
+                                        <span className="flex items-center gap-3 flex-1 min-w-0">
+                                            <AccountTypeTile type={acc.type} savings={acc.is_savings} className="w-11 h-11 rounded-[12px] [&_svg]:w-8 [&_svg]:h-8" />
+                                            <span className="flex-1 min-w-0">
+                                                <span className="block text-[15.5px] font-medium text-ink truncate">{acc.name}</span>
+                                                <span className={cn('block text-[13px] truncate', line.negative ? 'text-negative' : 'text-subtle-ink')}>{line.text}</span>
+                                            </span>
+                                        </span>
+                                        <span className={cn(
+                                            'text-[15.5px] font-medium tabular-nums shrink-0 lg:text-[22px] lg:font-semibold',
+                                            acc.balance < 0 ? 'text-negative' : 'text-ink',
+                                        )}>
+                                            <span className="hidden lg:inline">Rp </span>{amount(acc.balance)}
+                                        </span>
+                                    </button>
+                                </li>
+                            )
+                        })}
+                    </ul>
+                </section>
+            ))}
         </div>
     )
 }

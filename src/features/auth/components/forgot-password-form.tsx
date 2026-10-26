@@ -1,22 +1,20 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { ArrowLeft, Loader2, MailCheck } from 'lucide-react'
+import { Loader2, Mail } from 'lucide-react'
 import { toast } from 'sonner'
 import { AuthNotice } from '@/components/layouts/auth-layout'
-import { FIELD_INPUT, FIELD_LABEL, QUIET_LINK, SUBMIT_BUTTON } from './auth-styles'
+import { FIELD_INPUT, FIELD_LABEL, SUBMIT_BUTTON } from './auth-styles'
 
 export function ForgotPasswordForm() {
     const [email, setEmail] = useState('')
     const [loading, setLoading] = useState(false)
-    const [sent, setSent] = useState(false)
+    // The address the last link went to; the form stays, so a typo can be fixed and sent again.
+    const [sentTo, setSentTo] = useState<string | null>(null)
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault()
+    const send = async () => {
         setLoading(true)
-
         try {
             const { error } = await supabase.auth.resetPasswordForEmail(email, {
                 // Respect the deploy base path (e.g. /mouny/) and hash routing.
@@ -24,8 +22,7 @@ export function ForgotPasswordForm() {
             })
 
             if (error) throw error
-            toast.success('Reset link sent! Check your email.')
-            setSent(true)
+            setSentTo(email)
         } catch (err: unknown) {
             if (err instanceof Error) {
                 toast.error(err.message)
@@ -35,24 +32,13 @@ export function ForgotPasswordForm() {
         }
     }
 
-    if (sent) {
-        return (
-            <div className="space-y-4">
-                <AuthNotice icon={MailCheck} tone="positive" title="Check your email">
-                    A reset link has been sent to <span className="font-medium text-ink">{email}</span>.
-                </AuthNotice>
-                <div className="text-center">
-                    <Link to="/login" className={QUIET_LINK}>
-                        <ArrowLeft className="w-3 h-3" />
-                        Back to login
-                    </Link>
-                </div>
-            </div>
-        )
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault()
+        void send()
     }
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-5">
             <div className="space-y-1.5">
                 <Label htmlFor="email" className={FIELD_LABEL}>Email</Label>
                 <Input
@@ -72,12 +58,18 @@ export function ForgotPasswordForm() {
                 {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Send reset link'}
             </button>
 
-            <div className="text-center">
-                <Link to="/login" className={QUIET_LINK}>
-                    <ArrowLeft className="w-3 h-3" />
-                    Back to login
-                </Link>
-            </div>
+            {sentTo && (
+                <div role="status">
+                    <AuthNotice
+                        icon={Mail}
+                        tone="positive"
+                        title="Check your email"
+                        action={sentTo === email ? { label: 'Send again', onClick: () => void send(), disabled: loading } : undefined}
+                    >
+                        A link is on its way to {sentTo}. Nothing there? Look in spam.
+                    </AuthNotice>
+                </div>
+            )}
         </form>
     )
 }

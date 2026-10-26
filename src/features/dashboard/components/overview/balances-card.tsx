@@ -1,9 +1,10 @@
-import { ArrowRight } from 'lucide-react'
-import { WalletIcon } from '@/components/account-type-icon'
-import { WALLET_TILE_CLASS } from '@/lib/account-tiles'
-import { useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
+import { ChevronRight, Wallet } from 'lucide-react'
+import { AccountTypeTile } from '@/components/account-type-icon'
 import { formatCurrency } from '@/lib/helpers'
+import { cn } from '@/lib/utils'
 import type { Account } from '@/types'
+import { HomeSection } from '../home/home-section'
 
 interface BalancesCardProps {
     accounts: Account[]
@@ -11,46 +12,48 @@ interface BalancesCardProps {
     closingBalance: number | null
 }
 
-export function BalancesCard({ accounts, isActivePeriod, closingBalance }: BalancesCardProps) {
-    const navigate = useNavigate()
-
+/** One quiet row with the total; it opens Accounts, which has no tab of its own. */
+export function BalancesRow({ accounts, isActivePeriod, closingBalance }: BalancesCardProps) {
     const accountsTotal = accounts.reduce((s, a) => s + a.balance, 0)
     const total = isActivePeriod ? accountsTotal : (closingBalance ?? accountsTotal)
 
     return (
-        <button
-            type="button"
-            onClick={() => navigate('/accounts')}
-            className="card w-full px-5 py-4 text-left"
+        <Link
+            to="/accounts"
+            className="flex items-center gap-3 border-b border-line py-3.5 text-left hover:bg-surface-soft transition-colors"
         >
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                    <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${WALLET_TILE_CLASS}`}>
-                        <WalletIcon className="h-5 w-5" />
-                    </div>
-                    <span className="text-[13.5px] text-ink">
-                        {isActivePeriod ? 'Balances' : 'Closing balance'}
-                    </span>
-                </div>
-                <div className="flex items-center gap-2">
-                    <span className="text-[13.5px] font-medium tabular-nums text-ink">
-                        {formatCurrency(total)}
-                    </span>
-                    <ArrowRight className="h-[13px] w-[13px] text-muted-ink" />
-                </div>
-            </div>
+            <Wallet aria-hidden="true" className="h-[18px] w-[18px] shrink-0 text-muted-ink" strokeWidth={1.8} />
+            <span className="flex-1 text-[14px] text-muted-ink">{isActivePeriod ? 'Balances' : 'Closing balance'}</span>
+            <span className={cn('text-[15px] font-semibold tabular-nums', total < 0 ? 'text-negative' : 'text-ink')}>
+                {formatCurrency(total)}
+            </span>
+            <ChevronRight aria-hidden="true" className="h-4 w-4 shrink-0 text-muted-ink" />
+        </Link>
+    )
+}
 
-            {/* Desktop has the room to show where the total sits; today's balances, so only for the open period. */}
-            {isActivePeriod && accounts.length > 1 && (
-                <div className="hidden lg:block mt-3 border-t border-line-soft">
-                    {accounts.map(a => (
-                        <div key={a.id} className="flex items-center justify-between py-2 border-b border-line-soft last:border-b-0 text-[12.5px]">
-                            <span className="text-muted-ink truncate">{a.name}</span>
-                            <span className="font-medium tabular-nums text-ink">{formatCurrency(a.balance)}</span>
+/** Desktop has the room for each account; today's balances, so only for the open period. */
+export function BalancesList({ accounts }: { accounts: Account[] }) {
+    if (accounts.length === 0) return null
+    return (
+        <HomeSection
+            title="Balances"
+            aside={<Link to="/accounts" className="text-[13px] font-medium text-brand-ink">Accounts</Link>}
+        >
+            <div>
+                {accounts.map(a => (
+                    <div key={a.id} className="flex items-center gap-3 py-2.5 border-b border-line-soft last:border-b-0">
+                        <AccountTypeTile type={a.type} savings={a.is_savings} className="w-10 h-10" />
+                        <div className="min-w-0 flex-1">
+                            <p className="truncate text-[14px] text-ink">{a.name}</p>
+                            <p className="truncate text-[12px] text-muted-ink">{a.is_savings ? 'Savings' : a.type === 'cash' ? 'Cash' : 'Bank'}</p>
                         </div>
-                    ))}
-                </div>
-            )}
-        </button>
+                        <p className={cn('shrink-0 text-[14px] font-medium tabular-nums', a.balance < 0 ? 'text-negative' : 'text-ink')}>
+                            {formatCurrency(a.balance)}
+                        </p>
+                    </div>
+                ))}
+            </div>
+        </HomeSection>
     )
 }

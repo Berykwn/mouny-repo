@@ -10,11 +10,8 @@ const DEBT_NOTE = /^(Debt payment|Debt received|Lent to|Collected from) —/
 
 export type TransactionLink = 'wish' | 'debt' | 'transfer'
 
-export type LedgerTab = 'calendar' | 'all'
-
-/** Ids that tie the ledger's tabs to the panel they show. */
-export const ledgerTabId = (tab: LedgerTab) => `ledger-tab-${tab}`
-export const LEDGER_PANEL_ID = 'ledger-panel'
+/** The ledger's two views: the list (with search) and the period calendar. */
+export type LedgerView = 'list' | 'calendar'
 
 /**
  * The record a transaction belongs to, when another feature made it. Its money belongs
@@ -72,7 +69,7 @@ export function groupByDate(txs: TransactionWithDetails[]): DayGroup[] {
     return groups
 }
 
-export type TypeFilter = 'all' | 'expense' | 'income'
+export type TypeFilter = 'all' | 'expense' | 'income' | 'transfer'
 
 export interface LedgerFilter {
     query: string
@@ -86,7 +83,7 @@ export function applyFilter(txs: TransactionWithDetails[], { query, type, catego
     // "50.000", "Rp 50,000" and "50000" all mean the amount 50000.
     const digits = /^(rp\.?)?[\d.,\s]+$/.test(q) ? q.replace(/\D/g, '') : null
     return txs.filter(tx => {
-        if (type !== 'all' && tx.type !== type) return false
+        if (type === 'transfer' ? !isTransfer(tx.type) : type !== 'all' && tx.type !== type) return false
         if (categoryId === 'none' ? tx.category_id !== null : categoryId && tx.category_id !== categoryId) return false
         if (!q) return true
         if (digits && String(tx.amount).includes(digits)) return true
@@ -169,4 +166,95 @@ export function unpaidBillsFor(dues: BillDue[], categoryId: string | null | unde
 /** Past the allowance; with no room left at all, any everyday spending is. */
 export function isOverAllowance(spent: number, allowance: DailyAllowance | null): boolean {
     return allowance !== null && spent > 0 && spent > allowance.amount
+}
+
+/** A day's money in less money out; transfers only change hands, so they don't count. */
+export const dayNet = (g: Pick<DayGroup, 'income' | 'spending' | 'savings'>) => g.income - g.spending - g.savings
+
+export interface LedgerRows {
+    /** What the list shows: a transfer is one row (its outgoing side) when both sides are here. */
+    rows: TransactionWithDetails[]
+    /** For a transfer row shown on its own: the account on the other side. */
+    otherSide: Map<string, string>
+}
+
+/**
+ * A transfer is written as two rows, money out of one account and into another. The list
+ * shows it once, as "BCA → GoPay", on the outgoing side; deleting that side removes both.
+ * A side whose partner isn't loaded (or that has none, like a balance adjustment) stays.
+ */
+export function pairTransfers(txs: TransactionWithDetails[]): LedgerRows {
+    const outs = new Map<string, TransactionWithDetails>()
+    const ins = new Map<string, TransactionWithDetails>()
+    for (const tx of txs) {
+        if (!tx.transfer_id) continue
+        if (tx.type === 'transfer_out') outs.set(tx.transfer_id, tx)
+        else if (tx.type === 'transfer_in') ins.set(tx.transfer_id, tx)
+    }
+    const otherSide = new Map<string, string>()
+    const hidden = new Set<string>()
+    for (const [id, out] of outs) {
+        const into = ins.get(id)
+        if (!into) continue
+        otherSide.set(out.id, into.account.name)
+        hidden.add(into.id)
+    }
+    return { rows: hidden.size ? txs.filter(t => !hidden.has(t.id)) : txs, otherSide }
+}
+
+/**
+ * The time a row was entered, when it was entered on the day it's dated: then it's when
+ * the money moved. An entry added later for an earlier day has no time worth showing.
+ */
+export function entryTime(tx: Pick<TransactionWithDetails, 'date' | 'created_at'>): string | null {
+    if (!tx.created_at) return null
+    const d = new Date(tx.created_at)
+    if (Number.isNaN(d.getTime())) return null
+    const local = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    if (local !== tx.date) return null
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+}
+
+export interface MatchSummary {
+    count: number
+    /** Expenses, savings included: money that left. */
+    out: number
+    income: number
+}
+
+/** The one line above search results: how many times, and how much. Transfers count as times only. */
+export function matchSummary(txs: TransactionWithDetails[]): MatchSummary {
+    let out = 0
+    let income = 0
+    for (const tx of txs) {
+        if (tx.type === 'expense') out += tx.amount
+        else if (tx.type === 'income') income += tx.amount
+    }
+    return { count: txs.length, out, income }
+}
+
+/**
+ * The notes last written for this category, newest first and each once, from the
+ * transactions already loaded. Offered under the note field for a tap; never filled in.
+ */
+export function recentNotes(
+    txs: TransactionWithDetails[] | undefined,
+    categoryId: string | null | undefined,
+    { exclude, limit = 3 }: { exclude?: string; limit?: number } = {},
+): string[] {
+    if (!txs || !categoryId) return []
+    const notes: string[] = []
+    const seen = new Set<string>()
+    const sorted = txs
+        .filter(t => t.category_id === categoryId && t.id !== exclude && t.note?.trim())
+        .sort((a, b) => b.date.localeCompare(a.date) || latestFirst(a, b))
+    for (const t of sorted) {
+        const note = t.note!.trim()
+        const key = note.toLowerCase()
+        if (seen.has(key)) continue
+        seen.add(key)
+        notes.push(note)
+        if (notes.length === limit) break
+    }
+    return notes
 }

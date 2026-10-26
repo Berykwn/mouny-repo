@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
-import { FIELD_INPUT, FIELD_LABEL, SUBMIT_BUTTON } from './auth-styles'
+import { FIELD_LABEL, SUBMIT_BUTTON } from './auth-styles'
+import { PasswordInput } from './password-input'
+
+const MIN_LENGTH = 6
 
 export function ResetPasswordForm() {
     const navigate = useNavigate()
@@ -27,14 +29,14 @@ export function ResetPasswordForm() {
             const { error } = await supabase.auth.updateUser({ password })
             if (error) throw error
 
-            toast.success('Password updated successfully!')
+            toast.success('Password updated.')
             navigate('/', { replace: true })
         } catch (err: unknown) {
             if (err instanceof Error) {
                 const msg = err.message
 
                 if (msg.includes('Password should be')) {
-                    toast.error('Password must be at least 6 characters.')
+                    toast.error(`Password must be at least ${MIN_LENGTH} characters.`)
                 } else {
                     toast.error(msg)
                 }
@@ -48,38 +50,36 @@ export function ResetPasswordForm() {
         <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-1.5">
                 <Label htmlFor="password" className={FIELD_LABEL}>New password</Label>
-                <Input
+                <PasswordInput
                     id="password"
-                    type="password"
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
                     autoComplete="new-password"
                     disabled={loading}
-                    minLength={6}
-                    className={FIELD_INPUT}
+                    minLength={MIN_LENGTH}
+                    aria-describedby="password-hint"
                 />
+                <p id="password-hint" className="text-[13px] text-subtle-ink">At least {MIN_LENGTH} characters.</p>
             </div>
 
             <div className="space-y-1.5">
                 <Label htmlFor="confirm" className={FIELD_LABEL}>Confirm password</Label>
-                <Input
+                <PasswordInput
                     id="confirm"
-                    type="password"
                     placeholder="••••••••"
                     value={confirm}
                     onChange={(e) => setConfirm(e.target.value)}
                     required
                     autoComplete="new-password"
                     disabled={loading}
-                    minLength={6}
-                    className={FIELD_INPUT}
+                    minLength={MIN_LENGTH}
                 />
             </div>
 
             <button type="submit" className={SUBMIT_BUTTON} disabled={loading}>
-                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save new password'}
+                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save and sign in'}
             </button>
         </form>
     )

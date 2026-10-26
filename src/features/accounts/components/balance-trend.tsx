@@ -26,14 +26,14 @@ export function BalanceTrend({ points }: { points: TrendPoint[] }) {
     const up = diff >= 0
 
     return (
-        <div className="card p-4">
+        <div className="rounded-[16px] border border-line p-4">
             <div className="flex items-start justify-between gap-3">
                 <div>
-                    <p className="text-[11px] uppercase tracking-[.14em] text-muted-ink">Balance over periods</p>
-                    <p className="text-[11.5px] text-muted-ink mt-1">Total at each close, then today</p>
+                    <p className="text-[16px] font-semibold text-ink">Balance by period</p>
+                    <p className="text-[12.5px] text-subtle-ink mt-0.5">All accounts at each close, then today</p>
                 </div>
                 <div className="text-right shrink-0">
-                    <p className={cn('text-[13px] font-medium tabular-nums', up ? 'text-positive' : 'text-negative')}>
+                    <p className={cn('text-[13px] font-medium tabular-nums', up ? 'text-brand-ink' : 'text-negative')}>
                         {up ? '+' : '−'}{formatCurrency(Math.abs(diff))}
                     </p>
                     <p className="text-[10.5px] text-subtle-ink">vs last close</p>
@@ -43,12 +43,12 @@ export function BalanceTrend({ points }: { points: TrendPoint[] }) {
             <svg viewBox={`0 0 ${W} ${H}`} className="mt-3 w-full h-16" preserveAspectRatio="none" aria-hidden>
                 <defs>
                     <linearGradient id="balance-trend-fill" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="var(--brand)" stopOpacity="0.18" />
-                        <stop offset="100%" stopColor="var(--brand)" stopOpacity="0" />
+                        <stop offset="0%" stopColor="var(--ink)" stopOpacity="0.08" />
+                        <stop offset="100%" stopColor="var(--ink)" stopOpacity="0" />
                     </linearGradient>
                 </defs>
                 <polygon points={area} fill="url(#balance-trend-fill)" />
-                <polyline points={line} fill="none" stroke="var(--brand)" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+                <polyline points={line} fill="none" stroke="var(--ink)" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
             </svg>
 
             <div className="mt-1.5 flex justify-between text-[10px] text-subtle-ink">

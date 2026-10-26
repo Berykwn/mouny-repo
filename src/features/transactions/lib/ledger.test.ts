@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { tx } from '@/test/fixtures'
 import type { BillDue } from '@/features/bills/lib/bills'
 import {
-    applyFilter, categoryFacets, dailyAllowance, dailyEverydaySpending, dailySpending, groupByDate, isOverAllowance,
-    linkedTo, txTitle, unpaidBillsFor,
+    applyFilter, categoryFacets, dailyAllowance, dailyEverydaySpending, dailySpending, dayNet, entryTime, groupByDate,
+    isOverAllowance, linkedTo, matchSummary, pairTransfers, recentNotes, txTitle, unpaidBillsFor,
 } from './ledger'
 
 describe('linkedTo', () => {
@@ -67,6 +67,11 @@ describe('applyFilter', () => {
         expect(ids({ query: 'food', type: 'all', categoryId: null })).toEqual(['coffee'])
         expect(ids({ query: 'bca', type: 'all', categoryId: null })).toHaveLength(3)
         expect(ids({ query: '7000', type: 'all', categoryId: null })).toEqual(['loose'])
+    })
+
+    it('filters transfers, both sides', () => {
+        const withTransfer = [...txs, tx({ id: 'out', type: 'transfer_out' }), tx({ id: 'in', type: 'transfer_in' })]
+        expect(applyFilter(withTransfer, { query: '', type: 'transfer', categoryId: null }).map(t => t.id)).toEqual(['out', 'in'])
     })
 
     it('matches an amount typed the way it is shown', () => {
@@ -144,5 +149,68 @@ describe('dailyAllowance', () => {
         expect(isOverAllowance(0, { amount: 0, kind: 'safe' })).toBe(false)
         expect(isOverAllowance(100, { amount: 150, kind: 'safe' })).toBe(false)
         expect(isOverAllowance(100, null)).toBe(false)
+    })
+})
+
+describe('dayNet', () => {
+    it('is money in less money out', () => {
+        expect(dayNet({ income: 100, spending: 30, savings: 20 })).toBe(50)
+    })
+})
+
+describe('pairTransfers', () => {
+    const bca = { id: 'acc-1', name: 'BCA', type: 'bank' as const, is_savings: false }
+    const gopay = { id: 'acc-2', name: 'GoPay', type: 'bank' as const, is_savings: false }
+
+    it('shows a transfer once, on its outgoing side, naming the other account', () => {
+        const { rows, otherSide } = pairTransfers([
+            tx({ id: 'lunch' }),
+            tx({ id: 'out', type: 'transfer_out', transfer_id: 't1', account: bca }),
+            tx({ id: 'in', type: 'transfer_in', transfer_id: 't1', account: gopay }),
+        ])
+        expect(rows.map(t => t.id)).toEqual(['lunch', 'out'])
+        expect(otherSide.get('out')).toBe('GoPay')
+    })
+
+    it('keeps a side whose partner is missing', () => {
+        const { rows, otherSide } = pairTransfers([tx({ id: 'in', type: 'transfer_in', transfer_id: 't1' })])
+        expect(rows.map(t => t.id)).toEqual(['in'])
+        expect(otherSide.size).toBe(0)
+    })
+})
+
+describe('entryTime', () => {
+    it('shows the time only when entered on the day it is dated', () => {
+        const at = new Date(2026, 8, 15, 12, 40)
+        expect(entryTime({ date: '2026-09-15', created_at: at.toISOString() })).toBe('12:40')
+        expect(entryTime({ date: '2026-09-14', created_at: at.toISOString() })).toBeNull()
+        expect(entryTime({ date: '2026-09-15', created_at: null })).toBeNull()
+    })
+})
+
+describe('matchSummary', () => {
+    it('counts every match and totals money out and in', () => {
+        expect(matchSummary([
+            tx({ amount: 10_000 }),
+            tx({ amount: 5_000, category: { is_savings: true } }),
+            tx({ type: 'income', amount: 100 }),
+            tx({ type: 'transfer_out', amount: 999 }),
+        ])).toEqual({ count: 4, out: 15_000, income: 100 })
+    })
+})
+
+describe('recentNotes', () => {
+    it('lists the newest notes in that category, each once', () => {
+        const food = { id: 'food', name: 'Food' }
+        const txs = [
+            tx({ id: 'a', date: '2026-09-10', note: 'Bakso', category: food }),
+            tx({ id: 'b', date: '2026-09-12', note: 'Warteg Bu Sri', category: food }),
+            tx({ id: 'c', date: '2026-09-11', note: 'warteg bu sri ', category: food }),
+            tx({ id: 'd', date: '2026-09-13', note: 'Kaos', category: { id: 'shop', name: 'Shopping' } }),
+            tx({ id: 'e', date: '2026-09-14', note: '  ', category: food }),
+        ]
+        expect(recentNotes(txs, 'food')).toEqual(['Warteg Bu Sri', 'Bakso'])
+        expect(recentNotes(txs, 'food', { exclude: 'b' })).toEqual(['warteg bu sri', 'Bakso'])
+        expect(recentNotes(txs, null)).toEqual([])
     })
 })

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { part, period, wish } from '@/test/fixtures'
 import { EMPTY_PERIOD_SUMMARY } from '@/lib/period-summary'
-import { buildRoadmap, pacePeriods, partsBreakdown, savingsPace, sortWishes, targetPlan, wishProgress } from './wish-analytics'
+import { buildRoadmap, etaMonth, nextPart, pacePeriods, partsBreakdown, savingsPace, sortWishes, targetPlan, wishProgress } from './wish-analytics'
 
 const TODAY = '2026-10-01'
 const pace = { perPeriod: 1_500_000, periodDays: 30, perDay: 50_000, basedOn: 3 }
@@ -120,5 +120,33 @@ describe('targetPlan', () => {
         expect(targetPlan(wish({ estimated_price: 100, saved_amount: 100, target_date: '2026-12-01' }), undefined, pace, TODAY))
             .toMatchObject({ status: 'done', perPeriodNeeded: 0 })
         expect(targetPlan(wish({ estimated_price: 100 }), undefined, pace, TODAY)).toBeNull()
+    })
+})
+
+describe('nextPart', () => {
+    it('is the first open part, dated by the pace from what is saved', () => {
+        const item = wish({
+            saved_amount: 1_200_000,
+            parts: [
+                part({ name: 'Motherboard', is_purchased: true, paid_amount: 1_800_000 }),
+                part({ name: 'CPU', estimated_price: 3_200_000 }),
+                part({ name: 'GPU', estimated_price: 6_000_000 }),
+            ],
+        })
+        // 2m still needed at 50k a day: 40 days.
+        expect(nextPart(item, pace, TODAY)).toMatchObject({ remaining: 2_000_000, date: '2026-11-10', part: { name: 'CPU' } })
+    })
+
+    it('has no date without a price or a pace, and none once every part is bought', () => {
+        expect(nextPart(wish({ parts: [part({ estimated_price: null })] }), pace, TODAY)).toMatchObject({ remaining: null, date: null })
+        expect(nextPart(wish({ parts: [part({ estimated_price: 100 })] }), null, TODAY)?.date).toBeNull()
+        expect(nextPart(wish({ parts: [part({ is_purchased: true })] }), pace, TODAY)).toBeNull()
+    })
+})
+
+describe('etaMonth', () => {
+    it('drops the year within this one', () => {
+        expect(etaMonth('2026-12-15', TODAY)).toBe('Dec')
+        expect(etaMonth('2027-03-01', TODAY)).toBe('Mar 2027')
     })
 })

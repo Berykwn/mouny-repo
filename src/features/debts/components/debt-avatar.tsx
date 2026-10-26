@@ -9,21 +9,24 @@ function initials(name: string): string {
 
 interface DebtAvatarProps {
     name: string
-    type: string
-    /** Settled records fade to grey so the open ones stand out. */
+    /** Which side it's on; kept for callers, the avatar itself stays neutral. */
+    type?: string
+    /** Past its due date: the one case the avatar turns red. */
+    late?: boolean
+    /** Settled records fade so the open ones stand out. */
     settled?: boolean
     className?: string
 }
 
-/** The counterparty's initials — red when you owe them, green when they owe you. */
-export function DebtAvatar({ name, type, settled, className }: DebtAvatarProps) {
+/** The counterparty's initials on a quiet disc, red only when they're late. */
+export function DebtAvatar({ name, late, settled, className }: DebtAvatarProps) {
     return (
         <div
             className={cn(
-                'w-9 h-9 rounded-full flex items-center justify-center shrink-0 text-[12px] font-semibold tracking-[.02em]',
-                settled
-                    ? 'bg-surface-hover text-muted-ink'
-                    : type === 'debt' ? 'bg-negative/10 text-negative' : 'bg-positive/10 text-positive',
+                'w-10 h-10 rounded-full flex items-center justify-center shrink-0 text-[13px] font-semibold tracking-[.02em]',
+                settled ? 'bg-surface-hover text-subtle-ink'
+                    : late ? 'bg-negative-soft text-negative-ink'
+                        : 'bg-surface-hover text-muted-ink',
                 className
             )}
         >

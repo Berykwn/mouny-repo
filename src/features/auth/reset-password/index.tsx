@@ -10,6 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 export default function ResetPasswordPage() {
   const [checking, setChecking] = useState(true)
   const [validSession, setValidSession] = useState(false)
+  const [email, setEmail] = useState<string | null>(null)
 
   useEffect(() => {
     // Supabase redirect from email contains token in URL hash
@@ -18,13 +19,15 @@ export default function ResetPasswordPage() {
     // PASSWORD_RECOVERY event comes — an existing session is enough to set a password.
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
+        setEmail(session.user.email ?? null)
         setValidSession(true)
         setChecking(false)
       }
     })
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'PASSWORD_RECOVERY') {
+        setEmail(session?.user.email ?? null)
         setValidSession(true)
         setChecking(false)
       } else if (event === 'SIGNED_IN') {
@@ -54,16 +57,15 @@ export default function ResetPasswordPage() {
       ) : validSession ? (
         <>
           <AuthHeading
-            eyebrow="Password reset"
             title="Create a new password"
-            description="Enter a new password for your account."
+            description={email ? `For ${email}` : 'Enter a new password for your account.'}
           />
           <ResetPasswordForm />
         </>
       ) : (
         <div className="space-y-4">
-          <AuthNotice icon={AlertCircle} tone="negative" title="Invalid or expired link">
-            Request a new password reset link from the forgot password page.
+          <AuthNotice icon={AlertCircle} tone="negative" title="This link has expired">
+            Reset links work once and not for long. Ask for a new one.
           </AuthNotice>
           <div className="text-center">
             <Link to="/forgot-password" className={QUIET_LINK}>

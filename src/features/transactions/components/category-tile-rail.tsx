@@ -47,16 +47,16 @@ export function CategoryTileRail({ categories, selectedId, onSelect, disabled }:
                         disabled={disabled}
                         onClick={() => onSelect(c.id)}
                         className={cn(
-                            'flex flex-col items-center shrink-0 w-[74px] py-[11px] px-1.5 rounded-[14px] border transition-colors duration-150 [scroll-snap-align:start]',
-                            selected ? 'border-brand bg-brand-tint' : 'border-line-soft bg-surface',
+                            'flex flex-col items-center shrink-0 w-[74px] py-[10px] px-1.5 rounded-[14px] border-[1.5px] transition-colors duration-150 [scroll-snap-align:start]',
+                            selected ? 'border-ink bg-surface' : 'border-transparent hover:bg-surface-soft',
                             'disabled:opacity-50 disabled:pointer-events-none'
                         )}
                     >
-                        <CategoryTile category={c} />
+                        <CategoryTile category={c} className="w-10 h-10 rounded-[12px]" />
                         <span
                             className={cn(
-                                'mt-1.5 text-[10px] text-center leading-tight truncate w-full',
-                                selected ? 'text-brand-ink font-semibold' : 'text-muted-ink'
+                                'mt-1.5 text-[11.5px] text-center leading-tight truncate w-full',
+                                selected ? 'text-ink font-semibold' : 'text-muted-ink'
                             )}
                         >
                             {c.name}

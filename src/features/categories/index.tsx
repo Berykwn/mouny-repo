@@ -1,19 +1,23 @@
-import { useState, useMemo } from 'react'
-import { Sparkles, Loader2, Tag } from 'lucide-react'
-import { HeroAction } from '@/components/hero'
-import { BudgetHero } from './components/budget-hero'
+import { useState, useMemo, useEffect } from 'react'
+import { createPortal } from 'react-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
+import { Loader2, Plus, Tag } from 'lucide-react'
 import { useBudgets, useCategories, usePeriods, usePeriodTransactions } from '@/queries'
+import { useTopBarSlotNode } from '@/contexts/TopBarSlotContext'
 import { BottomDrawer } from '@/components/bottom-drawer'
 import { ConfirmDrawer } from '@/components/confirmation-drawer'
+import { EmptyState, EMPTY_STATE_BUTTON } from '@/components/empty-state'
+import { RetryInline } from '@/components/retry-inline'
 import { CategoryForm } from './components/category-form'
 import { CategoryList } from './components/category-list'
-import { CategoryDetail } from './components/category-detail'
 import { categoriesService } from '@/services/accounts-categories.service'
 import { IN_USE_MESSAGE } from '@/services/_base'
 import type { Category, TransactionWithDetails } from '@/types'
 import { toast } from 'sonner'
+import { cn } from '@/lib/utils'
 import { LoadingContent } from '@/components/loading-content'
 import { PageHeader } from '@/components/page-header'
+import { periodProgress } from '@/features/periods/lib/period-progress'
 
 const NO_CATEGORIES: Category[] = []
 const NO_TXS: TransactionWithDetails[] = []
@@ -29,15 +33,31 @@ export function CategoriesPage() {
         return map
     }, [budgetRows])
     const loading = categoriesQuery.isPending || budgetsQuery.isPending
-    // The hero's budget-vs-income analysis; the page still works without it.
-    const { activePeriod } = usePeriods()
+    // This period's totals and pace; the list still works without them.
+    const { periods, activePeriod } = usePeriods()
     const { data: periodTxs = NO_TXS } = usePeriodTransactions(activePeriod?.id)
-    const [openCategory, setOpenCategory] = useState<Category | null>(null)
+    const [tab, setTab] = useState<'expense' | 'income'>('expense')
     const [editCategory, setEditCategory] = useState<Category | null>(null)
     const [addCategoryDrawer, setAddCategoryDrawer] = useState(false)
     const [deletingCategoryId, setDeletingCategoryId] = useState<string | null>(null)
     const [deleteLoading, setDeleteLoading] = useState(false)
     const [seeding, setSeeding] = useState(false)
+    const location = useLocation()
+    const navigate = useNavigate()
+    const topBarSlot = useTopBarSlotNode()
+
+    // The command palette opens a category, or the add sheet, through the navigation state.
+    useEffect(() => {
+        const state = location.state as { add?: boolean; categoryId?: string } | null
+        if (!state || loading) return
+        if (state.add) setAddCategoryDrawer(true)
+        const target = state.categoryId && categories.find(c => c.id === state.categoryId)
+        if (target) {
+            setTab(target.type === 'income' ? 'income' : 'expense')
+            setEditCategory(target)
+        }
+        navigate(location.pathname, { replace: true, state: null })
+    }, [location.state, location.pathname, loading, categories, navigate])
 
     const handleDeleteCategory = async () => {
         if (!deletingCategoryId) return
@@ -55,136 +75,113 @@ export function CategoriesPage() {
         toast.success('Category deleted.')
     }
 
-    // Each category's transactions this period: the list's totals and the detail sheet's activity.
-    const periodTxsByCategory = useMemo(() => {
-        const map = new Map<string, TransactionWithDetails[]>()
+    const handleSeed = async () => {
+        setSeeding(true)
+        const { error } = await categoriesService.seedDefaults()
+        setSeeding(false)
+        if (error) { toast.error(error); return }
+        toast.success('Default categories added.')
+    }
+
+    // What each category moved this period: the rows' totals and budget bars.
+    const periodTotals = useMemo(() => {
+        const map = new Map<string, number>()
         for (const t of periodTxs) {
-            if (!t.category_id) continue
-            const arr = map.get(t.category_id) ?? []
-            arr.push(t)
-            map.set(t.category_id, arr)
+            if (!t.category_id || (t.type !== 'expense' && t.type !== 'income')) continue
+            map.set(t.category_id, (map.get(t.category_id) ?? 0) + t.amount)
         }
         return map
     }, [periodTxs])
-    const periodTotals = useMemo(() => {
-        const map = new Map<string, number>()
-        for (const [id, txs] of periodTxsByCategory) map.set(id, txs.reduce((s, t) => s + t.amount, 0))
-        return map
-    }, [periodTxsByCategory])
 
-    const expenseCount = categories.filter(c => c.type === 'expense').length
-    const incomeCount = categories.filter(c => c.type === 'income').length
+    const pace = activePeriod ? periodProgress(activePeriod, periods).fraction : null
 
-    const budgetStats = useMemo(() => {
-        // Only budgets on current expense categories count (a deleted or re-typed one may linger).
-        const expenseIds = new Set(categories.filter(c => c.type === 'expense').map(c => c.id))
-        const spentByCategory = new Map<string, number>()
-        let periodIncome = 0
-        for (const t of periodTxs) {
-            if (t.type === 'income') periodIncome += t.amount
-            else if (t.type === 'expense' && t.category_id) {
-                spentByCategory.set(t.category_id, (spentByCategory.get(t.category_id) ?? 0) + t.amount)
-            }
-        }
-        let totalBudget = 0
-        let budgetedCount = 0
-        let overBudgetCount = 0
-        for (const [id, amount] of Object.entries(budgets)) {
-            if (!expenseIds.has(id)) continue
-            totalBudget += amount
-            budgetedCount++
-            if ((spentByCategory.get(id) ?? 0) > amount) overBudgetCount++
-        }
-        return { totalBudget, budgetedCount, overBudgetCount, periodIncome }
-    }, [categories, budgets, periodTxs])
+    const addButton = topBarSlot && createPortal(
+        <button
+            type="button"
+            onClick={() => setAddCategoryDrawer(true)}
+            className="h-9 px-3.5 rounded-[10px] border border-line text-[13px] font-semibold text-ink hover:bg-surface-hover transition-colors flex items-center gap-1.5"
+        >
+            <Plus className="w-4 h-4" /> Add category
+        </button>,
+        topBarSlot,
+    )
 
     return (
         <>
-            <PageHeader title="Categories" />
-            <section className="px-4 pb-4 lg:px-0 space-y-4">
-                <div className="space-y-4 lg:space-y-0 lg:grid lg:grid-cols-[1fr_360px] lg:gap-4 lg:items-start">
-                    <BudgetHero
-                        categoryCount={categories.length}
-                        expenseCount={expenseCount}
-                        incomeCount={incomeCount}
-                        totalBudget={budgetStats.totalBudget}
-                        budgetedCount={budgetStats.budgetedCount}
-                        overBudgetCount={budgetStats.overBudgetCount}
-                        periodIncome={budgetStats.periodIncome}
-                        expectedIncome={activePeriod?.salary_amount ?? null}
-                        actions={
-                            <>
-                                {categories.length === 0 && (
-                                    <HeroAction
-                                        onClick={async () => {
-                                            setSeeding(true)
-                                            const { error } = await categoriesService.seedDefaults()
-                                            setSeeding(false)
-                                            if (error) { toast.error(error); return }
-                                            toast.success('Default categories added.')
-                                        }}
-                                        disabled={seeding}
-                                        icon={seeding ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
-                                    >
-                                        Seed
-                                    </HeroAction>
-                                )}
-                                <HeroAction onClick={() => setAddCategoryDrawer(true)}>Category</HeroAction>
-                            </>
-                        }
-                    />
-
-                    <div className="lg:order-1">
-                        {loading ? (
-                            <LoadingContent />
-                        ) : categories.length === 0 ? (
-                            <button
-                                type="button"
-                                onClick={() => setAddCategoryDrawer(true)}
-                                className="card w-full p-4 flex items-center gap-3 text-left hover:bg-surface-hover transition-colors"
-                            >
-                                <div className="w-9 h-9 rounded-[10px] bg-info/10 flex items-center justify-center shrink-0">
-                                    <Tag className="w-4 h-4 text-info" />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-[13px] font-medium text-ink">No categories yet</p>
-                                    <p className="text-[11.5px] text-muted-ink mt-0.5">Tap to add one, or use Seed above for defaults</p>
-                                </div>
+            <PageHeader
+                title="Categories"
+                back="/menu"
+                action={
+                    <button
+                        type="button"
+                        onClick={() => setAddCategoryDrawer(true)}
+                        aria-label="Add category"
+                        className="w-10 h-10 rounded-[12px] border border-line flex items-center justify-center text-ink hover:bg-surface-hover transition-colors"
+                    >
+                        <Plus className="w-5 h-5" />
+                    </button>
+                }
+            />
+            {addButton}
+            <section className="px-4 pb-6 lg:px-0 lg:max-w-[640px]">
+                {loading ? (
+                    <LoadingContent />
+                ) : categoriesQuery.error && categories.length === 0 ? (
+                    <RetryInline what="Your categories" onRetry={() => void categoriesQuery.refetch()} retrying={categoriesQuery.isRefetching} />
+                ) : categories.length === 0 ? (
+                    <EmptyState
+                        icon={Tag}
+                        title="No categories yet"
+                        action={
+                            <button type="button" onClick={handleSeed} disabled={seeding} className={EMPTY_STATE_BUTTON}>
+                                {seeding ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Add the usual ones'}
                             </button>
-                        ) : (
-                            <CategoryList
-                                categories={categories}
-                                budgets={budgets}
-                                periodTotals={periodTotals}
-                                onOpen={setOpenCategory}
-                            />
-                        )}
-                    </div>
-                </div>
+                        }
+                    >
+                        Start with a ready set (food, transport, bills…) and change it as you go, or add your own with +.
+                    </EmptyState>
+                ) : (
+                    <>
+                        <div role="tablist" aria-label="Category type" className="flex gap-2 pt-1">
+                            {(['expense', 'income'] as const).map(t => (
+                                <button
+                                    key={t}
+                                    type="button"
+                                    role="tab"
+                                    aria-selected={tab === t}
+                                    onClick={() => setTab(t)}
+                                    className={cn(
+                                        'h-10 px-4 rounded-full text-[14.5px] font-medium border transition-colors',
+                                        tab === t ? 'bg-ink text-on-ink border-ink' : 'border-line text-muted-ink hover:text-ink'
+                                    )}
+                                >
+                                    {t === 'expense' ? 'Expenses' : 'Income'}
+                                </button>
+                            ))}
+                        </div>
+                        <CategoryList
+                            categories={categories}
+                            type={tab}
+                            budgets={budgets}
+                            periodTotals={periodTotals}
+                            pace={pace}
+                            onOpen={setEditCategory}
+                        />
+                    </>
+                )}
 
                 {/* Drawers */}
-                <BottomDrawer open={addCategoryDrawer} onClose={() => setAddCategoryDrawer(false)} title="Add Category">
+                <BottomDrawer open={addCategoryDrawer} onClose={() => setAddCategoryDrawer(false)} title="New category">
                     <CategoryForm onSuccess={() => setAddCategoryDrawer(false)} />
                 </BottomDrawer>
-                {/* Detail sheet — each action closes it and hands off to its own drawer */}
-                <BottomDrawer open={!!openCategory} onClose={() => setOpenCategory(null)} title={openCategory?.name ?? ''}>
-                    {openCategory && (
-                        <CategoryDetail
-                            category={openCategory}
-                            transactions={periodTxsByCategory.get(openCategory.id) ?? NO_TXS}
-                            budget={openCategory.type === 'expense' ? budgets[openCategory.id] : undefined}
-                            hasActivePeriod={!!activePeriod}
-                            onEdit={() => { setEditCategory(openCategory); setOpenCategory(null) }}
-                            onDelete={() => { setDeletingCategoryId(openCategory.id); setOpenCategory(null) }}
-                        />
-                    )}
-                </BottomDrawer>
-                <BottomDrawer open={!!editCategory} onClose={() => setEditCategory(null)} title="Edit Category">
+                <BottomDrawer open={!!editCategory} onClose={() => setEditCategory(null)} title={editCategory?.name ?? ''}>
                     {editCategory && (
                         <CategoryForm
+                            key={editCategory.id}
                             initial={editCategory}
                             initialBudget={budgets[editCategory.id] ?? null}
                             onSuccess={() => setEditCategory(null)}
+                            onDelete={() => { setDeletingCategoryId(editCategory.id); setEditCategory(null) }}
                         />
                     )}
                 </BottomDrawer>
