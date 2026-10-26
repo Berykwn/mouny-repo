@@ -124,7 +124,7 @@ export function QuickConfirm({ quick, period, onDone, onBack }: QuickConfirmProp
                     type="button"
                     onClick={save}
                     disabled={loading}
-                    className="flex-[2] h-12 rounded-[14px] text-[13px] font-semibold text-white bg-brand hover:bg-brand/90 transition-colors disabled:opacity-50"
+                    className="flex-[2] h-12 rounded-[14px] text-[13px] font-semibold text-on-action bg-action hover:bg-action/90 transition-colors disabled:opacity-50"
                 >
                     {loading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : 'Save'}
                 </button>

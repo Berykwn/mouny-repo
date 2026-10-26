@@ -29,7 +29,7 @@ export function RouteError() {
                 </p>
                 <button
                     onClick={() => window.location.reload()}
-                    className="mt-4 h-10 w-full rounded-[12px] bg-brand text-white text-[13px] font-semibold hover:bg-brand/90 transition-colors"
+                    className="mt-4 h-10 w-full rounded-[12px] bg-action text-on-action text-[13px] font-semibold hover:bg-action/90 transition-colors"
                 >
                     Reload
                 </button>

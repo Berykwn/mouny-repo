@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { House, List, Wallet, CreditCard, Receipt, ShoppingBag, Tag, History, ChevronRight } from 'lucide-react'
+import { House, List, Wallet, CreditCard, Receipt, ShoppingBag, Tag, History, ChevronRight, ChartLine } from 'lucide-react'
 import type { User } from '@supabase/supabase-js'
 import { cn } from '@/lib/utils'
 import { formatCurrency, getDaysBetween, getInitials } from '@/lib/helpers'
@@ -32,13 +32,14 @@ const GROUPS: { label: string | null; items: SidebarItem[] }[] = [
     {
         label: null,
         items: [
-            { to: '/', label: 'Overview', icon: House, end: true, tint: 'brand' },
-            { to: '/transactions', label: 'Ledger', icon: List, tint: 'info' },
-            { to: '/accounts', label: 'Accounts', icon: Wallet, tint: 'violet' },
+            { to: '/', label: 'Home', icon: House, end: true, tint: 'brand' },
+            { to: '/transactions', label: 'Ledger', icon: List, tint: 'brand' },
+            { to: '/insights', label: 'Insights', icon: ChartLine, tint: 'brand' },
+            { to: '/accounts', label: 'Accounts', icon: Wallet, tint: 'brand' },
         ],
     },
     {
-        label: 'Money',
+        label: 'Plan',
         items: [
             { to: '/debts', label: 'Debts', icon: CreditCard, tint: 'warning', badge: 'debts' },
             { to: '/bills', label: 'Bills', icon: Receipt, tint: 'info', badge: 'bills' },

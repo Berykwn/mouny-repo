@@ -5,7 +5,7 @@ import type { RecurringBill } from '@/types'
 import type { BillDue } from '../lib/bills'
 import { dueLabel, scheduleLabel, shortDate } from '../lib/bill-labels'
 
-const PRIMARY_BTN = 'w-full h-12 rounded-[14px] text-[13px] font-semibold text-white bg-brand hover:bg-brand/90 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:pointer-events-none'
+const PRIMARY_BTN = 'w-full h-12 rounded-[14px] text-[13px] font-semibold text-on-action bg-action hover:bg-action/90 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:pointer-events-none'
 const SECONDARY_BTN = 'w-full h-12 rounded-[14px] text-[13px] font-semibold border border-line text-ink hover:bg-surface-hover transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:pointer-events-none'
 
 interface BillDetailProps {

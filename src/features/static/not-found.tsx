@@ -12,7 +12,7 @@ export default function NotFoundPage() {
             </div>
             <Link
                 to="/"
-                className="h-12 px-6 rounded-[14px] text-[13px] font-semibold text-white bg-brand hover:bg-brand/90 transition-colors flex items-center justify-center"
+                className="h-12 px-6 rounded-[14px] text-[13px] font-semibold text-on-action bg-action hover:bg-action/90 transition-colors flex items-center justify-center"
             >
                 Back to Dashboard
             </Link>

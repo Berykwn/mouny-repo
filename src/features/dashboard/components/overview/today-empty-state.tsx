@@ -38,7 +38,7 @@ export function TodayEmptyState({ closedPeriodsCount, onOpenPeriod }: TodayEmpty
                 <button
                     type="button"
                     onClick={onOpenPeriod}
-                    className="h-[52px] w-full rounded-[14px] bg-brand text-[14px] font-semibold text-white transition-colors hover:bg-brand/90"
+                    className="h-[52px] w-full rounded-[14px] bg-action text-[14px] font-semibold text-on-action transition-colors hover:bg-action/90"
                 >
                     Open period →
                 </button>

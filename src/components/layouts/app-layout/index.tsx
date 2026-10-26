@@ -1,5 +1,5 @@
-import { Outlet, NavLink, useLocation, Link } from 'react-router-dom'
-import { House, List, Wallet, Ellipsis, Plus, ChevronRight } from 'lucide-react'
+import { Outlet, NavLink, useLocation, Link, matchPath } from 'react-router-dom'
+import { House, List, ChartLine, CalendarRange, Plus, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useState, useEffect, useCallback } from 'react'
 import { AddTransactionFlow } from '@/features/transactions/components/add-transaction-flow'
@@ -11,25 +11,38 @@ import { TopBarSlotContext } from '@/contexts/TopBarSlotContext'
 import { Sidebar } from './sidebar'
 import { toast } from 'sonner'
 
-const NAV_ITEMS = [
-    { to: '/', label: 'Overview', icon: House, end: true },
+interface NavItemDef {
+    to: string
+    label: string
+    icon: typeof House
+    end: boolean
+    /** Other pages that light this tab up, e.g. Bills sits under Plan. */
+    also?: string[]
+}
+
+// The four core jobs; Accounts opens from Home's balances row and Settings from the avatar.
+const NAV_ITEMS: NavItemDef[] = [
+    { to: '/', label: 'Home', icon: House, end: true, also: ['/accounts', '/menu'] },
     { to: '/transactions', label: 'Ledger', icon: List, end: false },
 ]
 
-const NAV_ITEMS_RIGHT = [
-    { to: '/accounts', label: 'Accounts', icon: Wallet, end: false },
-    { to: '/menu', label: 'Menu', icon: Ellipsis, end: false },
+const NAV_ITEMS_RIGHT: NavItemDef[] = [
+    { to: '/insights', label: 'Insights', icon: ChartLine, end: false },
+    { to: '/plan', label: 'Plan', icon: CalendarRange, end: false, also: ['/bills', '/debts', '/wish-list'] },
 ]
 
 const ROUTE_LABELS: Record<string, string> = {
-    '/': 'Overview',
+    '/': 'Home',
     '/transactions': 'Ledger',
+    '/insights': 'Insights',
+    '/plan': 'Plan',
+    '/bills': 'Bills',
     '/accounts': 'Accounts',
     '/debts': 'Debts',
     '/wish-list': 'Wishlist',
     '/category': 'Categories',
     '/period-history': 'Period History',
-    '/menu': 'Menu',
+    '/menu': 'Settings',
 }
 
 export default function AppLayout() {
@@ -40,7 +53,7 @@ export default function AppLayout() {
     const { activePeriod } = usePeriods()
     const [addDrawerOpen, setAddDrawerOpen] = useState(false)
     const [topBarSlotNode, setTopBarSlotNode] = useState<HTMLDivElement | null>(null)
-    const currentLabel = ROUTE_LABELS[location.pathname] ?? 'Overview'
+    const currentLabel = ROUTE_LABELS[location.pathname] ?? 'Home'
 
     // What the add-transaction and other forms need, fetched up front so they open filled in.
     useEffect(() => {
@@ -75,14 +88,14 @@ export default function AppLayout() {
                             <div ref={setTopBarSlotNode} className="contents" />
                             <button
                                 onClick={handleAddClick}
-                                className="h-9 px-4 rounded-[10px] bg-brand text-white text-[13px] font-semibold flex items-center justify-center gap-1.5 hover:bg-brand/90 transition-colors"
+                                className="h-9 px-4 rounded-[10px] bg-action text-on-action text-[13px] font-semibold flex items-center justify-center gap-1.5 hover:bg-action/90 transition-colors"
                             >
                                 <Plus className="w-4 h-4" strokeWidth={2} />
                                 Add Transaction
                             </button>
-                            <div className="w-8 h-8 rounded-full bg-ink flex items-center justify-center shrink-0">
+                            <Link to="/menu" aria-label="Settings" className="w-8 h-8 rounded-full bg-ink flex items-center justify-center shrink-0">
                                 <span className="text-[11.5px] font-semibold text-on-ink">{getInitials(user)}</span>
-                            </div>
+                            </Link>
                         </div>
                     </div>
 
@@ -114,9 +127,10 @@ export default function AppLayout() {
                 <div className="w-[72px] flex justify-center shrink-0">
                     <button
                         onClick={handleAddClick}
-                        className="w-[54px] h-[54px] rounded-full bg-brand flex items-center justify-center -mt-[40px] shadow-[0_8px_18px_-6px_rgba(111,168,43,.7)]"
+                        aria-label="Add transaction"
+                        className="w-[54px] h-[54px] rounded-full bg-action flex items-center justify-center -mt-[40px] shadow-[0_8px_18px_-8px_rgba(0,0,0,.45)]"
                     >
-                        <Plus className="w-6 h-6 text-white" strokeWidth={2} />
+                        <Plus className="w-6 h-6 text-on-action" strokeWidth={2} />
                     </button>
                 </div>
 
@@ -127,14 +141,18 @@ export default function AppLayout() {
     )
 }
 
-function NavItem({ to, label, icon: Icon, end }: { to: string; label: string; icon: typeof House; end: boolean }) {
+function NavItem({ to, label, icon: Icon, end, also }: NavItemDef) {
+    const { pathname } = useLocation()
+    const alsoActive = !!also?.some(p => matchPath({ path: p, end: false }, pathname))
     return (
         <NavLink
             to={to}
             end={end}
             className="flex flex-1 flex-col items-center justify-center gap-[5px] h-full"
         >
-            {({ isActive }) => (
+            {({ isActive: own }) => {
+                const isActive = own || alsoActive
+                return (
                 <>
                     <Icon
                         className={cn('w-5 h-5', isActive ? 'text-brand' : 'text-faint-ink')}
@@ -147,7 +165,8 @@ function NavItem({ to, label, icon: Icon, end }: { to: string; label: string; ic
                         {label}
                     </span>
                 </>
-            )}
+                )
+            }}
         </NavLink>
     )
 }

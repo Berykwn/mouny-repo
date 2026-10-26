@@ -8,10 +8,10 @@ export type CategoryKind = 'fixed' | 'daily' | 'lifestyle' | 'savings'
 export const CATEGORY_KINDS: CategoryKind[] = ['fixed', 'daily', 'lifestyle', 'savings']
 
 export const CATEGORY_KIND_META: Record<CategoryKind, { label: string; sub: string; color: string }> = {
-    fixed: { label: 'Bills', sub: 'Rent, utilities, installments — paid once a period', color: '#3d6eb6' },
-    daily: { label: 'Everyday', sub: 'Food, groceries, transport — sets your daily pace', color: '#6FA82B' },
-    lifestyle: { label: 'Lifestyle', sub: 'Shopping, entertainment, hobbies — nice to have', color: '#d97706' },
-    savings: { label: 'Savings', sub: 'Set aside, not spent — left out of pace and projections', color: '#8b5cf6' },
+    fixed: { label: 'Bills', sub: 'Rent, utilities, installments — paid once a period', color: '#7A5AC8' },
+    daily: { label: 'Everyday', sub: 'Food, groceries, transport — sets your daily pace', color: '#D0603A' },
+    lifestyle: { label: 'Lifestyle', sub: 'Shopping, entertainment, hobbies — nice to have', color: '#B88200' },
+    savings: { label: 'Savings', sub: 'Set aside, not spent — left out of pace and projections', color: '#008C7E' },
 }
 
 /** Bill-like names (default categories, and their usual Indonesian equivalents). */

@@ -173,7 +173,7 @@ function NotificationSettingsForm({ enabled, onEnabledChange }: FormProps) {
                             type="button"
                             onClick={turnOn}
                             disabled={busy !== null || enabled === null}
-                            className="mt-3 w-full h-11 rounded-[14px] text-[13px] font-semibold text-white bg-brand hover:bg-brand/90 transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
+                            className="mt-3 w-full h-11 rounded-[14px] text-[13px] font-semibold text-on-action bg-action hover:bg-action/90 transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
                         >
                             {busy === 'device' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Bell className="w-4 h-4" />} Turn on for this device
                         </button>

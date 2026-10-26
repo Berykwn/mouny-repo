@@ -40,7 +40,7 @@ export function ConfirmDrawer({
                     disabled={loading}
                     className={cn(
                         'w-full h-12 rounded-[14px] text-[13px] font-semibold text-white transition-colors disabled:opacity-50 disabled:pointer-events-none',
-                        destructive ? 'bg-negative hover:bg-negative/90' : 'bg-brand hover:bg-brand/90'
+                        destructive ? 'bg-negative hover:bg-negative/90' : 'bg-action hover:bg-action/90'
                     )}
                 >
                     {loading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : confirmLabel}

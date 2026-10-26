@@ -12,7 +12,7 @@ import { LOW_RUNWAY_DAYS, type AccountInsight } from '../lib/account-insights'
 const TYPE_LABEL = { bank: 'Bank account', cash: 'Cash' }
 const RECENT_COUNT = 5
 
-const PRIMARY_BTN = 'w-full h-12 rounded-[14px] text-[13px] font-semibold text-white bg-brand hover:bg-brand/90 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:pointer-events-none'
+const PRIMARY_BTN = 'w-full h-12 rounded-[14px] text-[13px] font-semibold text-on-action bg-action hover:bg-action/90 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:pointer-events-none'
 
 interface AccountDetailProps {
     account: Account

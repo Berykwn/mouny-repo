@@ -1,5 +1,8 @@
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
+import { Link } from 'react-router-dom'
+import { useAuth } from '@/hooks/use-auth'
+import { getInitials } from '@/lib/helpers'
 import { BottomDrawer } from '@/components/bottom-drawer'
 import { PeriodPickerDrawer } from '@/components/period-picker-drawer'
 import { OpenPeriodForm } from '@/features/periods/components/open-period-form'
@@ -16,6 +19,7 @@ export default function DashboardPage() {
     const [openPeriodDrawer, setOpenPeriodDrawer] = useState(false)
     const closedPeriodsCount = allPeriods.filter(p => p.status === 'closed').length
     const topBarSlotNode = useTopBarSlotNode()
+    const { user } = useAuth()
 
     return (
         <>
@@ -24,15 +28,20 @@ export default function DashboardPage() {
                 topBarSlotNode
             )}
 
-            {/* Accounts is in the bottom nav, so the header is just the brand and the period. */}
+            {/* Brand, the period, and the avatar that opens Settings. Accounts open from the balances row. */}
             <header className="flex items-center justify-between gap-3 px-5 pt-[22px] bg-neutral-50 dark:bg-neutral-950 lg:hidden">
                 <div className="flex items-center gap-2">
                     <img src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" className="w-6 h-6" />
                     <span className="text-[16px] font-semibold tracking-[-0.02em] text-ink">Mouny.</span>
                 </div>
-                {selectedPeriod && (
-                    <PeriodChip period={selectedPeriod} onClick={() => setPeriodDrawerOpen(true)} />
-                )}
+                <div className="flex items-center gap-2">
+                    {selectedPeriod && (
+                        <PeriodChip period={selectedPeriod} onClick={() => setPeriodDrawerOpen(true)} />
+                    )}
+                    <Link to="/menu" aria-label="Settings" className="w-8 h-8 rounded-full bg-ink flex items-center justify-center shrink-0">
+                        <span className="text-[11.5px] font-semibold text-on-ink">{getInitials(user)}</span>
+                    </Link>
+                </div>
             </header>
 
             <section className="px-4 pb-4 pt-2.5 lg:px-0 space-y-4">

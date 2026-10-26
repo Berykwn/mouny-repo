@@ -38,6 +38,8 @@ const appRoutes: RouteObject[] = [
                 children: [
                     { path: '/', lazy: page(() => import('@/features/dashboard')) },
                     { path: '/transactions', lazy: page(() => import('@/features/transactions')) },
+                    { path: '/insights', lazy: page(() => import('@/features/insights')) },
+                    { path: '/plan', lazy: page(() => import('@/features/plan')) },
                     { path: '/debts', lazy: page(() => import('@/features/debts')) },
                     { path: '/bills', lazy: page(() => import('@/features/bills')) },
                     { path: '/wish-list', lazy: page(() => import('@/features/wish-list')) },

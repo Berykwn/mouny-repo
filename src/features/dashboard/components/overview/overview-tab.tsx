@@ -1,8 +1,5 @@
-import { useMemo } from 'react'
-import { useAccounts, useDebts, usePeriods, usePeriodSummary, usePeriodTransactions } from '@/queries'
-import { getDaysBetween } from '@/lib/helpers'
 import { OverviewSkeleton } from './overview-skeleton'
-import { OverviewData } from '@/types/overview.types'
+import { useOverviewData } from '../../hooks/use-overview-data'
 import { usePeriodStats } from '@/hooks/use-period-stats'
 import { comparableSpending } from '@/lib/comparable-spending'
 import { useBillReserve } from '@/hooks/use-bill-reserve'
@@ -13,65 +10,8 @@ import { PeriodInsights } from './period-insights'
 import { TodayWeekCard } from './today-week-card'
 import { BalancesCard } from './balances-card'
 import { SpendingByAccountCard } from './spending-by-account-card'
-import { AnalyticsSection } from '../analytics/analytics-section'
-
-/**
- * Everything the overview shows for one period, put together from the shared cache.
- * Each part refetches on its own after a write, and a failed background refetch keeps
- * the last data on screen.
- */
-function useOverviewData(periodId: string): { data: OverviewData | null; loading: boolean; debtsFailed: boolean; retry: () => void } {
-    const periodsQuery = usePeriods()
-    const txsQuery = usePeriodTransactions(periodId)
-    const accountsQuery = useAccounts()
-    const debtsQuery = useDebts({ activeOnly: true })
-
-    const allList = periodsQuery.periods
-    // Periods are sorted by start_date descending, so the period immediately
-    // before this one (chronologically) is the next entry in the list.
-    const currentIndex = allList.findIndex(p => p.id === periodId)
-    const currentPeriod = allList[currentIndex] ?? null
-    const prevPeriod = currentIndex >= 0 ? allList[currentIndex + 1] ?? null : null
-    const previousQuery = usePeriodSummary(prevPeriod?.id)
-
-    const data = useMemo((): OverviewData | null => {
-        const periodTxs = txsQuery.data
-        const accountsList = accountsQuery.data
-        // Missing data would render as a believable Rp0 period, so treat it as a failed load.
-        if (!currentPeriod || !periodTxs || !accountsList) return null
-
-        const fallbackTotalDays = prevPeriod?.start_date && prevPeriod?.end_date
-            ? getDaysBetween(prevPeriod.start_date, prevPeriod.end_date) + 1
-            : null
-
-        return {
-            transactions: periodTxs,
-            accounts: accountsList,
-            closingBalance: currentPeriod.closing_balance ?? null,
-            period: currentPeriod,
-            fallbackTotalDays,
-            allPeriods: allList,
-            previousSummary: previousQuery.data ?? null,
-            totalBalance: accountsList.reduce((s, a) => s + a.balance, 0),
-            // Receivables are money owed to the user, not debt. Unknown until debts load:
-            // counting it as 0 would show a "No debt" health score.
-            totalDebt: debtsQuery.data
-                ? debtsQuery.data.filter(d => d.type === 'debt').reduce((s, d) => s + d.remaining_amount, 0)
-                : null,
-        }
-    }, [txsQuery.data, accountsQuery.data, debtsQuery.data, previousQuery.data, currentPeriod, prevPeriod, allList])
-
-    const loading = periodsQuery.isPending || txsQuery.isPending || accountsQuery.isPending
-    const retry = () => {
-        void periodsQuery.refetch()
-        void txsQuery.refetch()
-        void accountsQuery.refetch()
-        void debtsQuery.refetch()
-    }
-    // Debts only feed the health score, so their failure shows there, not as a failed page.
-    const debtsFailed = debtsQuery.isError && !debtsQuery.data
-    return { data, loading, debtsFailed, retry }
-}
+import { Link } from 'react-router-dom'
+import { ChartLine, ChevronRight } from 'lucide-react'
 
 export function OverviewTransaction({
     periodId,
@@ -102,7 +42,7 @@ export function OverviewTransaction({
             <button
                 type='button'
                 onClick={retry}
-                className='shrink-0 h-9 rounded-[10px] bg-brand px-4 text-[12.5px] font-semibold text-white transition-colors hover:bg-brand/90'
+                className='shrink-0 h-9 rounded-[10px] bg-action px-4 text-[12.5px] font-semibold text-on-action transition-colors hover:bg-action/90'
             >
                 Retry
             </button>
@@ -147,14 +87,12 @@ export function OverviewTransaction({
                 </div>
 
                 <div className="space-y-3">
-                    {/* On a phone the headline card already leads with the balance. */}
-                    <div className="hidden lg:block">
-                        <BalancesCard
-                            accounts={accounts}
-                            isActivePeriod={isActivePeriod}
-                            closingBalance={closingBalance}
-                        />
-                    </div>
+                    {/* Accounts open from here; they have no tab of their own. */}
+                    <BalancesCard
+                        accounts={accounts}
+                        isActivePeriod={isActivePeriod}
+                        closingBalance={closingBalance}
+                    />
 
                     {isActivePeriod && (
                         <TodayWeekCard
@@ -171,7 +109,17 @@ export function OverviewTransaction({
                 </div>
             </div>
 
-            <AnalyticsSection data={data} stats={stats} comparable={comparable} />
+            {/* The deep analysis lives on Insights; Home stays about today. */}
+            <Link to='/insights' className='card mt-3 flex items-center gap-3 px-5 py-4 hover:bg-surface-soft transition-colors'>
+                <span className='w-8 h-8 rounded-[10px] flex items-center justify-center shrink-0 bg-brand-tint text-brand-ink'>
+                    <ChartLine className='w-4 h-4' strokeWidth={1.9} />
+                </span>
+                <span className='flex-1 min-w-0'>
+                    <span className='block text-[13.5px] font-medium text-ink'>Insights</span>
+                    <span className='block text-[11.5px] text-muted-ink truncate'>Habits, cash flow and trends across your periods</span>
+                </span>
+                <ChevronRight className='w-4 h-4 text-faint-ink shrink-0' />
+            </Link>
         </div>
     )
 }

@@ -17,7 +17,7 @@ import { MONTH_NAMES } from '../lib/bill-labels'
 
 const FIELD_LABEL = 'text-[11px] font-medium uppercase tracking-[.14em] text-muted-ink'
 const FIELD = 'h-12 rounded-[14px] border-line text-[13px]'
-const SUBMIT_BUTTON = 'w-full h-12 rounded-[14px] text-[13px] font-semibold text-white bg-brand hover:bg-brand/90 transition-colors disabled:opacity-50 disabled:pointer-events-none'
+const SUBMIT_BUTTON = 'w-full h-12 rounded-[14px] text-[13px] font-semibold text-on-action bg-action hover:bg-action/90 transition-colors disabled:opacity-50 disabled:pointer-events-none'
 const NATIVE_FIELD = 'w-full h-12 px-3 rounded-[14px] border border-line bg-surface text-[13px] text-ink outline-none focus:border-ink/30 disabled:opacity-50'
 
 const NO_ACCOUNTS: Account[] = []

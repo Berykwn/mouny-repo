@@ -42,10 +42,10 @@ const Toaster = ({ ...props }: ToasterProps) => {
           description: "!text-white/60 dark:!text-neutral-900/60 !text-[12.5px] !font-normal",
           actionButton: [
             "!ml-1.5 !h-auto !p-0 !bg-transparent !rounded-none",
-            "!text-[13.5px] !font-semibold !text-[#9bd65a] dark:!text-[#4f8a17]",
+            "!text-[13.5px] !font-semibold !text-[#8a9cf2] dark:!text-[#3451d1]",
           ].join(" "),
           cancelButton: "!ml-1.5 !h-auto !p-0 !bg-transparent !text-[13.5px] !text-white/60 dark:!text-neutral-900/60",
-          success: "[&_[data-icon]]:text-emerald-400 dark:[&_[data-icon]]:text-emerald-600",
+          success: "[&_[data-icon]]:text-[#8a9cf2] dark:[&_[data-icon]]:text-[#3451d1]",
           error: "[&_[data-icon]]:text-red-400 dark:[&_[data-icon]]:text-red-600",
           warning: "[&_[data-icon]]:text-amber-400 dark:[&_[data-icon]]:text-amber-600",
           info: "[&_[data-icon]]:text-sky-400 dark:[&_[data-icon]]:text-sky-600",

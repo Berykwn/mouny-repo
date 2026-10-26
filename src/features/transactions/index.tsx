@@ -203,7 +203,7 @@ export default function TransactionsPage() {
                             type="button"
                             onClick={() => { void txQuery.refetch() }}
                             disabled={txQuery.isFetching}
-                            className="shrink-0 h-9 min-w-[76px] rounded-[10px] bg-brand px-4 text-[12.5px] font-semibold text-white transition-colors hover:bg-brand/90 disabled:opacity-70"
+                            className="shrink-0 h-9 min-w-[76px] rounded-[10px] bg-action px-4 text-[12.5px] font-semibold text-on-action transition-colors hover:bg-action/90 disabled:opacity-70"
                         >
                             {txQuery.isFetching ? <Loader2 aria-label="Retrying" className="w-4 h-4 animate-spin mx-auto" /> : 'Retry'}
                         </button>

@@ -11,12 +11,8 @@ export function AnalyticsSection({ data, stats, comparable }: {
     comparable: ComparableSpending | null
 }) {
     return (
-        <div className="mt-4">
-            <p className="text-[11px] uppercase tracking-[.14em] text-muted-ink px-1 mb-1">
-                Analytics
-            </p>
-            {/* Desktop shows these tiles in the headline card. */}
-            <div className="pt-3 lg:hidden">
+        <div>
+            <div>
                 <PeriodTotalsCard
                     totalIncome={stats.totalIncome}
                     totalSpending={stats.totalSpending}

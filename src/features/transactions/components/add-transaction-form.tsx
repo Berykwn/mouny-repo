@@ -30,7 +30,7 @@ const NO_CATEGORIES: Category[] = []
 
 const FIELD_LABEL = 'text-[11px] font-medium uppercase tracking-[.14em] text-muted-ink'
 const OUTLINE_BUTTON = 'flex-1 h-[52px] rounded-[14px] border border-line text-[14px] font-semibold text-[#5b5b55] dark:text-neutral-300 transition-colors hover:bg-surface-soft disabled:opacity-50 disabled:pointer-events-none'
-const FILLED_BUTTON = 'flex-1 h-[52px] rounded-[14px] text-[14px] font-semibold text-white bg-brand hover:bg-brand/90 transition-colors disabled:opacity-50 disabled:pointer-events-none'
+const FILLED_BUTTON = 'flex-1 h-[52px] rounded-[14px] text-[14px] font-semibold text-on-action bg-action hover:bg-action/90 transition-colors disabled:opacity-50 disabled:pointer-events-none'
 
 interface AddTransactionFormProps {
     payPeriodId: string

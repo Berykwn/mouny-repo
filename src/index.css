@@ -41,12 +41,12 @@
 
   /* App semantic palette — brand + per-context data colors, formalizing what
      was previously ~1000 scattered hex literals across feature code. */
-  --brand: #6FA82B;
-  --brand-soft: #e3e8db;
-  --positive: #059669;
+  --brand: #3451D1;
+  --brand-soft: #e2e7f8;
+  --positive: #3451D1;
   --negative: #dc2626;
   --warning: #d97706;
-  --info: #3d6eb6;
+  --info: #008C7E;
   --ink: #252525;
   --muted-ink: #8a8a84;
   --subtle-ink: #a3a3a3;
@@ -61,10 +61,13 @@
   --on-ink: #fafafa;
   --faint-ink: #b0b0aa;
   --line-strong: #d4d4d4;
-  --brand-ink: #4d7a1d;
-  --brand-muted: #6b8f45;
-  --brand-tint: #f2f6ea;
-  --brand-line: #cfdcb8;
+  --brand-ink: #3451D1;
+  --brand-muted: #5a6fc9;
+  --brand-tint: #eef1fc;
+  --brand-line: #c9d2f3;
+  /* The one primary action on a screen: ink on light, cobalt on dark (never a white slab). */
+  --action: #1d1d1b;
+  --on-action: #ffffff;
   --negative-ink: #b91c1c;
   --negative-soft: #fef2f2;
   --negative-line: #f3c5c5;
@@ -73,7 +76,7 @@
   --tint-violet: #7c3aed;
   --tint-pink: #db2777;
   --tint-teal: #0f766e;
-  /* Money out in charts: warm, apart from the income green and the negative red. */
+  /* Money out in charts: warm, apart from the income blue and the negative red. */
   --chart-out: #c9977a;
 }
 
@@ -84,7 +87,7 @@
   --card-foreground: oklch(0.985 0 0);
   --popover: oklch(0.205 0 0);
   --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.65 0.12 140);
+  --primary: #4a63dc;
   --primary-foreground: oklch(0.98 0 0);
   --secondary: oklch(0.269 0 0);
   --secondary-foreground: oklch(0.985 0 0);
@@ -110,12 +113,12 @@
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
 
-  --brand: #7fc23c;
-  --brand-soft: #2d3a22;
-  --positive: #10b981;
+  --brand: #8a9cf2;
+  --brand-soft: #232a4a;
+  --positive: #8a9cf2;
   --negative: #ef4444;
   --warning: #f59e0b;
-  --info: #5b8fd6;
+  --info: #2db5a5;
   --ink: #f2f2f0;
   --muted-ink: #a3a3a3;
   --subtle-ink: #8a8a84;
@@ -129,10 +132,12 @@
   --on-ink: #171717;
   --faint-ink: #5f5f5a;
   --line-strong: rgba(255, 255, 255, 0.2);
-  --brand-ink: #9bd65a;
-  --brand-muted: #8fb86a;
-  --brand-tint: #1b2513;
-  --brand-line: #3a4d27;
+  --brand-ink: #8a9cf2;
+  --brand-muted: #7d8bd0;
+  --brand-tint: #1c2140;
+  --brand-line: #2e3766;
+  --action: #4a63dc;
+  --on-action: #ffffff;
   --negative-ink: #f87171;
   --negative-soft: #2a1515;
   --negative-line: #5c2828;
@@ -205,6 +210,8 @@
   --color-brand-muted: var(--brand-muted);
   --color-brand-tint: var(--brand-tint);
   --color-brand-line: var(--brand-line);
+  --color-action: var(--action);
+  --color-on-action: var(--on-action);
   --color-negative-ink: var(--negative-ink);
   --color-negative-soft: var(--negative-soft);
   --color-negative-line: var(--negative-line);
