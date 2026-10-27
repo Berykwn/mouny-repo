@@ -20,7 +20,7 @@ import { payoffPlan } from '@/features/debts/lib/debt-insights'
 import { sendReminder } from '@/features/debts/lib/reminder'
 import { DebtAvatar } from '@/features/debts/components/debt-avatar'
 import { PayDebtForm } from '@/features/debts/components/pay-debt-form'
-import { buildRoadmap, etaMonth, partsBreakdown, wishProgress } from '@/features/wish-list/lib/wish-analytics'
+import { buildRoadmap, etaMonth, FAR_ETA_YEARS, isFarEta, partsBreakdown, wishProgress } from '@/features/wish-list/lib/wish-analytics'
 import { WishTile } from '@/features/wish-list/components/wish-tile'
 import { PillButton, PlanRow, PlanSection, RowAmount } from './components/layout'
 import { SmartLine } from './components/smart-line'
@@ -133,7 +133,7 @@ export default function PlanPage() {
                     actions={[{ label: `Pay ${soonest.bill.name}`, onClick: () => setPayingBill(soonest.due) }]}
                 >
                     <b>{soonest.bill.name}</b> is {daysUntil(soonest.date) < 0 ? '' : 'due '}{relativeDays(daysUntil(soonest.date))}, the soonest bill before payday.
-                    {plan.setAsideCount > 1 && <> Safe to spend already holds back <b>{formatShortCurrency(plan.setAside)}</b> for all {plan.setAsideCount} before payday.</>}
+                    {plan.setAsideCount > 1 && <> Safe to spend already holds back <b>{formatShortCurrency(plan.setAside)}</b> for {plan.setAsideCount === 2 ? 'both' : `all ${plan.setAsideCount}`} before payday.</>}
                 </SmartLine>
             )}
 
@@ -292,7 +292,7 @@ function Summaries({ bills, dues, debts, debtFree, wishes, roadmap, today }: {
                                     title={w.name}
                                     sub={p.ready ? 'Ready to buy' : parts ? `${parts.bought} of ${parts.total} parts` : `${p.percent}% saved`}
                                     subClassName={p.ready ? 'text-brand-ink' : undefined}
-                                    end={!p.ready && stop?.date ? <span className="text-[13px] text-ink tabular-nums">~{etaMonth(stop.date, today)}</span> : undefined}
+                                    end={!p.ready && stop?.date ? <span className="text-[13px] text-ink tabular-nums">{isFarEta(stop.date, today) ? `${FAR_ETA_YEARS}+ yrs` : `~${etaMonth(stop.date, today)}`}</span> : undefined}
                                 />
                             )
                         })}

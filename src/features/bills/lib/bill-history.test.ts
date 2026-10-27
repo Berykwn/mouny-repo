@@ -43,6 +43,11 @@ describe('lastPriceChange', () => {
             .toEqual({ from: 54_000, to: 65_000, percent: 20, since: '2026-09-23' })
     })
 
+    it('still sees a rise after a few payments at the new price', () => {
+        expect(lastPriceChange([pay('2026-07-18', 169_000), pay('2026-08-18', 169_000), pay('2026-09-18', 186_000), pay('2026-10-18', 186_000)]))
+            .toEqual({ from: 169_000, to: 186_000, percent: 10, since: '2026-09-18' })
+    })
+
     it('says nothing without two payments or a change', () => {
         expect(lastPriceChange([pay('2026-09-23', 65_000)])).toBeNull()
         expect(lastPriceChange([pay('2026-08-23', 65_000), pay('2026-09-23', 65_000)])).toBeNull()

@@ -145,7 +145,7 @@ export default function WishListPage() {
                             <WishEmpty onAdd={openAdd} />
                         ) : (
                             <>
-                                <div className="grid gap-3 lg:grid-cols-2 lg:items-start">
+                                <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 lg:items-start">
                                     {sorted.map(item => (
                                         <WishCard
                                             key={item.id}

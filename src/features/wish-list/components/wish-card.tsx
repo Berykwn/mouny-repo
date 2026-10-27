@@ -1,7 +1,7 @@
 import { formatShortCurrency } from '@/lib/helpers'
 import { cn } from '@/lib/utils'
 import type { WishListItem } from '@/types'
-import { etaMonth, nextPart, partsBreakdown, wishProgress, type RoadmapStop, type SavingsPace } from '../lib/wish-analytics'
+import { etaPhrase, nextPart, partsBreakdown, wishProgress, type RoadmapStop, type SavingsPace } from '../lib/wish-analytics'
 import { WishTile } from './wish-tile'
 
 const plain = (n: number) => new Intl.NumberFormat('id-ID').format(Math.round(n))
@@ -37,20 +37,20 @@ export function WishCard({ item, stop, pace, today, onOpen, onBuy, owedFirst = 0
     const parts = partsBreakdown(item)
     const isUOM = !!item.quantity
     const unit = item.unit ?? ''
-    const eta = !ready && stop?.date && stop.periods ? etaMonth(stop.date, today) : null
+    const eta = !ready && stop?.date && stop.periods ? etaPhrase(stop.date, today) : null
 
     let sub: string
     if (parts) {
         const next = nextPart(item, pace, today, owedFirst)
         sub = `${parts.bought} of ${parts.total} parts`
         if (ready) sub += ' · ready to buy the rest'
-        else if (next) sub += ` · next: ${next.part.name}${next.date ? ` around ${etaMonth(next.date, today)}` : ''}`
+        else if (next) sub += ` · next: ${next.part.name}${next.date ? ` ${etaPhrase(next.date, today, 'around')}` : ''}`
     } else if (isUOM) {
-        sub = ready ? 'Target reached' : `Bought ${units(item.saved_quantity ?? 0)} ${unit}${eta ? ` · about ${eta}` : ''}`
+        sub = ready ? 'Target reached' : `Bought ${units(item.saved_quantity ?? 0)} ${unit}${eta ? ` · ${eta}` : ''}`
     } else if (ready) {
         sub = 'Saved in full · ready to buy'
     } else if (remaining !== null) {
-        sub = `${formatShortCurrency(remaining)} to go${eta ? ` · about ${eta}` : ''}`
+        sub = `${formatShortCurrency(remaining)} to go${eta ? ` · ${eta}` : ''}`
     } else {
         sub = 'No price yet'
     }

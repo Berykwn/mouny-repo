@@ -8,6 +8,9 @@ import { DebtAvatar } from './debt-avatar'
 const plain = (n: number) => new Intl.NumberFormat('id-ID').format(Math.round(n))
 const QUIET_BTN = 'flex-1 h-10 rounded-[12px] bg-surface-hover text-ink text-[13px] font-semibold flex items-center justify-center gap-1.5 hover:bg-line-soft transition-colors disabled:opacity-50'
 
+/** "Due Thu 31 Dec" → "due Thu 31 Dec" mid-sentence; day and month names keep their capitals. */
+const lowerFirst = (text: string) => text.charAt(0).toLowerCase() + text.slice(1)
+
 function dueLine(debt: DebtWithAccount): { text: string; late: boolean } {
     const status = dueStatus(debt)
     if (status.kind === 'none') return { text: 'No due date', late: false }
@@ -28,9 +31,9 @@ export function OweCard({ debt, stop, onOpen }: OweCardProps) {
     // The schedule's first step, so the card and the pay sheet's "This period's plan" agree.
     const planned = stop && stop.status !== 'overdue' ? stop : null
     const sub = planned?.doneThisPeriod
-        ? `Done for this period · ${due.text.toLowerCase()}`
+        ? `Done for this period · ${lowerFirst(due.text)}`
         : planned?.thisPeriodDue
-            ? `${formatShortCurrency(planned.thisPeriodDue)} this period · ${due.text.toLowerCase()}`
+            ? `${formatShortCurrency(planned.thisPeriodDue)} this period · ${lowerFirst(due.text)}`
             : due.text
     const foot = stop?.periodsLeft
         ? `${stop.periodsLeft} period${stop.periodsLeft === 1 ? '' : 's'} left`

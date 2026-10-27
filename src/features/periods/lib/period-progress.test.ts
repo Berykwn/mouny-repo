@@ -52,8 +52,9 @@ describe('period labels', () => {
     })
 
     it('names a period by the month it ends in', () => {
-        expect(periodMonth('2026-09-25', '2026-10-24')).toBe('October')
-        expect(periodMonth('2026-08-25', '2026-09-24', true)).toBe('Sep 2026')
+        expect(periodMonth('2026-09-25', '2026-10-24')).toBe('September')
+        expect(periodMonth('2026-08-25', '2026-09-24', true)).toBe('Aug 2026')
+        expect(periodMonth('2026-10-10', null)).toBe('October')
         expect(periodRange('2026-09-25', '2026-10-24')).toBe('25 Sep – 24 Oct')
         expect(periodRange('2026-09-25', null)).toBe('From 25 Sep')
         expect(periodRange('2026-09-25', '2026-10-24', true)).toBe('25 Sep – about 24 Oct')

@@ -110,11 +110,11 @@ export function periodRange(start: string, end: string | null, estimated = false
 }
 
 /**
- * A period's name: the month it pays for, which is the month it ends in ("October" for
- * 25 Sep – 24 Oct). With no end in sight, the month it started in.
+ * A period's name: the month it starts in ("October" for 10 Oct – 9 Nov), the same name
+ * the period chip, the sidebar and Home use. `end` is kept for callers; it doesn't change the name.
  */
-export function periodMonth(start: string, end: string | null, withYear = false): string {
-    const [y, m] = parts(end ?? start)
+export function periodMonth(start: string, _end: string | null, withYear = false): string {
+    const [y, m] = parts(start)
     if (withYear) return `${MONTHS[m - 1]} ${y}`
     return new Date(y, m - 1, 1).toLocaleDateString('en-GB', { month: 'long' })
 }

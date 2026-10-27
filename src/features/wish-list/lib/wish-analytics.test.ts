@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { part, period, wish } from '@/test/fixtures'
 import { EMPTY_PERIOD_SUMMARY } from '@/lib/period-summary'
-import { buildRoadmap, etaMonth, nextPart, pacePeriods, partsBreakdown, savingsPace, sortWishes, targetPlan, wishProgress } from './wish-analytics'
+import { buildRoadmap, etaMonth, etaPhrase, isFarEta, nextPart, pacePeriods, partsBreakdown, savingsPace, sortWishes, targetPlan, wishProgress } from './wish-analytics'
 
 const TODAY = '2026-10-01'
 const pace = { perPeriod: 1_500_000, periodDays: 30, perDay: 50_000, basedOn: 3 }
@@ -175,5 +175,17 @@ describe('etaMonth', () => {
     it('drops the year within this one', () => {
         expect(etaMonth('2026-12-15', TODAY)).toBe('Dec')
         expect(etaMonth('2027-03-01', TODAY)).toBe('Mar 2027')
+    })
+})
+
+describe('etaPhrase', () => {
+    it('names the month while it is within three years', () => {
+        expect(etaPhrase('2026-12-10', '2026-10-27')).toBe('about Dec')
+        expect(etaPhrase('2028-03-10', '2026-10-27', 'around')).toBe('around Mar 2028')
+    })
+
+    it('stops naming a month past three years', () => {
+        expect(isFarEta('2034-07-10', '2026-10-27')).toBe(true)
+        expect(etaPhrase('2034-07-10', '2026-10-27')).toBe('3+ years at this pace')
     })
 })

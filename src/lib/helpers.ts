@@ -1,3 +1,4 @@
+import { MONTHS_SHORT } from './dates'
 /** A spending bar's colour by its share of the heaviest day, from the theme so dark mode follows. */
 export function heatBarColor(ratio: number): string {
     if (ratio >= 0.7) return 'var(--negative)'
@@ -163,6 +164,7 @@ export function getInitials(user: { user_metadata?: { full_name?: string } | nul
 
 export function formatPeriodLabel(startDate: string | null): string {
     if (!startDate) return 'Period'
-    const date = parseLocalDate(startDate)
-    return date.toLocaleDateString('id-ID', { month: 'short', year: '2-digit' })
+    // English month names like the rest of the UI ("Oct 26"), whatever the device's language.
+    const [y, m] = startDate.slice(0, 10).split('-').map(Number)
+    return `${MONTHS_SHORT[m - 1]} ${String(y).slice(2)}`
 }

@@ -43,12 +43,15 @@ export interface PriceChange {
 export function lastPriceChange(payments: BillPayment[]): PriceChange | null {
     if (payments.length < 2) return null
     const to = payments[payments.length - 1]
-    const from = payments[payments.length - 2]
-    if (from.amount <= 0 || Math.round(to.amount) === Math.round(from.amount)) return null
-    // The new price started at the first payment at it, which may be a few back.
-    let since = to.date
-    for (let i = payments.length - 1; i >= 0 && Math.round(payments[i].amount) === Math.round(to.amount); i--) since = payments[i].date
-    return { from: from.amount, to: to.amount, percent: Math.round(((to.amount - from.amount) / from.amount) * 100), since }
+    // Walk back over the payments at the current price: the new price started at the first
+    // of them, and the price before it is whatever came just before. Two months at a new
+    // price is still a change from the old one.
+    let i = payments.length - 1
+    while (i > 0 && Math.round(payments[i - 1].amount) === Math.round(to.amount)) i--
+    if (i === 0) return null
+    const from = payments[i - 1]
+    if (from.amount <= 0) return null
+    return { from: from.amount, to: to.amount, percent: Math.round(((to.amount - from.amount) / from.amount) * 100), since: payments[i].date }
 }
 
 export interface SubscriptionAudit {

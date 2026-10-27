@@ -304,3 +304,18 @@ export function nextPart(item: WishListItem, pace: SavingsPace | null, today = t
 export function etaMonth(date: string, today = toISODate()): string {
     return date.slice(0, 4) === today.slice(0, 4) ? MONTHS_SHORT[Number(date.slice(5, 7)) - 1] : monthYearLabel(date)
 }
+
+/** Beyond this, a month would read as false precision: "Jul 2034" from a small leftover. */
+export const FAR_ETA_YEARS = 3
+
+/**
+ * "about Mar" or "about Jan 2027"; past three years, "3+ years at this pace" instead,
+ * since a month that far out says more about the guess than about the wish.
+ */
+export function etaPhrase(date: string, today = toISODate(), lead = 'about'): string {
+    return isFarEta(date, today) ? `${FAR_ETA_YEARS}+ years at this pace` : `${lead} ${etaMonth(date, today)}`
+}
+
+export function isFarEta(date: string, today = toISODate()): boolean {
+    return date > `${Number(today.slice(0, 4)) + FAR_ETA_YEARS}${today.slice(4, 10)}`
+}
