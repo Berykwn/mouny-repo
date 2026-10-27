@@ -145,8 +145,9 @@ export function WishListForm({ payPeriodId, item, defaultName, defaultPrice, onS
     return (
         <form onSubmit={handleSubmit} className="space-y-4 pb-3">
             <div className="space-y-2">
-                <Label className={FIELD_LABEL}>Item name</Label>
+                <Label htmlFor="wish-name" className={FIELD_LABEL}>Item name</Label>
                 <Input
+                    id="wish-name"
                     placeholder="Shoes, laptop, etc"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
@@ -164,6 +165,7 @@ export function WishListForm({ payPeriodId, item, defaultName, defaultPrice, onS
                             key={p.value}
                             type="button"
                             onClick={() => setPriority(p.value)}
+                            aria-pressed={priority === p.value}
                             className={cn(
                                 'flex-1 py-2 rounded-[10px] text-[13px] font-medium border transition-all',
                                 priority === p.value
@@ -187,6 +189,7 @@ export function WishListForm({ payPeriodId, item, defaultName, defaultPrice, onS
                         type="button"
                         title="Automatic"
                         onClick={() => setIcon(null)}
+                        aria-pressed={icon === null}
                         className="group aspect-square flex items-center justify-center"
                     >
                         <WishTile
@@ -203,6 +206,7 @@ export function WishListForm({ payPeriodId, item, defaultName, defaultPrice, onS
                                 type="button"
                                 title={key}
                                 onClick={() => setIcon(key)}
+                                aria-pressed={selected}
                                 className="group aspect-square flex items-center justify-center"
                             >
                                 {selected ? (
@@ -261,7 +265,7 @@ export function WishListForm({ payPeriodId, item, defaultName, defaultPrice, onS
                             aria-label="Clear deadline"
                             className="w-12 h-12 rounded-[14px] border border-line flex items-center justify-center text-muted-ink hover:text-ink"
                         >
-                            <X className="w-4 h-4" />
+                            <X aria-hidden="true" className="w-4 h-4" />
                         </button>
                     )}
                 </div>
@@ -280,6 +284,7 @@ export function WishListForm({ payPeriodId, item, defaultName, defaultPrice, onS
                             <p className="text-[11.5px] text-muted-ink">For items with a fluctuating price, like gold</p>
                         </div>
                         <Switch
+                            aria-label="Track by quantity"
                             checked={trackByQuantity}
                             onCheckedChange={setTrackByQuantity}
                             disabled={loading}
@@ -291,8 +296,9 @@ export function WishListForm({ payPeriodId, item, defaultName, defaultPrice, onS
                         <div className="space-y-3">
                             <div className="flex gap-3">
                                 <div className="space-y-2 flex-1">
-                                    <Label className={FIELD_LABEL}>Quantity</Label>
+                                    <Label htmlFor="wish-quantity" className={FIELD_LABEL}>Quantity</Label>
                                     <Input
+                                        id="wish-quantity"
                                         type="text"
                                         inputMode="decimal"
                                         placeholder="0"
@@ -310,6 +316,7 @@ export function WishListForm({ payPeriodId, item, defaultName, defaultPrice, onS
                                                 key={u}
                                                 type="button"
                                                 onClick={() => setUnit(u)}
+                                                aria-pressed={unit === u}
                                                 disabled={loading}
                                                 className={cn(
                                                     'px-2.5 py-1.5 rounded-[8px] text-[12px] font-medium border transition-all capitalize',
@@ -327,6 +334,7 @@ export function WishListForm({ payPeriodId, item, defaultName, defaultPrice, onS
 
                             {unit === 'custom' && (
                                 <Input
+                                    aria-label="Unit name"
                                     placeholder="Unit name (e.g. keping)"
                                     value={customUnit}
                                     onChange={(e) => setCustomUnit(e.target.value)}
@@ -336,12 +344,13 @@ export function WishListForm({ payPeriodId, item, defaultName, defaultPrice, onS
                             )}
 
                             <div className="space-y-2">
-                                <Label className={FIELD_LABEL}>Price per unit</Label>
+                                <Label htmlFor="wish-unit-price" className={FIELD_LABEL}>Price per unit</Label>
                                 <div className="relative">
                                     <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[13px] text-muted-ink font-medium">
                                         Rp
                                     </span>
                                     <Input
+                                        id="wish-unit-price"
                                         type="text"
                                         inputMode="numeric"
                                         placeholder="0"
@@ -361,7 +370,7 @@ export function WishListForm({ payPeriodId, item, defaultName, defaultPrice, onS
                         </div>
                     ) : (
                         <div className="space-y-2">
-                            <Label className={FIELD_LABEL}>
+                            <Label htmlFor="wish-price" className={FIELD_LABEL}>
                                 Estimated price <span className="normal-case tracking-normal font-normal">(optional)</span>
                             </Label>
                             <div className="relative">
@@ -369,6 +378,7 @@ export function WishListForm({ payPeriodId, item, defaultName, defaultPrice, onS
                                     Rp
                                 </span>
                                 <Input
+                                    id="wish-price"
                                     type="text"
                                     inputMode="numeric"
                                     placeholder="0"
@@ -384,10 +394,11 @@ export function WishListForm({ payPeriodId, item, defaultName, defaultPrice, onS
             )}
 
             <div className="space-y-2">
-                <Label className={FIELD_LABEL}>
+                <Label htmlFor="wish-notes" className={FIELD_LABEL}>
                     Notes <span className="normal-case tracking-normal font-normal">(optional)</span>
                 </Label>
                 <Input
+                    id="wish-notes"
                     placeholder="Additional details"
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}

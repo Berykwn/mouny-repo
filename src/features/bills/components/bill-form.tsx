@@ -43,6 +43,7 @@ function Segmented<T extends string>({ value, options, onChange, disabled }: {
                     type="button"
                     disabled={disabled}
                     onClick={() => onChange(o.value)}
+                    aria-pressed={value === o.value}
                     className={cn(
                         'relative z-10 flex-1 py-2 text-[13px] rounded-[10px] transition-colors duration-150',
                         value === o.value ? 'text-ink font-semibold' : 'text-muted-ink font-medium'
@@ -142,8 +143,9 @@ export function BillForm({ initial, preset, onSuccess }: BillFormProps) {
             />
 
             <div className="space-y-1.5">
-                <Label className={FIELD_LABEL}>Name</Label>
+                <Label htmlFor="bill-name" className={FIELD_LABEL}>Name</Label>
                 <Input
+                    id="bill-name"
                     placeholder={kind === 'subscription' ? 'e.g. Netflix' : 'e.g. Rent, Electricity'}
                     value={name}
                     onChange={(e) => setName(e.target.value)}
@@ -154,10 +156,11 @@ export function BillForm({ initial, preset, onSuccess }: BillFormProps) {
             </div>
 
             <div className="space-y-1.5">
-                <Label className={FIELD_LABEL}>Usual amount</Label>
+                <Label htmlFor="bill-amount" className={FIELD_LABEL}>Usual amount</Label>
                 <div className="relative">
                     <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[13px] text-muted-ink font-medium">Rp</span>
                     <Input
+                        id="bill-amount"
                         type="text"
                         inputMode="numeric"
                         placeholder="0"
@@ -243,10 +246,12 @@ export function BillForm({ initial, preset, onSuccess }: BillFormProps) {
             </div>
 
             <div className="space-y-1.5">
-                <Label className={FIELD_LABEL}>
+                <Label htmlFor="bill-ends-on" className={FIELD_LABEL}>
                     Last payment <span className="normal-case tracking-normal font-normal">(optional, for installments)</span>
                 </Label>
                 <input
+                    id="bill-ends-on"
+
                     type="date"
                     value={endsOn}
                     min={initial?.starts_on ?? today}

@@ -134,12 +134,13 @@ export function PayDebtForm({ debt, payPeriodId, periodStartDate, plannedAmount,
             </div>
 
             <div className="space-y-1.5">
-                <Label className={FIELD_LABEL}>Payment amount</Label>
+                <Label htmlFor="pay-debt-amount" className={FIELD_LABEL}>Payment amount</Label>
                 <div className="relative">
                     <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[13px] text-muted-ink font-medium">
                         Rp
                     </span>
                     <Input
+                        id="pay-debt-amount"
                         type="text"
                         inputMode="numeric"
                         value={formatCurrencyInput(amount)}

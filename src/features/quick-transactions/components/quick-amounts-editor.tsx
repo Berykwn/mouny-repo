@@ -55,7 +55,7 @@ export function QuickAmountsEditor({ category }: { category: Pick<Category, 'id'
                                 aria-label={`Remove ${q.label || category.name} ${formatShortCurrency(q.amount)}`}
                                 className="w-6 h-6 rounded-full flex items-center justify-center text-subtle-ink hover:text-negative hover:bg-surface-hover transition-colors"
                             >
-                                {removing === q.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <X className="w-3.5 h-3.5" />}
+                                {removing === q.id ? <Loader2 aria-hidden="true" className="w-3 h-3 animate-spin" /> : <X aria-hidden="true" className="w-3.5 h-3.5" />}
                             </button>
                         </span>
                     ))}
@@ -92,7 +92,7 @@ export function QuickAmountsEditor({ category }: { category: Pick<Category, 'id'
                     aria-label="Add quick amount"
                     className="w-10 h-10 rounded-[12px] bg-ink text-on-ink flex items-center justify-center shrink-0 disabled:opacity-40"
                 >
-                    {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                    {saving ? <Loader2 aria-hidden="true" className="w-4 h-4 animate-spin" /> : <Plus aria-hidden="true" className="w-4 h-4" />}
                 </button>
             </form>
         </div>

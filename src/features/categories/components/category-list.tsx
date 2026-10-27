@@ -43,7 +43,7 @@ export function CategoryList({ categories, type, budgets, periodTotals, pace, on
                         <p className="text-[15.5px] font-medium text-ink truncate">{cat.name}</p>
                         <p className={cn('text-[13px] truncate tabular-nums', over ? 'text-negative' : 'text-subtle-ink')}>{sub}</p>
                         {budget !== undefined && budget > 0 && (
-                            <div className="relative mt-2 h-[3px] rounded-full bg-line-soft">
+                            <div aria-hidden="true" className="relative mt-2 h-[3px] rounded-full bg-line-soft">
                                 <div
                                     className={cn('absolute inset-y-0 left-0 rounded-full', over ? 'bg-negative' : 'bg-ink')}
                                     style={{ width: `${Math.min(100, (spent / budget) * 100)}%` }}

@@ -118,12 +118,13 @@ export function PayReceivableForm({ debt, periodStartDate, plannedAmount, onSucc
             </div>
 
             <div className="space-y-1.5">
-                <Label className={FIELD_LABEL}>Collection amount</Label>
+                <Label htmlFor="collect-amount" className={FIELD_LABEL}>Collection amount</Label>
                 <div className="relative">
                     <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[13px] text-muted-ink font-medium">
                         Rp
                     </span>
                     <Input
+                        id="collect-amount"
                         type="text"
                         inputMode="numeric"
                         value={formatCurrencyInput(amount)}

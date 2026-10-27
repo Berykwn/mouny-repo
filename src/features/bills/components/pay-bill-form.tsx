@@ -99,10 +99,12 @@ export function PayBillForm({ bill, nextDue, payPeriodId, periodStart, lastPaid,
             )}
 
             <div className="space-y-1.5">
-                <Label className={FIELD_LABEL}>Amount paid</Label>
+                <Label htmlFor="pay-bill-amount" className={FIELD_LABEL}>Amount paid</Label>
                 <div className="relative">
                     <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[13px] text-muted-ink font-medium">Rp</span>
                     <Input
+                        id="pay-bill-amount"
+
                         type="text"
                         inputMode="numeric"
                         value={formatCurrencyInput(amount)}

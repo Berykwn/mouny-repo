@@ -19,7 +19,7 @@ export function PasswordInput({ className, ...props }: PasswordInputProps) {
                 aria-pressed={shown}
                 className="absolute right-1.5 top-1/2 -translate-y-1/2 w-10 h-10 rounded-[10px] flex items-center justify-center text-subtle-ink hover:text-ink transition-colors"
             >
-                {shown ? <EyeOff className="w-[18px] h-[18px]" /> : <Eye className="w-[18px] h-[18px]" />}
+                {shown ? <EyeOff aria-hidden="true" className="w-[18px] h-[18px]" /> : <Eye aria-hidden="true" className="w-[18px] h-[18px]" />}
             </button>
         </div>
     )

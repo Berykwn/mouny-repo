@@ -30,7 +30,7 @@ export function PageHeader({ title, action, back }: PageHeaderProps) {
                     aria-label="Back"
                     className="-ml-2 w-10 h-10 rounded-full flex items-center justify-center text-ink hover:bg-line-soft transition-colors"
                 >
-                    <ChevronLeft className="w-6 h-6" />
+                    <ChevronLeft aria-hidden="true" className="w-6 h-6" />
                 </button>
                 <h1 className="flex-1 min-w-0 text-[26px] font-semibold tracking-[-0.02em] text-ink truncate">{title}</h1>
                 {action}

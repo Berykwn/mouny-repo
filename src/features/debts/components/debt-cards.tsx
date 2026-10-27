@@ -52,7 +52,7 @@ export function OweCard({ debt, stop, onOpen }: OweCardProps) {
                     <p className="text-[11.5px] text-subtle-ink tabular-nums">of {plain(debt.total_amount)}</p>
                 </div>
             </div>
-            <div className="mt-3 h-1.5 rounded-full bg-line-soft overflow-hidden">
+            <div aria-hidden="true" className="mt-3 h-1.5 rounded-full bg-line-soft overflow-hidden">
                 <div className="h-full rounded-full bg-ink transition-all" style={{ width: `${percent}%` }} />
             </div>
             <div className="mt-2 flex justify-between gap-3 text-[12px] text-muted-ink">

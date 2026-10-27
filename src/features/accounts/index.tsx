@@ -197,7 +197,7 @@ export function AccountPage() {
                 title="Add account"
                 className="h-9 w-9 rounded-[10px] border border-line text-ink hover:bg-surface-hover transition-colors flex items-center justify-center"
             >
-                <Plus className="w-4 h-4" />
+                <Plus aria-hidden="true" className="w-4 h-4" />
             </button>
         </>,
         topBarSlot,
@@ -215,7 +215,7 @@ export function AccountPage() {
                         aria-label="Add account"
                         className="w-10 h-10 rounded-[12px] border border-line flex items-center justify-center text-ink hover:bg-surface-hover transition-colors"
                     >
-                        <Plus className="w-5 h-5" />
+                        <Plus aria-hidden="true" className="w-5 h-5" />
                     </button>
                 }
             />

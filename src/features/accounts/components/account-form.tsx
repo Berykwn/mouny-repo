@@ -117,6 +117,7 @@ export function AccountForm({ onSuccess, initial, allAccounts = [], initialTab =
                             key={t}
                             type="button"
                             onClick={() => setTab(t)}
+                            aria-pressed={tab === t}
                             className={cn(
                                 'relative z-10 flex-1 py-2 text-[13px] rounded-[10px] transition-colors duration-150',
                                 tab === t ? 'text-ink font-semibold' : 'text-muted-ink font-medium'
@@ -138,6 +139,7 @@ export function AccountForm({ onSuccess, initial, allAccounts = [], initialTab =
                             <button
                                 type="button"
                                 onClick={() => setType('bank')}
+                                aria-pressed={type === 'bank'}
                                 className={cn(
                                     'relative flex items-center gap-3 px-3 py-3 rounded-[14px] border-[1.5px] text-left transition-all duration-150',
                                     type === 'bank'
@@ -169,6 +171,7 @@ export function AccountForm({ onSuccess, initial, allAccounts = [], initialTab =
                             <button
                                 type="button"
                                 onClick={() => setType('cash')}
+                                aria-pressed={type === 'cash'}
                                 className={cn(
                                     'relative flex items-center gap-3 px-3 py-3 rounded-[14px] border-[1.5px] text-left transition-all duration-150',
                                     type === 'cash'
@@ -200,10 +203,11 @@ export function AccountForm({ onSuccess, initial, allAccounts = [], initialTab =
                     </div>
 
                     <div className="flex flex-col gap-2">
-                        <Label className={FIELD_LABEL}>
+                        <Label htmlFor="account-name" className={FIELD_LABEL}>
                             Account name
                         </Label>
                         <Input
+                            id="account-name"
                             placeholder={type === 'bank' ? 'e.g. BCA, Mandiri…' : 'e.g. Wallet, Petty cash…'}
                             value={name}
                             onChange={e => setName(e.target.value)}
@@ -225,12 +229,13 @@ export function AccountForm({ onSuccess, initial, allAccounts = [], initialTab =
 
                     {!isEdit && (
                         <div className="flex flex-col gap-2">
-                            <Label className={FIELD_LABEL}>
+                            <Label htmlFor="account-balance" className={FIELD_LABEL}>
                                 Current balance
                             </Label>
                             <div className="relative">
                                 <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[13px] text-muted-ink font-medium">Rp</span>
                                 <Input
+                                    id="account-balance"
                                     type="text"
                                     inputMode="numeric"
                                     className="pl-10 h-12 rounded-[14px] border-line text-[16px] lg:text-[13px] font-mono"
@@ -245,12 +250,13 @@ export function AccountForm({ onSuccess, initial, allAccounts = [], initialTab =
 
                     {isEdit && (
                         <div className="flex flex-col gap-2">
-                            <Label className={FIELD_LABEL}>
+                            <Label htmlFor="account-adjustment" className={FIELD_LABEL}>
                                 Balance adjustment
                             </Label>
                             <div className="relative">
                                 <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[13px] text-muted-ink font-medium">Rp</span>
                                 <Input
+                                    id="account-adjustment"
                                     ref={adjustmentRef}
                                     type="text"
                                     inputMode="numeric"
@@ -344,6 +350,7 @@ export function AccountForm({ onSuccess, initial, allAccounts = [], initialTab =
                                                 key={acc.id}
                                                 type="button"
                                                 onClick={() => setToAccountId(acc.id)}
+                                                aria-pressed={selected}
                                                 className={cn(
                                                     'flex items-center gap-3 px-3 py-2.5 rounded-[14px] border-[1.5px] text-left transition-all duration-150',
                                                     selected
@@ -374,12 +381,13 @@ export function AccountForm({ onSuccess, initial, allAccounts = [], initialTab =
                     </div>
 
                     <div className="flex flex-col gap-2">
-                        <Label className={FIELD_LABEL}>
+                        <Label htmlFor="transfer-amount" className={FIELD_LABEL}>
                             Amount
                         </Label>
                         <div className="relative">
                             <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[13px] text-muted-ink font-medium">Rp</span>
                             <Input
+                                id="transfer-amount"
                                 type="text"
                                 inputMode="numeric"
                                 className="pl-10 h-12 rounded-[14px] border-line text-[16px] lg:text-[13px] font-mono"

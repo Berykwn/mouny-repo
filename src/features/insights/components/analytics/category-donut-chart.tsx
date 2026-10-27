@@ -24,8 +24,12 @@ function DonutTooltip({ active, payload, total }: {
 export function CategoryDonutChart({ categories, total }: { categories: CategoryTotal[]; total: number }) {
     if (categories.length === 0) return null
 
+    const summary = `Spending by category, ${formatShortCurrency(total)} in all: ` + categories
+        .map(cat => `${cat.name} ${total > 0 ? Math.round((cat.amount / total) * 100) : 0}%`)
+        .join(', ')
+
     return (
-        <div className="relative mb-3" style={{ width: '100%', height: 200 }}>
+        <div role="img" aria-label={summary} className="relative mb-3" style={{ width: '100%', height: 200 }}>
             <ResponsiveContainer>
                 <PieChart>
                     <Pie

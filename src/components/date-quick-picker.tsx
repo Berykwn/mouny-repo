@@ -37,6 +37,7 @@ export function DateQuickPicker({ date, periodStart, maxDate, onChange, disabled
                     type="button"
                     disabled={disabled || !todayInRange}
                     onClick={() => onChange(todayStr)}
+                    aria-pressed={isToday}
                     className={cn(CHIP_BASE, isToday ? CHIP_ACTIVE : CHIP_INACTIVE, !todayInRange && 'opacity-40 pointer-events-none')}
                 >
                     Today
@@ -45,6 +46,7 @@ export function DateQuickPicker({ date, periodStart, maxDate, onChange, disabled
                     type="button"
                     disabled={disabled || !yesterdayInRange}
                     onClick={() => onChange(yesterdayStr)}
+                    aria-pressed={isYesterday}
                     className={cn(CHIP_BASE, isYesterday ? CHIP_ACTIVE : CHIP_INACTIVE, !yesterdayInRange && 'opacity-40 pointer-events-none')}
                 >
                     Yesterday

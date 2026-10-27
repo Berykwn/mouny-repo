@@ -36,6 +36,7 @@ export function AccountPickerDrawer({ open, onClose, accounts, selectedId, onSel
                         key={a.id}
                         type="button"
                         onClick={() => onSelect(a)}
+                        aria-pressed={selectedId === a.id}
                         className={cn(
                             'w-full flex items-center gap-3 px-3 py-2.5 rounded-[10px] text-left transition-colors',
                             selectedId === a.id ? 'bg-surface-hover' : 'hover:bg-surface-soft'

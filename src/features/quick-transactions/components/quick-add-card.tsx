@@ -5,7 +5,8 @@ import { BottomDrawer } from '@/components/bottom-drawer'
 import { useQuickTransactions } from '@/queries'
 import type { PayPeriod, QuickTransactionWithCategory } from '@/types'
 import { QuickConfirm } from './quick-confirm'
-import { QuickPills, quickName } from './quick-pills'
+import { QuickPills } from './quick-pills'
+import { quickName } from '../lib/quick-name'
 
 /** The dashboard's row of quick pills; a tap asks only for the account and a note. */
 export function QuickAddCard({ period }: { period: Pick<PayPeriod, 'id' | 'start_date'> }) {

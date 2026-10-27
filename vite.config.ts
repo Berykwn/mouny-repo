@@ -43,10 +43,10 @@ export default defineConfig(({ mode }) => {
         name: 'Mouny',
         short_name: 'Mouny',
         description: 'Personal finance app',
-        // The app's light background (neutral-50), so the title bar and the launch screen
-        // blend in. A manifest can't vary by theme; index.html and ThemeContext do that.
-        theme_color: '#fafafa',
-        background_color: '#fafafa',
+        // The app's light page (white), so the title bar and the launch screen blend in.
+        // A manifest can't vary by theme; index.html and ThemeContext do that.
+        theme_color: '#ffffff',
+        background_color: '#ffffff',
         display: 'standalone',
         icons: [
           {

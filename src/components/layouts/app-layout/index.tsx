@@ -1,4 +1,4 @@
-import { Outlet, NavLink, ScrollRestoration, useLocation, useNavigate, matchPath } from 'react-router-dom'
+import { Outlet, Link, ScrollRestoration, useLocation, useNavigate, matchPath } from 'react-router-dom'
 import { House, List, ChartLine, CalendarRange, Plus, Search } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useState, useEffect, useCallback, useRef } from 'react'
@@ -113,7 +113,7 @@ export default function AppLayout() {
                         aria-keyshortcuts={IS_MAC ? 'Meta+K' : 'Control+K'}
                         className="h-9 pl-3 pr-1.5 rounded-[10px] bg-line-soft text-[13px] text-subtle-ink hover:text-muted-ink transition-colors flex items-center gap-2"
                     >
-                        <Search className="w-4 h-4" />
+                        <Search aria-hidden="true" className="w-4 h-4" />
                         Search
                         <Kbd>{IS_MAC ? '⌘K' : 'Ctrl K'}</Kbd>
                     </button>
@@ -168,7 +168,7 @@ export default function AppLayout() {
                                 !online && 'opacity-50',
                             )}
                         >
-                            <Plus className="w-6 h-6 text-on-action" strokeWidth={2} />
+                            <Plus aria-hidden="true" className="w-6 h-6 text-on-action" strokeWidth={2} />
                         </button>
                     </div>
 
@@ -225,30 +225,28 @@ function useShortcuts(handlers: ShortcutHandlers, paletteOpen: boolean) {
 
 function NavItem({ to, label, icon: Icon, end, also }: NavItemDef) {
     const { pathname } = useLocation()
+    const own = !!matchPath({ path: to, end }, pathname)
     const alsoActive = !!also?.some(p => matchPath({ path: p, end: false }, pathname))
+    const isActive = own || alsoActive
+    // A Link, not a NavLink: a NavLink only marks itself current on its own path, and a
+    // screen reader should hear the tab that's lit up for a page under it (Bills under Plan) too.
     return (
-        <NavLink
+        <Link
             to={to}
-            end={end}
+            aria-current={own ? 'page' : alsoActive ? 'true' : undefined}
             className="flex flex-1 flex-col items-center justify-center gap-[5px] h-full"
         >
-            {({ isActive: own }) => {
-                const isActive = own || alsoActive
-                return (
-                <>
-                    <Icon
-                        className={cn('w-5 h-5', isActive ? 'text-brand' : 'text-faint-ink')}
-                        strokeWidth={2}
-                    />
-                    <span className={cn(
-                        'text-[10px] leading-none',
-                        isActive ? 'font-semibold text-brand' : 'text-subtle-ink',
-                    )}>
-                        {label}
-                    </span>
-                </>
-                )
-            }}
-        </NavLink>
+            <Icon
+                aria-hidden="true"
+                className={cn('w-5 h-5', isActive ? 'text-brand' : 'text-faint-ink')}
+                strokeWidth={2}
+            />
+            <span className={cn(
+                'text-[10px] leading-none',
+                isActive ? 'font-semibold text-brand' : 'text-subtle-ink',
+            )}>
+                {label}
+            </span>
+        </Link>
     )
 }

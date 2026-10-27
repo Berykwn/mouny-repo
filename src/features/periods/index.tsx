@@ -163,7 +163,7 @@ function ActiveCard({ period, periods, summary, onClose, onOpen }: ActiveCardPro
                     </span>
                 </div>
                 {progress.fraction !== null && (
-                    <div className="mt-3.5 h-1 rounded-full bg-line-soft overflow-hidden">
+                    <div aria-hidden="true" className="mt-3.5 h-1 rounded-full bg-line-soft overflow-hidden">
                         <div className="h-full rounded-full bg-ink" style={{ width: `${Math.round(progress.fraction * 100)}%` }} />
                     </div>
                 )}

@@ -76,12 +76,13 @@ export function ContributeForm({ item, onSuccess }: ContributeFormProps) {
             </div>
 
             <div className="space-y-1.5">
-                <Label className={FIELD_LABEL}>Amount to add</Label>
+                <Label htmlFor="contribute-amount" className={FIELD_LABEL}>Amount to add</Label>
                 <div className="relative">
                     <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[13px] text-muted-ink font-medium">
                         Rp
                     </span>
                     <Input
+                        id="contribute-amount"
                         type="text"
                         inputMode="numeric"
                         placeholder="0"

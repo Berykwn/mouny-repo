@@ -2,6 +2,7 @@
 
 All notable changes to Mouny, newest first. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow [Semantic Versioning](https://semver.org/):
 
+- **Major** (**x**.0.0): the app looks and is organised differently enough to relearn
 - **Minor** (1.**x**.0): new features or changes you'll notice
 - **Patch** (1.x.**y**): fixes only
 
@@ -12,6 +13,48 @@ All notable changes to Mouny, newest first. The format follows [Keep a Changelog
 ## [Unreleased]
 
 Nothing yet.
+
+---
+
+## [2.0.0] — 2026-10-27
+
+A new look and a new layout. Mouny is calmer: white pages, ink and cobalt instead of green, notes first in the ledger, and at most one suggestion per screen, always with a button that does it. It never fills anything in on a guess.
+
+> **No migrations.** Nothing in the database changes; deploy as usual. The saved offline cache is cleared once on update, so the first load after updating fetches everything fresh.
+
+### Added
+- **Four places to go:** *Home*, *Ledger*, *Insights* and *Plan*, plus Add in the middle. Settings opens from your avatar.
+- **Insights.** *This period*, *Habits*, *Cash flow*, *Trends* and *What if* tabs. Each block says what it found first, then shows the chart and how it was worked out. Comparisons are against your own usual (median), not a fixed target.
+- **Plan** gathers *Bills*, *Debts* and *Wishlist*, with what's coming up laid out by pay period and a pay button on each row.
+- **Bills** show their price history; subscriptions get an audit that spots a price rise (*Netflix 54rb → 65rb*) and ones left paused.
+- **Debts** split into what you owe and what you're owed, with a payoff plan that knows this period's payments.
+- **Wishlist** shows when each wish is in reach at your current pace (*3+ years* when it's far off) and answers *Can I afford it?*
+- **Your name.** Set it in Settings and Home greets you by it, by time of day. It's saved to your account, so every device picks it up.
+- **Ledger calendar** tints each day by how much was spent, marks days over the daily allowance in soft red, and explains itself with a small legend.
+- **Note search** in the ledger, with how many entries match and their total.
+- **Desktop:** a command palette (Ctrl/Cmd+K), with N for a new entry, / to search, G L and G I to jump to the Ledger and Insights; a bulk bar and a side panel for entries.
+- Accounts split into spendable and savings, with how long the spendable money lasts. Categories group by kind and suggest a budget from your median.
+- Closing a period shows a short recap.
+
+### Changed
+- **Ink & Cobalt.** Brand green is gone. Main buttons are ink on light and cobalt on dark, so dark mode never shows white buttons. Category kinds: Everyday orange, Bills violet, Lifestyle amber, Savings teal.
+- **Home** leads with what's safe to spend today, one status word and a bar showing how much of the period is used, then one suggestion, your balances, bills due and today's entries.
+- **Ledger rows** use the note as the title. Day totals are quieter.
+- **Nothing is guessed.** Pay-from account, category kind and the expected payday are always chosen by you. Past an expected payday, Home says so and offers to close the period.
+- Short amounts use a decimal comma (*1,5jt*). Periods are named by the month they start in. All app text is in English.
+- One main button per screen. Inputs are 16px on phones so iOS doesn't zoom.
+- Settings only holds settings. Sign-in pages, empty states, offline and error screens are calmer.
+
+### Fixed
+- **Turning reminders on** waited no time for the app to finish setting up on a first visit, then said you were offline. It now waits up to 10 seconds and says what's actually wrong.
+- The bottom bar clears the iPhone home indicator, and the top bar stays put when you scroll.
+- Logging out while offline says why it can't.
+- No flash of a missing name or avatar while the page loads.
+- Wishlist cards no longer make the page wider than a phone.
+- Leftover money isn't promised to both a debt and a wish.
+- Plan, Bills and *Can I afford it?* wait for the period's entries before answering.
+- **Screen readers:** form fields are tied to their labels, segmented choices say which one is picked, the bottom bar says which tab you're under (Bills counts as Plan), and the category donut reads out its split.
+- The installed app's title bar and launch screen are white, matching the pages (they were off-white).
 
 ---
 

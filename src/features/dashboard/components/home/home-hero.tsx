@@ -76,6 +76,7 @@ export function HomeHero({ stats }: { stats: PeriodStats }) {
 
             {/* The legend reads out the amounts; the bar is for the eye. */}
             <div
+                aria-hidden="true"
                 className="relative mt-4 h-1.5 rounded-full bg-line-soft"
                 title={`${usedPct}% of this period's income used${elapsedPct !== null ? ` · ${elapsedPct}% of the period gone` : ''}`}
             >

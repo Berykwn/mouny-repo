@@ -35,7 +35,7 @@ export function PlanHeader({ title, add, extra }: PlanHeaderProps) {
             )}
             <header className="lg:hidden flex items-center gap-2 px-2 pt-[18px] pb-2">
                 <button type="button" onClick={back} aria-label="Back" className="w-10 h-10 rounded-full flex items-center justify-center text-ink hover:bg-surface-hover">
-                    <ChevronLeft className="w-5 h-5" />
+                    <ChevronLeft aria-hidden="true" className="w-5 h-5" />
                 </button>
                 <h1 className="flex-1 text-[20px] font-semibold tracking-[-0.02em] text-ink">{title}</h1>
                 {add && (
@@ -46,7 +46,7 @@ export function PlanHeader({ title, add, extra }: PlanHeaderProps) {
                         aria-label={add.label}
                         className="w-10 h-10 mr-2 rounded-[12px] border border-line bg-surface flex items-center justify-center text-ink hover:bg-surface-hover disabled:opacity-50"
                     >
-                        <Plus className="w-[18px] h-[18px]" strokeWidth={2} />
+                        <Plus aria-hidden="true" className="w-[18px] h-[18px]" strokeWidth={2} />
                     </button>
                 )}
             </header>

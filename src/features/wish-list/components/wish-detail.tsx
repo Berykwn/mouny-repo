@@ -121,7 +121,7 @@ export function WishDetail({ item, stop, pace, owedFirst = 0, savedThisPeriod = 
                     <PartDots item={item} className="mt-3" />
                 ) : target !== null && (
                     <>
-                        <div className="mt-3 h-1.5 rounded-full bg-line-soft overflow-hidden">
+                        <div aria-hidden="true" className="mt-3 h-1.5 rounded-full bg-line-soft overflow-hidden">
                             <div className="h-full rounded-full bg-info" style={{ width: `${percent}%` }} />
                         </div>
                         <p className="mt-1.5 text-[12px] text-muted-ink tabular-nums">{formatCurrency(saved)} of {formatCurrency(target)} · {percent}%</p>

@@ -221,6 +221,7 @@ export function CategoryForm({ onSuccess, initial, initialBudget, onDelete }: Ca
                                     key={target}
                                     type="button"
                                     onClick={() => setColorTarget(target)}
+                                    aria-pressed={colorTarget === target}
                                     className={cn(
                                         'px-3 h-7 rounded-[8px] text-[12px] font-semibold transition-colors',
                                         colorTarget === target ? 'bg-surface text-ink shadow-sm' : 'text-muted-ink'
@@ -235,6 +236,7 @@ export function CategoryForm({ onSuccess, initial, initialBudget, onDelete }: Ca
                                 type="button"
                                 title="Soft tint of the icon colour"
                                 onClick={() => setBgColor(null)}
+                                aria-pressed={bgColor === null}
                                 className={cn(
                                     'px-3 h-7 rounded-[8px] text-[12px] font-medium border transition-colors',
                                     bgColor === null ? 'border-ink text-ink' : 'border-dashed border-line-strong text-muted-ink'

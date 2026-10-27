@@ -74,7 +74,9 @@ export function AffordSheet({ onAddToWishlist, onClose }: AffordSheetProps) {
                 />
             </label>
             <Input
+                aria-label="What is it? (optional)"
                 placeholder="What is it? (optional)"
+
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 maxLength={80}

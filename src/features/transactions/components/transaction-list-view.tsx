@@ -162,7 +162,7 @@ export function TransactionListView({
                     />
                     {query && (
                         <button type="button" aria-label="Clear search" onClick={() => setQuery('')} className="text-muted-ink hover:text-ink">
-                            <X className="w-4 h-4" />
+                            <X aria-hidden="true" className="w-4 h-4" />
                         </button>
                     )}
                 </label>
@@ -174,7 +174,7 @@ export function TransactionListView({
                     disabled={filtered.length === 0}
                     className={ICON_BTN}
                 >
-                    <Download className="w-[18px] h-[18px]" />
+                    <Download aria-hidden="true" className="w-[18px] h-[18px]" />
                 </button>
                 {canSelect && (
                     <button
@@ -184,7 +184,7 @@ export function TransactionListView({
                         aria-pressed={selecting}
                         className={cn(ICON_BTN, 'lg:hidden', selecting && 'bg-ink text-on-ink hover:text-on-ink')}
                     >
-                        <ListChecks className="w-[18px] h-[18px]" />
+                        <ListChecks aria-hidden="true" className="w-[18px] h-[18px]" />
                     </button>
                 )}
             </div>
@@ -282,7 +282,7 @@ export function TransactionListView({
                         onClick={onBulkCategoryRequest}
                         className={cn(BAR_BTN, 'bg-on-ink/10 hover:bg-on-ink/15')}
                     >
-                        <Tag className="w-4 h-4" /> <span className="hidden sm:inline">Change category</span>
+                        <Tag aria-hidden="true" className="w-4 h-4" /> <span className="hidden sm:inline">Change category</span>
                     </button>
                     <button
                         type="button"
@@ -291,7 +291,7 @@ export function TransactionListView({
                         onClick={handleExport}
                         className={cn(BAR_BTN, 'bg-on-ink/10 hover:bg-on-ink/15')}
                     >
-                        <Download className="w-4 h-4" /> <span className="hidden sm:inline">Export</span>
+                        <Download aria-hidden="true" className="w-4 h-4" /> <span className="hidden sm:inline">Export</span>
                     </button>
                     <button
                         type="button"
@@ -300,7 +300,7 @@ export function TransactionListView({
                         onClick={onBulkDeleteRequest}
                         className={cn(BAR_BTN, 'bg-negative text-white hover:bg-negative/90')}
                     >
-                        <Trash2 className="w-4 h-4" /> <span className="hidden sm:inline">Delete</span>
+                        <Trash2 aria-hidden="true" className="w-4 h-4" /> <span className="hidden sm:inline">Delete</span>
                     </button>
                     <button
                         type="button"
@@ -308,7 +308,7 @@ export function TransactionListView({
                         onClick={exitSelect}
                         className="flex items-center justify-center w-9 h-9 rounded-[10px] text-on-ink/70 hover:text-on-ink transition-colors"
                     >
-                        <X className="w-4 h-4" />
+                        <X aria-hidden="true" className="w-4 h-4" />
                     </button>
                 </div>
             )}

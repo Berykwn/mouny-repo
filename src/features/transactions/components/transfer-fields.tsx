@@ -34,7 +34,7 @@ function AccountCard({ label, account, after, onClick, disabled }: {
             className="flex-1 min-w-0 rounded-[16px] border border-line bg-surface p-3.5 text-left transition-colors hover:bg-surface-soft disabled:opacity-50 disabled:pointer-events-none"
         >
             <span className="block text-[11.5px] text-muted-ink">{label}</span>
-            <AccountTypeIcon type={account?.type ?? 'cash'} savings={account?.is_savings} className="mt-2 w-6 h-6" />
+            <AccountTypeIcon aria-hidden="true" type={account?.type ?? 'cash'} savings={account?.is_savings} className="mt-2 w-6 h-6" />
             <span className="mt-2 block text-[14px] font-semibold text-ink truncate">{account?.name ?? 'Select'}</span>
             {account && (
                 <span className="block text-[11.5px] text-muted-ink tabular-nums truncate">

@@ -52,7 +52,7 @@ export function KindSplitChart({ split, totalIncome, isClosed }: KindSplitChartP
     return (
         <div>
             {/* One bar of income: each kind's slice, then what's still unspent */}
-            <div className="flex h-2.5 w-full gap-[2px] overflow-hidden rounded-full bg-line-soft">
+            <div aria-hidden="true" className="flex h-2.5 w-full gap-[2px] overflow-hidden rounded-full bg-line-soft">
                 {SEGMENTS.map(k => byKind[k] > 0 && (
                     <div
                         key={k}

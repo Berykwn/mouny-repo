@@ -144,8 +144,9 @@ export function ContributeQuantityForm({ item, periodStart, onSuccess }: Contrib
             {/* Quantity + price per unit */}
             <div className="flex gap-3">
                 <div className="space-y-1.5 flex-1">
-                    <Label className={FIELD_LABEL}>Quantity ({unit})</Label>
+                    <Label htmlFor="contribute-quantity" className={FIELD_LABEL}>Quantity ({unit})</Label>
                     <Input
+                        id="contribute-quantity"
                         type="text"
                         inputMode="decimal"
                         placeholder="0"
@@ -157,10 +158,12 @@ export function ContributeQuantityForm({ item, periodStart, onSuccess }: Contrib
                     />
                 </div>
                 <div className="space-y-1.5 flex-1">
-                    <Label className={FIELD_LABEL}>Price per {unit}</Label>
+                    <Label htmlFor="contribute-unit-price" className={FIELD_LABEL}>Price per {unit}</Label>
                     <div className="relative">
                         <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[13px] text-muted-ink font-medium">Rp</span>
                         <Input
+                            id="contribute-unit-price"
+
                             type="text"
                             inputMode="numeric"
                             value={formatCurrencyInput(pricePerUnit)}

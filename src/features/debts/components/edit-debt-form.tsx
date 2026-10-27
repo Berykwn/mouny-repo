@@ -61,8 +61,9 @@ export function EditDebtForm({ debt, onSuccess }: EditDebtFormProps) {
     return (
         <form onSubmit={handleSubmit} className="space-y-4 pb-2">
             <div className="space-y-1.5">
-                <Label className={FIELD_LABEL}>{isDebt ? 'Lender name' : 'Borrower name'}</Label>
+                <Label htmlFor="edit-debt-counterparty" className={FIELD_LABEL}>{isDebt ? 'Lender name' : 'Borrower name'}</Label>
                 <Input
+                    id="edit-debt-counterparty"
                     value={counterparty}
                     onChange={(e) => setCounterparty(e.target.value)}
                     required
@@ -72,10 +73,11 @@ export function EditDebtForm({ debt, onSuccess }: EditDebtFormProps) {
             </div>
 
             <div className="space-y-1.5">
-                <Label className={FIELD_LABEL}>Total amount</Label>
+                <Label htmlFor="edit-debt-amount" className={FIELD_LABEL}>Total amount</Label>
                 <div className="relative">
                     <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[13px] text-muted-ink font-medium">Rp</span>
                     <Input
+                        id="edit-debt-amount"
                         type="text"
                         inputMode="numeric"
                         value={formatCurrencyInput(amount)}
@@ -129,15 +131,16 @@ export function EditDebtForm({ debt, onSuccess }: EditDebtFormProps) {
                             onClick={() => setDueDate('')}
                             className="w-12 h-12 rounded-[14px] border border-line bg-surface flex items-center justify-center text-muted-ink hover:text-ink hover:bg-surface-soft"
                         >
-                            <X className="w-4 h-4" />
+                            <X aria-hidden="true" className="w-4 h-4" />
                         </button>
                     )}
                 </div>
             </div>
 
             <div className="space-y-1.5">
-                <Label className={FIELD_LABEL}>Note <span className="normal-case tracking-normal font-normal">(optional)</span></Label>
+                <Label htmlFor="edit-debt-note" className={FIELD_LABEL}>Note <span className="normal-case tracking-normal font-normal">(optional)</span></Label>
                 <Input
+                    id="edit-debt-note"
                     placeholder="Details..."
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}

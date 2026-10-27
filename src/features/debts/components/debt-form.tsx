@@ -123,6 +123,7 @@ export function DebtForm({ onSuccess, payPeriodId, periodStartDate, initialType 
                         key={t}
                         type="button"
                         onClick={() => handleTypeChange(t)}
+                        aria-pressed={type === t}
                         className={cn(
                             'relative z-10 flex-1 py-2 text-[13px] rounded-[10px] transition-colors duration-150',
                             type === t ? 'text-ink font-semibold' : 'text-muted-ink font-medium'
@@ -134,8 +135,9 @@ export function DebtForm({ onSuccess, payPeriodId, periodStartDate, initialType 
             </div>
 
             <div className="space-y-1.5">
-                <Label className={FIELD_LABEL}>{type === 'debt' ? 'Lender name' : 'Borrower name'}</Label>
+                <Label htmlFor="debt-counterparty" className={FIELD_LABEL}>{type === 'debt' ? 'Lender name' : 'Borrower name'}</Label>
                 <Input
+                    id="debt-counterparty"
                     placeholder="e.g. John Doe"
                     value={counterparty}
                     onChange={(e) => setCounterparty(e.target.value)}
@@ -146,12 +148,13 @@ export function DebtForm({ onSuccess, payPeriodId, periodStartDate, initialType 
             </div>
 
             <div className="space-y-1.5">
-                <Label className={FIELD_LABEL}>Amount</Label>
+                <Label htmlFor="debt-amount" className={FIELD_LABEL}>Amount</Label>
                 <div className="relative">
                     <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[13px] text-muted-ink font-medium">
                         Rp
                     </span>
                     <Input
+                        id="debt-amount"
                         type="text"
                         inputMode="numeric"
                         placeholder="0"
@@ -174,6 +177,7 @@ export function DebtForm({ onSuccess, payPeriodId, periodStartDate, initialType 
                     <p className="text-[11.5px] text-muted-ink">{affectsBalanceLabel}</p>
                 </div>
                 <Switch
+                    aria-label="Record to balance"
                     checked={affectsBalance}
                     onCheckedChange={setAffectsBalance}
                     disabled={loading}
@@ -258,8 +262,9 @@ export function DebtForm({ onSuccess, payPeriodId, periodStartDate, initialType 
             </div>
 
             <div className="space-y-1.5">
-                <Label className={FIELD_LABEL}>Note <span className="normal-case tracking-normal font-normal">(optional)</span></Label>
+                <Label htmlFor="debt-note" className={FIELD_LABEL}>Note <span className="normal-case tracking-normal font-normal">(optional)</span></Label>
                 <Input
+                    id="debt-note"
                     placeholder="Details..."
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}

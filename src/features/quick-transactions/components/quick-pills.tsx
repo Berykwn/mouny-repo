@@ -1,10 +1,7 @@
 import { formatShortCurrency } from '@/lib/helpers'
 import { cn } from '@/lib/utils'
 import type { QuickTransactionWithCategory } from '@/types'
-
-export function quickName(quick: Pick<QuickTransactionWithCategory, 'label' | 'category'>): string {
-    return quick.label?.trim() || quick.category.name
-}
+import { quickName } from '../lib/quick-name'
 
 interface QuickPillsProps {
     quicks: QuickTransactionWithCategory[]

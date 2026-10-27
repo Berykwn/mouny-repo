@@ -115,6 +115,7 @@ export function WishPartsForm({ item, onSuccess }: WishPartsFormProps) {
                     {rows.map((row, i) => (
                         <div key={row.key} className="flex gap-2">
                             <Input
+                                aria-label={`Part ${i + 1} name`}
                                 placeholder={i === 0 ? 'e.g. Motherboard' : 'Part name'}
                                 value={row.name}
                                 onChange={(e) => setRow(row.key, { name: e.target.value })}
@@ -142,7 +143,7 @@ export function WishPartsForm({ item, onSuccess }: WishPartsFormProps) {
                                 aria-label={`Remove ${row.name || 'part'}`}
                                 className="w-9 h-11 shrink-0 flex items-center justify-center rounded-[12px] text-muted-ink hover:text-negative hover:bg-surface-hover disabled:opacity-50"
                             >
-                                <X className="w-4 h-4" />
+                                <X aria-hidden="true" className="w-4 h-4" />
                             </button>
                         </div>
                     ))}

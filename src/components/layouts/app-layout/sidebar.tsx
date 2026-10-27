@@ -139,7 +139,7 @@ function PeriodCard({ period }: { period: PayPeriod | null }) {
             <p className="text-[14px] font-semibold text-ink tabular-nums">{periodRange(period.start_date, end, progress.estimated)}</p>
             <p className="text-[12px] text-subtle-ink tabular-nums mt-0.5">{days}</p>
             {progress.fraction !== null && (
-                <div className="mt-2 h-1 rounded-full bg-line overflow-hidden">
+                <div aria-hidden="true" className="mt-2 h-1 rounded-full bg-line overflow-hidden">
                     <div className="h-full rounded-full bg-ink" style={{ width: `${Math.round(progress.fraction * 100)}%` }} />
                 </div>
             )}

@@ -19,7 +19,7 @@ export function SpendingByAccountList({ byAccount, totalSpending }: { byAccount:
                                     {formatCurrency(a.amount)} <span className="font-normal text-muted-ink">· {pct}%</span>
                                 </p>
                             </div>
-                            <div className="h-1 rounded-full bg-line-soft overflow-hidden">
+                            <div aria-hidden="true" className="h-1 rounded-full bg-line-soft overflow-hidden">
                                 <div className="h-full rounded-full bg-brand" style={{ width: `${pct}%` }} />
                             </div>
                         </div>

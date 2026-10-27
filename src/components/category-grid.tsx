@@ -28,6 +28,7 @@ export function CategoryGrid({ categories, selectedId, onSelect, disabled }: Cat
                         type="button"
                         disabled={disabled}
                         onClick={() => onSelect(c)}
+                        aria-pressed={selected}
                         className={cn(
                             'flex flex-col items-center gap-1.5 p-2.5 rounded-[14px] border transition-all duration-150',
                             selected ? 'border-brand bg-brand-tint' : 'border-line bg-surface'

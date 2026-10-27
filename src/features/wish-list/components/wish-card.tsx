@@ -11,7 +11,7 @@ const units = (n: number) => new Intl.NumberFormat('id-ID', { maximumFractionDig
 export function PartDots({ item, className }: { item: WishListItem; className?: string }) {
     const parts = item.parts ?? []
     return (
-        <div className={cn('flex gap-1', className)} aria-label={`${parts.filter(p => p.is_purchased).length} of ${parts.length} parts bought`}>
+        <div role="img" className={cn('flex gap-1', className)} aria-label={`${parts.filter(p => p.is_purchased).length} of ${parts.length} parts bought`}>
             {parts.map(p => (
                 <span key={p.id} className={cn('flex-1 h-1.5 rounded-full', p.is_purchased ? 'bg-info' : 'bg-line-soft')} />
             ))}
@@ -78,7 +78,7 @@ export function WishCard({ item, stop, pace, today, onOpen, onBuy, owedFirst = 0
                 {parts ? (
                     <PartDots item={item} className="mt-3.5" />
                 ) : (target !== null || isUOM) && !(ready && !isUOM) ? (
-                    <div className="mt-3.5 h-1.5 rounded-full bg-line-soft overflow-hidden">
+                    <div aria-hidden="true" className="mt-3.5 h-1.5 rounded-full bg-line-soft overflow-hidden">
                         <div className="h-full rounded-full bg-info transition-all" style={{ width: `${percent}%` }} />
                     </div>
                 ) : null}

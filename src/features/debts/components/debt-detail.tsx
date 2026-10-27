@@ -65,7 +65,7 @@ export function DebtDetail({ debt, stop, hasActivePeriod, onSettle, onEdit, onDe
                 {!settled && paid > 0 && (
                     <p className="text-[12px] text-muted-ink tabular-nums">of {formatCurrency(debt.total_amount)} · {percent}% {isDebt ? 'paid' : 'back'}</p>
                 )}
-                <div className="mt-3 h-1.5 rounded-full bg-line-soft overflow-hidden">
+                <div aria-hidden="true" className="mt-3 h-1.5 rounded-full bg-line-soft overflow-hidden">
                     <div className="h-full rounded-full bg-ink" style={{ width: `${settled ? 100 : percent}%` }} />
                 </div>
             </div>

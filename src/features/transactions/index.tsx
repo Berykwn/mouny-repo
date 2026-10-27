@@ -232,7 +232,7 @@ export default function TransactionsPage() {
                 view === 'calendar' ? 'bg-ink border-ink text-on-ink' : 'bg-surface border-line text-ink hover:bg-surface-soft',
             )}
         >
-            <CalendarDays className="w-[18px] h-[18px]" />
+            <CalendarDays aria-hidden="true" className="w-[18px] h-[18px]" />
         </button>
     )
 
@@ -340,7 +340,7 @@ export default function TransactionsPage() {
                                         onClick={() => setOpenTx(null)}
                                         className="absolute -top-1 right-0 w-8 h-8 rounded-full bg-surface-hover flex items-center justify-center text-muted-ink hover:text-ink transition-colors"
                                     >
-                                        <X className="w-4 h-4" />
+                                        <X aria-hidden="true" className="w-4 h-4" />
                                     </button>
                                     {detail}
                                 </div>

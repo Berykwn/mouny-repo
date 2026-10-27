@@ -134,12 +134,13 @@ export function OpenPeriodForm({ onSuccess }: OpenPeriodFormProps) {
             </div>
 
             <div className="space-y-1.5">
-                <Label className={FIELD_LABEL}>Expected income</Label>
+                <Label htmlFor="period-income" className={FIELD_LABEL}>Expected income</Label>
                 <div className="relative">
                     <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[15px] text-subtle-ink">
                         Rp
                     </span>
                     <Input
+                        id="period-income"
                         type="text"
                         inputMode="numeric"
                         placeholder="0"
@@ -195,11 +196,13 @@ export function OpenPeriodForm({ onSuccess }: OpenPeriodFormProps) {
             </div>
 
             <div className="space-y-1.5">
-                <Label className={FIELD_LABEL}>
+                <Label htmlFor="period-notes" className={FIELD_LABEL}>
                     Notes{' '}
                     <span className="font-normal text-subtle-ink">(optional)</span>
                 </Label>
                 <Input
+                    id="period-notes"
+
                     placeholder="April salary, bonus, etc."
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}

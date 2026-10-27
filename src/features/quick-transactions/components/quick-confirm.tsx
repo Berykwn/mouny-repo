@@ -12,7 +12,7 @@ import { quickTransactionsService } from '@/services/quick-transactions.service'
 import { formatCurrency, toISODate } from '@/lib/helpers'
 import type { Account, PayPeriod, QuickTransactionWithCategory } from '@/types'
 import { shortDate } from '@/features/bills/lib/bill-labels'
-import { quickName } from './quick-pills'
+import { quickName } from '../lib/quick-name'
 
 const FIELD_LABEL = 'text-[11px] font-medium uppercase tracking-[.14em] text-muted-ink'
 const NO_ACCOUNTS: Account[] = []
@@ -99,8 +99,9 @@ export function QuickConfirm({ quick, period, onDone, onBack }: QuickConfirmProp
             </div>
 
             <div className="space-y-1.5">
-                <Label className={FIELD_LABEL}>Note <span className="normal-case tracking-normal font-normal">(optional)</span></Label>
+                <Label htmlFor="quick-note" className={FIELD_LABEL}>Note <span className="normal-case tracking-normal font-normal">(optional)</span></Label>
                 <Input
+                    id="quick-note"
                     value={note}
                     onChange={(e) => setNote(e.target.value)}
                     placeholder={quickName(quick)}

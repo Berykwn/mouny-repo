@@ -150,6 +150,7 @@ export function BuyItemForm({ item, part, periodStart, onSuccess }: BuyItemFormP
                         </p>
                     </div>
                     <Switch
+                        aria-label="Record as expense"
                         checked={record}
                         onCheckedChange={setRecord}
                         disabled={loading}
@@ -160,12 +161,13 @@ export function BuyItemForm({ item, part, periodStart, onSuccess }: BuyItemFormP
 
             {/* Actual price */}
             <div className="space-y-1.5">
-                <Label className={FIELD_LABEL}>
+                <Label htmlFor="buy-price" className={FIELD_LABEL}>
                     Actual price
                 </Label>
                 <div className="relative">
                     <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[13px] text-muted-ink font-medium">Rp</span>
                     <Input
+                        id="buy-price"
                         type="text"
                         inputMode="numeric"
                         value={formatCurrencyInput(price)}
