@@ -1,4 +1,6 @@
-import { addDays, billsForPeriod, type BillDue, type PeriodWindow } from '@/features/bills/lib/bills'
+import { addDays } from '@/lib/dates'
+import { billsForPeriod, type BillDue, type PeriodWindow } from '@/features/bills/lib/bills'
+import { shortDate } from '@/features/bills/lib/bill-labels'
 import type { DebtWithAccount, RecurringBill } from '@/types'
 
 /**
@@ -28,6 +30,16 @@ export function nextWindow(window: Pick<PeriodWindow, 'start' | 'end'>): Pick<Pe
     const length = Math.round((Date.parse(window.end) - Date.parse(window.start)) / 86_400_000)
     const start = addDays(window.end, 1)
     return { start, end: addDays(start, length) }
+}
+
+/**
+ * "25 Nov – about 24 Dec". The next period's end is always a guess (it isn't open yet);
+ * its start is too when this period's end is estimated: "about 25 Nov – 24 Dec".
+ */
+export function periodRange(next: Pick<PeriodWindow, 'start' | 'end'>, startEstimated: boolean): string {
+    return startEstimated
+        ? `about ${shortDate(next.start)} – ${shortDate(next.end)}`
+        : `${shortDate(next.start)} – about ${shortDate(next.end)}`
 }
 
 const byDate = (a: UpcomingItem, b: UpcomingItem) =>

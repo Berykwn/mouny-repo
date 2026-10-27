@@ -112,7 +112,7 @@ export function PayReceivableForm({ debt, periodStartDate, plannedAmount, onSucc
                     <p className="text-[11.5px] text-muted-ink">of {formatCurrency(debt.total_amount)}</p>
                 </div>
                 <div className="space-y-1">
-                    <ProgressBar percent={collectedPercent} color="var(--positive)" />
+                    <ProgressBar percent={collectedPercent} />
                     <p className="text-[11px] text-muted-ink">{collectedPercent}% collected</p>
                 </div>
             </div>
@@ -128,7 +128,7 @@ export function PayReceivableForm({ debt, periodStartDate, plannedAmount, onSucc
                         inputMode="numeric"
                         value={formatCurrencyInput(amount)}
                         onChange={(e) => setAmount(e.target.value.replace(/\D/g, ''))}
-                        className="pl-10 h-12 rounded-[14px] border-line text-[13px] font-mono"
+                        className="pl-10 h-12 rounded-[14px] border-line text-[16px] lg:text-[13px] font-mono"
                         required
                         disabled={loading}
                     />

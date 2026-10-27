@@ -1,8 +1,10 @@
-import { Navigate, Outlet } from 'react-router-dom'
+import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '@/hooks/use-auth'
+import { returnTo } from '@/lib/return-to'
 
 export function PublicRoute() {
     const { user, loading } = useAuth()
+    const location = useLocation()
 
     if (loading) {
         return (
@@ -13,7 +15,7 @@ export function PublicRoute() {
     }
 
     if (user) {
-        return <Navigate to="/" replace />
+        return <Navigate to={returnTo(location.state)} replace />
     }
 
     return <Outlet />

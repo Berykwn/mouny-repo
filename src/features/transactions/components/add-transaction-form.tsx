@@ -30,7 +30,7 @@ const NO_CATEGORIES: Category[] = []
 
 // Phones read the form top to bottom without labels; a wide screen shows them.
 const FIELD_LABEL = 'sr-only lg:not-sr-only lg:block text-[12px] font-medium text-muted-ink'
-const NOTE_INPUT = 'w-full h-12 rounded-[14px] bg-surface-hover border border-transparent px-4 text-[15px] text-ink placeholder:text-muted-ink outline-none transition-colors focus:border-line-strong disabled:opacity-60'
+const NOTE_INPUT = 'w-full h-12 rounded-[14px] bg-surface-hover border border-transparent px-4 text-[16px] lg:text-[15px] text-ink placeholder:text-muted-ink outline-none transition-colors focus:border-line-strong disabled:opacity-60'
 const OUTLINE_BUTTON = 'flex-1 h-[52px] rounded-[14px] border border-line text-[14px] font-semibold text-muted-ink transition-colors hover:bg-surface-soft hover:text-ink disabled:opacity-50 disabled:pointer-events-none'
 const FILLED_BUTTON = 'flex-1 h-[52px] rounded-[14px] text-[14px] font-semibold text-on-action bg-action hover:bg-action/90 transition-colors disabled:opacity-50 disabled:pointer-events-none'
 
@@ -137,12 +137,12 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [type, typeCategories])
 
-    // "Safe to spend" baseline for the consequence strip, from the period's cached
+    // "Left this period" baseline for the consequence strip, from the period's cached
     // transactions; the strip itself adds the in-progress amount.
     // Worked out like the dashboard's, so money moved into savings isn't counted as spendable.
     // Editing: the baseline is the period without this transaction, so the strip shows where
     // the edited version leaves you.
-    const safeToSpend = useMemo(() => {
+    const leftThisPeriod = useMemo(() => {
         if (!periodTxs) return null
         return summarizeTransactions(initial ? periodTxs.filter((t) => t.id !== initial.id) : periodTxs).net - billReserve.reserved
     }, [periodTxs, initial, billReserve.reserved])
@@ -359,7 +359,7 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
             />
             {noteSuggestions.length > 0 && (
                 <div className="mt-1.5 flex items-baseline gap-x-3 gap-y-1 flex-wrap px-1 text-[12.5px]">
-                    <span className="text-subtle-ink">Recent{selectedCategory ? ` for ${selectedCategory.name}` : ''}:</span>
+                    <span className="text-muted-ink">Recent{selectedCategory ? ` for ${selectedCategory.name}` : ''}:</span>
                     {noteSuggestions.map((n) => (
                         <button
                             key={n}
@@ -478,7 +478,7 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
                                             aria-hidden="true"
                                             className={cn(
                                                 'w-5 h-5 rounded-[6px] border flex items-center justify-center shrink-0',
-                                                on ? 'bg-brand border-brand text-white' : 'border-line-strong bg-surface'
+                                                on ? 'bg-brand border-brand text-on-brand' : 'border-line-strong bg-surface'
                                             )}
                                         >
                                             {on && <Check className="w-3.5 h-3.5" strokeWidth={3} />}
@@ -498,7 +498,7 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
                     )}
 
                     {suggestSavingsTransfer && (
-                        <div className="rounded-[14px] bg-info/10 px-3.5 py-3 text-[12px] text-info leading-relaxed">
+                        <div className="rounded-[14px] bg-line-soft px-3.5 py-3 text-[12px] text-muted-ink leading-relaxed">
                             Putting it into {savingsTarget!.name}? Record it as a transfer instead: the money stays in your balance and still counts as saved.
                             <button
                                 type="button"
@@ -527,7 +527,7 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
                                         {selectedAccount?.name ?? 'Select'}
                                     </span>
                                     {selectedAccount && (
-                                        <span className="text-[11.5px] text-faint-ink tabular-nums">{formatCurrency(selectedAccount.balance)}</span>
+                                        <span className="text-[11.5px] text-muted-ink tabular-nums">{formatCurrency(selectedAccount.balance)}</span>
                                     )}
                                 </span>
                                 <ChevronDown className="w-3.5 h-3.5 text-subtle-ink shrink-0" />
@@ -538,9 +538,9 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
                     </div>
 
                     {/* Live consequence */}
-                    {safeToSpend !== null && parsedAmount > 0 && (
+                    {leftThisPeriod !== null && parsedAmount > 0 && (
                         <ConsequenceStrip
-                            safeToSpend={safeToSpend}
+                            leftThisPeriod={leftThisPeriod}
                             amount={parsedAmount}
                             type={type}
                             freed={freedReserve}
@@ -575,7 +575,7 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
                     {dateRow}
 
                     {(transferSaves || transferUnsaves) && (
-                        <p className="rounded-[14px] bg-info/10 px-3.5 py-3 text-[12px] text-info leading-relaxed">
+                        <p className="rounded-[14px] bg-line-soft px-3.5 py-3 text-[12px] text-muted-ink leading-relaxed">
                             {transferSaves
                                 ? `${transferTo!.name} is a savings account, so this counts as saved this period.`
                                 : `${transferFrom!.name} is a savings account, so this takes it off what you’ve saved this period.`}

@@ -86,7 +86,7 @@ export function WhatIfTab({ stats, transactions }: WhatIfTabProps) {
                                         className="mt-2 w-full accent-ink"
                                     />
                                 ) : (
-                                    <p className="mt-1 text-[12px] text-subtle-ink">No {meta.label.toLowerCase()} pace to trim yet.</p>
+                                    <p className="mt-1 text-[12px] text-muted-ink">No {meta.label.toLowerCase()} pace to trim yet.</p>
                                 )}
                             </div>
                         )

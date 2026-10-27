@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { debt } from '@/test/fixtures'
 import { billsForPeriod } from '@/features/bills/lib/bills'
 import type { RecurringBill } from '@/types'
-import { nextWindow, upcomingPlan } from './upcoming'
+import { nextWindow, periodRange, upcomingPlan } from './upcoming'
 
 function bill(overrides: Partial<RecurringBill> = {}): RecurringBill {
     return {
@@ -30,6 +30,14 @@ const today = '2026-10-19'
 describe('nextWindow', () => {
     it('starts the day after and runs as long', () => {
         expect(nextWindow(window)).toEqual({ start: '2026-10-25', end: '2026-11-23' })
+    })
+})
+
+describe('periodRange', () => {
+    it('marks the guessed dates', () => {
+        const next = nextWindow(window)
+        expect(periodRange(next, false)).toBe('25 Oct – about 23 Nov')
+        expect(periodRange(next, true)).toBe('about 25 Oct – 23 Nov')
     })
 })
 

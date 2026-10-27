@@ -1,10 +1,10 @@
 import { Pause, Pencil, Play, Trash2 } from 'lucide-react'
-import { daysUntil, formatCurrency } from '@/lib/helpers'
+import { daysUntil, formatCurrency, toISODate } from '@/lib/helpers'
 import { cn } from '@/lib/utils'
 import type { RecurringBill } from '@/types'
-import type { BillDue } from '../lib/bills'
+import { yearlySetAside, type BillDue } from '../lib/bills'
 import { lastPriceChange, type BillPayment } from '../lib/bill-history'
-import { dayDate, dueLabel, scheduleLabel, shortDate } from '../lib/bill-labels'
+import { dayDate, dueLabel, scheduleLabel, setAsideText, shortDate } from '../lib/bill-labels'
 import { BillTile } from './bill-tile'
 import { PriceChart } from './price-chart'
 
@@ -16,6 +16,7 @@ interface BillDetailProps {
     bill: RecurringBill
     /** Where the bill stands in the open period, if it falls in it. */
     due: BillDue | undefined
+    /** The first unpaid due date: this period's when it's still owed (even if past), else the next one. */
     nextDue: string | null
     /** Its payments over recent periods, oldest first; null while loading. */
     payments: BillPayment[] | null
@@ -28,10 +29,13 @@ interface BillDetailProps {
 
 /** One bill in full: what it costs, what it was paid, and its actions. */
 export function BillDetail({ bill, due, nextDue, payments, busy, onPay, onTogglePause, onEdit, onDelete }: BillDetailProps) {
+    const today = toISODate()
     const canPay = !!due && due.outstanding > 0
     const late = due?.status === 'overdue'
     const perYear = bill.frequency === 'yearly' ? bill.amount : bill.amount * 12
     const change = payments ? lastPriceChange(payments) : null
+    // A yearly bill not due this period: what a month needs to have it ready, from its own amount and date.
+    const ahead = !canPay ? yearlySetAside(bill, today) : null
 
     let note: { text: string; className: string } | null = null
     if (bill.paused) {
@@ -40,13 +44,16 @@ export function BillDetail({ bill, due, nextDue, payments, busy, onPay, onToggle
         note = { text: `Due ${shortDate(due.nextDue)} and not paid yet.`, className: 'bg-negative-soft text-negative-ink' }
     } else if (due?.status === 'paid') {
         note = { text: 'Paid for this period.', className: 'bg-brand-tint text-brand-ink' }
+    } else if (ahead) {
+        note = { text: setAsideText(ahead, today), className: 'bg-surface-hover text-muted-ink' }
     }
 
+    const days = nextDue ? daysUntil(nextDue) : null
     const facts: { label: string; value: string; className?: string }[] = [
         ...(!bill.paused ? [{
             label: 'Next due',
             value: nextDue ? `${dayDate(nextDue)} · ${dueLabel(nextDue).toLowerCase()}` : 'No more payments',
-            className: nextDue && daysUntil(nextDue) <= 7 ? 'text-warning' : undefined,
+            className: days === null ? undefined : days < 0 ? 'text-negative' : days <= 7 ? 'text-warning' : undefined,
         }] : []),
         { label: 'Over a year', value: formatCurrency(perYear) },
         ...(due && due.paidAmount > 0 ? [{ label: 'Paid this period', value: formatCurrency(due.paidAmount) }] : []),

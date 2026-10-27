@@ -104,6 +104,15 @@ describe('buildRoadmap', () => {
     it('has no dates without a positive pace', () => {
         expect(buildRoadmap([wish({ estimated_price: 100 })], null, TODAY)[0]).toMatchObject({ date: null, periods: null })
     })
+
+    it('starts after the debts are paid off, so the same leftover is not promised twice', () => {
+        // 1m owed clears in 20 days; the 500k wish takes 10 more.
+        const stops = buildRoadmap([
+            wish({ id: 'tv', estimated_price: 500_000 }),
+            wish({ id: 'ready', estimated_price: 10, saved_amount: 10 }),
+        ], pace, TODAY, 1_000_000)
+        expect(stops.map(s => [s.item.id, s.date])).toEqual([['ready', TODAY], ['tv', '2026-10-31']])
+    })
 })
 
 describe('targetPlan', () => {
@@ -112,6 +121,22 @@ describe('targetPlan', () => {
         const [stop] = buildRoadmap([item], pace, TODAY)
         expect(targetPlan(item, stop, pace, TODAY)).toEqual({
             targetDate: '2026-11-30', status: 'on-track', daysLeft: 60, periodsLeft: 3, perPeriodNeeded: 200_000,
+            thisPeriod: 200_000, savedThisPeriod: null, doneThisPeriod: false,
+        })
+    })
+
+    it('counts this period done once its installments reach the share, and spreads the rest after it', () => {
+        // 600k over 3 periods is 200k each; 200k went in this period, 400k is left for 2 periods.
+        const item = wish({ estimated_price: 600_000, saved_amount: 200_000, target_date: '2026-11-30' })
+        expect(targetPlan(item, undefined, pace, TODAY, 200_000)).toMatchObject({
+            doneThisPeriod: true, thisPeriod: 0, perPeriodNeeded: 200_000, periodsLeft: 3,
+        })
+    })
+
+    it('asks only for the rest of this period’s share after a part installment', () => {
+        const item = wish({ estimated_price: 600_000, saved_amount: 50_000, target_date: '2026-11-30' })
+        expect(targetPlan(item, undefined, pace, TODAY, 50_000)).toMatchObject({
+            doneThisPeriod: false, thisPeriod: 150_000, perPeriodNeeded: 200_000,
         })
     })
 
@@ -135,6 +160,8 @@ describe('nextPart', () => {
         })
         // 2m still needed at 50k a day: 40 days.
         expect(nextPart(item, pace, TODAY)).toMatchObject({ remaining: 2_000_000, date: '2026-11-10', part: { name: 'CPU' } })
+        // With 500k owed first: 50 days.
+        expect(nextPart(item, pace, TODAY, 500_000)?.date).toBe('2026-11-20')
     })
 
     it('has no date without a price or a pace, and none once every part is bought', () => {

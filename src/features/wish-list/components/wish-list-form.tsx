@@ -152,7 +152,7 @@ export function WishListForm({ payPeriodId, item, defaultName, defaultPrice, onS
                     onChange={(e) => setName(e.target.value)}
                     required
                     disabled={loading}
-                    className="h-12 rounded-[14px] border-line text-[13px]"
+                    className="h-12 rounded-[14px] border-line text-[16px] lg:text-[13px]"
                 />
             </div>
 
@@ -299,7 +299,7 @@ export function WishListForm({ payPeriodId, item, defaultName, defaultPrice, onS
                                         value={quantity}
                                         onChange={(e) => setQuantity(toDecimalInput(e.target.value))}
                                         disabled={loading}
-                                        className="h-12 rounded-[14px] border-line text-[13px] font-mono"
+                                        className="h-12 rounded-[14px] border-line text-[16px] lg:text-[13px] font-mono"
                                     />
                                 </div>
                                 <div className="space-y-2 flex-1">
@@ -331,7 +331,7 @@ export function WishListForm({ payPeriodId, item, defaultName, defaultPrice, onS
                                     value={customUnit}
                                     onChange={(e) => setCustomUnit(e.target.value)}
                                     disabled={loading}
-                                    className="h-12 rounded-[14px] border-line text-[13px]"
+                                    className="h-12 rounded-[14px] border-line text-[16px] lg:text-[13px]"
                                 />
                             )}
 
@@ -347,7 +347,7 @@ export function WishListForm({ payPeriodId, item, defaultName, defaultPrice, onS
                                         placeholder="0"
                                         value={formatCurrencyInput(pricePerUnit)}
                                         onChange={(e) => setPricePerUnit(e.target.value.replace(/\D/g, ''))}
-                                        className="pl-10 h-12 rounded-[14px] border-line text-[13px] font-mono"
+                                        className="pl-10 h-12 rounded-[14px] border-line text-[16px] lg:text-[13px] font-mono"
                                         disabled={loading}
                                     />
                                 </div>
@@ -374,7 +374,7 @@ export function WishListForm({ payPeriodId, item, defaultName, defaultPrice, onS
                                     placeholder="0"
                                     value={formatCurrencyInput(price)}
                                     onChange={(e) => setPrice(e.target.value.replace(/\D/g, ''))}
-                                    className="pl-10 h-12 rounded-[14px] border-line text-[13px] font-mono"
+                                    className="pl-10 h-12 rounded-[14px] border-line text-[16px] lg:text-[13px] font-mono"
                                     disabled={loading}
                                 />
                             </div>
@@ -392,7 +392,7 @@ export function WishListForm({ payPeriodId, item, defaultName, defaultPrice, onS
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
                     disabled={loading}
-                    className="h-12 rounded-[14px] border-line text-[13px]"
+                    className="h-12 rounded-[14px] border-line text-[16px] lg:text-[13px]"
                 />
             </div>
 

@@ -87,7 +87,7 @@ export function ContributeForm({ item, onSuccess }: ContributeFormProps) {
                         placeholder="0"
                         value={formatCurrencyInput(amount)}
                         onChange={(e) => setAmount(e.target.value.replace(/\D/g, ''))}
-                        className="pl-10 h-12 rounded-[14px] border-line text-[13px] font-mono"
+                        className="pl-10 h-12 rounded-[14px] border-line text-[16px] lg:text-[13px] font-mono"
                         disabled={loading}
                         autoFocus
                     />

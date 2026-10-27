@@ -5,7 +5,7 @@ import { useBillReserve } from '@/hooks/use-bill-reserve'
 import { comparableSpending } from '@/lib/comparable-spending'
 import { useOverviewData } from '@/features/dashboard/hooks/use-overview-data'
 import { useCashOutlook } from '@/features/dashboard/hooks/use-cash-outlook'
-import { usePeriodTrend } from '@/features/dashboard/hooks/use-period-trend'
+import { usePeriodTrend } from './use-period-trend'
 import { USUAL_PERIODS, type PastPeriod } from '../lib/analysis'
 
 /**
@@ -13,7 +13,7 @@ import { USUAL_PERIODS, type PastPeriod } from '../lib/analysis'
  * period itself, its stats, and the closed periods before it that "your usual" comes from.
  */
 export function useInsightsData(periodId: string) {
-    const overview = useOverviewData(periodId)
+    const overview = useOverviewData(periodId, { withPrevious: true })
     const { data } = overview
     const reserve = useBillReserve(data?.period, data?.transactions)
     const stats = usePeriodStats({

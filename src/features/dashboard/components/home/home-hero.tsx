@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { formatCurrency, formatShortCurrency } from '@/lib/helpers'
 import { cn } from '@/lib/utils'
 import type { PeriodStats } from '@/hooks/use-period-stats'
@@ -31,7 +32,9 @@ export function HomeHero({ stats }: { stats: PeriodStats }) {
         <section aria-label="Safe to spend" className="pt-1">
             <div className="flex items-center justify-between gap-3">
                 <p className="text-[13px] text-muted-ink">
-                    {closed ? 'Left at the end of the period' : hero.daysLeft !== null ? 'Safe to spend today' : 'Safe to spend'}
+                    {closed ? 'Left at the end of the period'
+                        : hero.pastPayday ? 'Past your usual payday'
+                            : hero.daysLeft !== null ? 'Safe to spend today' : 'Safe to spend'}
                 </p>
                 <p className="flex items-center gap-1.5 text-[13px] font-medium text-ink">
                     <span aria-hidden="true" className={cn('h-2 w-2 rounded-full', STATUS_DOT[hero.status])} />
@@ -39,13 +42,32 @@ export function HomeHero({ stats }: { stats: PeriodStats }) {
                 </p>
             </div>
 
-            <p className={cn(
-                'mt-1.5 text-[44px] lg:text-[56px] font-semibold leading-none tracking-[-.035em] tabular-nums',
-                negative ? 'text-negative' : 'text-ink'
-            )}>
-                {formatCurrency(hero.today)}
-            </p>
-            {!closed && hero.daysLeft !== null && hero.daysLeft > 1 && (
+            {hero.pastPayday ? (
+                // The end was only a guess from the last period's length; a daily number now
+                // would be one too. What's left, and the way to start the next period.
+                <>
+                    <p className={cn(
+                        'mt-1.5 text-[44px] lg:text-[56px] font-semibold leading-none tracking-[-.035em] tabular-nums',
+                        stats.remaining < 0 ? 'text-negative' : 'text-ink'
+                    )}>
+                        {formatCurrency(stats.remaining)}
+                    </p>
+                    <p className="mt-2 text-[13.5px] text-muted-ink">
+                        left this period.{' '}
+                        <Link to="/period-history" state={{ close: true }} className="font-semibold text-brand-ink hover:underline underline-offset-2">
+                            Close the period
+                        </Link>
+                    </p>
+                </>
+            ) : (
+                <p className={cn(
+                    'mt-1.5 text-[44px] lg:text-[56px] font-semibold leading-none tracking-[-.035em] tabular-nums',
+                    negative ? 'text-negative' : 'text-ink'
+                )}>
+                    {formatCurrency(hero.today)}
+                </p>
+            )}
+            {!closed && !hero.pastPayday && hero.daysLeft !== null && hero.daysLeft > 1 && (
                 <p className="mt-2 text-[13.5px] text-muted-ink">
                     <span className={cn('font-semibold', stats.remaining < 0 ? 'text-negative' : 'text-ink')}>{formatCurrency(stats.remaining)}</span>
                     {' '}for the next {hero.daysLeft} days

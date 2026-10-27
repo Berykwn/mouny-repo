@@ -172,7 +172,7 @@ export function BuyItemForm({ item, part, periodStart, onSuccess }: BuyItemFormP
                         onChange={(e) => setPrice(e.target.value.replace(/\D/g, ''))}
                         placeholder="0"
                         disabled={loading}
-                        className="pl-10 h-12 rounded-[14px] border-line text-[13px] font-mono"
+                        className="pl-10 h-12 rounded-[14px] border-line text-[16px] lg:text-[13px] font-mono"
                     />
                 </div>
             </div>

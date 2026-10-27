@@ -27,10 +27,12 @@ interface WishCardProps {
     onOpen: () => void
     /** Offered when a plain wish is saved in full. */
     onBuy: () => void
+    /** What's owed on debts, which the usual leftover pays before any wish. */
+    owedFirst?: number
 }
 
 /** A wish at a glance: how far along, and the month it's expected, from the usual leftover. */
-export function WishCard({ item, stop, pace, today, onOpen, onBuy }: WishCardProps) {
+export function WishCard({ item, stop, pace, today, onOpen, onBuy, owedFirst = 0 }: WishCardProps) {
     const { target, saved, remaining, percent, ready } = wishProgress(item)
     const parts = partsBreakdown(item)
     const isUOM = !!item.quantity
@@ -39,7 +41,7 @@ export function WishCard({ item, stop, pace, today, onOpen, onBuy }: WishCardPro
 
     let sub: string
     if (parts) {
-        const next = nextPart(item, pace, today)
+        const next = nextPart(item, pace, today, owedFirst)
         sub = `${parts.bought} of ${parts.total} parts`
         if (ready) sub += ' · ready to buy the rest'
         else if (next) sub += ` · next: ${next.part.name}${next.date ? ` around ${etaMonth(next.date, today)}` : ''}`
@@ -82,10 +84,11 @@ export function WishCard({ item, stop, pace, today, onOpen, onBuy }: WishCardPro
                 ) : null}
             </button>
             {ready && !parts && !isUOM && (
+                // Quiet on the card: the detail sheet carries the one primary button.
                 <button
                     type="button"
                     onClick={onBuy}
-                    className="mt-3 w-full h-12 rounded-[14px] text-[14px] font-semibold text-on-action bg-action hover:bg-action/90 transition-colors"
+                    className="mt-3 h-9 px-3.5 rounded-full border border-line bg-surface text-ink text-[13px] font-semibold hover:bg-surface-hover transition-colors"
                 >
                     Record purchase
                 </button>

@@ -89,7 +89,7 @@ export function KindSplitChart({ split, totalIncome, isClosed }: KindSplitChartP
                             {hasIncome && (
                                 <span className={cn(
                                     'text-[10.5px] font-medium rounded-full px-1.5 py-[1px]',
-                                    row.off ? 'bg-warning/10 text-warning' : 'bg-line-soft text-subtle-ink'
+                                    row.off ? 'bg-warning/10 text-warning' : 'bg-line-soft text-muted-ink'
                                 )}>
                                     {row.guide}
                                 </span>
@@ -99,7 +99,7 @@ export function KindSplitChart({ split, totalIncome, isClosed }: KindSplitChartP
                             <span className={cn('text-[17px] font-medium tabular-nums', row.off ? 'text-warning' : 'text-ink')}>{pctOf(row.amount)}%</span>
                             <span className="text-[12px] text-muted-ink tabular-nums truncate">{formatCurrency(row.amount)}</span>
                         </p>
-                        <p className="text-[11px] text-subtle-ink mt-0.5 truncate">{row.detail}</p>
+                        <p className="text-[11px] text-muted-ink mt-0.5 truncate">{row.detail}</p>
                     </div>
                 ))}
             </div>

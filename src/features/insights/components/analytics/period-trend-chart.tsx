@@ -16,7 +16,7 @@ interface PeriodTrendChartProps {
 const INCOME_COLOR = 'var(--brand-ink)'
 const OUT_COLOR = 'var(--chart-out)'
 const NET_COLOR = 'var(--ink)'
-const TICK = { fontSize: 10.5, fill: 'var(--subtle-ink)' }
+const TICK = { fontSize: 10.5, fill: 'var(--muted-ink)' }
 
 const signed = (n: number) => `${n >= 0 ? '+' : '−'}${formatShortCurrency(Math.abs(n))}`
 
@@ -139,7 +139,7 @@ export function PeriodTrendChart({ trend, loading = false, failed = false, onRet
         <span className="inline-flex items-center gap-1.5 text-[10.5px] text-muted-ink">
           <span className="w-2 h-2 rounded-full" style={{ backgroundColor: NET_COLOR }} /> Net
         </span>
-        <span className="text-[10.5px] text-subtle-ink ml-auto">lighter bar = ongoing</span>
+        <span className="text-[10.5px] text-muted-ink ml-auto">lighter bar = ongoing</span>
       </div>
     </div>
   )

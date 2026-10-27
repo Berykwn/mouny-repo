@@ -19,7 +19,7 @@ export function HomeGreeting() {
                     {greeting()}{name ? `, ${name}` : ''}
                 </h1>
                 {!name && (
-                    <Link to="/menu" className="text-[13px] font-medium text-brand-ink hover:text-brand">
+                    <Link to="/menu" state={{ editName: true }} className="text-[13px] font-medium text-brand-ink hover:text-brand">
                         What should Mouny call you?
                     </Link>
                 )}

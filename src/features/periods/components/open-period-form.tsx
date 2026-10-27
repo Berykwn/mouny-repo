@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { format } from 'date-fns'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -26,6 +27,8 @@ interface OpenPeriodFormProps {
 }
 
 const FIELD_LABEL = 'text-[13px] font-semibold text-muted-ink'
+/** The app's field: 16px text on phones so iOS doesn't zoom in on focus. */
+const FIELD = 'h-[52px] rounded-[14px] border-line bg-surface shadow-none px-4 text-[16px] md:text-[15px] text-ink placeholder:text-subtle-ink'
 
 const NO_ACCOUNTS: Account[] = []
 
@@ -44,7 +47,11 @@ export function OpenPeriodForm({ onSuccess }: OpenPeriodFormProps) {
     const endOfToday = new Date()
     endOfToday.setHours(23, 59, 59, 999)
 
-    useSeedOnce(accountsData, data => setAccountId(data[0]?.id ?? ''))
+    // Pay lands in one of the everyday accounts; only when there is just one is that a given.
+    useSeedOnce(accountsData, data => {
+        const everyday = data.filter(a => !a.is_savings)
+        if (everyday.length === 1) setAccountId(everyday[0].id)
+    })
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -97,11 +104,11 @@ export function OpenPeriodForm({ onSuccess }: OpenPeriodFormProps) {
                             type="button"
                             disabled={loading}
                             className={cn(
-                                'w-full flex items-center h-12 px-3 rounded-[14px] border border-line bg-surface text-left text-[13px] transition-colors hover:bg-surface-soft disabled:opacity-50 disabled:pointer-events-none',
-                                !startDate && 'text-muted-ink'
+                                'w-full flex items-center h-[52px] px-4 rounded-[14px] border border-line bg-surface text-left text-[15px] text-ink transition-colors hover:bg-surface-soft disabled:opacity-50 disabled:pointer-events-none',
+                                !startDate && 'text-subtle-ink'
                             )}
                         >
-                            <CalendarIcon className="mr-2 h-4 w-4 text-muted-ink" />
+                            <CalendarIcon className="mr-2.5 h-4 w-4 text-subtle-ink" />
                             {startDate
                                 ? format(startDate, 'dd MMM yyyy')
                                 : 'Pick a date'}
@@ -121,7 +128,7 @@ export function OpenPeriodForm({ onSuccess }: OpenPeriodFormProps) {
                     </PopoverContent>
                 </Popover>
 
-                <span className="text-[11px] text-muted-ink">
+                <span className="text-[12px] text-subtle-ink">
                     Defaults to today if empty.
                 </span>
             </div>
@@ -129,7 +136,7 @@ export function OpenPeriodForm({ onSuccess }: OpenPeriodFormProps) {
             <div className="space-y-1.5">
                 <Label className={FIELD_LABEL}>Expected income</Label>
                 <div className="relative">
-                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[13px] text-muted-ink font-medium">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[15px] text-subtle-ink">
                         Rp
                     </span>
                     <Input
@@ -138,7 +145,7 @@ export function OpenPeriodForm({ onSuccess }: OpenPeriodFormProps) {
                         placeholder="0"
                         value={formatCurrencyInput(salary)}
                         onChange={(e) => setSalary(e.target.value.replace(/\D/g, ''))}
-                        className="pl-10 h-12 rounded-[14px] border-line text-[13px] font-mono"
+                        className={cn(FIELD, 'pl-11 tabular-nums')}
                         required
                         disabled={loading}
                     />
@@ -150,6 +157,14 @@ export function OpenPeriodForm({ onSuccess }: OpenPeriodFormProps) {
 
             <div className="space-y-1.5">
                 <Label className={FIELD_LABEL}>Destination account</Label>
+                {accountsData && accounts.length === 0 ? (
+                    <div className="flex items-center justify-between gap-3 px-4 h-[52px] rounded-[14px] border border-dashed border-line-strong">
+                        <span className="text-[14px] text-subtle-ink">No accounts yet</span>
+                        <Link to="/accounts" state={{ add: true }} className="text-[14px] font-semibold text-brand-ink hover:text-brand transition-colors">
+                            Add an account first
+                        </Link>
+                    </div>
+                ) : (
                 <button
                     type="button"
                     disabled={loading}
@@ -160,15 +175,16 @@ export function OpenPeriodForm({ onSuccess }: OpenPeriodFormProps) {
                         <div className="flex items-center gap-3 min-w-0">
                             <AccountTypeTile type={selectedAccount.type} savings={selectedAccount.is_savings} />
                             <div className="min-w-0">
-                                <p className="text-[13px] font-medium text-ink truncate">{selectedAccount.name}</p>
-                                <p className="text-[11.5px] text-muted-ink">{formatCurrency(selectedAccount.balance)}</p>
+                                <p className="text-[15px] text-ink truncate">{selectedAccount.name}</p>
+                                <p className="text-[13px] text-subtle-ink tabular-nums">{formatCurrency(selectedAccount.balance)}</p>
                             </div>
                         </div>
                     ) : (
-                        <span className="text-[13px] text-muted-ink">Select account</span>
+                        <span className="px-1 text-[15px] text-subtle-ink">Pick where your pay lands</span>
                     )}
                     <ChevronRight className="w-4 h-4 text-subtle-ink shrink-0" />
                 </button>
+                )}
                 <AccountPickerDrawer
                     open={accountPickerOpen}
                     onClose={() => setAccountPickerOpen(false)}
@@ -188,7 +204,7 @@ export function OpenPeriodForm({ onSuccess }: OpenPeriodFormProps) {
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
                     disabled={loading}
-                    className="h-12 rounded-[14px] border-line text-[13px]"
+                    className={FIELD}
                 />
             </div>
 

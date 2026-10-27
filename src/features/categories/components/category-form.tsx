@@ -38,7 +38,8 @@ const amount = (n: number) => n.toLocaleString('id-ID')
 /** A row of equal options on a soft track, the selected one raised. */
 function Segment<T extends string>({ options, value, onChange, disabled, label }: {
     options: { value: T; label: string }[]
-    value: T
+    /** Null while nothing is picked yet: no option is raised. */
+    value: T | null
     onChange: (value: T) => void
     disabled?: boolean
     label: string
@@ -75,15 +76,18 @@ export function CategoryForm({ onSuccess, initial, initialBudget, onDelete }: Ca
     // A new category picks its look first; an existing one keeps the picker tucked away.
     const [lookOpen, setLookOpen] = useState(!initial)
     const [budget, setBudget] = useState(initialBudget ? String(Math.round(initialBudget)) : '')
-    const [kind, setKind] = useState<CategoryKind>(initial ? resolveCategoryKind(initial) : 'daily')
-    // A new category's kind follows its name until it's picked by hand.
-    const [kindPicked, setKindPicked] = useState(!!initial)
+    // A new category's kind is the user's pick; the name only offers a suggestion to tap.
+    const [kind, setKind] = useState<CategoryKind | null>(initial ? resolveCategoryKind(initial) : null)
+    const [kindMissing, setKindMissing] = useState(false)
     const [loading, setLoading] = useState(false)
     const [suggestionDismissed, setSuggestionDismissed] = useState(false)
     const online = useOnlineStatus()
 
     const isEdit = !!initial
     const isExpense = type === 'expense'
+    // Only a name that clearly reads as bills or lifestyle earns a suggestion; everyday is no hint.
+    const guessed = !kind && name.trim() ? guessCategoryKind(name) : null
+    const suggestedKind = guessed && guessed !== 'daily' ? guessed : null
 
     // How this budget held up over the last closed periods, from transactions already cached for Insights.
     const { periods, activePeriod } = usePeriods()
@@ -105,6 +109,10 @@ export function CategoryForm({ onSuccess, initial, initialBudget, onDelete }: Ca
         }
         if (!name.trim()) {
             toast.error('Category name is required.')
+            return
+        }
+        if (isExpense && !kind) {
+            setKindMissing(true)
             return
         }
 
@@ -173,12 +181,9 @@ export function CategoryForm({ onSuccess, initial, initialBudget, onDelete }: Ca
                         id="category-name"
                         placeholder={categoryTypeConfig[type].sub}
                         value={name}
-                        onChange={(e) => {
-                            setName(e.target.value)
-                            if (!kindPicked) setKind(guessCategoryKind(e.target.value))
-                        }}
+                        onChange={(e) => setName(e.target.value)}
                         disabled={loading}
-                        className="h-[52px] rounded-[14px] border-line px-4 text-[15px] md:text-[15px]"
+                        className="h-[52px] rounded-[14px] border-line px-4 text-[16px] md:text-[15px]"
                     />
                 </div>
             </div>
@@ -272,10 +277,28 @@ export function CategoryForm({ onSuccess, initial, initialBudget, onDelete }: Ca
                         label="Kind"
                         value={kind}
                         disabled={loading}
-                        onChange={(k) => { setKind(k); setKindPicked(true) }}
+                        onChange={(k) => { setKind(k); setKindMissing(false) }}
                         options={CATEGORY_KINDS.map(k => ({ value: k, label: CATEGORY_KIND_META[k].label }))}
                     />
-                    <p className="text-[12px] text-subtle-ink">{CATEGORY_KIND_META[kind].sub}</p>
+                    {kind ? (
+                        <p className="text-[12px] text-subtle-ink">{CATEGORY_KIND_META[kind].sub}</p>
+                    ) : (
+                        <p className={cn('text-[12px]', kindMissing ? 'text-negative-ink' : 'text-subtle-ink')}>
+                            {kindMissing ? 'Pick a kind to add this category.' : 'Pick what this category is for.'}
+                            {suggestedKind && (
+                                <>
+                                    {' '}
+                                    <button
+                                        type="button"
+                                        onClick={() => { setKind(suggestedKind); setKindMissing(false) }}
+                                        className="font-semibold text-brand-ink hover:text-brand transition-colors"
+                                    >
+                                        Suggested: {CATEGORY_KIND_META[suggestedKind].label}
+                                    </button>
+                                </>
+                            )}
+                        </p>
+                    )}
                 </div>
             )}
 
@@ -292,7 +315,7 @@ export function CategoryForm({ onSuccess, initial, initialBudget, onDelete }: Ca
                             onChange={(e) => setBudget(e.target.value.replace(/\D/g, ''))}
                             placeholder="No budget"
                             disabled={loading}
-                            className="flex-1 min-w-0 text-[15px] text-ink outline-none bg-transparent placeholder:text-subtle-ink tabular-nums"
+                            className="flex-1 min-w-0 text-[16px] md:text-[15px] text-ink outline-none bg-transparent placeholder:text-subtle-ink tabular-nums"
                         />
                     </div>
                 </div>

@@ -107,7 +107,7 @@ export function PayBillForm({ bill, nextDue, payPeriodId, periodStart, lastPaid,
                         inputMode="numeric"
                         value={formatCurrencyInput(amount)}
                         onChange={(e) => setAmount(e.target.value.replace(/\D/g, '').slice(0, 12))}
-                        className="pl-10 h-12 rounded-[14px] border-line text-[13px] font-mono"
+                        className="pl-10 h-12 rounded-[14px] border-line text-[16px] lg:text-[13px] font-mono"
                         disabled={loading}
                     />
                 </div>

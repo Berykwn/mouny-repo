@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { ChevronRight } from 'lucide-react'
-import { formatCurrency, formatDateShort, formatShortCurrency } from '@/lib/helpers'
+import { formatCurrency, formatDateShort } from '@/lib/helpers'
 import { cn } from '@/lib/utils'
 import { categoryChartColor } from '@/features/categories/lib/category-colors'
 import { useBudgets } from '@/queries'
@@ -9,34 +9,6 @@ import { CategoryDonutChart } from './category-donut-chart'
 import type { TransactionWithDetails } from '@/types'
 
 type CatEntry = CategoryTotal
-
-// Everyday spending per day against the safe daily amount: the bar is the pace, the tick is the limit.
-export function PaceGauge({ daily, safe }: { daily: number; safe: number }) {
-  const scale = Math.max(daily, safe) * 1.15
-  const over = daily > safe
-  return (
-    <div className="mt-3">
-      <div className="relative h-2 rounded-full bg-line-soft">
-        <div
-          className={cn('h-full rounded-full transition-all duration-300', over ? 'bg-warning' : 'bg-brand-ink')}
-          style={{ width: `${(daily / scale) * 100}%` }}
-        />
-        <div
-          className="absolute -top-1 -bottom-1 w-[2px] -translate-x-1/2 rounded-full bg-ink"
-          style={{ left: `${(safe / scale) * 100}%` }}
-        />
-      </div>
-      <div className="relative mt-1 h-3.5">
-        <span
-          className="absolute -translate-x-1/2 whitespace-nowrap text-[10.5px] text-muted-ink"
-          style={{ left: `${(safe / scale) * 100}%` }}
-        >
-          safe {formatShortCurrency(safe)}
-        </span>
-      </div>
-    </div>
-  )
-}
 
 interface PeriodRangeProps {
   worst: number
@@ -117,7 +89,7 @@ function CategoryTransactionList({ transactions }: CategoryTransactionListProps)
                 <p className="text-[12.5px] font-medium text-ink truncate">
                   {tx.note ?? tx.category?.name ?? 'Expense'}
                 </p>
-                <p className="text-[10.5px] text-subtle-ink">
+                <p className="text-[10.5px] text-muted-ink">
                   {formatDateShort(tx.date)}
                   {tx.category && tx.note ? ` · ${tx.category.name}` : ''}
                 </p>
@@ -227,7 +199,7 @@ export function CategoryBreakdown({ expenses, totalExpense }: CategoryBreakdownP
                     )}
                   </span>
                   <span className="flex items-center gap-3 shrink-0">
-                    <span className="text-[12px] text-subtle-ink min-w-[28px] text-right">
+                    <span className="text-[12px] text-muted-ink min-w-[28px] text-right">
                       {pct !== null ? `${pct}%` : '—'}
                     </span>
                     <span className="text-[13px] font-medium text-ink min-w-[82px] text-right tabular-nums">
@@ -235,7 +207,7 @@ export function CategoryBreakdown({ expenses, totalExpense }: CategoryBreakdownP
                     </span>
                     <ChevronRight
                       aria-hidden="true"
-                      className={cn('w-[13px] h-[13px] text-faint-ink shrink-0 transition-transform', isExpanded && 'rotate-90')}
+                      className={cn('w-[13px] h-[13px] text-muted-ink shrink-0 transition-transform', isExpanded && 'rotate-90')}
                     />
                   </span>
                 </span>
@@ -248,7 +220,7 @@ export function CategoryBreakdown({ expenses, totalExpense }: CategoryBreakdownP
                     />
                   </span>
                   {target !== undefined && (
-                    <span className="text-[10.5px] text-subtle-ink shrink-0">
+                    <span className="text-[10.5px] text-muted-ink shrink-0">
                       {Math.round((ratio ?? 0) * 100)}% of {formatCurrency(target)} budget
                     </span>
                   )}

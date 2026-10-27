@@ -141,7 +141,7 @@ export function DebtForm({ onSuccess, payPeriodId, periodStartDate, initialType 
                     onChange={(e) => setCounterparty(e.target.value)}
                     required
                     disabled={loading}
-                    className="h-12 rounded-[14px] border-line text-[13px]"
+                    className="h-12 rounded-[14px] border-line text-[16px] lg:text-[13px]"
                 />
             </div>
 
@@ -157,7 +157,7 @@ export function DebtForm({ onSuccess, payPeriodId, periodStartDate, initialType 
                         placeholder="0"
                         value={formatCurrencyInput(amount)}
                         onChange={(e) => setAmount(e.target.value.replace(/\D/g, ''))}
-                        className="pl-10 h-12 rounded-[14px] border-line text-[13px] font-mono"
+                        className="pl-10 h-12 rounded-[14px] border-line text-[16px] lg:text-[13px] font-mono"
                         required
                         disabled={loading}
                     />
@@ -264,7 +264,7 @@ export function DebtForm({ onSuccess, payPeriodId, periodStartDate, initialType 
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
                     disabled={loading}
-                    className="h-12 rounded-[14px] border-line text-[13px]"
+                    className="h-12 rounded-[14px] border-line text-[16px] lg:text-[13px]"
                 />
             </div>
 

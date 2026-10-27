@@ -1,6 +1,6 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Tag, History, LogOut, Download, ChevronRight, Loader2, Pencil } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
+import { Tag, History, LogOut, Download, ChevronRight, Loader2, Pencil, Wallet } from 'lucide-react'
 import { toast } from 'sonner'
 import { useTheme, type Theme } from '@/contexts/ThemeContext'
 import { supabase } from '@/lib/supabase'
@@ -8,10 +8,11 @@ import { queryClient } from '@/lib/query-client'
 import { downloadCsv, toCsv } from '@/lib/csv'
 import { ConfirmDrawer } from '@/components/confirmation-drawer'
 import { PeriodPickerDrawer } from '@/components/period-picker-drawer'
-import { queryKeys, useBudgets, useCategories, usePeriods } from '@/queries'
+import { queryKeys, useAccounts, useBudgets, useCategories, usePeriods } from '@/queries'
 import { transactionsService } from '@/services/transactions.service'
 import { notificationsService } from '@/services/notifications.service'
 import { useAuth } from '@/hooks/use-auth'
+import { useOnlineStatus } from '@/hooks/use-online-status'
 import { getInitials } from '@/lib/helpers'
 import { displayName } from '@/lib/greeting'
 import { EditNameDrawer } from './edit-name-drawer'
@@ -23,19 +24,45 @@ import { Row } from './rows'
 
 export default function MenuPage() {
     const navigate = useNavigate()
+    const location = useLocation()
+    const online = useOnlineStatus()
     const { user } = useAuth()
     const [logoutConfirm, setLogoutConfirm] = useState(false)
+    const [loggingOut, setLoggingOut] = useState(false)
     const [editingName, setEditingName] = useState(false)
     const { periods, activePeriod, isSuccess: periodsLoaded } = usePeriods()
     const { data: categories } = useCategories()
     const { data: budgets } = useBudgets()
+    const { data: accounts } = useAccounts()
     const closedPeriods = periods.filter(p => p.status === 'closed').length
 
+    // Home's "What should Mouny call you?" lands here with { editName: true }: open the drawer,
+    // then clear the state so a reload or Back doesn't open it again.
+    const wantsNameEdit = (location.state as { editName?: boolean } | null)?.editName === true
+    useEffect(() => {
+        if (!wantsNameEdit) return
+        setEditingName(true)
+        navigate(location.pathname, { replace: true, state: null })
+    }, [wantsNameEdit, navigate, location.pathname])
+
     async function handleLogout() {
-        setLogoutConfirm(false)
+        // Turning off this device's reminders and ending the session both need the server;
+        // offline, the next person on this device would still get this account's reminders.
+        if (!online) {
+            setLogoutConfirm(false)
+            toast('You’re offline. Logging out needs a connection.')
+            return
+        }
+        setLoggingOut(true)
         // Whoever signs in next on this device shouldn't get this account's reminders.
         await notificationsService.disableDevice()
-        await supabase.auth.signOut()
+        const { error } = await supabase.auth.signOut()
+        setLoggingOut(false)
+        if (error) {
+            toast.error(error.message || 'Couldn’t log out. Try again.')
+            return
+        }
+        setLogoutConfirm(false)
         navigate('/login', { replace: true })
     }
 
@@ -76,6 +103,10 @@ export default function MenuPage() {
                     <h2 className="text-[17px] font-semibold text-ink mb-1">Money</h2>
                     <nav className="-mx-4 divide-y divide-line-soft">
                         <Row
+                            to="/accounts" icon={Wallet} tint="neutral" label="Accounts"
+                            sub={accounts ? (accounts.length === 0 ? 'Add where your money sits' : `${accounts.length} account${accounts.length === 1 ? '' : 's'}`) : 'Banks, cash and e-wallets'}
+                        />
+                        <Row
                             to="/category" icon={Tag} tint="neutral" label="Categories"
                             sub={categories && budgets ? `${categories.length} categories · ${budgets.length} budget${budgets.length === 1 ? '' : 's'}` : 'Icons, kinds and budgets'}
                         />
@@ -114,7 +145,7 @@ export default function MenuPage() {
                     title="Log out"
                     description="You’ll need to sign in again to see your money."
                     confirmLabel="Log out"
-                    loading={false}
+                    loading={loggingOut}
                     onConfirm={handleLogout}
                     onClose={() => setLogoutConfirm(false)}
                 />

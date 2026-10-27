@@ -21,13 +21,11 @@ interface PeriodCalendarProps {
     onOpen?: (tx: TransactionWithDetails) => void
     /** The row whose detail is open beside the calendar, on a wide screen. */
     openId?: string | null
-    /** What a day's everyday spending is held against; days past it get a mark. */
+    /** The period's fixed everyday share a day is held against; days past it get a mark. */
     allowance?: DailyAllowance | null
     /** The period's income, which decides what counts as a one-off. */
     periodIncome?: number
 }
-
-const allowanceName = (a: DailyAllowance) => a.kind === 'safe' ? 'safe daily amount' : 'everyday share'
 
 function dayName(date: string) {
     return new Date(date + 'T00:00:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })
@@ -138,7 +136,10 @@ export function PeriodCalendar({
     // Marks are everyday spending against the allowance, which is worked out for that part:
     // rent paid on the 1st makes a big number, not a day "over".
     const everydayByDay = dailyEverydaySpending(transactions, periodIncome)
+    // Every day is held against the same share, so a past day keeps its verdict as the period goes on.
     const isOverDay = (date: string) => isOverAllowance(everydayByDay.get(date) ?? 0, allowance)
+    // With no share at all, nothing is marked (every day would be "over").
+    const marking = !!allowance && allowance.amount > 0
     const overDays = [...everydayByDay.keys()].filter(isOverDay).length
 
     // How heavy a day was, 0–1: against the daily allowance when there is one, else the busiest day.
@@ -159,7 +160,7 @@ export function PeriodCalendar({
         return [
             dayName(date),
             spent > 0 ? `spent ${formatCurrency(spent)}` : date > today ? null : 'no spending',
-            isOverDay(date) && allowance ? `over the ${allowanceName(allowance)}` : null,
+            isOverDay(date) ? 'over the everyday share' : null,
         ].filter(Boolean).join(', ')
     }
 
@@ -178,7 +179,7 @@ export function PeriodCalendar({
 
     // The selected day against the allowance, in a few words beside its total.
     const spentEveryday = everydayByDay.get(validSelected) ?? 0
-    const allowanceNote = !allowance || validSelected > today || spentEveryday === 0
+    const allowanceNote = !marking || !allowance || validSelected > today || spentEveryday === 0
         ? null
         : isOverAllowance(spentEveryday, allowance)
             ? `${formatShortCurrency(Math.round(spentEveryday - allowance.amount))} over`
@@ -193,9 +194,9 @@ export function PeriodCalendar({
         <div className="pt-1">
             <div className="flex items-baseline justify-between gap-3 pb-3">
                 <p className="text-[15px] font-semibold text-ink">{rangeLabel(periodStart, periodEnd)}</p>
-                {allowance && (
+                {marking && allowance && (
                     <p className="text-[12px] text-muted-ink tabular-nums truncate">
-                        {allowance.kind === 'safe' ? 'Safe' : 'Share'}/day {formatShortCurrency(Math.round(allowance.amount))}
+                        Share/day {formatShortCurrency(Math.round(allowance.amount))}
                         {overDays > 0 && <span className="text-negative"> · {overDays} day{overDays === 1 ? '' : 's'} over</span>}
                     </p>
                 )}
@@ -242,18 +243,18 @@ export function PeriodCalendar({
                         >
                             <span className={cn(
                                 'text-[13px] font-semibold tabular-nums',
-                                isSelected ? 'text-white' : isFuture ? 'text-faint-ink' : isToday ? 'text-brand-ink' : 'text-ink',
+                                isSelected ? 'text-on-action' : isFuture ? 'text-muted-ink' : isToday ? 'text-brand-ink' : 'text-ink',
                             )}>
                                 {dayNum}
                             </span>
                             <span className={cn(
                                 'text-[10.5px] font-medium tabular-nums leading-none',
-                                isSelected ? 'text-white/85' : over ? 'text-negative-ink' : 'text-ink/60',
+                                isSelected ? 'text-on-action/85' : over ? 'text-negative-ink' : 'text-ink/60',
                             )}>
                                 {expense > 0 ? formatShortCurrency(expense) : ''}
                             </span>
                             {over && (
-                                <span aria-hidden="true" className={cn('absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full', isSelected ? 'bg-white' : 'bg-negative')} />
+                                <span aria-hidden="true" className={cn('absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full', isSelected ? 'bg-on-action' : 'bg-negative')} />
                             )}
                         </button>
                     )
@@ -275,10 +276,10 @@ export function PeriodCalendar({
                     </span>
                     More
                 </span>
-                {allowance && (
+                {marking && (
                     <span className="flex items-center gap-1.5">
                         <span className="w-3 h-3 rounded-[4px] border border-negative-line" style={{ backgroundColor: 'var(--negative-soft)' }} />
-                        Over the day’s {allowance.kind === 'safe' ? 'safe amount' : 'share'}
+                        Over the day’s share
                     </span>
                 )}
             </div>

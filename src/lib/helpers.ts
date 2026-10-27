@@ -136,10 +136,15 @@ export function formatCompact(value: number): string {
     return `${Math.round(value)}`
 }
 
+/** "1,5jt", "25rb": Indonesian short amounts, with a decimal comma like the rest of the app. */
 export function formatShortCurrency (value: number): string {
     if (value < 0) return `-${formatShortCurrency(-value)}`
-    if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1).replace('.0', '')}jt`
-    if (value >= 1_000) return `${(value / 1_000).toFixed(0)}rb`
+    // Round first, so 999.950 reads "1jt" rather than "1000rb", and 10.050.000 reads "10,1jt".
+    if (Math.round(value / 1_000) >= 1_000) {
+        const jt = Math.round(value / 100_000) / 10
+        return `${Number.isInteger(jt) ? jt : jt.toFixed(1).replace('.', ',')}jt`
+    }
+    if (Math.round(value / 1_000) >= 1) return `${Math.round(value / 1_000)}rb`
     return `${Math.round(value)}`
 }
 

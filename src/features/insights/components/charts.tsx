@@ -12,7 +12,7 @@ import { TIME_BANDS, WEEKDAYS, type CategoryVariance, type Heatmap, type PacePoi
  * theme's variables so dark mode follows.
  */
 
-const TICK = { fontSize: 10.5, fill: 'var(--subtle-ink)' }
+const TICK = { fontSize: 10.5, fill: 'var(--muted-ink)' }
 const AXIS_LINE = { stroke: 'var(--line)' }
 
 function TipBox({ children }: { children: ReactNode }) {
@@ -102,7 +102,11 @@ export function PaceChart({ points, income, todayDay, bandLabel }: {
 
 // ─── Unusual for you ─────────────────────────────────────────────────────────
 
-/** Each category's change from its usual, as bars either side of a "your usual" line. */
+/**
+ * Each category's change from its usual, as bars either side of a "your usual" line. The
+ * figure sits in its own column at the right edge, so a long bar never pushes it past the
+ * chart or over a name.
+ */
 export function VarianceChart({ rows }: { rows: CategoryVariance[] }) {
     const max = Math.max(...rows.map(r => Math.abs(r.pct)), 1)
     return (
@@ -114,22 +118,19 @@ export function VarianceChart({ rows }: { rows: CategoryVariance[] }) {
                     return (
                         <div
                             key={r.id}
-                            className="grid grid-cols-[minmax(0,7.5rem)_1fr] items-center gap-3"
+                            className="grid grid-cols-[minmax(0,7.5rem)_minmax(0,1fr)_3.25rem] items-center gap-3"
                             title={`${r.name}: ${formatCurrency(Math.round(r.current))} on pace, usual ${formatCurrency(Math.round(r.usual))}`}
                         >
                             <span className="truncate text-[13px] text-ink">{r.name}</span>
-                            <span className="relative h-6">
-                                <span aria-hidden="true" className="absolute inset-y-[-4px] left-1/2 w-px bg-line-strong" />
+                            <span className="relative h-6 overflow-hidden">
+                                <span aria-hidden="true" className="absolute inset-y-0 left-1/2 w-px bg-line-strong" />
                                 <span
                                     className={cn('absolute top-1 bottom-1 rounded-[4px]', up ? 'bg-warning' : 'bg-info')}
                                     style={up ? { left: '50%', width } : { right: '50%', width }}
                                 />
-                                <span
-                                    className="absolute top-1/2 -translate-y-1/2 text-[11.5px] font-semibold text-ink tabular-nums whitespace-nowrap"
-                                    style={up ? { left: `calc(50% + ${width} + 6px)` } : { right: `calc(50% + ${width} + 6px)` }}
-                                >
-                                    {up ? '+' : '−'}{Math.abs(r.pct)}%
-                                </span>
+                            </span>
+                            <span className="text-right text-[11.5px] font-semibold text-ink tabular-nums whitespace-nowrap">
+                                {up ? '+' : '−'}{Math.abs(r.pct)}%
                             </span>
                         </div>
                     )

@@ -1,4 +1,6 @@
 import { getDaysBetween } from '@/lib/helpers'
+import { addDays } from '@/lib/dates'
+import { isSpending } from '@/features/transactions/lib/ledger'
 import { resolveCategoryKind } from '@/lib/category-kind'
 import { isEverydaySpending } from '@/lib/spending-pace'
 import type { PeriodStats } from '@/hooks/use-period-stats'
@@ -25,9 +27,6 @@ export function median(values: number[]): number | null {
     return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2
 }
 
-/** Spending as the stats count it: expenses that aren't savings. */
-export const isSpending = (t: TransactionWithDetails) => t.type === 'expense' && !t.category?.is_savings
-
 /** Everyday and lifestyle spending: the part habits are made of (no bills, no savings). */
 export const isVariable = (t: TransactionWithDetails) => {
     if (!isSpending(t)) return false
@@ -36,12 +35,6 @@ export const isVariable = (t: TransactionWithDetails) => {
 }
 
 const dayIndex = (start: string, date: string) => getDaysBetween(start, date.slice(0, 10))
-
-function addDays(date: string, days: number): string {
-    const [y, m, d] = date.split('-').map(Number)
-    const t = new Date(Date.UTC(y, m - 1, d + days))
-    return `${t.getUTCFullYear()}-${String(t.getUTCMonth() + 1).padStart(2, '0')}-${String(t.getUTCDate()).padStart(2, '0')}`
-}
 
 // ─── Forecast ────────────────────────────────────────────────────────────────
 

@@ -17,7 +17,7 @@ import { cn } from '@/lib/utils'
 import type { PayPeriod } from '@/types'
 import { LoadingContent } from '@/components/loading-content'
 import { PageHeader } from '@/components/page-header'
-import { periodMonth, periodProgress, periodRange } from './lib/period-progress'
+import { paydayLabel, periodDayLabel, periodMonth, periodProgress, periodRange } from './lib/period-progress'
 
 type Drawer = 'open' | 'close' | null
 
@@ -144,6 +144,7 @@ interface ActiveCardProps {
 /** The running period: its days so far, and the quiet way to close it. */
 function ActiveCard({ period, periods, summary, onClose, onOpen }: ActiveCardProps) {
     const progress = periodProgress(period, periods)
+    const payday = paydayLabel(progress)
     const pct = summary ? unspentPct(summary.unspent, summary.income) : null
 
     return (
@@ -153,7 +154,8 @@ function ActiveCard({ period, periods, summary, onClose, onOpen }: ActiveCardPro
                     <div className="min-w-0">
                         <p className="text-[17px] font-semibold text-ink">{periodMonth(period.start_date, progress.endDate)}</p>
                         <p className="text-[13.5px] text-subtle-ink tabular-nums">
-                            {periodRange(period.start_date, progress.endDate)} · day {progress.day}{progress.totalDays !== null && ` of ${progress.totalDays}`}
+                            {periodRange(period.start_date, progress.pastUsualLength ? null : progress.endDate, progress.estimated)} · {periodDayLabel(progress).toLowerCase()}
+                            {payday && ` · ${payday}`}
                         </p>
                     </div>
                     <span className="flex items-center gap-1.5 text-[14px] font-semibold text-muted-ink shrink-0">

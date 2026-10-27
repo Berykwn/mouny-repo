@@ -31,8 +31,28 @@ const NO_TXS: TransactionWithDetails[] = []
 interface EditTarget {
     account: Account
     tab: 'edit' | 'transfer'
+    /** Opened from Adjust: the edit form starts on its balance adjustment. */
+    adjust?: boolean
     toAccountId?: string
     amount?: number
+}
+
+/** Which smart line "Not now" put away, for this session: by account and what it said, not the amount. */
+const DISMISSED_KEY = 'mouny:accounts-smart-dismissed'
+
+function readDismissed(): string | null {
+    try { return sessionStorage.getItem(DISMISSED_KEY) } catch { return null }
+}
+
+function saveDismissed(key: string) {
+    try { sessionStorage.setItem(DISMISSED_KEY, key) } catch { /* private mode: it just comes back */ }
+}
+
+/** When an account runs dry, in words: "today", "tomorrow", then "around Thursday". */
+function runsOutWhen(days: number): ReactNode {
+    if (days <= 0) return <b>today</b>
+    if (days === 1) return <b>tomorrow</b>
+    return <>around <b>{dayName(addDaysISO(toISODate(), days))}</b></>
 }
 
 /** "Thursday" within the week, "3 Nov" after it. */
@@ -58,7 +78,7 @@ export function AccountPage() {
     const [openAccount, setOpenAccount] = useState<Account | null>(null)
     const [archivingAccount, setArchivingAccount] = useState<Account | null>(null)
     const [archiveLoading, setArchiveLoading] = useState(false)
-    const [warningDismissed, setWarningDismissed] = useState<string | null>(null)
+    const [warningDismissed, setWarningDismissed] = useState<string | null>(readDismissed)
     const { data: archived = NO_ACCOUNTS } = useArchivedAccounts()
     const location = useLocation()
     const navigate = useNavigate()
@@ -126,29 +146,35 @@ export function AccountPage() {
         setEdit({ account: from, tab: 'transfer', toAccountId: to?.id, amount })
     }
 
+    const dismiss = (key: string) => {
+        saveDismissed(key)
+        setWarningDismissed(key)
+    }
+
     // At most one smart line: an overdrawn account first, then the one running out first.
     let smart: ReactNode = null
-    if (overdrawn && overdrawn.id !== warningDismissed) {
+    const overdrawnKey = overdrawn ? `overdrawn:${overdrawn.id}` : null
+    const warningKey = warning ? `runway:${warning.account.id}` : null
+    if (overdrawn && overdrawnKey !== warningDismissed) {
         const source = accounts.filter(a => a.id !== overdrawn.id && a.balance > 0).sort((a, b) => b.balance - a.balance)[0] ?? null
         smart = (
             <SmartLine actions={[
                 ...(source ? [{ label: `Move money from ${source.name}`, onClick: () => openTransfer(source, overdrawn) }] : []),
-                { label: 'Not now', onClick: () => setWarningDismissed(overdrawn.id) },
+                { label: 'Not now', onClick: () => dismiss(overdrawnKey!) },
             ]}>
                 <b>{overdrawn.name}</b> is {formatCurrency(-overdrawn.balance)} below zero.
             </SmartLine>
         )
-    } else if (warning && warning.account.id !== warningDismissed) {
-        const runsOut = dayName(addDaysISO(toISODate(), warning.runwayDays))
+    } else if (warning && warningKey !== warningDismissed) {
         smart = (
             <SmartLine actions={[
                 ...(warning.source ? [{
                     label: warning.topUp ? `Top up ${formatShortCurrency(warning.topUp)}` : 'Transfer',
                     onClick: () => openTransfer(warning.source, warning.account, warning.topUp ?? undefined),
                 }] : []),
-                { label: 'Not now', onClick: () => setWarningDismissed(warning.account.id) },
+                { label: 'Not now', onClick: () => dismiss(warningKey!) },
             ]}>
-                {warning.account.name} runs out around <b>{runsOut}</b> at how you use it ({formatCurrency(Math.round(warning.dailyOut))} a day).
+                {warning.account.name} runs out {runsOutWhen(warning.runwayDays)} at how you use it ({formatCurrency(Math.round(warning.dailyOut))} a day).
             </SmartLine>
         )
     }
@@ -247,18 +273,20 @@ export function AccountPage() {
                             canTransfer={accounts.length > 1}
                             hasActivePeriod={!!activePeriod}
                             onTransfer={() => { openTransfer(openAccount); setOpenAccount(null) }}
-                            onAdjust={() => { setEdit({ account: openAccount, tab: 'edit' }); setOpenAccount(null) }}
+                            onAdjust={() => { setEdit({ account: openAccount, tab: 'edit', adjust: true }); setOpenAccount(null) }}
                             onEdit={() => { setEdit({ account: openAccount, tab: 'edit' }); setOpenAccount(null) }}
                             onDelete={() => { setDeletingAccountId(openAccount.id); setOpenAccount(null) }}
+                            onLedger={() => { navigate('/transactions', { state: { accountId: openAccount.id } }); setOpenAccount(null) }}
                         />
                     )}
                 </BottomDrawer>
-                <BottomDrawer open={!!edit} onClose={() => setEdit(null)} title={edit?.tab === 'transfer' ? 'Transfer' : 'Edit account'}>
+                <BottomDrawer open={!!edit} onClose={() => setEdit(null)} title={edit?.tab === 'transfer' ? 'Transfer' : edit?.adjust ? 'Adjust balance' : 'Edit account'}>
                     {edit &&
                         <AccountForm
-                            key={`${edit.account.id}-${edit.tab}-${edit.toAccountId ?? ''}`}
+                            key={`${edit.account.id}-${edit.tab}-${edit.adjust ? 'adjust' : ''}-${edit.toAccountId ?? ''}`}
                             initial={edit.account}
                             initialTab={edit.tab}
+                            focusAdjustment={edit.adjust}
                             initialToAccountId={edit.toAccountId}
                             initialAmount={edit.amount}
                             onSuccess={() => setEdit(null)}

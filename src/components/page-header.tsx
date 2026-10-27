@@ -40,9 +40,7 @@ export function PageHeader({ title, action, back }: PageHeaderProps) {
 
     return (
         <header className="lg:hidden flex items-center justify-between px-4 pt-[22px] pb-2.5">
-            <span className="text-[20px] font-semibold tracking-[-0.02em] text-ink dark:text-white">
-                {title}
-            </span>
+            <h1 className="min-w-0 text-[26px] font-semibold tracking-[-0.02em] text-ink truncate">{title}</h1>
             {action}
         </header>
     )

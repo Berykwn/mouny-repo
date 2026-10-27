@@ -44,7 +44,9 @@ function NameForm({ currentName, onDone }: { currentName: string | null; onDone:
         const { error } = await supabase.auth.updateUser({ data: { full_name: trimmed } })
         setSaving(false)
         if (error) { toast.error(error.message || 'Couldn’t save your name.'); return }
-        toast.success(`Nice to meet you, ${trimmed.split(' ')[0]}.`)
+        // A first name gets a hello; changing one is just a change.
+        if (currentName) toast.success('Name updated')
+        else toast.success(`Nice to meet you, ${trimmed.split(' ')[0]}.`)
         onDone()
     }
 

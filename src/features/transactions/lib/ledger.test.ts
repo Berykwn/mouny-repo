@@ -129,25 +129,22 @@ describe('unpaidBillsFor', () => {
 })
 
 describe('dailyAllowance', () => {
-    const stats = { isClosed: false, safeDaily: 150_000, totalIncome: 10_000_000, totalSavings: 1_000_000, oneOffSpending: 3_000_000, totalDays: 30 }
+    const stats = { totalIncome: 10_000_000, totalSavings: 1_000_000, oneOffSpending: 3_000_000, totalDays: 30 }
 
-    it('is the hero’s safe daily amount for an open period, never below zero', () => {
-        expect(dailyAllowance(stats)).toEqual({ amount: 150_000, kind: 'safe' })
-        expect(dailyAllowance({ ...stats, safeDaily: -20_000 })).toEqual({ amount: 0, kind: 'safe' })
-    })
-
-    it('spreads a closed period’s everyday money evenly', () => {
-        expect(dailyAllowance({ ...stats, isClosed: true, safeDaily: null })).toEqual({ amount: 200_000, kind: 'share' })
+    it('spreads the period’s everyday money evenly, open or closed', () => {
+        expect(dailyAllowance(stats)).toEqual({ amount: 200_000 })
     })
 
     it('is null with no income to share', () => {
         expect(dailyAllowance({ ...stats, totalIncome: 0 })).toBeNull()
+        expect(dailyAllowance({ ...stats, totalDays: 0 })).toBeNull()
     })
 
-    it('marks any everyday spending once there is no room left', () => {
-        expect(isOverAllowance(1, { amount: 0, kind: 'safe' })).toBe(true)
-        expect(isOverAllowance(0, { amount: 0, kind: 'safe' })).toBe(false)
-        expect(isOverAllowance(100, { amount: 150, kind: 'safe' })).toBe(false)
+    it('marks nothing once there is no share at all', () => {
+        expect(isOverAllowance(1, { amount: 0 })).toBe(false)
+        expect(isOverAllowance(1, { amount: -500 })).toBe(false)
+        expect(isOverAllowance(100, { amount: 150 })).toBe(false)
+        expect(isOverAllowance(200, { amount: 150 })).toBe(true)
         expect(isOverAllowance(100, null)).toBe(false)
     })
 })

@@ -3,7 +3,7 @@ import { formatCurrency, formatShortCurrency } from '@/lib/helpers'
 import { dayDate, shortDate } from '@/features/bills/lib/bill-labels'
 import type { CashOutlook, OutlookPoint } from '../lib/cash-outlook'
 
-const TICK = { fontSize: 10.5, fill: 'var(--subtle-ink)' }
+const TICK = { fontSize: 10.5, fill: 'var(--muted-ink)' }
 const EVENT_COLOR: Record<string, string> = {
     in: 'var(--brand)',
     bill: 'var(--tint-violet)',

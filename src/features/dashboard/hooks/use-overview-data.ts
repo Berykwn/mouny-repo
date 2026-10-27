@@ -8,7 +8,11 @@ import type { OverviewData } from '@/types/overview.types'
  * Each part refetches on its own after a write, and a failed background refetch keeps
  * the last data on screen.
  */
-export function useOverviewData(periodId: string): { data: OverviewData | null; loading: boolean; debtsFailed: boolean; retry: () => void } {
+export function useOverviewData(
+    periodId: string,
+    /** The previous period's totals feed Insights' health score; Home doesn't fetch them. */
+    { withPrevious = false }: { withPrevious?: boolean } = {},
+): { data: OverviewData | null; loading: boolean; debtsFailed: boolean; retry: () => void } {
     const periodsQuery = usePeriods()
     const txsQuery = usePeriodTransactions(periodId)
     const accountsQuery = useAccounts()
@@ -20,7 +24,7 @@ export function useOverviewData(periodId: string): { data: OverviewData | null; 
     const currentIndex = allList.findIndex(p => p.id === periodId)
     const currentPeriod = allList[currentIndex] ?? null
     const prevPeriod = currentIndex >= 0 ? allList[currentIndex + 1] ?? null : null
-    const previousQuery = usePeriodSummary(prevPeriod?.id)
+    const previousQuery = usePeriodSummary(withPrevious ? prevPeriod?.id : undefined)
 
     const data = useMemo((): OverviewData | null => {
         const periodTxs = txsQuery.data

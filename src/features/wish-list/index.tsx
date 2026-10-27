@@ -12,10 +12,11 @@ import { WishEmpty } from './components/wish-empty'
 import { WishDetail } from './components/wish-detail'
 import { WishPartsForm } from './components/wish-parts-form'
 import { buildRoadmap, sortWishes, wishProgress } from './lib/wish-analytics'
+import { payoffPlan } from '@/features/debts/lib/debt-insights'
 import { wishListService, type WishListPurchased } from '@/services/wish-list.service'
-import { usePeriods, usePurchasedWishes, useSavingsPace, useWishes } from '@/queries'
+import { useDebts, usePeriods, usePeriodTransactions, usePurchasedWishes, useSavingsPace, useWishes } from '@/queries'
 import { formatCurrency, formatShortCurrency, toISODate } from '@/lib/helpers'
-import type { WishListItem, WishPart } from '@/types'
+import type { DebtWithAccount, WishListItem, WishPart } from '@/types'
 import { toast } from 'sonner'
 import { LoadingContent } from '@/components/loading-content'
 import { Kpis, OutlineButton, PlanHeader } from '@/features/plan/components/layout'
@@ -24,6 +25,7 @@ const plain = (n: number) => new Intl.NumberFormat('id-ID').format(Math.round(n)
 
 const NO_WISHES: WishListItem[] = []
 const NO_PURCHASED: WishListPurchased[] = []
+const NO_DEBTS: DebtWithAccount[] = []
 
 export default function WishListPage() {
     const { activePeriod, isPending: periodsPending } = usePeriods()
@@ -36,6 +38,8 @@ export default function WishListPage() {
     // The achievements and the pace are extras: if they fail, the list still works.
     const { data: purchased = NO_PURCHASED } = usePurchasedWishes()
     const pace = useSavingsPace()
+    const { data: debts = NO_DEBTS } = useDebts({ activeOnly: true })
+    const { data: periodTxs } = usePeriodTransactions(periodId)
     const [addDrawerOpen, setAddDrawerOpen] = useState(false)
     const [addDefaultName, setAddDefaultName] = useState<string | undefined>(undefined)
     const [addDefaultPrice, setAddDefaultPrice] = useState<number | undefined>(undefined)
@@ -77,7 +81,13 @@ export default function WishListPage() {
         setAddDrawerOpen(true)
     }
 
-    const roadmap = useMemo(() => buildRoadmap(items, pace), [items, pace])
+    // The usual leftover pays debts first, so wish months start after the debt-free date.
+    const owedFirst = useMemo(() => payoffPlan(debts, pace).owed, [debts, pace])
+    const roadmap = useMemo(() => buildRoadmap(items, pace, undefined, owedFirst), [items, pace, owedFirst])
+    // Installments of a quantity wish are dated transactions; plain "Add funds" keeps no date.
+    const savedThisPeriod = (item: WishListItem) => item.quantity && periodTxs
+        ? periodTxs.filter(t => t.wish_list_item_id === item.id && t.type === 'expense').reduce((s, t) => s + t.amount, 0)
+        : null
 
     // Totals only over wishes with a price, so the percentage compares like with like.
     const totals = useMemo(() => {
@@ -100,7 +110,7 @@ export default function WishListPage() {
 
     // How the months are worked out, said once, plainly.
     const etaNote = pace && pace.perDay > 0
-        ? `Months are estimates: your usual leftover, averaged over your last ${pace.basedOn} closed period${pace.basedOn === 1 ? '' : 's'}, goes to wishes one at a time, urgent first.`
+        ? `Months are estimates: your usual leftover, averaged over your last ${pace.basedOn} closed period${pace.basedOn === 1 ? '' : 's'}, goes to wishes one at a time, urgent first${owedFirst > 0 ? ', after your debts are paid off' : ''}.`
         : pace
             ? 'Recent periods spent everything that came in, so there are no month estimates yet.'
             : 'Month estimates start once you’ve closed a period: they come from what you usually have left over.'
@@ -145,6 +155,7 @@ export default function WishListPage() {
                                             today={today}
                                             onOpen={() => setOpenItem(item)}
                                             onBuy={() => setBuyingItem(item)}
+                                            owedFirst={owedFirst}
                                         />
                                     ))}
                                 </div>
@@ -197,6 +208,8 @@ export default function WishListPage() {
                             item={openItem}
                             stop={roadmap.find(s => s.item.id === openItem.id)}
                             pace={pace}
+                            owedFirst={owedFirst}
+                            savedThisPeriod={savedThisPeriod(openItem)}
                             onContribute={() => { setContributingItem(openItem); setOpenItem(null) }}
                             onBuy={() => { setBuyingItem(openItem); setOpenItem(null) }}
                             onEdit={() => { setEditingItem(openItem); setOpenItem(null) }}
@@ -267,7 +280,7 @@ export default function WishListPage() {
                 <BottomDrawer
                     open={!!contributingItem}
                     onClose={() => setContributingItem(null)}
-                    title={contributingItem?.quantity ? 'Cicil' : 'Add funds'}
+                    title={contributingItem?.quantity ? 'Add a payment' : 'Add funds'}
                 >
                     {contributingItem && (
                         contributingItem.quantity && periodStart ? (

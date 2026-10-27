@@ -26,7 +26,7 @@ export function DebtSettled({ debts, onOpen }: DebtSettledProps) {
     return (
         <div className="card overflow-hidden">
             <div className="flex items-center gap-3 px-4 pt-4 pb-3">
-                <div className="w-10 h-10 rounded-[12px] bg-positive/10 text-positive flex items-center justify-center shrink-0">
+                <div className="w-10 h-10 rounded-[12px] bg-brand-tint text-brand-ink flex items-center justify-center shrink-0">
                     <CheckIcon className="w-[22px] h-[22px]" />
                 </div>
                 <div className="min-w-0">
@@ -45,7 +45,7 @@ export function DebtSettled({ debts, onOpen }: DebtSettledProps) {
                             onClick={() => onOpen(debt)}
                             className="w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-surface-soft"
                         >
-                            <DebtAvatar name={debt.counterparty} type={debt.type} settled className="w-8 h-8 text-[11px]" />
+                            <DebtAvatar name={debt.counterparty} settled className="w-8 h-8 text-[11px]" />
                             <div className="flex-1 min-w-0">
                                 <p className="text-[12.5px] text-ink truncate">{debt.counterparty}</p>
                                 <p className="text-[10.5px] text-subtle-ink">{debt.type === 'debt' ? 'Paid off' : 'Paid back'}</p>

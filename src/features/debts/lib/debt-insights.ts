@@ -1,4 +1,5 @@
 import { daysUntil, getDaysBetween, toISODate } from '@/lib/helpers'
+import { addDays } from '@/lib/dates'
 import type { DebtWithAccount } from '@/types'
 import type { SavingsPace } from '@/features/wish-list/lib/wish-analytics'
 
@@ -19,16 +20,6 @@ export function dueStatus(debt: DebtWithAccount): DueStatus {
     if (days === 0) return { kind: 'today' }
     if (days <= DUE_SOON_DAYS) return { kind: 'soon', days }
     return { kind: 'later', days }
-}
-
-/** The short pill for a due date that needs attention, or null when it doesn't. */
-export function duePill(status: DueStatus): { label: string; className: string } | null {
-    switch (status.kind) {
-        case 'overdue': return { label: `${status.days}d overdue`, className: 'bg-negative/10 text-negative' }
-        case 'today': return { label: 'Due today', className: 'bg-warning/10 text-warning' }
-        case 'soon': return { label: `In ${status.days}d`, className: 'bg-warning/10 text-warning' }
-        default: return null
-    }
 }
 
 export function debtProgress(debt: DebtWithAccount) {
@@ -71,17 +62,6 @@ export function summarize(active: DebtWithAccount[]): DebtSummary {
     return summary
 }
 
-/** How far ahead "Coming up" looks. */
-export const UPCOMING_DAYS = 30
-const UPCOMING_MAX = 5
-
-/** Overdue and due-within-UPCOMING_DAYS records on both sides, soonest first. */
-export function upcoming(active: DebtWithAccount[]): DebtWithAccount[] {
-    return sortByUrgency(active)
-        .filter(d => d.due_date && daysUntil(d.due_date) <= UPCOMING_DAYS)
-        .slice(0, UPCOMING_MAX)
-}
-
 /** Past this, an estimate is too far out to mean anything. */
 const MAX_ETA_DAYS = 365 * 10
 /** Used to turn days into periods before any period has closed. */
@@ -98,14 +78,25 @@ export interface PayoffStop {
     perPeriodNeeded: number | null
     /** Periods left before its due date, at least 1; null without one or once it's passed. */
     periodsLeft: number | null
+    /** Paid toward it since the open period started (from dated payments); 0 when unknown. */
+    paidThisPeriod: number
+    /**
+     * Still to pay this period: the schedule's first step, or all of it once overdue. 0 once
+     * this period's share is paid; null without a due date.
+     */
+    thisPeriodDue: number | null
+    /** This period's share is already paid. */
+    doneThisPeriod: boolean
 }
 
 export interface PayoffPlan {
     stops: PayoffStop[]
     /** When the last debt would be paid, or null without a usable pace. */
     debtFreeDate: string | null
-    /** Sum of every dated debt's per-period share — the number to act on this period. */
+    /** What's still due this period across every dated debt — the number to act on now. */
     thisPeriod: number
+    /** Everything owed, which the usual leftover clears before anything else. */
+    owed: number
 }
 
 /** Overdue, then by due date, then undated smallest first (quick wins clear a name). */
@@ -118,18 +109,18 @@ function payoffOrder(debts: DebtWithAccount[]): DebtWithAccount[] {
     })
 }
 
-function addDays(today: string, days: number): string {
-    const date = new Date(today + 'T00:00:00')
-    date.setDate(date.getDate() + days)
-    return toISODate(date)
-}
-
 /**
  * A payoff plan for what you owe: debts are cleared one at a time in payoffOrder from
  * your usual leftover per period (see savingsPace). A dated debt is on track when that
- * order reaches it by its due date.
+ * order reaches it by its due date. `paidThisPeriod` (debt id to what its payments dated in
+ * the open period add up to) lets a share already paid count as done, instead of asking again.
  */
-export function payoffPlan(debts: DebtWithAccount[], pace: SavingsPace | null, today = toISODate()): PayoffPlan {
+export function payoffPlan(
+    debts: DebtWithAccount[],
+    pace: SavingsPace | null,
+    today = toISODate(),
+    paidThisPeriod: Record<string, number> | null = null,
+): PayoffPlan {
     const periodDays = pace?.periodDays && pace.periodDays > 0 ? pace.periodDays : DEFAULT_PERIOD_DAYS
     const canEstimate = !!pace && pace.perDay > 0
     let cumulative = 0
@@ -147,8 +138,10 @@ export function payoffPlan(debts: DebtWithAccount[], pace: SavingsPace | null, t
         }
         if (!date) reachable = false
 
+        const paid = Math.max(0, paidThisPeriod?.[debt.id] ?? 0)
         let perPeriodNeeded: number | null = null
         let periodsLeft: number | null = null
+        let thisPeriodDue: number | null = null
         let status: PayoffStatus
         if (!debt.due_date) {
             status = 'no-date'
@@ -157,21 +150,29 @@ export function payoffPlan(debts: DebtWithAccount[], pace: SavingsPace | null, t
             if (daysLeft < 0) {
                 status = 'overdue'
                 perPeriodNeeded = debt.remaining_amount
+                thisPeriodDue = debt.remaining_amount
             } else {
                 periodsLeft = Math.max(1, Math.ceil((daysLeft + 1) / periodDays))
                 perPeriodNeeded = debt.remaining_amount / periodsLeft
+                thisPeriodDue = splitSchedule(debt.remaining_amount, periodsLeft, paid)[0]?.amount ?? 0
                 status = !canEstimate ? 'unknown' : date && date <= debt.due_date ? 'on-track' : 'behind'
             }
-            thisPeriod += perPeriodNeeded
+            thisPeriod += thisPeriodDue
         }
 
-        stops.push({ debt, date, status, perPeriodNeeded, periodsLeft })
+        stops.push({
+            debt, date, status, perPeriodNeeded, periodsLeft,
+            paidThisPeriod: paid,
+            thisPeriodDue,
+            doneThisPeriod: thisPeriodDue === 0 && paid > 0,
+        })
     }
 
     return {
         stops,
         debtFreeDate: reachable && stops.length > 0 ? stops[stops.length - 1].date : null,
         thisPeriod: Math.ceil(thisPeriod),
+        owed: cumulative,
     }
 }
 
@@ -207,27 +208,44 @@ export function fasterPayoff(debts: DebtWithAccount[], pace: SavingsPace | null,
 export interface ScheduleStep {
     /** "This period", "Next period", "Period 3". */
     label: string
+    /** Still to pay in that period; 0 for this period once its share is paid. */
     amount: number
     /** The last step lands on the due date. */
     last: boolean
+    /** This period's share is already paid. */
+    done: boolean
 }
 
+const roundUp = (n: number) => Math.ceil(n / 1000) * 1000
+
 /**
- * A dated debt split evenly over the periods left before its due date, rounded up to a
- * thousand so each step is a sensible amount; the last one takes what's left.
+ * What's left split over the periods before the due date, in round thousands; the last step
+ * takes what's left. This period's share is worked out from what was owed when it started
+ * (what's left plus `paid`), so paying it marks the period done, and the rest is spread over
+ * the periods after this one.
  */
-export function payoffSchedule(stop: Pick<PayoffStop, 'debt' | 'periodsLeft' | 'perPeriodNeeded'>): ScheduleStep[] {
-    const { periodsLeft, perPeriodNeeded } = stop
-    const remaining = stop.debt.remaining_amount
-    if (!periodsLeft || !perPeriodNeeded || remaining <= 0) return []
-    const each = Math.min(remaining, Math.ceil(perPeriodNeeded / 1000) * 1000)
-    const steps: ScheduleStep[] = []
-    let left = remaining
-    for (let i = 0; i < periodsLeft && left > 0; i++) {
-        const last = i === periodsLeft - 1 || left <= each
+function splitSchedule(remaining: number, periodsLeft: number, paid: number): ScheduleStep[] {
+    if (periodsLeft < 1 || remaining <= 0) return []
+    const atStart = remaining + paid
+    const share = Math.min(atStart, roundUp(atStart / periodsLeft))
+    const nowDue = periodsLeft === 1 ? remaining : Math.max(0, Math.min(remaining, share - paid))
+    const steps: ScheduleStep[] = [{ label: 'This period', amount: nowDue, last: nowDue === remaining, done: nowDue === 0 }]
+
+    let left = remaining - nowDue
+    const after = periodsLeft - 1
+    if (left <= 0 || after <= 0) return steps
+    const each = Math.min(left, roundUp(left / after))
+    for (let i = 1; i <= after && left > 0; i++) {
+        const last = i === after || left <= each
         const amount = last ? left : each
-        steps.push({ label: i === 0 ? 'This period' : i === 1 ? 'Next period' : `Period ${i + 1}`, amount, last })
+        steps.push({ label: i === 1 ? 'Next period' : `Period ${i + 1}`, amount, last, done: false })
         left -= amount
     }
     return steps
+}
+
+/** A dated debt's steps to its due date (see splitSchedule); empty without one or once overdue. */
+export function payoffSchedule(stop: Pick<PayoffStop, 'debt' | 'periodsLeft'> & Partial<Pick<PayoffStop, 'paidThisPeriod'>>): ScheduleStep[] {
+    if (!stop.periodsLeft) return []
+    return splitSchedule(stop.debt.remaining_amount, stop.periodsLeft, stop.paidThisPeriod ?? 0)
 }

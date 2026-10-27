@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { tx } from '@/test/fixtures'
 import type { RecurringBill } from '@/types'
-import { billCosts, billShares, billsForPeriod, dueDatesBetween, nextDueDate, periodWindow, reservedTotal, yearlyAhead } from './bills'
+import { billCosts, billsForPeriod, dueDatesBetween, nextDueDate, periodWindow, reservedTotal, yearlyAhead, yearlySetAside } from './bills'
 
 function bill(overrides: Partial<RecurringBill> = {}): RecurringBill {
     return {
@@ -106,19 +106,22 @@ describe('billsForPeriod', () => {
     })
 })
 
-describe('billShares', () => {
-    it('ranks running bills by monthly cost', () => {
-        const shares = billShares([
-            bill({ id: 'netflix', amount: 200_000 }),
-            bill({ id: 'rent', amount: 1_600_000 }),
-            bill({ id: 'domain', amount: 2_400_000, frequency: 'yearly', due_month: 3 }),
-            bill({ id: 'gym', amount: 500_000, paused: true }),
-        ], '2026-10-01')
-        expect(shares.map(s => [s.bill.id, s.perMonth, s.share])).toEqual([
-            ['rent', 1_600_000, 0.8],
-            ['netflix', 200_000, 0.1],
-            ['domain', 200_000, 0.1],
-        ])
+describe('yearlySetAside', () => {
+    it('spreads a yearly bill over the whole months until its due month', () => {
+        // Late October to March: five months, so 2.4m is 480k a month.
+        const a = yearlySetAside(bill({ name: 'Insurance', amount: 2_400_000, frequency: 'yearly', due_day: 15, due_month: 3 }), '2026-10-27')
+        expect(a).toMatchObject({ date: '2027-03-15', monthsLeft: 5, perMonth: 480_000 })
+    })
+
+    it('asks for all of it in the month it is due', () => {
+        expect(yearlySetAside(bill({ amount: 900_000, frequency: 'yearly', due_day: 30, due_month: 10 }), '2026-10-05'))
+            .toMatchObject({ monthsLeft: 1, perMonth: 900_000 })
+    })
+
+    it('is null for monthly, paused and ended bills', () => {
+        expect(yearlySetAside(bill(), '2026-10-01')).toBeNull()
+        expect(yearlySetAside(bill({ frequency: 'yearly', due_month: 3, paused: true }), '2026-10-01')).toBeNull()
+        expect(yearlySetAside(bill({ frequency: 'yearly', due_month: 3, ends_on: '2026-12-31' }), '2026-10-01')).toBeNull()
     })
 })
 

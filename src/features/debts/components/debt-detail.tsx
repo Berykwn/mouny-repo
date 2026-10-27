@@ -94,7 +94,12 @@ export function DebtDetail({ debt, stop, hasActivePeriod, onSettle, onEdit, onDe
                     <h3 className="text-[15px] font-semibold tracking-[-0.01em] text-ink">Plan</h3>
                     <div className="divide-y divide-line-soft">
                         {schedule.map(s => (
-                            <Line key={s.label} label={s.last && debt.due_date ? `By ${dayDate(debt.due_date)} · last` : s.label} value={plain(s.amount)} />
+                            <Line
+                                key={s.label}
+                                label={s.last && debt.due_date ? `By ${dayDate(debt.due_date)} · last` : s.label}
+                                value={s.done ? 'Done for this period' : plain(s.amount)}
+                                className={s.done ? 'text-brand-ink' : undefined}
+                            />
                         ))}
                         {schedule.length === 0 && debt.due_date && (
                             <Line label={status.kind === 'overdue' ? `Was due ${dayDate(debt.due_date)}` : `Due ${dayDate(debt.due_date)}`} value={plain(debt.remaining_amount)} className={status.kind === 'overdue' ? 'text-negative' : undefined} />
@@ -103,7 +108,9 @@ export function DebtDetail({ debt, stop, hasActivePeriod, onSettle, onEdit, onDe
                     </div>
                     {schedule.length > 1 && (
                         <p className="mt-1 text-[11.5px] text-subtle-ink leading-relaxed">
-                            What’s left, split evenly over the periods before its due date.
+                            {schedule[0].done
+                                ? 'This period’s share is paid; what’s left is split evenly over the periods after it.'
+                                : 'What’s left, split evenly over the periods before its due date.'}
                         </p>
                     )}
                 </section>

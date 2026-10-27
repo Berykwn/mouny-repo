@@ -57,7 +57,7 @@ function MoveToSavings({ tx, onMoved }: { tx: TransactionWithDetails; onMoved: (
     }
 
     return (
-        <div className="rounded-[14px] bg-info/10 px-3 py-2.5 text-[12px] text-info leading-relaxed">
+        <div className="rounded-[14px] bg-line-soft px-3 py-2.5 text-[12px] text-muted-ink leading-relaxed">
             Did this money go into a savings account? Move it there: it stays in your balance and still counts as saved.
             <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1">
                 {targets.map(a => (
@@ -66,7 +66,7 @@ function MoveToSavings({ tx, onMoved }: { tx: TransactionWithDetails; onMoved: (
                         type="button"
                         onClick={() => move(a.id, a.name)}
                         disabled={movingTo !== null}
-                        className="flex items-center gap-1.5 font-semibold underline underline-offset-2 disabled:opacity-50"
+                        className="flex items-center gap-1.5 font-semibold text-brand-ink underline underline-offset-2 disabled:opacity-50"
                     >
                         {movingTo === a.id && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                         Move to {a.name}
@@ -137,14 +137,14 @@ export function TransactionDetail({ tx, readOnly, onEdit, onDelete, onMoved }: T
             </dl>
 
             {linked && (
-                <p className="rounded-[14px] bg-info/10 text-info px-3 py-2.5 text-[12px] leading-relaxed">
+                <p className="rounded-[14px] bg-line-soft text-muted-ink px-3 py-2.5 text-[12px] leading-relaxed">
                     {linkNote(linked, tx)}
                 </p>
             )}
 
             {paysBill && !readOnly && (
-                <p className="rounded-[14px] bg-info/10 text-info px-3 py-2.5 text-[12px] leading-relaxed">
-                    Pays {paysBill.name}. Deleting it makes the bill due again, and held back from safe to spend.
+                <p className="rounded-[14px] bg-line-soft text-muted-ink px-3 py-2.5 text-[12px] leading-relaxed">
+                    Pays {paysBill.name}. Deleting it makes the bill due again, and held back from what’s left this period.
                 </p>
             )}
 

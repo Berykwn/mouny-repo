@@ -9,10 +9,10 @@ import { MIN_PROJECTION_DAYS, type PeriodStats } from '@/hooks/use-period-stats'
 import { CategoryTile } from '@/features/categories/components/category-icon'
 import { dayDate } from '@/features/bills/lib/bill-labels'
 import { txTitle } from '@/features/transactions/lib/ledger'
-import { CategoryBreakdown } from '@/features/dashboard/components/analytics/period-analytics'
-import { KindSplitChart } from '@/features/dashboard/components/analytics/kind-split-card'
-import { kindSplit } from '@/features/dashboard/lib/kind-split'
-import { groupExpensesByCategory } from '@/features/dashboard/lib/group-expenses-by-category'
+import { CategoryBreakdown } from './analytics/period-analytics'
+import { KindSplitChart } from './analytics/kind-split-card'
+import { kindSplit } from '../lib/kind-split'
+import { groupExpensesByCategory } from '../lib/group-expenses-by-category'
 import type { OverviewData } from '@/types/overview.types'
 import {
     categoryVariance, forecastKept, median, paceSeries, standOuts, STAND_OUT_MULTIPLE, USUAL_PERIODS,
@@ -161,7 +161,9 @@ export function ThisPeriodTab({ data, stats, comparable, history }: ThisPeriodTa
                 title={outs === null
                     ? 'Looking for stand-outs…'
                     : outs.length === 0
-                        ? 'Nothing stood out from what you usually spend.'
+                        ? history && history.length === 0
+                            ? 'Stand-outs appear after your first closed period.'
+                            : 'Nothing stood out from what you usually spend.'
                         : <>{NUMBER_WORDS[outs.length]} entr{outs.length === 1 ? 'y was' : 'ies were'} far above what you normally spend on {outs.length === 1 ? 'it' : 'them'}.</>}
                 how={`Each everyday and lifestyle entry against the median single entry in its category over your last ${USUAL_PERIODS} closed periods at most (with at least 3 entries there). Flagged at ${STAND_OUT_MULTIPLE}× or more.`}
             >
@@ -235,7 +237,7 @@ function Kpi({ label, value, hint, tone, title }: { label: string; value: string
             )}>
                 {value}
             </p>
-            <p className="text-[12px] text-subtle-ink truncate">{hint}</p>
+            <p className="text-[12px] text-muted-ink truncate">{hint}</p>
         </div>
     )
 }

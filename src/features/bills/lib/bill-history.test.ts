@@ -65,6 +65,13 @@ describe('subscriptionAudit', () => {
         expect(audit?.perYear).toBe(54_000 * 12)
     })
 
+    it('drops a rise once the bill is updated to the new price', () => {
+        const payments = new Map([['netflix', [pay('2026-08-23', 54_000), pay('2026-09-23', 65_000)]]])
+        expect(subscriptionAudit([bill({ amount: 65_000 })], payments, today)).toBeNull()
+        expect(subscriptionAudit([bill({ amount: 64_999.6 })], payments, today)).toBeNull()
+        expect(subscriptionAudit([bill({ amount: 60_000 })], payments, today)?.rise?.change.to).toBe(65_000)
+    })
+
     it('stays quiet when nothing changed', () => {
         const payments = new Map([['netflix', [pay('2026-08-23', 54_000), pay('2026-09-23', 54_000)]]])
         expect(subscriptionAudit([bill()], payments, today)).toBeNull()

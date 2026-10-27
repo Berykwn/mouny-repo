@@ -158,7 +158,7 @@ export function TransactionListView({
                         value={query}
                         onChange={(e) => setQuery(e.target.value)}
                         placeholder="Search your notes"
-                        className="flex-1 min-w-0 bg-transparent outline-none text-[14px] text-ink placeholder:text-muted-ink [&::-webkit-search-cancel-button]:hidden"
+                        className="flex-1 min-w-0 bg-transparent outline-none text-[16px] lg:text-[14px] text-ink placeholder:text-muted-ink [&::-webkit-search-cancel-button]:hidden"
                     />
                     {query && (
                         <button type="button" aria-label="Clear search" onClick={() => setQuery('')} className="text-muted-ink hover:text-ink">
@@ -211,7 +211,7 @@ export function TransactionListView({
                         onClick={() => setCategoryId(categoryId === f.id ? null : f.id)}
                         className={cn(CHIP, categoryId === f.id ? CHIP_ON : CHIP_OFF)}
                     >
-                        {f.name} <span className={cn('tabular-nums', categoryId === f.id ? 'text-on-ink/60' : 'text-subtle-ink')}>{f.count}</span>
+                        {f.name} <span className={cn('tabular-nums', categoryId === f.id ? 'text-on-ink/60' : 'text-muted-ink')}>{f.count}</span>
                     </button>
                 ))}
             </div>

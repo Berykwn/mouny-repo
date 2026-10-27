@@ -110,8 +110,8 @@ export function ContributeQuantityForm({ item, periodStart, onSuccess }: Contrib
         }
 
         toast.success(data?.is_purchased
-            ? 'Cicilan tercatat, wish list selesai!'
-            : `Cicilan ${quantityNum} ${unit} tercatat`)
+            ? 'Payment recorded. Wish complete!'
+            : `Payment recorded: ${quantityNum} ${unit}`)
         onSuccess()
     }
 
@@ -122,7 +122,7 @@ export function ContributeQuantityForm({ item, periodStart, onSuccess }: Contrib
             <div className="rounded-[20px] border border-line bg-surface p-4 space-y-3">
                 <div className="flex items-start justify-between">
                     <div>
-                        <p className="text-[11.5px] text-muted-ink">Terkumpul untuk {item.name}</p>
+                        <p className="text-[11.5px] text-muted-ink">Saved toward {item.name}</p>
                         <p className="text-[22px] font-medium tracking-[-0.02em] text-ink mt-0.5 tabular-nums">
                             {savedQuantity} {unit}
                         </p>
@@ -135,7 +135,7 @@ export function ContributeQuantityForm({ item, periodStart, onSuccess }: Contrib
                     <div className="space-y-1">
                         <ProgressBar percent={percent} />
                         <p className="text-[11px] text-muted-ink">
-                            {percent >= 100 ? 'Selesai' : `${percent}% terkumpul`}
+                            {percent >= 100 ? 'Complete' : `${percent}% saved`}
                         </p>
                     </div>
                 )}
@@ -144,7 +144,7 @@ export function ContributeQuantityForm({ item, periodStart, onSuccess }: Contrib
             {/* Quantity + price per unit */}
             <div className="flex gap-3">
                 <div className="space-y-1.5 flex-1">
-                    <Label className={FIELD_LABEL}>Jumlah {unit}</Label>
+                    <Label className={FIELD_LABEL}>Quantity ({unit})</Label>
                     <Input
                         type="text"
                         inputMode="decimal"
@@ -153,11 +153,11 @@ export function ContributeQuantityForm({ item, periodStart, onSuccess }: Contrib
                         onChange={(e) => setQuantity(toDecimalInput(e.target.value))}
                         disabled={loading}
                         autoFocus
-                        className="h-12 rounded-[14px] border-line text-[13px] font-mono"
+                        className="h-12 rounded-[14px] border-line text-[16px] lg:text-[13px] font-mono"
                     />
                 </div>
                 <div className="space-y-1.5 flex-1">
-                    <Label className={FIELD_LABEL}>Harga/{unit}</Label>
+                    <Label className={FIELD_LABEL}>Price per {unit}</Label>
                     <div className="relative">
                         <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[13px] text-muted-ink font-medium">Rp</span>
                         <Input
@@ -167,7 +167,7 @@ export function ContributeQuantityForm({ item, periodStart, onSuccess }: Contrib
                             onChange={(e) => setPricePerUnit(e.target.value.replace(/\D/g, ''))}
                             placeholder="0"
                             disabled={loading}
-                            className="pl-10 h-12 rounded-[14px] border-line text-[13px] font-mono"
+                            className="pl-10 h-12 rounded-[14px] border-line text-[16px] lg:text-[13px] font-mono"
                         />
                     </div>
                 </div>
@@ -252,7 +252,7 @@ export function ContributeQuantityForm({ item, periodStart, onSuccess }: Contrib
                 disabled={loading}
                 className="w-full h-12 rounded-[14px] text-[13px] font-semibold text-on-action bg-action hover:bg-action/90 transition-colors disabled:opacity-50 disabled:pointer-events-none"
             >
-                {loading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : 'Cicil'}
+                {loading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : 'Record payment'}
             </button>
         </form>
     )

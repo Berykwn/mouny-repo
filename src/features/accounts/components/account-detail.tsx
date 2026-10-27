@@ -1,4 +1,3 @@
-import { Link } from 'react-router-dom'
 import { Trash2 } from 'lucide-react'
 import { formatCurrency, formatDateShort } from '@/lib/helpers'
 import { amountColor, isInflow } from '@/lib/transaction-type'
@@ -22,13 +21,15 @@ interface AccountDetailProps {
     hasActivePeriod: boolean
     onTransfer: () => void
     /** Opens the edit form on its balance adjustment. */
-    onAdjust?: () => void
+    onAdjust: () => void
     onEdit: () => void
     onDelete: () => void
+    /** Opens the ledger for this account. */
+    onLedger: () => void
 }
 
 /** One account: its balance and how long it lasts, the three things to do with it, and its recent activity. */
-export function AccountDetail({ account, insight, canTransfer, hasActivePeriod, onTransfer, onAdjust, onEdit, onDelete }: AccountDetailProps) {
+export function AccountDetail({ account, insight, canTransfer, hasActivePeriod, onTransfer, onAdjust, onEdit, onDelete, onLedger }: AccountDetailProps) {
     const recent = insight?.recent.slice(0, RECENT_COUNT) ?? []
     const facts = [
         TYPE_LABEL[account.type] ?? 'Account',
@@ -55,7 +56,7 @@ export function AccountDetail({ account, insight, canTransfer, hasActivePeriod, 
                 <button type="button" onClick={onTransfer} disabled={!canTransfer} className={cn(BUTTON, 'bg-action text-on-action hover:bg-action/90')}>
                     Transfer
                 </button>
-                <button type="button" onClick={onAdjust ?? onEdit} className={cn(BUTTON, 'bg-line-soft text-ink hover:bg-surface-hover')}>
+                <button type="button" onClick={onAdjust} className={cn(BUTTON, 'bg-line-soft text-ink hover:bg-surface-hover')}>
                     Adjust
                 </button>
                 <button type="button" onClick={onEdit} className={cn(BUTTON, 'bg-line-soft text-ink hover:bg-surface-hover')}>
@@ -70,7 +71,7 @@ export function AccountDetail({ account, insight, canTransfer, hasActivePeriod, 
                 <div>
                     <div className="flex items-baseline justify-between">
                         <h3 className="text-[17px] font-semibold text-ink">Recent</h3>
-                        <Link to="/transactions" className="text-[14px] font-semibold text-brand-ink hover:text-brand">Ledger</Link>
+                        <button type="button" onClick={onLedger} className="text-[14px] font-semibold text-brand-ink hover:text-brand">Ledger</button>
                     </div>
                     {recent.length === 0 ? (
                         <p className="py-3 text-[13.5px] text-subtle-ink">Nothing from this account this period yet.</p>

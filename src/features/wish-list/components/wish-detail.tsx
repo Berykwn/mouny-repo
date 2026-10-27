@@ -5,6 +5,7 @@ import PiggyIcon from '~icons/ph/piggy-bank-duotone'
 import FlagIcon from '~icons/ph/flag-banner-duotone'
 import CalendarIcon from '~icons/ph/calendar-check-duotone'
 import { formatCurrency, formatDate, formatShortCurrency, toISODate } from '@/lib/helpers'
+import { monthLabel } from '@/lib/dates'
 import { cn } from '@/lib/utils'
 import type { WishListItem, WishPart } from '@/types'
 import { SmartLine } from '@/features/plan/components/smart-line'
@@ -21,16 +22,15 @@ const SECONDARY_BTN = 'w-full h-12 rounded-[14px] text-[13px] font-semibold bg-s
 
 const plain = (n: number) => new Intl.NumberFormat('id-ID').format(Math.round(n))
 const units = (n: number) => new Intl.NumberFormat('id-ID', { maximumFractionDigits: 3 }).format(n)
-const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
-const longMonth = (date: string, today: string) => {
-    const [y, m] = date.split('-').map(Number)
-    return y === Number(today.slice(0, 4)) ? MONTHS[m - 1] : `${MONTHS[m - 1]} ${y}`
-}
 
 interface WishDetailProps {
     item: WishListItem
     stop: RoadmapStop | undefined
     pace: SavingsPace | null
+    /** What's owed on debts, which the usual leftover pays before any wish. */
+    owedFirst?: number
+    /** Installments dated in the open period, when the wish keeps them (quantity wishes); else null. */
+    savedThisPeriod?: number | null
     onContribute: () => void
     onBuy: () => void
     onEdit: () => void
@@ -42,19 +42,20 @@ interface WishDetailProps {
 }
 
 /** Everything about one wish, and its actions — kept off the card so the list stays calm. */
-export function WishDetail({ item, stop, pace, onContribute, onBuy, onEdit, onDelete, onEditParts, onBuyPart, onUndoPart }: WishDetailProps) {
+export function WishDetail({ item, stop, pace, owedFirst = 0, savedThisPeriod = null, onContribute, onBuy, onEdit, onDelete, onEditParts, onBuyPart, onUndoPart }: WishDetailProps) {
     const today = toISODate()
     const isUOM = !!item.quantity
     const unit = item.unit ?? ''
     const { target, saved, remaining, percent, ready } = wishProgress(item)
     const parts = partsBreakdown(item)
-    const plan = targetPlan(item, stop, pace)
-    const next = parts ? nextPart(item, pace, today) : null
-    const saveLabel = isUOM ? 'Cicil' : 'Add funds'
+    const plan = targetPlan(item, stop, pace, today, savedThisPeriod)
+    const next = parts ? nextPart(item, pace, today, owedFirst) : null
+    const saveLabel = isUOM ? 'Add a payment' : 'Add funds'
     const periodWord = (n: number) => `period${n === 1 ? '' : 's'}`
+    const afterDebts = owedFirst > 0 ? ', after your debts are paid off' : ''
 
     const label = parts
-        ? `${parts.bought} of ${parts.total} parts${target !== null ? ` · Rp ${formatShortCurrency(saved)} of ${formatShortCurrency(target)}` : ''}`
+        ? `${parts.bought} of ${parts.total} parts${target !== null ? ` · Rp ${formatShortCurrency(saved)} of Rp ${formatShortCurrency(target)}` : ''}`
         : isUOM
             ? `${units(item.saved_quantity ?? 0)} of ${units(item.quantity ?? 0)} ${unit} · ${formatCurrency(item.price_per_unit ?? 0)}/${unit}`
             : `${PRIORITY_LABEL[item.priority ?? 'low']} priority`
@@ -71,7 +72,7 @@ export function WishDetail({ item, stop, pace, onContribute, onBuy, onEdit, onDe
                     : <>
                         <b>{formatCurrency(next.saved)}</b> saved toward the next part.
                         {next.date
-                            ? <> The {next.part.name} fits around <b>{longMonth(next.date, today)}</b> if your usual leftover goes here.</>
+                            ? <> The {next.part.name} fits around <b>{monthLabel(next.date, today)}</b> if your usual leftover goes here{afterDebts}.</>
                             : <> {formatCurrency(next.remaining)} to go for the {next.part.name}.</>}
                     </>,
                 action: { label: 'Add funds', onClick: onContribute },
@@ -82,7 +83,11 @@ export function WishDetail({ item, stop, pace, onContribute, onBuy, onEdit, onDe
             text: plan.status === 'overdue'
                 ? <>You wanted it by {formatDate(plan.targetDate)}, and that date has passed. Pick a new one so the plan can adjust.</>
                 : <>
-                    To have it by {formatDate(plan.targetDate)}, set aside <b>{formatCurrency(Math.round(plan.perPeriodNeeded))}</b> each period for {plan.periodsLeft} {periodWord(plan.periodsLeft)}.
+                    {plan.doneThisPeriod
+                        ? <>This period’s share is in. To have it by {formatDate(plan.targetDate)}, set aside <b>{formatCurrency(Math.round(plan.perPeriodNeeded))}</b> in each of the {plan.periodsLeft - 1} {periodWord(plan.periodsLeft - 1)} after this one.</>
+                        : plan.savedThisPeriod
+                            ? <>To have it by {formatDate(plan.targetDate)}, add <b>{formatCurrency(Math.round(plan.thisPeriod))}</b> more this period, then {formatCurrency(Math.round(plan.perPeriodNeeded))} each period after.</>
+                            : <>To have it by {formatDate(plan.targetDate)}, set aside <b>{formatCurrency(Math.round(plan.perPeriodNeeded))}</b> each period for {plan.periodsLeft} {periodWord(plan.periodsLeft)}.</>}
                     {plan.status === 'behind' && pace && pace.perPeriod > 0 && <> You usually have {formatShortCurrency(Math.round(pace.perPeriod))} left over, shared across your wishes.</>}
                     {plan.status === 'on-track' && <> You’re on track.</>}
                 </>,
@@ -91,7 +96,7 @@ export function WishDetail({ item, stop, pace, onContribute, onBuy, onEdit, onDe
     } else if (!ready && stop?.date && stop.periods) {
         smart = {
             icon: CalendarIcon,
-            text: <>At your usual leftover, urgent wishes first, it’s ready around <b>{formatMonthYear(stop.date)}</b>, in about {stop.periods} {periodWord(stop.periods)}.</>,
+            text: <>At your usual leftover, urgent wishes first{afterDebts}, it’s ready around <b>{formatMonthYear(stop.date)}</b>, in about {stop.periods} {periodWord(stop.periods)}.</>,
             action: { label: saveLabel, onClick: onContribute },
         }
     }
@@ -189,7 +194,7 @@ export function WishDetail({ item, stop, pace, onContribute, onBuy, onEdit, onDe
             {/* Actions: one clear primary, the rest quiet */}
             <div className="space-y-2">
                 {isUOM ? (
-                    <button type="button" onClick={onContribute} className={PRIMARY_BTN}>Cicil</button>
+                    <button type="button" onClick={onContribute} className={PRIMARY_BTN}>Add a payment</button>
                 ) : parts ? (
                     // Bought part by part from the list above, so only saving up lives here.
                     <button type="button" onClick={onContribute} className={SECONDARY_BTN}>Add funds</button>

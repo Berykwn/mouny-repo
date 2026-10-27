@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { createPortal } from 'react-dom'
 import { ConfirmDrawer } from '@/components/confirmation-drawer'
 import { PeriodPickerDrawer } from '@/components/period-picker-drawer'
@@ -75,6 +76,31 @@ export default function TransactionsPage() {
 
     const today = toISODate()
     const topBarSlotNode = useTopBarSlotNode()
+    const location = useLocation()
+    const navigate = useNavigate()
+
+    // An account's "Ledger" link narrows the list to that account, until the chip is cleared.
+    const [accountId, setAccountId] = useState<string | null>(null)
+
+    // Home opens a transaction here through the navigation state: its period first, then
+    // the row once that period's transactions have loaded. An account's link sends its id.
+    useEffect(() => {
+        const want = location.state as { openId?: string; periodId?: string; accountId?: string } | null
+        if (want?.accountId) {
+            setAccountId(want.accountId)
+            setView('list')
+            navigate(location.pathname, { replace: true, state: null })
+            return
+        }
+        if (!want?.openId) return
+        if (want.periodId && selectedPeriod && selectedPeriod.id !== want.periodId) {
+            const period = allPeriods.find(p => p.id === want.periodId)
+            if (period) { selectPeriod(period); return }
+        }
+        if (!txQuery.data) return
+        if (txQuery.data.some(t => t.id === want.openId)) setOpenId(want.openId)
+        navigate(location.pathname, { replace: true, state: null })
+    }, [location.state, location.pathname, navigate, selectedPeriod, allPeriods, selectPeriod, txQuery.data])
 
     // An open period has no end date yet, so its length is estimated from the one before
     // (periods are sorted newest first) — the same estimate the dashboard uses.
@@ -90,7 +116,7 @@ export default function TransactionsPage() {
         fallbackTotalDays,
         reservedBills: billReserve.reserved,
     })
-    // The safe daily amount: what each day's everyday spending is held against.
+    // The period's fixed everyday share: what each day's everyday spending is held against.
     const allowance = dailyAllowance(stats)
 
     const toggleView = () => {
@@ -170,6 +196,16 @@ export default function TransactionsPage() {
         toast.success('Category updated.')
     }
 
+    // The account filter: its rows, and both sides of any transfer it took part in, so the
+    // list still shows "BCA → GoPay" once.
+    const accountTransfers = accountId
+        ? new Set(transactions.filter(t => t.account_id === accountId && t.transfer_id).map(t => t.transfer_id))
+        : null
+    const listTransactions = accountId
+        ? transactions.filter(t => t.account_id === accountId || (t.transfer_id && accountTransfers!.has(t.transfer_id)))
+        : transactions
+    const accountName = accountId ? transactions.find(t => t.account_id === accountId)?.account.name ?? 'This account' : null
+
     const calendarDefaultDate = isCurrentPeriod ? today : selectedPeriod?.start_date
 
     // Each action closes the detail and hands off.
@@ -183,36 +219,40 @@ export default function TransactionsPage() {
         />
     )
 
+    const calendarToggle = (size: 'sm' | 'md') => selectedPeriod && !loading && (
+        <button
+            type="button"
+            onClick={toggleView}
+            aria-pressed={view === 'calendar'}
+            aria-label="Calendar view"
+            title={view === 'calendar' ? 'Back to the list' : 'Calendar'}
+            className={cn(
+                'border flex items-center justify-center shrink-0 transition-colors',
+                size === 'sm' ? 'w-9 h-9 rounded-[10px]' : 'w-10 h-10 rounded-[12px]',
+                view === 'calendar' ? 'bg-ink border-ink text-on-ink' : 'bg-surface border-line text-ink hover:bg-surface-soft',
+            )}
+        >
+            <CalendarDays className="w-[18px] h-[18px]" />
+        </button>
+    )
+
     return (
         <>
+            {/* Wide screens: the top bar already names the page, so the period and the
+                calendar toggle sit in it and the page's own header goes away. */}
             {topBarSlotNode && selectedPeriod && createPortal(
-                <PeriodChip period={selectedPeriod} onClick={() => setPeriodPickerOpen(true)} />,
+                <>
+                    <PeriodChip period={selectedPeriod} onClick={() => setPeriodPickerOpen(true)} />
+                    {calendarToggle('sm')}
+                </>,
                 topBarSlotNode
             )}
 
-            <header className="flex items-center justify-between gap-3 px-5 pt-[22px] lg:px-0 lg:pt-0">
+            <header className="flex items-center justify-between gap-3 px-5 pt-[22px] lg:hidden">
                 <h1 className="text-[24px] font-semibold tracking-[-0.02em] text-ink">Ledger</h1>
                 <div className="flex items-center gap-2">
-                    {selectedPeriod && (
-                        <span className="lg:hidden">
-                            <PeriodChip period={selectedPeriod} onClick={() => setPeriodPickerOpen(true)} />
-                        </span>
-                    )}
-                    {selectedPeriod && !loading && (
-                        <button
-                            type="button"
-                            onClick={toggleView}
-                            aria-pressed={view === 'calendar'}
-                            aria-label="Calendar view"
-                            title={view === 'calendar' ? 'Back to the list' : 'Calendar'}
-                            className={cn(
-                                'w-10 h-10 rounded-[12px] border flex items-center justify-center shrink-0 transition-colors',
-                                view === 'calendar' ? 'bg-ink border-ink text-on-ink' : 'bg-surface border-line text-ink hover:bg-surface-soft',
-                            )}
-                        >
-                            <CalendarDays className="w-[18px] h-[18px]" />
-                        </button>
-                    )}
+                    {selectedPeriod && <PeriodChip period={selectedPeriod} onClick={() => setPeriodPickerOpen(true)} />}
+                    {calendarToggle('md')}
                 </div>
             </header>
 
@@ -248,6 +288,7 @@ export default function TransactionsPage() {
                         <div className="min-w-0">
                             {view === 'calendar' ? (
                                 <PeriodCalendar
+                                    key={selectedPeriod.id}
                                     transactions={transactions}
                                     periodStart={selectedPeriod.start_date}
                                     periodEnd={selectedPeriod.end_date ?? today}
@@ -260,8 +301,22 @@ export default function TransactionsPage() {
                                     readOnly={!isCurrentPeriod}
                                 />
                             ) : (
+                                <>
+                                {accountName && (
+                                    <div className="pb-3">
+                                        <button
+                                            type="button"
+                                            onClick={() => setAccountId(null)}
+                                            aria-label={`Show all accounts (now ${accountName})`}
+                                            className="inline-flex items-center gap-1.5 h-8 pl-3.5 pr-2.5 rounded-full bg-ink text-on-ink text-[12.5px] font-medium"
+                                        >
+                                            {accountName}
+                                            <X aria-hidden="true" className="w-3.5 h-3.5" />
+                                        </button>
+                                    </div>
+                                )}
                                 <TransactionListView
-                                    transactions={transactions}
+                                    transactions={listTransactions}
                                     selectedIds={selectedIds}
                                     onSelectedIdsChange={setSelectedIds}
                                     readOnly={!isCurrentPeriod}
@@ -271,11 +326,12 @@ export default function TransactionsPage() {
                                     onBulkCategoryRequest={() => setBulkCategoryOpen(true)}
                                     exportName={`transactions-${selectedPeriod.start_date}.csv`}
                                 />
+                                </>
                             )}
                         </div>
 
                         {/* Wide screens: the detail stays beside the list instead of covering it */}
-                        <aside aria-label="Transaction detail" className="hidden lg:block sticky top-6 border-l border-line pl-8 min-h-[240px]">
+                        <aside aria-label="Transaction detail" className="hidden lg:block sticky top-[88px] border-l border-line pl-8 min-h-[240px]">
                             {isDesktop && detail ? (
                                 <div className="relative">
                                     <button

@@ -91,9 +91,15 @@ describe('heroNumbers', () => {
         expect(heroNumbers(stats({ remaining: -10_000 })).status).toBe('over')
     })
 
+    it('stops giving a daily number once an estimated payday is reached', () => {
+        expect(heroNumbers(stats({ isEndDateEstimated: true, daysRemaining: 0, daysElapsed: 30 })).pastPayday).toBe(true)
+        expect(heroNumbers(stats({ isEndDateEstimated: false, daysRemaining: 0, daysElapsed: 30 })).pastPayday).toBe(false)
+        expect(heroNumbers(stats({ isEndDateEstimated: true })).pastPayday).toBe(false)
+    })
+
     it('has no pace or today marker for a closed period', () => {
         const hero = heroNumbers(stats({ isClosed: true, safeDaily: null, daysRemaining: 0 }))
-        expect(hero).toMatchObject({ status: 'closed', today: 8_000_000, elapsed: null, daysLeft: null })
+        expect(hero).toMatchObject({ status: 'closed', today: 8_000_000, elapsed: null, daysLeft: null, pastPayday: false })
     })
 })
 
@@ -102,18 +108,38 @@ describe('pickSmartLine', () => {
         expect(pickSmartLine(input())).toBeNull()
     })
 
-    it('flags a bill whose latest payment differs from its amount', () => {
+    it('flags a bill whose last two payments agree on a new amount', () => {
         const netflix = bill()
         const line = pickSmartLine(input({
             bills: [netflix],
             recentTransactions: [
-                tx({ recurring_bill_id: 'netflix', amount: 54_000, date: '2026-08-23' }),
+                tx({ recurring_bill_id: 'netflix', amount: 65_000, date: '2026-08-23' }),
                 tx({ recurring_bill_id: 'netflix', amount: 65_000, date: '2026-09-23' }),
             ],
         }))
         expect(line?.kind).toBe('bill-changed')
         expect(line?.parts.map(p => p.text).join('')).toContain('Netflix was paid')
         expect(line?.action.to).toBe('/bills')
+    })
+
+    it('waits for a second payment before calling one high month a change', () => {
+        const line = pickSmartLine(input({
+            bills: [bill()],
+            recentTransactions: [
+                tx({ recurring_bill_id: 'netflix', amount: 54_000, date: '2026-08-23' }),
+                tx({ recurring_bill_id: 'netflix', amount: 65_000, date: '2026-09-23' }),
+            ],
+        }))
+        expect(line).toBeNull()
+    })
+
+    it('lets a variable bill move under 10%', () => {
+        const power = bill({ id: 'pln', name: 'Electricity', amount: 400_000 })
+        const line = pickSmartLine(input({
+            bills: [power],
+            recentTransactions: [tx({ recurring_bill_id: 'pln', amount: 430_000, date: '2026-09-23' })],
+        }))
+        expect(line).toBeNull()
     })
 
     it('ignores a bill whose latest payment matches', () => {
@@ -171,6 +197,21 @@ describe('pickSmartLine', () => {
         }))
         expect(line?.kind).toBe('account-short')
         expect(line?.action.to).toBe('/accounts')
+    })
+
+    it('keeps a budget line’s key while spending goes on, until it tips over', () => {
+        const coffee = { id: 'coffee', name: 'Coffee' }
+        const at = (amount: number) => pickSmartLine(input({
+            budgets: [{ category_id: 'coffee', amount: 300_000 }],
+            transactions: [tx({ amount, category: coffee })],
+        }))?.key
+        expect(at(250_000)).toBe(at(280_000))
+        expect(at(320_000)).not.toBe(at(280_000))
+    })
+
+    it('keeps an account line’s key as its balance moves', () => {
+        const at = (balance: number) => pickSmartLine(input({ accounts: [{ id: 'bca', name: 'BCA', balance, is_savings: false }] }))?.key
+        expect(at(-50_000)).toBe(at(-80_000))
     })
 
     it('leaves savings accounts alone', () => {

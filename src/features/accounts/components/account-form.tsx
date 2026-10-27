@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
@@ -20,6 +20,8 @@ interface AccountFormProps {
     /** A transfer opened from a suggestion arrives with its destination and amount filled in, to check and confirm. */
     initialToAccountId?: string
     initialAmount?: number
+    /** Opened from Adjust: focus the balance adjustment rather than the whole form. */
+    focusAdjustment?: boolean
 }
 
 type Tab = 'edit' | 'transfer'
@@ -27,8 +29,19 @@ type Tab = 'edit' | 'transfer'
 const FIELD_LABEL = 'text-[11px] font-medium uppercase tracking-[.14em] text-muted-ink'
 const SUBMIT_BUTTON = 'w-full h-12 rounded-[14px] text-[13px] font-semibold text-on-action bg-action hover:bg-action/90 transition-colors disabled:opacity-50 disabled:pointer-events-none'
 
-export function AccountForm({ onSuccess, initial, allAccounts = [], initialTab = 'edit', initialToAccountId = '', initialAmount }: AccountFormProps) {
+export function AccountForm({ onSuccess, initial, allAccounts = [], initialTab = 'edit', initialToAccountId = '', initialAmount, focusAdjustment = false }: AccountFormProps) {
     const isEdit = !!initial
+    const adjustmentRef = useRef<HTMLInputElement>(null)
+
+    // After the drawer's open animation has started, so the keyboard doesn't fight it.
+    useEffect(() => {
+        if (!focusAdjustment) return
+        const timer = setTimeout(() => {
+            adjustmentRef.current?.focus()
+            adjustmentRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+        }, 150)
+        return () => clearTimeout(timer)
+    }, [focusAdjustment])
 
     const [tab, setTab] = useState<Tab>(initialTab)
     const [name, setName] = useState(initial?.name ?? '')
@@ -148,7 +161,7 @@ export function AccountForm({ onSuccess, initial, allAccounts = [], initialTab =
                                 </div>
                                 {type === 'bank' && (
                                     <div className="absolute top-2 right-2 w-4 h-4 rounded-full bg-brand flex items-center justify-center">
-                                        <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />
+                                        <Check className="w-2.5 h-2.5 text-on-brand" strokeWidth={3} />
                                     </div>
                                 )}
                             </button>
@@ -179,7 +192,7 @@ export function AccountForm({ onSuccess, initial, allAccounts = [], initialTab =
                                 </div>
                                 {type === 'cash' && (
                                     <div className="absolute top-2 right-2 w-4 h-4 rounded-full bg-brand flex items-center justify-center">
-                                        <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />
+                                        <Check className="w-2.5 h-2.5 text-on-brand" strokeWidth={3} />
                                     </div>
                                 )}
                             </button>
@@ -196,7 +209,7 @@ export function AccountForm({ onSuccess, initial, allAccounts = [], initialTab =
                             onChange={e => setName(e.target.value)}
                             required
                             disabled={loading}
-                            className="h-12 rounded-[14px] border-line text-[13px]"
+                            className="h-12 rounded-[14px] border-line text-[16px] lg:text-[13px]"
                         />
                     </div>
 
@@ -220,7 +233,7 @@ export function AccountForm({ onSuccess, initial, allAccounts = [], initialTab =
                                 <Input
                                     type="text"
                                     inputMode="numeric"
-                                    className="pl-10 h-12 rounded-[14px] border-line text-[13px] font-mono"
+                                    className="pl-10 h-12 rounded-[14px] border-line text-[16px] lg:text-[13px] font-mono"
                                     placeholder="0"
                                     value={formatCurrencyInput(initialBalance)}
                                     onChange={e => setInitialBalance(e.target.value.replace(/\D/g, ''))}
@@ -238,10 +251,11 @@ export function AccountForm({ onSuccess, initial, allAccounts = [], initialTab =
                             <div className="relative">
                                 <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[13px] text-muted-ink font-medium">Rp</span>
                                 <Input
+                                    ref={adjustmentRef}
                                     type="text"
                                     inputMode="numeric"
                                     placeholder="e.g. 50.000 or -20.000"
-                                    className="pl-10 pr-14 h-12 rounded-[14px] border-line text-[13px] font-mono"
+                                    className="pl-10 pr-14 h-12 rounded-[14px] border-line text-[16px] lg:text-[13px] font-mono"
                                     value={formatCurrencyInput(adjustment)}
                                     onChange={e => setAdjustment(toSignedDigits(e.target.value))}
                                     disabled={loading}
@@ -252,7 +266,7 @@ export function AccountForm({ onSuccess, initial, allAccounts = [], initialTab =
                                     onClick={() => setAdjustment(a => a.startsWith('-') ? a.slice(1) : '-' + a)}
                                     disabled={loading}
                                     aria-label={adjustment.startsWith('-') ? 'Make positive' : 'Make negative'}
-                                    className="absolute right-2 top-1/2 -translate-y-1/2 h-8 min-w-10 px-2 rounded-[10px] bg-surface-hover text-[13px] font-semibold font-mono text-[#5b5b55] dark:text-neutral-300 hover:bg-surface-hover transition-colors disabled:opacity-50"
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 h-8 min-w-10 px-2 rounded-[10px] bg-surface-hover text-[13px] font-semibold font-mono text-muted-ink hover:bg-surface-hover transition-colors disabled:opacity-50"
                                 >
                                     +/−
                                 </button>
@@ -348,7 +362,7 @@ export function AccountForm({ onSuccess, initial, allAccounts = [], initialTab =
                                                 </div>
                                                 {selected && (
                                                     <div className="w-5 h-5 rounded-full bg-brand flex items-center justify-center shrink-0">
-                                                        <Check className="w-3 h-3 text-white" strokeWidth={3} />
+                                                        <Check className="w-3 h-3 text-on-brand" strokeWidth={3} />
                                                     </div>
                                                 )}
                                             </button>
@@ -368,7 +382,7 @@ export function AccountForm({ onSuccess, initial, allAccounts = [], initialTab =
                             <Input
                                 type="text"
                                 inputMode="numeric"
-                                className="pl-10 h-12 rounded-[14px] border-line text-[13px] font-mono"
+                                className="pl-10 h-12 rounded-[14px] border-line text-[16px] lg:text-[13px] font-mono"
                                 placeholder="0"
                                 value={formatCurrencyInput(transferAmount)}
                                 onChange={e => setTransferAmount(e.target.value.replace(/\D/g, ''))}

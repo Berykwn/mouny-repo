@@ -1,3 +1,4 @@
+import { addDays, monthLabel } from '@/lib/dates'
 import type { SavingsPace } from './wish-analytics'
 
 /**
@@ -8,7 +9,6 @@ import type { SavingsPace } from './wish-analytics'
 
 /** Past this, a save-up date is too far out to mean anything. */
 const MAX_DAYS = 365 * 10
-const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 
 export type AffordVerdict =
     /** Within safe to spend, and the days after it still cover the usual pace. */
@@ -36,12 +36,6 @@ export interface AffordInput {
     today: string
 }
 
-function addDays(date: string, days: number): string {
-    const [y, m, d] = date.split('-').map(Number)
-    const t = new Date(Date.UTC(y, m - 1, d + days))
-    return `${t.getUTCFullYear()}-${String(t.getUTCMonth() + 1).padStart(2, '0')}-${String(t.getUTCDate()).padStart(2, '0')}`
-}
-
 /** When the usual leftover adds up to the amount; null without a pace or past ten years. */
 export function readyAround(amount: number, pace: SavingsPace | null, today: string): string | null {
     if (!pace || pace.perDay <= 0 || amount <= 0) return null
@@ -51,10 +45,9 @@ export function readyAround(amount: number, pace: SavingsPace | null, today: str
 
 /** "mid-December", "early March 2027": a save-up date said as loosely as it's known. */
 export function aroundLabel(date: string, today: string): string {
-    const [y, m, d] = date.split('-').map(Number)
+    const d = Number(date.slice(8, 10))
     const part = d <= 10 ? 'early' : d <= 20 ? 'mid' : 'late'
-    const year = y !== Number(today.slice(0, 4)) ? ` ${y}` : ''
-    return `${part}-${MONTH_NAMES[m - 1]}${year}`
+    return `${part}-${monthLabel(date, today)}`
 }
 
 export function affordVerdict({ amount, safeToSpend, daysLeft, usualPerDay, pace, payday, today }: AffordInput): AffordVerdict {

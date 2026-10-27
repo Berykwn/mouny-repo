@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { formatCurrency, toISODate } from '@/lib/helpers'
-import { groupExpensesByWeekday } from '@/features/dashboard/lib/group-expenses-by-weekday'
+import { groupExpensesByWeekday } from '../lib/group-expenses-by-weekday'
 import type { TransactionWithDetails } from '@/types'
 import { frequentNotes, HEATMAP_WEEKS, isVariable, spendingHeatmap, type PastPeriod, type TimeBand } from '../lib/analysis'
 import { BlockNote, Em, InsightBlock } from './insight-block'
@@ -22,11 +22,15 @@ interface HabitsTabProps {
     transactions: TransactionWithDetails[]
     /** Null while the earlier periods load. */
     history: PastPeriod[] | null
+    /** The selected period's last day; null while it's open. */
+    periodEnd: string | null
 }
 
 /** When and on what the everyday money goes. */
-export function HabitsTab({ transactions, history }: HabitsTabProps) {
-    const today = toISODate()
+export function HabitsTab({ transactions, history, periodEnd }: HabitsTabProps) {
+    // The weeks up to the period's end: an old period looks at its own weeks, not at today's.
+    const realToday = toISODate()
+    const today = periodEnd && periodEnd < realToday ? periodEnd : realToday
     const all = useMemo(() => [...transactions, ...(history ?? []).flatMap(p => p.transactions)], [transactions, history])
     const map = useMemo(() => spendingHeatmap(all, today), [all, today])
     const weekdays = useMemo(() => groupExpensesByWeekday(transactions.filter(isVariable)), [transactions])

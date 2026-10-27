@@ -1,5 +1,6 @@
 import { dueDatesBetween, type BillDue, type PeriodWindow } from '@/features/bills/lib/bills'
 import { getDaysBetween } from '@/lib/helpers'
+import { addDays } from '@/lib/dates'
 import type { Debt, RecurringBill } from '@/types'
 
 /**
@@ -47,12 +48,6 @@ export interface CashOutlookInput {
 }
 
 export const OUTLOOK_DAYS = 42
-
-function addDays(date: string, days: number): string {
-    const [y, m, d] = date.split('-').map(Number)
-    const t = new Date(Date.UTC(y, m - 1, d + days))
-    return `${t.getUTCFullYear()}-${String(t.getUTCMonth() + 1).padStart(2, '0')}-${String(t.getUTCDate()).padStart(2, '0')}`
-}
 
 export function buildCashOutlook(input: CashOutlookInput): CashOutlook {
     const { today, days, startBalance, dailyPace, bills, dues, window, expectedIncome, debts } = input

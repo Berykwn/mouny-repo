@@ -9,8 +9,6 @@ function initials(name: string): string {
 
 interface DebtAvatarProps {
     name: string
-    /** Which side it's on; kept for callers, the avatar itself stays neutral. */
-    type?: string
     /** Past its due date: the one case the avatar turns red. */
     late?: boolean
     /** Settled records fade so the open ones stand out. */

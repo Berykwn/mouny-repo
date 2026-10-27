@@ -13,6 +13,7 @@ import { PayDebtForm } from './components/pay-debt-form'
 import { PayReceivableForm } from './components/pay-receivable-form'
 import { fasterPayoff, payoffPlan, sortByUrgency, summarize } from './lib/debt-insights'
 import { sendReminder } from './lib/reminder'
+import { usePaidThisPeriod } from './hooks/use-paid-this-period'
 import { debtsService } from '@/services/debts.service'
 import { useDebts, usePeriods, useSavingsPace } from '@/queries'
 import { formatCurrency, formatShortCurrency } from '@/lib/helpers'
@@ -88,7 +89,8 @@ export default function DebtsPage() {
         [debts]
     )
     const summary = useMemo(() => summarize(active), [active])
-    const plan = useMemo(() => payoffPlan(active, pace), [active, pace])
+    const paidThisPeriod = usePaidThisPeriod(active, periodStartDate)
+    const plan = useMemo(() => payoffPlan(active, pace, undefined, paidThisPeriod), [active, pace, paidThisPeriod])
     const faster = useMemo(() => fasterPayoff(active, pace), [active, pace])
     const stopFor = (debt: DebtWithAccount) => plan.stops.find(s => s.debt.id === debt.id)
     // Cards follow the payoff order, so the first one is where extra money goes.
@@ -259,7 +261,7 @@ export default function DebtsPage() {
                     {payingDebt && periodId && periodStartDate && (
                         <PayDebtForm
                             debt={payingDebt}
-                            plannedAmount={stopFor(payingDebt)?.perPeriodNeeded}
+                            plannedAmount={stopFor(payingDebt)?.thisPeriodDue}
                             payPeriodId={periodId}
                             periodStartDate={periodStartDate}
                             onSuccess={() => setPayingDebt(null)}

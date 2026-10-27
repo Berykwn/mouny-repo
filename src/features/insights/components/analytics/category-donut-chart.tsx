@@ -46,7 +46,7 @@ export function CategoryDonutChart({ categories, total }: { categories: Category
                 </PieChart>
             </ResponsiveContainer>
             <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-                <p className="text-[10px] uppercase tracking-[.1em] text-subtle-ink">Total</p>
+                <p className="text-[10px] uppercase tracking-[.1em] text-muted-ink">Total</p>
                 <p className="text-[15px] font-medium text-ink">{formatShortCurrency(total)}</p>
             </div>
         </div>

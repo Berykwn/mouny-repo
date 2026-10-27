@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { Check } from 'lucide-react'
 import { BottomDrawer } from '@/components/bottom-drawer'
 import { AccountTypeTile } from '@/components/account-type-icon'
@@ -15,8 +16,21 @@ interface AccountPickerDrawerProps {
 
 export function AccountPickerDrawer({ open, onClose, accounts, selectedId, onSelect }: AccountPickerDrawerProps) {
     return (
-        <BottomDrawer open={open} onClose={onClose} title="Select Account">
+        <BottomDrawer open={open} onClose={onClose} title="Select account">
             <div className="space-y-1 pb-2">
+                {accounts.length === 0 && (
+                    <div className="py-2 text-center">
+                        <p className="text-[14px] text-subtle-ink">No accounts to pick from yet.</p>
+                        <Link
+                            to="/accounts"
+                            state={{ add: true }}
+                            onClick={onClose}
+                            className="mt-1 inline-block py-1 text-[14px] font-semibold text-brand-ink hover:text-brand transition-colors"
+                        >
+                            Add an account first
+                        </Link>
+                    </div>
+                )}
                 {accounts.map((a) => (
                     <button
                         key={a.id}
@@ -34,7 +48,7 @@ export function AccountPickerDrawer({ open, onClose, accounts, selectedId, onSel
                         </div>
                         {selectedId === a.id && (
                             <div className="w-4 h-4 rounded-full bg-brand flex items-center justify-center shrink-0">
-                                <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />
+                                <Check className="w-2.5 h-2.5 text-on-brand" strokeWidth={3} />
                             </div>
                         )}
                     </button>

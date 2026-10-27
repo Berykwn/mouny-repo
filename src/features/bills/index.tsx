@@ -13,9 +13,9 @@ import { daysUntil, formatCurrency, formatShortCurrency, toISODate } from '@/lib
 import type { BillKind, RecurringBill } from '@/types'
 import { Kpis, PillButton, PlanHeader, PlanRow, PlanSection, RowAmount } from '@/features/plan/components/layout'
 import { SmartLine, type SmartAction } from '@/features/plan/components/smart-line'
-import { billCosts, isRunning, nextDueDate, type BillDue } from './lib/bills'
+import { billCosts, isRunning, nextDueDate, yearlyAhead, type BillDue } from './lib/bills'
 import { lastPayment, subscriptionAudit } from './lib/bill-history'
-import { dayDate, monthYear, relativeDays, scheduleLabel, shortDate } from './lib/bill-labels'
+import { dayDate, monthYear, relativeDays, scheduleLabel, setAsideText, shortDate } from './lib/bill-labels'
 import { useBillHistory } from './hooks/use-bill-history'
 import { BillDetail } from './components/bill-detail'
 import { BillForm } from './components/bill-form'
@@ -31,9 +31,11 @@ const plain = (n: number) => new Intl.NumberFormat('id-ID').format(Math.round(n)
 export default function BillsPage() {
     const billsQuery = useBills()
     const bills = billsQuery.data ?? NO_BILLS
-    const { activePeriod } = usePeriods()
-    const { data: periodTxs } = usePeriodTransactions(activePeriod?.id)
-    const reserve = useBillReserve(activePeriod, periodTxs)
+    const { activePeriod, isPending: periodsPending } = usePeriods()
+    const txQuery = usePeriodTransactions(activePeriod?.id)
+    const reserve = useBillReserve(activePeriod, txQuery.data)
+    // The period's bills are only known once its transactions are in; until then nothing is shown as due or paid.
+    const loading = billsQuery.isPending || periodsPending || (!!activePeriod && txQuery.isPending)
     const history = useBillHistory()
     const today = toISODate()
 
@@ -70,6 +72,11 @@ export default function BillsPage() {
     }, [bills, reserve.dues, today])
 
     const dueFor = (bill: RecurringBill) => reserve.dues.find(d => d.bill.id === bill.id)
+    // Yearly bills already in this period are on the list to pay, so the warning skips them.
+    const nextYearly = useMemo(() => {
+        const inPeriod = new Set(reserve.dues.map(d => d.bill.id))
+        return yearlyAhead(bills.filter(b => !inPeriod.has(b.id)), today).find(a => a.monthsLeft > 1) ?? null
+    }, [bills, reserve.dues, today])
 
     const togglePause = async (bill: RecurringBill) => {
         setBusy(true)
@@ -98,17 +105,14 @@ export default function BillsPage() {
         setDeleting(null)
     }
 
-    // The one smart line: a subscription that went up, or one left paused. Only from real payments.
+    // The one smart line: a subscription that went up, or one left paused, only from real payments.
+    // Without either, the next yearly bill outside this period and what a month needs to cover it.
     let smart: { text: ReactNode; actions: SmartAction[] } | null = null
     if (audit) {
         const { rise, paused } = audit
         const actions: SmartAction[] = []
-        if (rise) {
-            const behind = Math.round(rise.bill.amount) < Math.round(rise.change.to)
-            actions.push(behind
-                ? { label: `Update ${rise.bill.name} to ${formatShortCurrency(rise.change.to)}`, onClick: () => updateAmount(rise.bill, rise.change.to), disabled: busy }
-                : { label: `Review ${rise.bill.name}`, onClick: () => setOpen(rise.bill) })
-        }
+        // The audit drops a rise once the bill is at the new price, so this is always still to do.
+        if (rise) actions.push({ label: `Update ${rise.bill.name} to ${formatShortCurrency(rise.change.to)}`, onClick: () => updateAmount(rise.bill, rise.change.to), disabled: busy })
         if (paused[0]) actions.push({ label: `Review ${paused[0].bill.name}`, onClick: () => setOpen(paused[0].bill) })
         smart = {
             text: (
@@ -122,6 +126,11 @@ export default function BillsPage() {
                 </>
             ),
             actions,
+        }
+    } else if (history && nextYearly) {
+        smart = {
+            text: setAsideText(nextYearly, today, true),
+            actions: [{ label: 'Review bill', onClick: () => setOpen(nextYearly.bill) }],
         }
     }
 
@@ -144,7 +153,7 @@ export default function BillsPage() {
         <>
             <PlanHeader title="Bills" add={{ label: 'Add bill', onClick: () => setAdding('') }} />
             <section className="px-4 pb-4 lg:px-0 space-y-6 lg:max-w-3xl">
-                {billsQuery.isPending ? <LoadingContent /> : bills.length === 0 ? (
+                {loading ? <LoadingContent /> : bills.length === 0 ? (
                     <div className="card p-5">
                         <span className="w-10 h-10 rounded-[12px] flex items-center justify-center bg-brand-tint text-brand-ink">
                             <ReceiptIcon className="w-[22px] h-[22px]" />
@@ -206,7 +215,10 @@ export default function BillsPage() {
                         )}
 
                         {rest.length > 0 && (
-                            <PlanSection title={reserve.window ? 'Yearly & paused' : 'All bills'}>
+                            <PlanSection
+                                title={reserve.window ? 'Not due this period' : 'All bills'}
+                                meta={reserve.window ? undefined : 'Open a pay period to pay bills.'}
+                            >
                                 {rest.map(bill => {
                                     const running = isRunning(bill, today)
                                     const next = running ? nextDueDate(bill, today) : null
@@ -251,7 +263,7 @@ export default function BillsPage() {
                         <BillDetail
                             bill={open}
                             due={activePeriod ? dueFor(open) : undefined}
-                            nextDue={nextDueDate(open, today)}
+                            nextDue={(activePeriod ? dueFor(open)?.nextDue : null) ?? nextDueDate(open, today)}
                             payments={history ? history.get(open.id) ?? [] : null}
                             busy={busy}
                             onPay={() => { const d = dueFor(open); if (d) setPaying(d); setOpen(null) }}

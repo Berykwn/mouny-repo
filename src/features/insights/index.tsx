@@ -54,7 +54,7 @@ export default function InsightsPage() {
                 <InsightsTabs tab={tab} onChange={setTab} />
                 <div id={PANEL_ID} role="tabpanel" aria-labelledby={tabId(tab)} className="lg:pt-4">
                     {isPending ? <InsightsSkeleton /> : selectedPeriod ? (
-                        <InsightsBody periodId={selectedPeriod.id} isActivePeriod={isActivePeriod} tab={tab} onOpenWhatIf={() => setTab('what-if')} />
+                        <InsightsBody key={selectedPeriod.id} periodId={selectedPeriod.id} isActivePeriod={isActivePeriod} tab={tab} onOpenWhatIf={() => setTab('what-if')} />
                     ) : (
                         <div className="py-6">
                             <p className="text-[15px] font-semibold text-ink">Nothing to analyse yet</p>
@@ -143,13 +143,13 @@ function InsightsBody({ periodId, isActivePeriod, tab, onOpenWhatIf }: { periodI
 
     switch (tab) {
         case 'habits':
-            return <HabitsTab transactions={data.transactions} history={history} />
+            return <HabitsTab transactions={data.transactions} history={history} periodEnd={data.period.end_date} />
         case 'cash-flow':
             return <CashFlowTab transactions={data.transactions} stats={stats} outlook={outlook} isActivePeriod={isActivePeriod} onOpenWhatIf={onOpenWhatIf} />
         case 'trends':
             return <TrendsTab period={data.period} periods={data.allPeriods} stats={stats} trend={trend} totalBalance={data.totalBalance} />
         case 'what-if':
-            return <WhatIfTab stats={stats} transactions={data.transactions} />
+            return <WhatIfTab key={periodId} stats={stats} transactions={data.transactions} />
         default:
             return <div className="pt-4 lg:pt-0"><ThisPeriodTab data={data} stats={stats} comparable={comparable} history={history} /></div>
     }

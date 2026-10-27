@@ -1,7 +1,7 @@
-import { Outlet, NavLink, useLocation, useNavigate, matchPath } from 'react-router-dom'
+import { Outlet, NavLink, ScrollRestoration, useLocation, useNavigate, matchPath } from 'react-router-dom'
 import { House, List, ChartLine, CalendarRange, Plus, Search } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { AddTransactionFlow } from '@/features/transactions/components/add-transaction-flow'
 import { toISODate } from '@/lib/helpers'
 import { queryClient } from '@/lib/query-client'
@@ -12,7 +12,6 @@ import { TopBarSlotContext } from '@/contexts/TopBarSlotContext'
 import { OFFLINE_REASON } from '@/components/offline-banner'
 import { CommandPalette, Kbd } from '@/components/command-palette/command-palette'
 import { CHORD_TIMEOUT_MS, isTypingTarget, resolveShortcut } from '@/components/command-palette/shortcuts'
-import { AppActionsContext, type AppActions } from './app-actions'
 import { Sidebar } from './sidebar'
 import { toast } from 'sonner'
 
@@ -25,7 +24,7 @@ interface NavItemDef {
     also?: string[]
 }
 
-// The four core jobs; Accounts opens from Home's balances row and Settings from the avatar.
+// The four core jobs; Accounts opens from Home's balances row or Settings, and Settings from the avatar.
 const NAV_ITEMS: NavItemDef[] = [
     { to: '/', label: 'Home', icon: House, end: true, also: ['/accounts', '/menu', '/category', '/period-history'] },
     { to: '/transactions', label: 'Ledger', icon: List, end: false },
@@ -88,7 +87,6 @@ export default function AppLayout() {
     }, [activePeriod, online])
 
     const openPalette = useCallback(() => setPaletteOpen(true), [])
-    const actions = useMemo((): AppActions => ({ openAddTransaction: handleAddClick, openCommandPalette: openPalette }), [handleAddClick, openPalette])
 
     useShortcuts({
         palette: () => setPaletteOpen(open => !open),
@@ -98,11 +96,12 @@ export default function AppLayout() {
     }, paletteOpen)
 
     return (
-        <AppActionsContext value={actions}>
         <div className="min-h-[100dvh] bg-surface flex flex-col">
             <Sidebar activePeriod={activePeriod} user={user} />
 
-            <main className="flex-1 overflow-y-auto pb-[calc(76px+env(safe-area-inset-bottom))] lg:pl-64 lg:pb-0">
+            {/* The window scrolls (not main), so the desktop top bar can stick; each page opens at its top. */}
+            <ScrollRestoration />
+            <main className="flex-1 pb-[calc(76px+env(safe-area-inset-bottom))] lg:pl-64 lg:pb-0">
                 {/* Desktop top bar: the page's name, its own controls (portalled in), search and the one primary action */}
                 <div className="hidden lg:flex sticky top-0 z-30 h-16 items-center gap-3 px-8 border-b border-line bg-surface/95 backdrop-blur">
                     <h1 className="mr-auto text-[22px] font-semibold tracking-[-0.01em] text-ink truncate">{currentLabel}</h1>
@@ -151,32 +150,33 @@ export default function AppLayout() {
 
             <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} onNewTransaction={handleAddClick} />
 
+            {/* A 76px row of tabs; the home-indicator inset is added below it, not taken out of it. */}
             <nav className={cn(
                 'fixed bottom-0 left-0 right-0 z-40 lg:hidden',
-                'pb-[env(safe-area-inset-bottom)]',
-                'flex items-center h-[76px] px-1',
+                'h-[calc(76px+env(safe-area-inset-bottom))] pb-[env(safe-area-inset-bottom)]',
                 'bg-surface border-t border-line',
             )}>
-                {NAV_ITEMS.map((item) => <NavItem key={item.to} {...item} />)}
+                <div className="flex items-center h-[76px] px-1">
+                    {NAV_ITEMS.map((item) => <NavItem key={item.to} {...item} />)}
 
-                <div className="w-[72px] flex justify-center shrink-0">
-                    <button
-                        onClick={handleAddClick}
-                        aria-label={online ? 'Add transaction' : `Add transaction. ${OFFLINE_REASON}`}
-                        className={cn(
-                            'w-[54px] h-[54px] rounded-full bg-action flex items-center justify-center -mt-[40px] shadow-[0_8px_18px_-8px_rgba(0,0,0,.45)] transition-opacity',
-                            !online && 'opacity-50',
-                        )}
-                    >
-                        <Plus className="w-6 h-6 text-on-action" strokeWidth={2} />
-                    </button>
+                    <div className="w-[72px] flex justify-center shrink-0">
+                        <button
+                            onClick={handleAddClick}
+                            aria-label={online ? 'Add transaction' : `Add transaction. ${OFFLINE_REASON}`}
+                            className={cn(
+                                'w-[54px] h-[54px] rounded-full bg-action flex items-center justify-center -mt-[40px] shadow-[0_8px_18px_-8px_rgba(0,0,0,.45)] transition-opacity',
+                                !online && 'opacity-50',
+                            )}
+                        >
+                            <Plus className="w-6 h-6 text-on-action" strokeWidth={2} />
+                        </button>
+                    </div>
+
+                    {NAV_ITEMS_RIGHT.map((item) => <NavItem key={item.to} {...item} />)}
                 </div>
-
-                {NAV_ITEMS_RIGHT.map((item) => <NavItem key={item.to} {...item} />)}
             </nav>
 
         </div>
-        </AppActionsContext>
     )
 }
 

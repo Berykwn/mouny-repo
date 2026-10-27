@@ -1,9 +1,9 @@
 import { useMemo } from 'react'
 import { formatPeriodLabel, formatShortCurrency } from '@/lib/helpers'
 import type { PeriodStats } from '@/hooks/use-period-stats'
-import { PeriodTrendChart } from '@/features/dashboard/components/analytics/period-trend-chart'
-import { PeriodRange } from '@/features/dashboard/components/analytics/period-analytics'
-import type { TrendPoint } from '@/features/dashboard/hooks/use-period-trend'
+import { PeriodTrendChart } from './analytics/period-trend-chart'
+import { PeriodRange } from './analytics/period-analytics'
+import type { TrendPoint } from '../hooks/use-period-trend'
 import type { PayPeriod } from '@/types'
 import { median, RATE_GUIDE, type RatePoint } from '../lib/analysis'
 import { BlockNote, Em, InsightBlock } from './insight-block'
@@ -40,13 +40,15 @@ export function TrendsTab({ period, periods, stats, trend, totalBalance }: Trend
             projected: t.isCurrent,
         }
     }), [points, period.id, current])
-    const selectedRate = rates.find(r => r.periodId === period.id)?.rate ?? null
+    // From the period's own stats, so a period older than the charted six still has its rate.
+    const selectedRate = current !== null && stats.totalIncome > 0 ? current / stats.totalIncome : null
     const others = rates.filter(r => r.periodId !== period.id && !r.projected && r.rate !== null)
     const usualRate = median(others.map(r => r.rate!))
     const metGuide = others.filter(r => r.rate! >= RATE_GUIDE).length
 
     const comparison = useMemo(() => {
-        const rest = points.filter(t => t.periodId !== period.id)
+        // Closed periods only: an open one's numbers are still moving, so it can't be beaten yet.
+        const rest = points.filter(t => t.periodId !== period.id && !t.isCurrent)
         if (rest.length === 0) return null
         // Ranked by unspent, so a period that moved money into savings isn't marked down for it.
         const best = rest.reduce((mx, t) => t.unspent > mx.unspent ? t : mx, rest[0])

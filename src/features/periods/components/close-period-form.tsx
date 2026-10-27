@@ -51,9 +51,11 @@ export function ClosePeriodForm({ period, onSuccess, onClosed }: ClosePeriodForm
         .slice(0, RECAP_PERIODS)
         .map(p => p.id), [periods, period.start_date])
     const history = useTransactionsOfPeriods(historyIds)
+    // Until the earlier periods arrive the recap would read as "no history"; show it loading instead.
+    const historyLoading = historyIds.length > 0 && !history
     const recap = useMemo(
-        () => periodTxs ? periodRecap(periodTxs, history ?? []) : null,
-        [periodTxs, history],
+        () => periodTxs && !historyLoading ? periodRecap(periodTxs, history ?? []) : null,
+        [periodTxs, history, historyLoading],
     )
     const balance = accounts?.reduce((s, a) => s + a.balance, 0) ?? null
 
@@ -133,9 +135,9 @@ export function ClosePeriodForm({ period, onSuccess, onClosed }: ClosePeriodForm
                             </p>
                             <p className="text-[13px] font-medium text-subtle-ink">median {Math.round(recap!.medianPct!)}%</p>
                         </>
-                    ) : (
+                    ) : recap ? (
                         <p className="mt-1 text-[13px] leading-snug text-subtle-ink">Shows after two closed periods.</p>
-                    )}
+                    ) : <p className="mt-1 h-7 w-20 rounded bg-line-soft animate-pulse" />}
                 </div>
             </div>
 

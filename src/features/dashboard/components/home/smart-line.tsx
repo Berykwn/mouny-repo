@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
-import { Lightbulb } from 'lucide-react'
+import { SmartLine as SharedSmartLine } from '@/components/smart-line'
 import { useBills, useBudgets, useDebts, usePeriods, usePeriodTransactions } from '@/queries'
 import { toISODate } from '@/lib/helpers'
 import type { BillDue } from '@/features/bills/lib/bills'
@@ -27,7 +26,7 @@ interface SmartLineSlotProps {
 
 /**
  * The one line under the hero worth acting on, if there is one. "Not now" hides that line
- * for the session; a different one (or the same one with new numbers) still shows.
+ * for the session; a different one (or the same one in a new state) still shows.
  */
 export function SmartLineSlot({ period, transactions, accounts, dues, daysLeft }: SmartLineSlotProps) {
     const { periods } = usePeriods()
@@ -67,23 +66,18 @@ export function SmartLineSlot({ period, transactions, accounts, dues, daysLeft }
     )
 }
 
+/** The shared smart line, so Home's looks like every other page's. */
 function SmartLineCard({ line, onDismiss }: { line: SmartLine; onDismiss: () => void }) {
     return (
-        <div role="status" className="flex gap-3 rounded-[18px] bg-surface-hover px-4 py-3.5">
-            <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-surface text-brand-ink">
-                <Lightbulb aria-hidden="true" className="h-[15px] w-[15px]" strokeWidth={1.9} />
-            </span>
-            <div className="min-w-0 flex-1">
-                <p className="text-[14px] leading-relaxed text-muted-ink">
-                    {line.parts.map((p, i) => p.strong
-                        ? <span key={i} className="font-semibold text-ink">{p.text}</span>
-                        : <span key={i}>{p.text}</span>)}
-                </p>
-                <div className="mt-1.5 flex items-center gap-4 text-[13.5px] font-semibold">
-                    <Link to={line.action.to} className="text-brand-ink hover:underline underline-offset-2">{line.action.label}</Link>
-                    <button type="button" onClick={onDismiss} className="text-muted-ink hover:text-ink">Not now</button>
-                </div>
-            </div>
+        <div role="status">
+            <SharedSmartLine
+                actions={[
+                    { label: line.action.label, to: line.action.to },
+                    { label: 'Not now', onClick: onDismiss },
+                ]}
+            >
+                {line.parts.map((p, i) => p.strong ? <b key={i}>{p.text}</b> : <span key={i}>{p.text}</span>)}
+            </SharedSmartLine>
         </div>
     )
 }

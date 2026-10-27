@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { Link } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { ChevronLeft, Plus } from 'lucide-react'
 import { useTopBarSlotNode } from '@/contexts/TopBarSlotContext'
 import { cn } from '@/lib/utils'
@@ -13,9 +13,13 @@ interface PlanHeaderProps {
     extra?: ReactNode
 }
 
-/** A Plan page's header: back to Plan on the phone, the page's actions in the desktop top bar. */
+/** A Plan page's header: back on the phone, the page's actions in the desktop top bar. */
 export function PlanHeader({ title, add, extra }: PlanHeaderProps) {
     const slot = useTopBarSlotNode()
+    const navigate = useNavigate()
+    const location = useLocation()
+    // Back to wherever you came from; opened directly (no history in the app), back to Plan.
+    const back = () => (location.key !== 'default' ? navigate(-1) : navigate('/plan'))
     return (
         <>
             {slot && (add || extra) && createPortal(
@@ -30,9 +34,9 @@ export function PlanHeader({ title, add, extra }: PlanHeaderProps) {
                 slot,
             )}
             <header className="lg:hidden flex items-center gap-2 px-2 pt-[18px] pb-2">
-                <Link to="/plan" aria-label="Back to Plan" className="w-10 h-10 rounded-full flex items-center justify-center text-ink hover:bg-surface-hover">
+                <button type="button" onClick={back} aria-label="Back" className="w-10 h-10 rounded-full flex items-center justify-center text-ink hover:bg-surface-hover">
                     <ChevronLeft className="w-5 h-5" />
-                </Link>
+                </button>
                 <h1 className="flex-1 text-[20px] font-semibold tracking-[-0.02em] text-ink">{title}</h1>
                 {add && (
                     <button
@@ -138,15 +142,6 @@ export function PillButton({ onClick, disabled, children }: { onClick: () => voi
         >
             {children}
         </button>
-    )
-}
-
-/** A soft square tile behind a row's icon. */
-export function RowTile({ children, className }: { children: ReactNode; className?: string }) {
-    return (
-        <span className={cn('w-10 h-10 rounded-[12px] flex items-center justify-center shrink-0 bg-brand-tint text-brand-ink', className)}>
-            {children}
-        </span>
     )
 }
 

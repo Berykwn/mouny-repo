@@ -1,17 +1,7 @@
-import type { ReactNode } from 'react'
 import { NavLink } from 'react-router-dom'
 import { ChevronRight, type LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { TINT } from './tint'
-
-export function Group({ label, children }: { label: string; children: ReactNode }) {
-    return (
-        <div>
-            <p className="text-[11px] uppercase tracking-[.14em] text-muted-ink px-1 mb-1.5">{label}</p>
-            <nav className="card overflow-hidden divide-y divide-line-soft">{children}</nav>
-        </div>
-    )
-}
 
 export interface RowProps {
     to: string
@@ -29,8 +19,8 @@ export function Row({ to, icon: Icon, tint, label, sub, flag }: RowProps) {
                 <Icon className="w-4 h-4" strokeWidth={1.9} />
             </span>
             <span className="flex-1 min-w-0">
-                <span className="block text-[13px] font-medium text-ink">{label}</span>
-                <span className="block text-[11.5px] text-muted-ink truncate">{sub}</span>
+                <span className="block text-[15px] text-ink">{label}</span>
+                <span className="block text-[13px] text-subtle-ink truncate">{sub}</span>
             </span>
             {flag && (
                 <span className={cn('text-[10.5px] font-semibold px-2 py-0.5 rounded-full shrink-0', flag.className)}>{flag.text}</span>

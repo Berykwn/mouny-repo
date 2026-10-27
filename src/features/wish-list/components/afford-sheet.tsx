@@ -1,11 +1,12 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { Input } from '@/components/ui/input'
-import { usePeriods, usePeriodTransactions, useSavingsPace } from '@/queries'
+import { useBills, usePeriods, usePeriodTransactions, useSavingsPace } from '@/queries'
 import { useBillReserve } from '@/hooks/use-bill-reserve'
 import { MIN_PROJECTION_DAYS, usePeriodStats } from '@/hooks/use-period-stats'
 import { formatCurrency, formatCurrencyInput, getDaysBetween, parseCurrencyInput, toISODate } from '@/lib/helpers'
+import { addDays } from '@/lib/dates'
 import { cn } from '@/lib/utils'
-import { addDays, periodWindow } from '@/features/bills/lib/bills'
+import { periodWindow } from '@/features/bills/lib/bills'
 import { dayDate } from '@/features/bills/lib/bill-labels'
 import { affordVerdict, aroundLabel, type AffordVerdict } from '../lib/afford'
 
@@ -26,9 +27,12 @@ export function AffordSheet({ onAddToWishlist, onClose }: AffordSheetProps) {
     const [amount, setAmount] = useState('')
     const [note, setNote] = useState('')
 
-    const { activePeriod, periods } = usePeriods()
+    const { activePeriod, periods, isPending: periodsPending } = usePeriods()
     const { data: txs } = usePeriodTransactions(activePeriod?.id)
+    const { data: bills } = useBills()
     const reserve = useBillReserve(activePeriod, txs)
+    // Until both are in, bills still due would count as 0 and the verdict would be too generous.
+    const loaded = !!txs && !!bills
     const pace = useSavingsPace()
     const window = useMemo(() => (activePeriod ? periodWindow(activePeriod, periods) : null), [activePeriod, periods])
     const stats = usePeriodStats({
@@ -43,7 +47,7 @@ export function AffordSheet({ onAddToWishlist, onClose }: AffordSheetProps) {
     const verdict: AffordVerdict | null = value > 0
         ? affordVerdict({
             amount: value,
-            safeToSpend: activePeriod && txs ? stats.remaining : null,
+            safeToSpend: activePeriod && loaded ? stats.remaining : null,
             daysLeft: stats.daysRemaining !== null ? stats.daysRemaining + 1 : null,
             usualPerDay: stats.daysElapsed >= MIN_PROJECTION_DAYS && stats.dailyAvg > 0 ? stats.dailyAvg : null,
             pace,
@@ -52,7 +56,7 @@ export function AffordSheet({ onAddToWishlist, onClose }: AffordSheetProps) {
         })
         : null
 
-    const view = verdict ? describe(verdict, today) : null
+    const view = verdict ? describe(verdict, today, periodsPending || (!!activePeriod && !loaded)) : null
 
     return (
         <div className="space-y-4 pb-2">
@@ -74,7 +78,7 @@ export function AffordSheet({ onAddToWishlist, onClose }: AffordSheetProps) {
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 maxLength={80}
-                className="h-12 rounded-[14px] border-line bg-surface-hover text-[14px]"
+                className="h-12 rounded-[14px] border-line bg-surface-hover text-[16px] lg:text-[14px]"
             />
 
             {view && (
@@ -105,7 +109,7 @@ export function AffordSheet({ onAddToWishlist, onClose }: AffordSheetProps) {
     )
 }
 
-function describe(v: AffordVerdict, today: string): { title: string; reason: ReactNode; alternative: ReactNode | null; tone: string; titleTone: string } {
+function describe(v: AffordVerdict, today: string, loading: boolean): { title: string; reason: ReactNode; alternative: ReactNode | null; tone: string; titleTone: string } {
     const around = (date: string | null) => (date ? <>Or save for it: ready around <b>{aroundLabel(date, today)}</b>.</> : null)
     switch (v.kind) {
         case 'yes':
@@ -150,7 +154,9 @@ function describe(v: AffordVerdict, today: string): { title: string; reason: Rea
         case 'unknown':
             return {
                 title: 'Can’t tell yet',
-                reason: <>Open a pay period, and this checks the amount against what’s safe to spend in it.</>,
+                reason: loading
+                    ? <>Still loading your bills and this period’s spending. The answer shows once they’re in.</>
+                    : <>Open a pay period, and this checks the amount against what’s safe to spend in it.</>,
                 alternative: null,
                 tone: 'bg-surface-hover',
                 titleTone: 'text-ink',

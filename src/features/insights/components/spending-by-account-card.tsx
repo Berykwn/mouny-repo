@@ -1,6 +1,6 @@
 import { AccountTypeTile } from '@/components/account-type-icon'
 import { formatCurrency } from '@/lib/helpers'
-import type { AccountSpending } from '../../lib/spending-by-account'
+import type { AccountSpending } from '../lib/spending-by-account'
 
 /** One row per account, with its share as a thin single-hue bar. */
 export function SpendingByAccountList({ byAccount, totalSpending }: { byAccount: AccountSpending[]; totalSpending: number }) {

@@ -69,7 +69,9 @@ export function subscriptionAudit(bills: RecurringBill[], payments: Map<string, 
     let rise: SubscriptionAudit['rise'] = null
     for (const bill of subs.filter(b => isRunning(b, today))) {
         const change = lastPriceChange(payments.get(bill.id) ?? [])
-        if (change && change.percent > 0 && (!rise || change.percent > rise.change.percent)) rise = { bill, change }
+        // Once the bill is set to the new price, the rise has been dealt with.
+        if (change && Math.round(bill.amount) >= Math.round(change.to)) continue
+        if (change && change.percent > 0 &&(!rise || change.percent > rise.change.percent)) rise = { bill, change }
     }
     const paused = subs
         .filter(b => b.paused && (!b.ends_on || b.ends_on >= today))

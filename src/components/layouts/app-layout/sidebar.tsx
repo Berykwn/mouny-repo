@@ -6,7 +6,7 @@ import { getInitials } from '@/lib/helpers'
 import { displayName } from '@/lib/greeting'
 import { useMoneyGlance, type MoneyGlance } from '@/hooks/use-money-glance'
 import { usePeriods } from '@/queries'
-import { periodProgress, periodRange } from '@/features/periods/lib/period-progress'
+import { paydayLabel, periodDayLabel, periodProgress, periodRange } from '@/features/periods/lib/period-progress'
 import type { PayPeriod } from '@/types'
 
 type BadgeKey = 'debts' | 'wishes' | 'bills'
@@ -32,7 +32,7 @@ const GROUPS: { label: string | null; items: SidebarItem[] }[] = [
     {
         label: 'Plan',
         items: [
-            { to: '/plan', label: 'Upcoming', icon: CalendarClock },
+            { to: '/plan', label: 'Plan', icon: CalendarClock },
             { to: '/bills', label: 'Bills', icon: Receipt, badge: 'bills' },
             { to: '/debts', label: 'Debts', icon: CreditCard, badge: 'debts' },
             { to: '/wish-list', label: 'Wishlist', icon: ShoppingBag, badge: 'wishes' },
@@ -130,13 +130,13 @@ function PeriodCard({ period }: { period: PayPeriod | null }) {
     }
 
     const progress = periodProgress(period, periods)
-    const days = progress.totalDays !== null
-        ? `Day ${progress.day} of ${progress.totalDays}${progress.daysToPayday ? ` · payday in ${progress.daysToPayday} day${progress.daysToPayday === 1 ? '' : 's'}` : ''}`
-        : `Day ${progress.day}`
+    const payday = paydayLabel(progress)
+    const days = `${periodDayLabel(progress)}${payday ? ` · ${payday}` : ''}`
+    const end = progress.pastUsualLength ? null : progress.endDate
 
     return (
         <NavLink to="/period-history" className="mx-1 block rounded-[12px] bg-line-soft p-3 hover:bg-surface-hover transition-colors">
-            <p className="text-[14px] font-semibold text-ink tabular-nums">{periodRange(period.start_date, progress.endDate)}</p>
+            <p className="text-[14px] font-semibold text-ink tabular-nums">{periodRange(period.start_date, end, progress.estimated)}</p>
             <p className="text-[12px] text-subtle-ink tabular-nums mt-0.5">{days}</p>
             {progress.fraction !== null && (
                 <div className="mt-2 h-1 rounded-full bg-line overflow-hidden">

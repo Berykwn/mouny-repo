@@ -98,7 +98,7 @@ export function WishPartsForm({ item, onSuccess }: WishPartsFormProps) {
                     <ul className="rounded-[14px] border border-line divide-y divide-line-soft">
                         {bought.map(p => (
                             <li key={p.id} className="flex items-center gap-2.5 px-3 py-2.5">
-                                <span className="w-5 h-5 rounded-full bg-positive/15 text-positive flex items-center justify-center shrink-0">
+                                <span className="w-5 h-5 rounded-full bg-brand-tint text-brand-ink flex items-center justify-center shrink-0">
                                     <Check className="w-3 h-3" />
                                 </span>
                                 <span className="flex-1 min-w-0 text-[13px] text-ink truncate">{p.name}</span>
@@ -120,7 +120,7 @@ export function WishPartsForm({ item, onSuccess }: WishPartsFormProps) {
                                 onChange={(e) => setRow(row.key, { name: e.target.value })}
                                 disabled={loading}
                                 maxLength={80}
-                                className="flex-1 min-w-0 h-11 rounded-[12px] border-line text-[13px]"
+                                className="flex-1 min-w-0 h-11 rounded-[12px] border-line text-[16px] lg:text-[13px]"
                             />
                             <div className="relative w-[38%] shrink-0">
                                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[12px] text-muted-ink font-medium">Rp</span>
@@ -132,7 +132,7 @@ export function WishPartsForm({ item, onSuccess }: WishPartsFormProps) {
                                     value={formatCurrencyInput(row.price)}
                                     onChange={(e) => setRow(row.key, { price: e.target.value.replace(/\D/g, '') })}
                                     disabled={loading}
-                                    className="pl-9 h-11 rounded-[12px] border-line text-[13px] font-mono"
+                                    className="pl-9 h-11 rounded-[12px] border-line text-[16px] lg:text-[13px] font-mono"
                                 />
                             </div>
                             <button
@@ -166,7 +166,7 @@ export function WishPartsForm({ item, onSuccess }: WishPartsFormProps) {
             )}
 
             {finishes && (
-                <p className="rounded-[14px] bg-positive/10 px-3 py-2.5 text-[12px] text-positive leading-relaxed">
+                <p className="rounded-[14px] bg-brand-tint px-3 py-2.5 text-[12px] text-brand-ink leading-relaxed">
                     Nothing left to buy — saving marks {item.name} as done.
                 </p>
             )}

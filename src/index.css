@@ -68,6 +68,10 @@
   /* The one primary action on a screen: ink on light, cobalt on dark (never a white slab). */
   --action: #1d1d1b;
   --on-action: #ffffff;
+  /* Text or a tick drawn on a brand fill (it's a light cobalt in dark mode). */
+  --on-brand: #ffffff;
+  /* Cobalt that reads on the toast, which is a dark pill in both themes. */
+  --toast-accent: #8a9cf2;
   --negative-ink: #b91c1c;
   --negative-soft: #fef2f2;
   --negative-line: #f3c5c5;
@@ -81,7 +85,8 @@
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
+  /* The same near-black as --surface and the dark theme-color, so no band shows between them. */
+  --background: #141414;
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);
   --card-foreground: oklch(0.985 0 0);
@@ -138,6 +143,7 @@
   --brand-line: #2e3766;
   --action: #4a63dc;
   --on-action: #ffffff;
+  --on-brand: #10163a;
   --negative-ink: #f87171;
   --negative-soft: #2a1515;
   --negative-line: #5c2828;
@@ -212,6 +218,8 @@
   --color-brand-line: var(--brand-line);
   --color-action: var(--action);
   --color-on-action: var(--on-action);
+  --color-on-brand: var(--on-brand);
+  --color-toast-accent: var(--toast-accent);
   --color-negative-ink: var(--negative-ink);
   --color-negative-soft: var(--negative-soft);
   --color-negative-line: var(--negative-line);

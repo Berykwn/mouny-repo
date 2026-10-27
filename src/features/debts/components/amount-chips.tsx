@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils'
 
 interface AmountChipsProps {
     remaining: number
-    /** The plan's amount for this period, offered when it's less than the full remaining. */
+    /** The plan's amount still due this period (its schedule's first step, as on the card), offered when it's less than the full remaining. */
     planned?: number | null
     value: number
     onPick: (amount: number) => void

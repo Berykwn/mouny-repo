@@ -7,6 +7,7 @@ import { PageHeader } from '@/components/page-header'
 import { useBills, useDebts, usePeriods, usePeriodTransactions, useSavingsPace, useWishes } from '@/queries'
 import { useBillReserve } from '@/hooks/use-bill-reserve'
 import { daysUntil, formatCurrency, formatShortCurrency, toISODate } from '@/lib/helpers'
+import { usePaidThisPeriod } from '@/features/debts/hooks/use-paid-this-period'
 import { cn } from '@/lib/utils'
 import type { DebtWithAccount, RecurringBill, WishListItem } from '@/types'
 import { billCosts, isRunning, type BillDue } from '@/features/bills/lib/bills'
@@ -19,11 +20,11 @@ import { payoffPlan } from '@/features/debts/lib/debt-insights'
 import { sendReminder } from '@/features/debts/lib/reminder'
 import { DebtAvatar } from '@/features/debts/components/debt-avatar'
 import { PayDebtForm } from '@/features/debts/components/pay-debt-form'
-import { buildRoadmap, partsBreakdown, wishProgress } from '@/features/wish-list/lib/wish-analytics'
+import { buildRoadmap, etaMonth, partsBreakdown, wishProgress } from '@/features/wish-list/lib/wish-analytics'
 import { WishTile } from '@/features/wish-list/components/wish-tile'
 import { PillButton, PlanRow, PlanSection, RowAmount } from './components/layout'
 import { SmartLine } from './components/smart-line'
-import { upcomingPlan, type UpcomingItem } from './lib/upcoming'
+import { periodRange, upcomingPlan, type UpcomingItem } from './lib/upcoming'
 
 const NO_BILLS: RecurringBill[] = []
 const NO_DEBTS: DebtWithAccount[] = []
@@ -42,10 +43,11 @@ export default function PlanPage() {
     const { activePeriod, isPending: periodsPending } = usePeriods()
     const billsQuery = useBills()
     const bills = billsQuery.data ?? NO_BILLS
-    const { data: periodTxs } = usePeriodTransactions(activePeriod?.id)
-    const reserve = useBillReserve(activePeriod, periodTxs)
+    const txQuery = usePeriodTransactions(activePeriod?.id)
+    const reserve = useBillReserve(activePeriod, txQuery.data)
     const debtsQuery = useDebts({ activeOnly: true })
     const debts = debtsQuery.data ?? NO_DEBTS
+    const paidThisPeriod = usePaidThisPeriod(debts, activePeriod?.start_date)
     const { data: wishes = NO_WISHES } = useWishes()
     const pace = useSavingsPace()
     const history = useBillHistory()
@@ -58,8 +60,11 @@ export default function PlanPage() {
         () => (reserve.window ? upcomingPlan({ dues: reserve.dues, bills, debts, window: reserve.window }) : null),
         [reserve, bills, debts]
     )
-    const debtPlan = useMemo(() => payoffPlan(debts, pace), [debts, pace])
-    const loading = periodsPending || billsQuery.isPending || debtsQuery.isPending
+    const debtPlan = useMemo(() => payoffPlan(debts, pace, today, paidThisPeriod), [debts, pace, today, paidThisPeriod])
+    // Debts are paid first from the usual leftover, so the wish roadmap starts after them.
+    const roadmap = useMemo(() => buildRoadmap(wishes, pace, today, debtPlan.owed), [wishes, pace, today, debtPlan.owed])
+    // This period's bills are only known once its transactions are in.
+    const loading = periodsPending || billsQuery.isPending || debtsQuery.isPending || (!!activePeriod && txQuery.isPending)
 
     const itemRow = (item: UpcomingItem, payable: boolean) => {
         const days = daysUntil(item.date)
@@ -110,32 +115,44 @@ export default function PlanPage() {
         )
     }
 
+    // The one smart line: the soonest bill before payday, with the one thing to do about it.
+    const soonest = plan?.beforePayday.find((i): i is Extract<UpcomingItem, { kind: 'bill' }> => i.kind === 'bill') ?? null
+    const estimatedNote = reserve.window?.estimated && (
+        <p className="px-1 pt-1.5 text-[11.5px] text-subtle-ink">Payday is estimated from your last period.</p>
+    )
+
     const upcoming = loading ? <LoadingContent /> : !plan ? (
         <p className="px-1 text-[13px] text-muted-ink leading-relaxed">
             Open a pay period to see what’s due before payday and what the next one already holds.
         </p>
     ) : (
         <div className="space-y-6">
-            {(plan.setAside > 0 || plan.nextCommitted > 0) && (
-                <SmartLine icon={ClockIcon}>
-                    {plan.setAside > 0
-                        ? <><b>{formatCurrency(plan.setAside)}</b> is set aside for {plan.setAsideCount} bill{plan.setAsideCount === 1 ? '' : 's'} before payday.</>
-                        : <>Every bill this period is paid.</>}
-                    {plan.nextCommitted > 0 && <> Next period already has <b>{formatShortCurrency(plan.nextCommitted)}</b> committed.</>}
-                    {reserve.window?.estimated && <> Payday is estimated from your last period.</>}
+            {soonest && activePeriod && (
+                <SmartLine
+                    icon={ClockIcon}
+                    actions={[{ label: `Pay ${soonest.bill.name}`, onClick: () => setPayingBill(soonest.due) }]}
+                >
+                    <b>{soonest.bill.name}</b> is {daysUntil(soonest.date) < 0 ? '' : 'due '}{relativeDays(daysUntil(soonest.date))}, the soonest bill before payday.
+                    {plan.setAsideCount > 1 && <> Safe to spend already holds back <b>{formatShortCurrency(plan.setAside)}</b> for all {plan.setAsideCount} before payday.</>}
                 </SmartLine>
             )}
 
             {plan.beforePayday.length > 0 && (
-                <PlanSection title="Before payday" meta={plain(plan.beforePayday.reduce((s, i) => s + i.amount, 0))}>
-                    {plan.beforePayday.map(i => itemRow(i, true))}
-                </PlanSection>
+                <div>
+                    <PlanSection title="Before payday" meta={plain(plan.beforePayday.reduce((s, i) => s + i.amount, 0))}>
+                        {plan.beforePayday.map(i => itemRow(i, true))}
+                    </PlanSection>
+                    {estimatedNote}
+                </div>
             )}
 
             {plan.nextPeriod.length > 0 && (
-                <PlanSection title="Next period" meta={plain(plan.nextCommitted)}>
-                    {plan.nextPeriod.map(i => itemRow(i, false))}
-                </PlanSection>
+                <div>
+                    <PlanSection title="Next period" meta={`${periodRange(plan.next, !!reserve.window?.estimated)} · ${plain(plan.nextCommitted)}`}>
+                        {plan.nextPeriod.map(i => itemRow(i, false))}
+                    </PlanSection>
+                    {plan.beforePayday.length === 0 && estimatedNote}
+                </div>
             )}
 
             {plan.owedToYou.length > 0 && (
@@ -156,7 +173,7 @@ export default function PlanPage() {
         <>
             <PageHeader title="Plan" />
             <nav aria-label="Plan" className="lg:hidden flex gap-2 overflow-x-auto px-4 pb-4">
-                <span aria-current="page" className="h-10 px-4 rounded-full bg-action text-on-action text-[14px] font-semibold flex items-center shrink-0">Upcoming</span>
+                <span aria-current="page" className="h-10 px-4 rounded-full border border-line bg-surface-hover text-ink text-[14px] font-semibold flex items-center shrink-0">Upcoming</span>
                 {TABS.map(t => (
                     <NavLink key={t.to} to={t.to} className="h-10 px-4 rounded-full border border-line bg-surface text-muted-ink text-[14px] font-medium flex items-center shrink-0 hover:text-ink">
                         {t.label}
@@ -167,7 +184,7 @@ export default function PlanPage() {
             <section className="px-4 pb-4 lg:px-0 lg:grid lg:grid-cols-[1fr_300px] lg:gap-10 lg:items-start">
                 {upcoming}
                 <aside className="hidden lg:block space-y-7">
-                    <Summaries bills={bills} dues={reserve.dues} debts={debts} debtFree={debtPlan.debtFreeDate} wishes={wishes} roadmap={buildRoadmap(wishes, pace)} today={today} />
+                    <Summaries bills={bills} dues={reserve.dues} debts={debts} debtFree={debtPlan.debtFreeDate} wishes={wishes} roadmap={roadmap} today={today} />
                 </aside>
             </section>
 
@@ -190,7 +207,7 @@ export default function PlanPage() {
                     <PayDebtForm
                         key={payingDebt.id}
                         debt={payingDebt}
-                        plannedAmount={debtPlan.stops.find(s => s.debt.id === payingDebt.id)?.perPeriodNeeded}
+                        plannedAmount={debtPlan.stops.find(s => s.debt.id === payingDebt.id)?.thisPeriodDue}
                         payPeriodId={activePeriod.id}
                         periodStartDate={activePeriod.start_date}
                         onSuccess={() => setPayingDebt(null)}
@@ -275,7 +292,7 @@ function Summaries({ bills, dues, debts, debtFree, wishes, roadmap, today }: {
                                     title={w.name}
                                     sub={p.ready ? 'Ready to buy' : parts ? `${parts.bought} of ${parts.total} parts` : `${p.percent}% saved`}
                                     subClassName={p.ready ? 'text-brand-ink' : undefined}
-                                    end={!p.ready && stop?.date ? <span className="text-[13px] text-ink tabular-nums">~{stop.date.slice(0, 4) === today.slice(0, 4) ? monthYear(stop.date).split(' ')[0] : monthYear(stop.date)}</span> : undefined}
+                                    end={!p.ready && stop?.date ? <span className="text-[13px] text-ink tabular-nums">~{etaMonth(stop.date, today)}</span> : undefined}
                                 />
                             )
                         })}

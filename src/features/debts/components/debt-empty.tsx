@@ -8,8 +8,8 @@ interface DebtEmptyProps {
 }
 
 const CHOICES: { type: DebtType; title: string; hint: string; Icon: typeof HandArrowDownIcon; tile: string }[] = [
-    { type: 'debt', title: 'I borrowed money', hint: 'Someone lent you money', Icon: HandArrowDownIcon, tile: 'bg-negative/10 text-negative' },
-    { type: 'receivable', title: 'I lent money', hint: 'Someone owes you', Icon: HandArrowUpIcon, tile: 'bg-positive/10 text-positive' },
+    { type: 'debt', title: 'I borrowed money', hint: 'Someone lent you money', Icon: HandArrowDownIcon, tile: 'bg-surface-hover text-muted-ink' },
+    { type: 'receivable', title: 'I lent money', hint: 'Someone owes you', Icon: HandArrowUpIcon, tile: 'bg-brand-tint text-brand-ink' },
 ]
 
 export function DebtEmpty({ onAdd, disabled }: DebtEmptyProps) {

@@ -136,22 +136,20 @@ export function dailyEverydaySpending(txs: TransactionWithDetails[], periodIncom
 }
 
 export interface DailyAllowance {
-    amount: number
     /**
-     * 'safe': an open period's safe daily amount, the one the hero shows.
-     * 'share': a closed period's everyday money (income less savings and one-offs), spread evenly.
+     * The period's everyday money (income less savings and one-offs), spread evenly over
+     * its days. Fixed for the whole period, so a past day is judged by what it had then,
+     * not by today's shrinking safe amount.
      */
-    kind: 'safe' | 'share'
+    amount: number
 }
 
 /** What a day's everyday spending is held against, or null when there's no income to share. */
 export function dailyAllowance(
-    stats: Pick<PeriodStats, 'isClosed' | 'safeDaily' | 'totalIncome' | 'totalSavings' | 'oneOffSpending' | 'totalDays'>
+    stats: Pick<PeriodStats, 'totalIncome' | 'totalSavings' | 'oneOffSpending' | 'totalDays'>
 ): DailyAllowance | null {
-    if (stats.totalIncome <= 0) return null
-    if (!stats.isClosed) return stats.safeDaily !== null ? { amount: Math.max(0, stats.safeDaily), kind: 'safe' } : null
-    if (!stats.totalDays) return null
-    return { amount: Math.max(0, (stats.totalIncome - stats.totalSavings - stats.oneOffSpending) / stats.totalDays), kind: 'share' }
+    if (stats.totalIncome <= 0 || !stats.totalDays) return null
+    return { amount: (stats.totalIncome - stats.totalSavings - stats.oneOffSpending) / stats.totalDays }
 }
 
 /**
@@ -163,9 +161,12 @@ export function unpaidBillsFor(dues: BillDue[], categoryId: string | null | unde
     return dues.filter(d => d.outstanding > 0 && d.bill.category_id === categoryId)
 }
 
-/** Past the allowance; with no room left at all, any everyday spending is. */
+/**
+ * Past the day's share. With no share at all (savings and one-offs took the whole income)
+ * nothing is marked: every day would be "over", which says nothing.
+ */
 export function isOverAllowance(spent: number, allowance: DailyAllowance | null): boolean {
-    return allowance !== null && spent > 0 && spent > allowance.amount
+    return allowance !== null && allowance.amount > 0 && spent > allowance.amount
 }
 
 /** A day's money in less money out; transfers only change hands, so they don't count. */

@@ -1,4 +1,8 @@
 import type { PayPeriod, RecurringBill, TransactionWithDetails } from '@/types'
+import { addDays } from '@/lib/dates'
+
+// Kept here too, so older imports from this module still work.
+export { addDays }
 
 /**
  * Recurring bills against pay periods. Dates are YYYY-MM-DD strings throughout, compared as
@@ -9,12 +13,6 @@ type BillDates = Pick<RecurringBill, 'frequency' | 'due_day' | 'due_month' | 'st
 
 const pad = (n: number) => String(n).padStart(2, '0')
 const daysInMonth = (year: number, month: number) => new Date(Date.UTC(year, month, 0)).getUTCDate()
-
-export function addDays(date: string, days: number): string {
-    const [y, m, d] = date.split('-').map(Number)
-    const t = new Date(Date.UTC(y, m - 1, d + days))
-    return `${t.getUTCFullYear()}-${pad(t.getUTCMonth() + 1)}-${pad(t.getUTCDate())}`
-}
 
 function addMonths(date: string, months: number): string {
     const [y, m, d] = date.split('-').map(Number)
@@ -142,24 +140,6 @@ export interface BillCosts {
     count: number
 }
 
-const perMonthOf = (b: Pick<RecurringBill, 'frequency' | 'amount'>) => (b.frequency === 'yearly' ? b.amount / 12 : b.amount)
-
-export interface BillShare {
-    bill: RecurringBill
-    perMonth: number
-    /** Of all running bills' monthly cost, 0 to 1. */
-    share: number
-}
-
-/** Running bills by what they cost a month, biggest first. */
-export function billShares(bills: RecurringBill[], today: string): BillShare[] {
-    const running = bills.filter(b => isRunning(b, today))
-    const total = running.reduce((s, b) => s + perMonthOf(b), 0)
-    return running
-        .map(bill => ({ bill, perMonth: perMonthOf(bill), share: total > 0 ? perMonthOf(bill) / total : 0 }))
-        .sort((a, b) => b.perMonth - a.perMonth || a.bill.name.localeCompare(b.bill.name))
-}
-
 export interface YearlyAhead {
     bill: RecurringBill
     date: string
@@ -169,20 +149,26 @@ export interface YearlyAhead {
     perMonth: number
 }
 
+/**
+ * A yearly bill spread over the months until it's due: what to put aside each month to have
+ * it ready. Only from the bill's own amount and date; null for a monthly, stopped or ended one.
+ */
+export function yearlySetAside(bill: RecurringBill, today: string): YearlyAhead | null {
+    if (bill.frequency !== 'yearly' || !isRunning(bill, today) || bill.amount <= 0) return null
+    const date = nextDueDate(bill, today)
+    if (!date) return null
+    const [ty, tm] = today.split('-').map(Number)
+    const [y, m] = date.split('-').map(Number)
+    const monthsLeft = Math.max(1, (y * 12 + m) - (ty * 12 + tm))
+    return { bill, date, monthsLeft, perMonth: bill.amount / monthsLeft }
+}
+
 /** Yearly bills due within twelve months, soonest first: the ones a monthly view hides. */
 export function yearlyAhead(bills: RecurringBill[], today: string): YearlyAhead[] {
     const horizon = addMonths(today, 12)
-    const [ty, tm] = today.split('-').map(Number)
     return bills
-        .filter(b => b.frequency === 'yearly' && isRunning(b, today))
-        .map((bill): YearlyAhead | null => {
-            const date = nextDueDate(bill, today)
-            if (!date || date > horizon) return null
-            const [y, m] = date.split('-').map(Number)
-            const monthsLeft = Math.max(1, (y * 12 + m) - (ty * 12 + tm))
-            return { bill, date, monthsLeft, perMonth: bill.amount / monthsLeft }
-        })
-        .filter((a): a is YearlyAhead => a !== null)
+        .map(bill => yearlySetAside(bill, today))
+        .filter((a): a is YearlyAhead => a !== null && a.date <= horizon)
         .sort((a, b) => a.date.localeCompare(b.date))
 }
 

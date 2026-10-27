@@ -25,8 +25,13 @@ interface OweCardProps {
 export function OweCard({ debt, stop, onOpen }: OweCardProps) {
     const { percent } = debtProgress(debt)
     const due = dueLine(debt)
-    const perPeriod = stop?.perPeriodNeeded && stop.status !== 'overdue' ? stop.perPeriodNeeded : null
-    const sub = perPeriod ? `${formatShortCurrency(Math.ceil(perPeriod / 1000) * 1000)} a period · ${due.text.toLowerCase()}` : due.text
+    // The schedule's first step, so the card and the pay sheet's "This period's plan" agree.
+    const planned = stop && stop.status !== 'overdue' ? stop : null
+    const sub = planned?.doneThisPeriod
+        ? `Done for this period · ${due.text.toLowerCase()}`
+        : planned?.thisPeriodDue
+            ? `${formatShortCurrency(planned.thisPeriodDue)} this period · ${due.text.toLowerCase()}`
+            : due.text
     const foot = stop?.periodsLeft
         ? `${stop.periodsLeft} period${stop.periodsLeft === 1 ? '' : 's'} left`
         : stop?.date ? `~${monthYear(stop.date)} at your pace` : null

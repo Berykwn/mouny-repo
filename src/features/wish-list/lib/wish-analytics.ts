@@ -1,4 +1,5 @@
 import { getDaysBetween, toISODate } from '@/lib/helpers'
+import { addDays, MONTHS_SHORT, monthYearLabel } from '@/lib/dates'
 import type { PeriodSummary } from '@/lib/period-summary'
 import type { PayPeriod, WishListItem, WishPart } from '@/types'
 
@@ -160,10 +161,12 @@ export interface RoadmapStop {
 /**
  * When each goal would be funded if every period's leftover went to the wish list,
  * one goal at a time in `sortWishes` order. Goals without a price are left out;
- * ready goals land today.
+ * ready goals land today. The same leftover pays debts first (see payoffPlan), so
+ * `owedFirst` (what's owed) is cleared before the first wish gets anything: wish dates
+ * start after the debt-free date instead of promising that money twice.
  */
-export function buildRoadmap(items: WishListItem[], pace: SavingsPace | null, today = toISODate()): RoadmapStop[] {
-    let cumulative = 0
+export function buildRoadmap(items: WishListItem[], pace: SavingsPace | null, today = toISODate(), owedFirst = 0): RoadmapStop[] {
+    let cumulative = Math.max(0, owedFirst)
     const stops: RoadmapStop[] = []
 
     for (const item of sortWishes(items)) {
@@ -185,17 +188,14 @@ export function buildRoadmap(items: WishListItem[], pace: SavingsPace | null, to
             stops.push({ item, date: null, periods: null })
             continue
         }
-        const date = new Date(today + 'T00:00:00')
-        date.setDate(date.getDate() + days)
-        stops.push({ item, date: toISODate(date), periods: Math.max(1, Math.ceil(days / pace.periodDays)) })
+        stops.push({ item, date: addDays(today, days), periods: Math.max(1, Math.ceil(days / pace.periodDays)) })
     }
 
     return stops
 }
 
-export function formatMonthYear(date: string): string {
-    return new Date(date + 'T00:00:00').toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })
-}
+/** "Oct 2026". */
+export const formatMonthYear = monthYearLabel
 
 /** Used to turn days into periods before any period has closed. */
 const DEFAULT_PERIOD_DAYS = 30
@@ -209,20 +209,35 @@ export interface TargetPlan {
     daysLeft: number
     /** Periods left before the target date, at least 1. */
     periodsLeft: number
-    /** What to set aside each period, for this wish alone, to have it by the date. */
+    /**
+     * What to set aside each period, for this wish alone, to have it by the date. Once this
+     * period's installments are known, it's what each period after this one needs.
+     */
     perPeriodNeeded: number
+    /** Still to set aside this period: perPeriodNeeded, less this period's installments when known. */
+    thisPeriod: number
+    /**
+     * Set aside in the open period, when it's known from dated payments (installments of a
+     * quantity wish); null when it isn't (plain "Add funds" keeps no date).
+     */
+    savedThisPeriod: number | null
+    /** This period's share is already set aside: perPeriodNeeded is then for the periods after it. */
+    doneThisPeriod: boolean
 }
 
 /**
  * How a dated wish stands against its "want it by" date. On track means the roadmap
  * (which funds urgent wishes first) reaches it in time; the per-period amount is what
- * this wish alone needs, so it's the number to act on either way.
+ * this wish alone needs, so it's the number to act on either way. With `savedThisPeriod`
+ * known, a period whose share is already in counts as done, and the rest is spread over
+ * the periods after it.
  */
 export function targetPlan(
     item: WishListItem,
     stop: RoadmapStop | undefined,
     pace: SavingsPace | null,
     today = toISODate(),
+    savedThisPeriod: number | null = null,
 ): TargetPlan | null {
     if (!item.target_date) return null
     const { remaining, ready } = wishProgress(item)
@@ -231,7 +246,22 @@ export function targetPlan(
     const daysLeft = getDaysBetween(today, item.target_date)
     const periodDays = pace?.periodDays && pace.periodDays > 0 ? pace.periodDays : DEFAULT_PERIOD_DAYS
     const periodsLeft = Math.max(1, Math.ceil((daysLeft + 1) / periodDays))
-    const perPeriodNeeded = ready ? 0 : remaining / periodsLeft
+    let perPeriodNeeded = ready ? 0 : remaining / periodsLeft
+    let thisPeriod = perPeriodNeeded
+    let doneThisPeriod = false
+    const saved = savedThisPeriod !== null ? Math.max(0, savedThisPeriod) : null
+    if (!ready && saved && periodsLeft > 1) {
+        // The share as it stood when the period began, before this period's installments.
+        const share = (remaining + saved) / periodsLeft
+        if (saved >= share) {
+            doneThisPeriod = true
+            thisPeriod = 0
+            perPeriodNeeded = remaining / (periodsLeft - 1)
+        } else {
+            thisPeriod = share - saved
+            perPeriodNeeded = share
+        }
+    }
 
     let status: TargetStatus
     if (ready) status = 'done'
@@ -239,7 +269,7 @@ export function targetPlan(
     else if (!stop?.date) status = pace && pace.perDay > 0 ? 'behind' : 'unknown'
     else status = stop.date <= item.target_date ? 'on-track' : 'behind'
 
-    return { targetDate: item.target_date, status, daysLeft, periodsLeft, perPeriodNeeded }
+    return { targetDate: item.target_date, status, daysLeft, periodsLeft, perPeriodNeeded, thisPeriod, savedThisPeriod: saved, doneThisPeriod }
 }
 
 export interface NextPart {
@@ -252,8 +282,11 @@ export interface NextPart {
     date: string | null
 }
 
-/** A split wish's first part still to buy, and when it fits at the usual pace. */
-export function nextPart(item: WishListItem, pace: SavingsPace | null, today = toISODate()): NextPart | null {
+/**
+ * A split wish's first part still to buy, and when it fits at the usual pace, after
+ * `owedFirst` (what's owed on debts, which the leftover pays first).
+ */
+export function nextPart(item: WishListItem, pace: SavingsPace | null, today = toISODate(), owedFirst = 0): NextPart | null {
     const part = (item.parts ?? []).find(p => !p.is_purchased)
     if (!part) return null
     const price = part.estimated_price && part.estimated_price > 0 ? part.estimated_price : null
@@ -261,20 +294,13 @@ export function nextPart(item: WishListItem, pace: SavingsPace | null, today = t
     let date: string | null = null
     if (remaining === 0) date = today
     else if (remaining !== null && pace && pace.perDay > 0) {
-        const days = Math.ceil(remaining / pace.perDay)
-        if (days <= MAX_ETA_DAYS) {
-            const d = new Date(today + 'T00:00:00')
-            d.setDate(d.getDate() + days)
-            date = toISODate(d)
-        }
+        const days = Math.ceil((remaining + Math.max(0, owedFirst)) / pace.perDay)
+        if (days <= MAX_ETA_DAYS) date = addDays(today, days)
     }
     return { part, saved: item.saved_amount, remaining, date }
 }
 
-const SHORT_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-
 /** An estimate's month: "Dec" within this year, "Mar 2027" after it. */
 export function etaMonth(date: string, today = toISODate()): string {
-    const [y, m] = date.split('-').map(Number)
-    return y === Number(today.slice(0, 4)) ? SHORT_MONTHS[m - 1] : `${SHORT_MONTHS[m - 1]} ${y}`
+    return date.slice(0, 4) === today.slice(0, 4) ? MONTHS_SHORT[Number(date.slice(5, 7)) - 1] : monthYearLabel(date)
 }

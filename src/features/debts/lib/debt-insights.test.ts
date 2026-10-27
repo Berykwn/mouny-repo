@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { debt } from '@/test/fixtures'
-import { debtProgress, dueStatus, fasterPayoff, payoffPlan, payoffSchedule, sortByUrgency, summarize, upcoming } from './debt-insights'
+import { debtProgress, dueStatus, fasterPayoff, payoffPlan, payoffSchedule, sortByUrgency, summarize } from './debt-insights'
 
 const TODAY = '2026-10-01'
 // A steady 50k/day leftover over 30-day periods.
@@ -29,7 +29,7 @@ describe('debtProgress', () => {
     })
 })
 
-describe('sortByUrgency / upcoming', () => {
+describe('sortByUrgency', () => {
     it('puts overdue first, undated last, bigger first on ties', () => {
         const undated = debt({ id: 'undated' })
         const later = debt({ id: 'later', due_date: '2026-11-15' })
@@ -38,16 +38,6 @@ describe('sortByUrgency / upcoming', () => {
         const soonBig = debt({ id: 'soon-big', due_date: '2026-10-05', remaining_amount: 900 })
         expect(sortByUrgency([undated, later, soonSmall, overdue, soonBig]).map(d => d.id))
             .toEqual(['overdue', 'soon-big', 'soon-small', 'later', 'undated'])
-    })
-
-    it('upcoming keeps overdue and the next 30 days only', () => {
-        const ids = upcoming([
-            debt({ id: 'overdue', due_date: '2026-09-20' }),
-            debt({ id: 'in-30', due_date: '2026-10-31' }),
-            debt({ id: 'in-31', due_date: '2026-11-01' }),
-            debt({ id: 'undated' }),
-        ]).map(d => d.id)
-        expect(ids).toEqual(['overdue', 'in-30'])
     })
 })
 
@@ -103,6 +93,32 @@ describe('payoffPlan', () => {
         expect(overdue.thisPeriod).toBe(900_000)
     })
 
+    it('marks this period done once its payments reach the share, and spreads the rest after it', () => {
+        // 900k over 3 periods is 300k each; 300k was paid this period, 600k is left.
+        const d = debt({ id: 'd', remaining_amount: 600_000, due_date: '2026-11-30' })
+        const plan = payoffPlan([d], pace, TODAY, { d: 300_000 })
+        expect(plan.stops[0]).toMatchObject({ paidThisPeriod: 300_000, thisPeriodDue: 0, doneThisPeriod: true })
+        expect(plan.thisPeriod).toBe(0)
+        expect(payoffSchedule(plan.stops[0])).toEqual([
+            { label: 'This period', amount: 0, last: false, done: true },
+            { label: 'Next period', amount: 300_000, last: false, done: false },
+            { label: 'Period 3', amount: 300_000, last: true, done: false },
+        ])
+    })
+
+    it('asks only for what is left of the share after a part payment', () => {
+        const d = debt({ id: 'd', remaining_amount: 800_000, due_date: '2026-11-30' })
+        const plan = payoffPlan([d], pace, TODAY, { d: 100_000 })
+        expect(plan.stops[0]).toMatchObject({ thisPeriodDue: 200_000, doneThisPeriod: false })
+        expect(plan.thisPeriod).toBe(200_000)
+        expect(payoffSchedule(plan.stops[0]).map(s => s.amount)).toEqual([200_000, 300_000, 300_000])
+    })
+
+    it('counts the plan’s whole remaining amount first, for the wish roadmap to start after', () => {
+        const plan = payoffPlan([debt({ remaining_amount: 500_000 }), debt({ remaining_amount: 250_000 }), debt({ type: 'receivable' })], pace, TODAY)
+        expect(plan.owed).toBe(750_000)
+    })
+
     it('has no dates without a positive pace', () => {
         const plan = payoffPlan([debt({ due_date: '2026-12-01' })], null, TODAY)
         expect(plan.stops[0]).toMatchObject({ date: null, status: 'unknown' })
@@ -135,15 +151,20 @@ describe('fasterPayoff', () => {
 
 describe('payoffSchedule', () => {
     it('splits evenly in round steps, the last taking what is left', () => {
-        const steps = payoffSchedule({ debt: debt({ remaining_amount: 1_000_000 }), periodsLeft: 3, perPeriodNeeded: 1_000_000 / 3 })
+        const steps = payoffSchedule({ debt: debt({ remaining_amount: 1_000_000 }), periodsLeft: 3 })
         expect(steps).toEqual([
-            { label: 'This period', amount: 334_000, last: false },
-            { label: 'Next period', amount: 334_000, last: false },
-            { label: 'Period 3', amount: 332_000, last: true },
+            { label: 'This period', amount: 334_000, last: false, done: false },
+            { label: 'Next period', amount: 333_000, last: false, done: false },
+            { label: 'Period 3', amount: 333_000, last: true, done: false },
         ])
     })
 
+    it('matches the plan’s amount for this period', () => {
+        const [stop] = payoffPlan([debt({ remaining_amount: 1_000_000, due_date: '2026-11-30' })], pace, TODAY).stops
+        expect(stop.thisPeriodDue).toBe(payoffSchedule(stop)[0].amount)
+    })
+
     it('is empty without a due date', () => {
-        expect(payoffSchedule({ debt: debt(), periodsLeft: null, perPeriodNeeded: null })).toEqual([])
+        expect(payoffSchedule({ debt: debt(), periodsLeft: null })).toEqual([])
     })
 })

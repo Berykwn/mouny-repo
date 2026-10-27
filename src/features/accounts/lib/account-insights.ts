@@ -12,11 +12,6 @@ export const LOW_RUNWAY_DAYS = 7
 /** Closed periods shown in the balance trend. */
 const TREND_PERIODS = 6
 
-// Composition colors, assigned by balance rank so the biggest account is always brand cobalt.
-const SHARE_COLORS = ['#3451D1', '#008C7E', '#8b5cf6', '#f59e0b', '#14b8a6', '#ec4899']
-const OTHERS_COLOR = 'var(--faint-ink)'
-const MAX_SHARES = 4
-
 export interface AccountActivity {
     /** Income into this account in the active period. */
     moneyIn: number
@@ -79,20 +74,6 @@ export function accountInsights(
     return result
 }
 
-/**
- * Days the total balance covers at this period's everyday spending pace. Savings, bills
- * and other one-offs are left out — they're paid once, not burned through daily.
- */
-export function totalRunwayDays(totalBalance: number, periodTxs: TransactionWithDetails[], daysElapsed: number): number | null {
-    if (daysElapsed < MIN_PACE_DAYS || totalBalance <= 0) return null
-    const periodIncome = periodTxs.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0)
-    const spending = periodTxs
-        .filter(t => isEverydaySpending(t, periodIncome))
-        .reduce((s, t) => s + t.amount, 0)
-    if (spending <= 0) return null
-    return Math.floor(totalBalance / (spending / daysElapsed))
-}
-
 const TYPE_LABEL: Record<string, string> = { bank: 'Bank', cash: 'Cash' }
 
 /** One account's second line: how long it lasts at its own pace, or why that isn't shown. */
@@ -148,37 +129,6 @@ export function runOutFirst(
         topUp = Math.min(rounded, source.balance)
     }
     return { account: first.account, runwayDays: first.runwayDays, dailyOut, source, topUp }
-}
-
-export interface AccountShare {
-    id: string
-    name: string
-    amount: number
-    /** 0–100 of the positive balances. */
-    percent: number
-    color: string
-}
-
-/** How the positive balances split across accounts; small ones fold into "Others". */
-export function accountShares(accounts: Account[]): AccountShare[] {
-    const positive = accounts.filter(a => a.balance > 0).sort((a, b) => b.balance - a.balance)
-    const total = positive.reduce((s, a) => s + a.balance, 0)
-    if (total <= 0) return []
-
-    const head = positive.slice(0, positive.length > MAX_SHARES ? MAX_SHARES - 1 : MAX_SHARES)
-    const rest = positive.slice(head.length)
-    const shares: AccountShare[] = head.map((a, i) => ({
-        id: a.id,
-        name: a.name,
-        amount: a.balance,
-        percent: (a.balance / total) * 100,
-        color: SHARE_COLORS[i % SHARE_COLORS.length],
-    }))
-    if (rest.length > 0) {
-        const amount = rest.reduce((s, a) => s + a.balance, 0)
-        shares.push({ id: 'others', name: `${rest.length} others`, amount, percent: (amount / total) * 100, color: OTHERS_COLOR })
-    }
-    return shares
 }
 
 export interface TrendPoint {

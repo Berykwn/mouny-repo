@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
+import { returnTo } from '@/lib/return-to'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Loader2 } from 'lucide-react'
@@ -10,6 +11,7 @@ import { PasswordInput } from './password-input'
 
 export function LoginForm() {
     const navigate = useNavigate()
+    const location = useLocation()
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [loading, setLoading] = useState(false)
@@ -23,7 +25,7 @@ export function LoginForm() {
             if (error) throw error
 
             toast.success('Login success!')
-            navigate('/', { replace: true })
+            navigate(returnTo(location.state), { replace: true })
         } catch (err: unknown) {
             if (err instanceof Error) {
                 const msg = err.message

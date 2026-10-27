@@ -39,7 +39,7 @@ export function QuickAmountsEditor({ category }: { category: Pick<Category, 'id'
         <div className="rounded-[20px] border border-line p-4 space-y-3">
             <div>
                 <p className="text-[11px] uppercase tracking-[.14em] text-muted-ink">Quick amounts</p>
-                <p className="mt-0.5 text-[11.5px] text-subtle-ink">Shown as one-tap pills on the overview and the add form.</p>
+                <p className="mt-0.5 text-[11.5px] text-muted-ink">Shown as one-tap pills on the overview and the add form.</p>
             </div>
 
             {quicks.length > 0 && (
@@ -73,7 +73,7 @@ export function QuickAmountsEditor({ category }: { category: Pick<Category, 'id'
                         value={formatCurrencyInput(amount)}
                         onChange={(e) => setAmount(e.target.value.replace(/\D/g, '').slice(0, 12))}
                         disabled={saving}
-                        className="w-full h-10 pl-8 pr-2 rounded-[12px] border border-line bg-surface text-[13px] text-ink tabular-nums outline-none focus:border-ink/30"
+                        className="w-full h-10 pl-8 pr-2 rounded-[12px] border border-line bg-surface text-[16px] lg:text-[13px] text-ink tabular-nums outline-none focus:border-ink/30"
                     />
                 </div>
                 <input
@@ -84,7 +84,7 @@ export function QuickAmountsEditor({ category }: { category: Pick<Category, 'id'
                     maxLength={40}
                     onChange={(e) => setLabel(e.target.value)}
                     disabled={saving}
-                    className="flex-1 min-w-0 h-10 px-3 rounded-[12px] border border-line bg-surface text-[13px] text-ink outline-none focus:border-ink/30 placeholder:text-faint-ink"
+                    className="flex-1 min-w-0 h-10 px-3 rounded-[12px] border border-line bg-surface text-[16px] lg:text-[13px] text-ink outline-none focus:border-ink/30 placeholder:text-muted-ink"
                 />
                 <button
                     type="submit"

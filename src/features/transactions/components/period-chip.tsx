@@ -24,7 +24,7 @@ export function PeriodChip({ period, onClick }: PeriodChipProps) {
         >
             <span className="w-1.5 h-1.5 rounded-full bg-brand shrink-0" />
             <span className="text-[12px] font-medium text-ink">{month} period</span>
-            <span className="text-[11px] text-subtle-ink tabular-nums">
+            <span className="text-[11px] text-muted-ink tabular-nums">
                 day {daysElapsed}{totalDays ? ` / ${totalDays}` : ''}
             </span>
             <ChevronsUpDown className="w-[13px] h-[13px] text-subtle-ink" />

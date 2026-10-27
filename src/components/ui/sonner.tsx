@@ -8,8 +8,9 @@ import {
 import { Toaster as Sonner, type ToasterProps } from "sonner"
 
 /**
- * A compact pill at the top centre, in the same ink colour as the offline banner (dark in
- * light mode, light in dark mode). Only the icon carries the status colour.
+ * A compact pill at the top centre: an ink pill in light mode, a raised dark surface with a
+ * hairline in dark mode (never a bright slab on a dark screen). Either way it reads as dark,
+ * so the accent and status colours are the light ones. Only the icon carries the status colour.
  * Sonner's own rules size and place toasts, so the overrides here need `!`.
  */
 const Toaster = ({ ...props }: ToasterProps) => {
@@ -33,22 +34,22 @@ const Toaster = ({ ...props }: ToasterProps) => {
         classNames: {
           toast: [
             "inset-x-0 !mx-auto !w-fit !max-w-full",
-            "!rounded-[22px] !border-0 !py-2.5 !pl-3.5 !pr-4 !gap-2.5",
-            "!bg-ink !text-white dark:!text-neutral-900",
+            "!rounded-[22px] !border-0 dark:!border dark:!border-line-strong !py-2.5 !pl-3.5 !pr-4 !gap-2.5",
+            "!bg-ink !text-on-ink dark:!bg-raised dark:!text-ink",
             "!shadow-[0_8px_24px_rgba(0,0,0,0.18)]",
             "!font-sans !text-[13.5px] !font-medium !leading-snug",
           ].join(" "),
           icon: "!m-0 !size-[18px] shrink-0",
-          description: "!text-white/60 dark:!text-neutral-900/60 !text-[12.5px] !font-normal",
+          description: "!text-on-ink/60 dark:!text-muted-ink !text-[12.5px] !font-normal",
           actionButton: [
             "!ml-1.5 !h-auto !p-0 !bg-transparent !rounded-none",
-            "!text-[13.5px] !font-semibold !text-[#8a9cf2] dark:!text-[#3451d1]",
+            "!text-[13.5px] !font-semibold !text-toast-accent",
           ].join(" "),
-          cancelButton: "!ml-1.5 !h-auto !p-0 !bg-transparent !text-[13.5px] !text-white/60 dark:!text-neutral-900/60",
-          success: "[&_[data-icon]]:text-[#8a9cf2] dark:[&_[data-icon]]:text-[#3451d1]",
-          error: "[&_[data-icon]]:text-red-400 dark:[&_[data-icon]]:text-red-600",
-          warning: "[&_[data-icon]]:text-amber-400 dark:[&_[data-icon]]:text-amber-600",
-          info: "[&_[data-icon]]:text-sky-400 dark:[&_[data-icon]]:text-sky-600",
+          cancelButton: "!ml-1.5 !h-auto !p-0 !bg-transparent !text-[13.5px] !text-on-ink/60 dark:!text-muted-ink",
+          success: "[&_[data-icon]]:text-toast-accent",
+          error: "[&_[data-icon]]:text-red-400",
+          warning: "[&_[data-icon]]:text-amber-400",
+          info: "[&_[data-icon]]:text-sky-400",
         },
       }}
       {...props}
