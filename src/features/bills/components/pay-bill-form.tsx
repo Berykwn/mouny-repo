@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ChevronRight, Loader2 } from 'lucide-react'
+import { ChevronRight } from 'lucide-react'
 import { toast } from 'sonner'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -15,6 +15,7 @@ import LightbulbIcon from '~icons/ph/lightbulb-duotone'
 import { SmartLine } from '@/features/plan/components/smart-line'
 import type { BillPayment } from '../lib/bill-history'
 import { dayDate, scheduleLabel } from '../lib/bill-labels'
+import { BusyLabel } from '@/components/busy-label'
 
 const FIELD_LABEL = 'text-[11px] font-medium uppercase tracking-[.14em] text-muted-ink'
 const SUBMIT_BUTTON = 'w-full h-12 rounded-[14px] text-[13px] font-semibold text-on-action bg-action hover:bg-action/90 transition-colors disabled:opacity-50 disabled:pointer-events-none'
@@ -117,8 +118,10 @@ export function PayBillForm({ bill, nextDue, payPeriodId, periodStart, lastPaid,
             </div>
 
             <div className="space-y-1.5">
-                <Label className={FIELD_LABEL}>Pay from</Label>
+                <Label id="pay-bill-pay-from-label" className={FIELD_LABEL}>Pay from</Label>
                 <button
+                    id="pay-bill-pay-from"
+                    aria-labelledby="pay-bill-pay-from-label pay-bill-pay-from"
                     type="button"
                     disabled={loading}
                     onClick={() => setPickerOpen(true)}
@@ -148,11 +151,11 @@ export function PayBillForm({ bill, nextDue, payPeriodId, periodStart, lastPaid,
 
             <div className="space-y-1.5">
                 <Label className={FIELD_LABEL}>Payment date</Label>
-                <DateQuickPicker date={date} periodStart={periodStart} maxDate={today} onChange={setDate} disabled={loading} />
+                <DateQuickPicker label="Payment date" date={date} periodStart={periodStart} maxDate={today} onChange={setDate} disabled={loading} />
             </div>
 
             <button type="submit" disabled={loading} className={SUBMIT_BUTTON}>
-                {loading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : `Pay ${formatCurrency(parseCurrencyInput(amount))}`}
+                <BusyLabel busy={loading} className="mx-auto">{`Pay ${formatCurrency(parseCurrencyInput(amount))}`}</BusyLabel>
             </button>
         </form>
     )

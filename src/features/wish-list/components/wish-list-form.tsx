@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
-import { Loader2, CalendarIcon, X } from 'lucide-react'
+import { CalendarIcon, X } from 'lucide-react'
 import { format } from 'date-fns'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Calendar } from '@/components/ui/calendar'
@@ -14,6 +14,7 @@ import { CategoryIcon } from '@/features/categories/components/category-icon'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import { WISH_LIST_UNITS, type WishListItem, type WishListPriority } from '@/types'
+import { BusyLabel } from '@/components/busy-label'
 
 interface WishListFormProps {
     payPeriodId: string
@@ -158,8 +159,8 @@ export function WishListForm({ payPeriodId, item, defaultName, defaultPrice, onS
             </div>
 
             <div className="space-y-2">
-                <Label className={FIELD_LABEL}>Priority</Label>
-                <div className="flex gap-2">
+                <Label id="wish-priority-label" className={FIELD_LABEL}>Priority</Label>
+                <div role="group" aria-labelledby="wish-priority-label" className="flex gap-2">
                     {PRIORITIES.map((p) => (
                         <button
                             key={p.value}
@@ -180,11 +181,11 @@ export function WishListForm({ payPeriodId, item, defaultName, defaultPrice, onS
             </div>
 
             <div className="space-y-2">
-                <Label className={FIELD_LABEL}>
+                <Label id="wish-icon-label" className={FIELD_LABEL}>
                     Icon <span className="normal-case tracking-normal font-normal">(optional)</span>
                 </Label>
                 {/* Same icon set and grid as the category picker; "Auto" keeps the name-matched icon. */}
-                <div className="grid grid-cols-8 gap-1 max-h-[184px] overflow-y-auto rounded-[14px] border border-line p-1.5">
+                <div role="group" aria-labelledby="wish-icon-label" className="grid grid-cols-8 gap-1 max-h-[184px] overflow-y-auto rounded-[14px] border border-line p-1.5">
                     <button
                         type="button"
                         title="Automatic"
@@ -226,13 +227,15 @@ export function WishListForm({ payPeriodId, item, defaultName, defaultPrice, onS
             </div>
 
             <div className="space-y-2">
-                <Label className={FIELD_LABEL}>
+                <Label id="wish-target-date-label" className={FIELD_LABEL}>
                     Want it by <span className="normal-case tracking-normal font-normal">(optional)</span>
                 </Label>
                 <div className="flex gap-2">
                     <Popover open={targetDateOpen} onOpenChange={setTargetDateOpen}>
                         <PopoverTrigger asChild>
                             <button
+                                id="wish-target-date"
+                                aria-labelledby="wish-target-date-label wish-target-date"
                                 type="button"
                                 disabled={loading}
                                 className={cn(
@@ -240,7 +243,7 @@ export function WishListForm({ payPeriodId, item, defaultName, defaultPrice, onS
                                     !targetDate && 'text-muted-ink'
                                 )}
                             >
-                                <CalendarIcon className="mr-2 h-4 w-4 text-muted-ink" />
+                                <CalendarIcon aria-hidden="true" className="mr-2 h-4 w-4 text-muted-ink" />
                                 {targetDate ? format(new Date(targetDate + 'T00:00:00'), 'dd MMM yyyy') : 'No deadline'}
                             </button>
                         </PopoverTrigger>
@@ -309,8 +312,8 @@ export function WishListForm({ payPeriodId, item, defaultName, defaultPrice, onS
                                     />
                                 </div>
                                 <div className="space-y-2 flex-1">
-                                    <Label className={FIELD_LABEL}>Unit</Label>
-                                    <div className="flex flex-wrap gap-1.5">
+                                    <Label id="wish-unit-label" className={FIELD_LABEL}>Unit</Label>
+                                    <div role="group" aria-labelledby="wish-unit-label" className="flex flex-wrap gap-1.5">
                                         {[...WISH_LIST_UNITS, 'custom'].map((u) => (
                                             <button
                                                 key={u}
@@ -412,7 +415,7 @@ export function WishListForm({ payPeriodId, item, defaultName, defaultPrice, onS
                 disabled={loading}
                 className="w-full h-12 rounded-[14px] text-[13px] font-semibold text-on-action bg-action hover:bg-action/90 transition-colors disabled:opacity-50 disabled:pointer-events-none"
             >
-                {loading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : isEdit ? 'Save Changes' : 'Save Item'}
+                <BusyLabel busy={loading} className="mx-auto">{isEdit ? 'Save Changes' : 'Save Item'}</BusyLabel>
             </button>
         </form>
     )

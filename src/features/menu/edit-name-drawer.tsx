@@ -1,5 +1,4 @@
 import { useState, type FormEvent } from 'react'
-import { Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { BottomDrawer } from '@/components/bottom-drawer'
 import { Input } from '@/components/ui/input'
@@ -7,6 +6,7 @@ import { supabase } from '@/lib/supabase'
 import { OFFLINE_REASON } from '@/components/offline-banner'
 import { useOnlineStatus } from '@/hooks/use-online-status'
 import { FIELD_INPUT, FIELD_LABEL, SUBMIT_BUTTON } from '@/features/auth/components/auth-styles'
+import { BusyLabel } from '@/components/busy-label'
 
 const MAX_NAME = 60
 
@@ -66,7 +66,7 @@ function NameForm({ currentName, onDone }: { currentName: string | null; onDone:
                 <p className="text-[12.5px] text-subtle-ink">Shown on Home and in Settings. Only you see it.</p>
             </div>
             <button type="submit" disabled={saving || !trimmed || unchanged} className={SUBMIT_BUTTON}>
-                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save name'}
+                <BusyLabel busy={saving}>Save name</BusyLabel>
             </button>
         </form>
     )

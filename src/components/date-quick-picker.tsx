@@ -7,6 +7,8 @@ import { toISODate } from '@/lib/helpers'
 import { cn } from '@/lib/utils'
 
 interface DateQuickPickerProps {
+    /** Names the Today / Yesterday / Custom group for screen readers, e.g. "Payment date". */
+    label: string
     date: string
     periodStart: string
     maxDate: string
@@ -18,7 +20,7 @@ const CHIP_BASE = 'inline-flex items-center gap-1.5 px-4 h-9 rounded-full border
 const CHIP_ACTIVE = 'border-brand bg-brand-tint text-brand-ink'
 const CHIP_INACTIVE = 'border-line bg-surface text-ink'
 
-export function DateQuickPicker({ date, periodStart, maxDate, onChange, disabled }: DateQuickPickerProps) {
+export function DateQuickPicker({ label, date, periodStart, maxDate, onChange, disabled }: DateQuickPickerProps) {
     const [customOpen, setCustomOpen] = useState(false)
 
     const todayStr = toISODate()
@@ -32,7 +34,7 @@ export function DateQuickPicker({ date, periodStart, maxDate, onChange, disabled
 
     return (
         <div className="space-y-1.5">
-            <div className="flex gap-2">
+            <div role="group" aria-label={label} className="flex gap-2">
                 <button
                     type="button"
                     disabled={disabled || !todayInRange}
@@ -60,7 +62,7 @@ export function DateQuickPicker({ date, periodStart, maxDate, onChange, disabled
                             onClick={() => setCustomOpen(true)}
                             className={cn(CHIP_BASE, isCustom ? CHIP_ACTIVE : CHIP_INACTIVE)}
                         >
-                            <CalendarIcon className="w-3.5 h-3.5" />
+                            <CalendarIcon aria-hidden="true" className="w-3.5 h-3.5" />
                             {isCustom ? format(new Date(date + 'T00:00:00'), 'dd MMM') : 'Custom'}
                         </button>
                     </PopoverTrigger>

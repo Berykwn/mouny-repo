@@ -1,6 +1,7 @@
 import { BottomDrawer } from '@/components/bottom-drawer'
-import { AlertTriangle, Loader2 } from 'lucide-react'
+import { AlertTriangle } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { BusyLabel } from '@/components/busy-label'
 
 interface ConfirmDrawerProps {
     open: boolean
@@ -43,7 +44,7 @@ export function ConfirmDrawer({
                         destructive ? 'bg-negative hover:bg-negative/90' : 'bg-action hover:bg-action/90'
                     )}
                 >
-                    {loading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : confirmLabel}
+                    <BusyLabel busy={loading} className="mx-auto">{confirmLabel}</BusyLabel>
                 </button>
 
                 <button

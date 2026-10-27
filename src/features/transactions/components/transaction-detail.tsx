@@ -68,7 +68,7 @@ function MoveToSavings({ tx, onMoved }: { tx: TransactionWithDetails; onMoved: (
                         disabled={movingTo !== null}
                         className="flex items-center gap-1.5 font-semibold text-brand-ink underline underline-offset-2 disabled:opacity-50"
                     >
-                        {movingTo === a.id && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                        {movingTo === a.id && <Loader2 aria-hidden="true" className="w-3.5 h-3.5 animate-spin" />}
                         Move to {a.name}
                     </button>
                 ))}

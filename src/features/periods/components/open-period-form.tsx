@@ -4,7 +4,7 @@ import { format } from 'date-fns'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Calendar } from '@/components/ui/calendar'
-import { CalendarIcon, ChevronRight, Loader2 } from 'lucide-react'
+import { CalendarIcon, ChevronRight } from 'lucide-react'
 import {
     Popover,
     PopoverContent,
@@ -21,6 +21,7 @@ import { toast } from 'sonner'
 import type { Account } from '@/types'
 import { AccountTypeTile } from '@/components/account-type-icon'
 import { AccountPickerDrawer } from '@/components/account-picker-drawer'
+import { BusyLabel } from '@/components/busy-label'
 
 interface OpenPeriodFormProps {
     onSuccess: () => void
@@ -96,11 +97,13 @@ export function OpenPeriodForm({ onSuccess }: OpenPeriodFormProps) {
     return (
         <form onSubmit={handleSubmit} className="space-y-4 pb-2">
             <div className="space-y-1.5">
-                <Label className={FIELD_LABEL}>Pay date</Label>
+                <Label id="open-pay-date-label" className={FIELD_LABEL}>Pay date</Label>
 
                 <Popover open={dateOpen} onOpenChange={setDateOpen}>
                     <PopoverTrigger asChild>
                         <button
+                            id="open-pay-date"
+                            aria-labelledby="open-pay-date-label open-pay-date"
                             type="button"
                             disabled={loading}
                             className={cn(
@@ -108,7 +111,7 @@ export function OpenPeriodForm({ onSuccess }: OpenPeriodFormProps) {
                                 !startDate && 'text-subtle-ink'
                             )}
                         >
-                            <CalendarIcon className="mr-2.5 h-4 w-4 text-subtle-ink" />
+                            <CalendarIcon aria-hidden="true" className="mr-2.5 h-4 w-4 text-subtle-ink" />
                             {startDate
                                 ? format(startDate, 'dd MMM yyyy')
                                 : 'Pick a date'}
@@ -156,8 +159,8 @@ export function OpenPeriodForm({ onSuccess }: OpenPeriodFormProps) {
                 </span>
             </div>
 
-            <div className="space-y-1.5">
-                <Label className={FIELD_LABEL}>Destination account</Label>
+            <div role="group" aria-labelledby="open-period-destination-label" className="space-y-1.5">
+                <Label id="open-period-destination-label" className={FIELD_LABEL}>Destination account</Label>
                 {accountsData && accounts.length === 0 ? (
                     <div className="flex items-center justify-between gap-3 px-4 h-[52px] rounded-[14px] border border-dashed border-line-strong">
                         <span className="text-[14px] text-subtle-ink">No accounts yet</span>
@@ -216,9 +219,7 @@ export function OpenPeriodForm({ onSuccess }: OpenPeriodFormProps) {
                 disabled={loading || accounts.length === 0}
                 className="w-full h-12 rounded-[14px] text-[15px] font-semibold text-on-action bg-action hover:bg-action/90 transition-colors disabled:opacity-50 disabled:pointer-events-none"
             >
-                {loading
-                    ? <Loader2 className="w-4 h-4 animate-spin mx-auto" />
-                    : 'Open period'}
+                <BusyLabel busy={loading} className="mx-auto">Open period</BusyLabel>
             </button>
         </form>
     )

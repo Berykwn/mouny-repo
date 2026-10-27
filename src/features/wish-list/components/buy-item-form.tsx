@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
-import { Loader2, ChevronRight, CalendarIcon } from 'lucide-react'
+import { ChevronRight, CalendarIcon } from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Calendar } from '@/components/ui/calendar'
 import { wishListService } from '@/services/wish-list.service'
@@ -17,6 +17,7 @@ import { AccountPickerDrawer } from '@/components/account-picker-drawer'
 import { CategoryGrid } from '@/components/category-grid'
 import { DateQuickPicker } from '@/components/date-quick-picker'
 import type { WishListItem, WishPart, Account, Category } from '@/types'
+import { BusyLabel } from '@/components/busy-label'
 
 interface BuyItemFormProps {
     item: WishListItem
@@ -181,17 +182,19 @@ export function BuyItemForm({ item, part, periodStart, onSuccess }: BuyItemFormP
 
             {part && !record && (
                 <div className="space-y-1.5">
-                    <Label className={FIELD_LABEL}>
+                    <Label id="bought-on-label" className={FIELD_LABEL}>
                         Bought on
                     </Label>
                     <Popover open={boughtOnOpen} onOpenChange={setBoughtOnOpen}>
                         <PopoverTrigger asChild>
                             <button
+                                id="bought-on"
+                                aria-labelledby="bought-on-label bought-on"
                                 type="button"
                                 disabled={loading}
                                 className="w-full flex items-center h-12 px-3 rounded-[14px] border border-line bg-surface text-left text-[13px] transition-colors hover:bg-surface-soft disabled:opacity-50"
                             >
-                                <CalendarIcon className="mr-2 h-4 w-4 text-muted-ink" />
+                                <CalendarIcon aria-hidden="true" className="mr-2 h-4 w-4 text-muted-ink" />
                                 {formatDate(boughtOn)}
                             </button>
                         </PopoverTrigger>
@@ -216,10 +219,12 @@ export function BuyItemForm({ item, part, periodStart, onSuccess }: BuyItemFormP
                 <div className="space-y-5">
                     {/* Account */}
                     <div className="space-y-1.5">
-                        <Label className={FIELD_LABEL}>
+                        <Label id="buy-paid-from-label" className={FIELD_LABEL}>
                             Paid from
                         </Label>
                         <button
+                            id="buy-paid-from"
+                            aria-labelledby="buy-paid-from-label buy-paid-from"
                             type="button"
                             disabled={loading}
                             onClick={() => setAccountPickerOpen(true)}
@@ -248,9 +253,9 @@ export function BuyItemForm({ item, part, periodStart, onSuccess }: BuyItemFormP
                     </div>
         
                     {/* Category */}
-                    <div className="space-y-1.5">
+                    <div role="group" aria-labelledby="buy-category-label" className="space-y-1.5">
                         <div className="flex items-center justify-between">
-                            <Label className={FIELD_LABEL}>
+                            <Label id="buy-category-label" className={FIELD_LABEL}>
                                 Category
                             </Label>
                             {selectedCategory && (
@@ -273,7 +278,7 @@ export function BuyItemForm({ item, part, periodStart, onSuccess }: BuyItemFormP
                         <Label className={FIELD_LABEL}>
                             Purchase date
                         </Label>
-                        <DateQuickPicker
+                        <DateQuickPicker label="Purchase date"
                             date={date}
                             periodStart={periodStart}
                             maxDate={today}
@@ -289,7 +294,7 @@ export function BuyItemForm({ item, part, periodStart, onSuccess }: BuyItemFormP
                 disabled={loading}
                 className="w-full h-12 rounded-[14px] text-[13px] font-semibold text-on-action bg-action hover:bg-action/90 transition-colors disabled:opacity-50 disabled:pointer-events-none"
             >
-                {loading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : part && !record ? 'Mark as Bought' : 'Mark as Purchased'}
+                <BusyLabel busy={loading} className="mx-auto">{part && !record ? 'Mark as Bought' : 'Mark as Purchased'}</BusyLabel>
             </button>
         </form>
     )

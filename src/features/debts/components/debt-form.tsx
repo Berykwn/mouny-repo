@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { format } from 'date-fns'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Loader2, CalendarIcon, ChevronRight } from 'lucide-react'
+import { CalendarIcon, ChevronRight } from 'lucide-react'
 import { debtsService } from '@/services/debts.service'
 import { useAccounts } from '@/queries'
 import { Switch } from '@/components/ui/switch'
@@ -15,6 +15,7 @@ import { AccountTypeTile } from '@/components/account-type-icon'
 import { AccountPickerDrawer } from '@/components/account-picker-drawer'
 import { DateQuickPicker } from '@/components/date-quick-picker'
 import { cn } from '@/lib/utils'
+import { BusyLabel } from '@/components/busy-label'
 
 interface DebtFormProps {
     onSuccess: () => void
@@ -189,8 +190,10 @@ export function DebtForm({ onSuccess, payPeriodId, periodStartDate, initialType 
             {affectsBalance && (
                 <>
                     <div className="space-y-1.5">
-                        <Label className={FIELD_LABEL}>Account</Label>
+                        <Label id="debt-account-label" className={FIELD_LABEL}>Account</Label>
                         <button
+                            id="debt-account"
+                            aria-labelledby="debt-account-label debt-account"
                             type="button"
                             disabled={loading}
                             onClick={() => setAccountPickerOpen(true)}
@@ -220,7 +223,7 @@ export function DebtForm({ onSuccess, payPeriodId, periodStartDate, initialType 
 
                     <div className="space-y-1.5">
                         <Label className={FIELD_LABEL}>Transaction date</Label>
-                        <DateQuickPicker
+                        <DateQuickPicker label="Transaction date"
                             date={date}
                             periodStart={periodStartDate}
                             maxDate={today}
@@ -232,10 +235,12 @@ export function DebtForm({ onSuccess, payPeriodId, periodStartDate, initialType 
             )}
 
             <div className="space-y-1.5">
-                <Label className={FIELD_LABEL}>Due date <span className="normal-case tracking-normal font-normal">(optional)</span></Label>
+                <Label id="debt-due-date-label" className={FIELD_LABEL}>Due date <span className="normal-case tracking-normal font-normal">(optional)</span></Label>
                 <Popover open={dueDateOpen} onOpenChange={setDueDateOpen}>
                     <PopoverTrigger asChild>
                         <button
+                            id="debt-due-date"
+                            aria-labelledby="debt-due-date-label debt-due-date"
                             type="button"
                             disabled={loading}
                             className={cn(
@@ -243,7 +248,7 @@ export function DebtForm({ onSuccess, payPeriodId, periodStartDate, initialType 
                                 !dueDate && 'text-muted-ink'
                             )}
                         >
-                            <CalendarIcon className="mr-2 h-4 w-4 text-muted-ink" />
+                            <CalendarIcon aria-hidden="true" className="mr-2 h-4 w-4 text-muted-ink" />
                             {dueDate ? format(new Date(dueDate + 'T00:00:00'), 'dd MMM yyyy') : 'Pick a date'}
                         </button>
                     </PopoverTrigger>
@@ -274,7 +279,7 @@ export function DebtForm({ onSuccess, payPeriodId, periodStartDate, initialType 
             </div>
 
             <button type="submit" disabled={loading} className={SUBMIT_BUTTON}>
-                {loading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : 'Save'}
+                <BusyLabel busy={loading} className="mx-auto">Save</BusyLabel>
             </button>
         </form>
     )

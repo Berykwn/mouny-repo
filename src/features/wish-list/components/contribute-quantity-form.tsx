@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Loader2, ChevronRight } from 'lucide-react'
+import { ChevronRight } from 'lucide-react'
 import { wishListService } from '@/services/wish-list.service'
 import { useAccounts, useCategories } from '@/queries'
 import { useSeedOnce } from '@/hooks/use-seed-once'
@@ -15,6 +15,7 @@ import { AccountPickerDrawer } from '@/components/account-picker-drawer'
 import { CategoryGrid } from '@/components/category-grid'
 import { DateQuickPicker } from '@/components/date-quick-picker'
 import type { WishListItem, Account, Category } from '@/types'
+import { BusyLabel } from '@/components/busy-label'
 
 interface ContributeQuantityFormProps {
     item: WishListItem
@@ -184,10 +185,12 @@ export function ContributeQuantityForm({ item, periodStart, onSuccess }: Contrib
 
             {/* Account */}
             <div className="space-y-1.5">
-                <Label className={FIELD_LABEL}>
+                <Label id="contribute-qty-paid-from-label" className={FIELD_LABEL}>
                     Paid from
                 </Label>
                 <button
+                    id="contribute-qty-paid-from"
+                    aria-labelledby="contribute-qty-paid-from-label contribute-qty-paid-from"
                     type="button"
                     disabled={loading}
                     onClick={() => setAccountPickerOpen(true)}
@@ -216,9 +219,9 @@ export function ContributeQuantityForm({ item, periodStart, onSuccess }: Contrib
             </div>
 
             {/* Category */}
-            <div className="space-y-1.5">
+            <div role="group" aria-labelledby="contribute-qty-category-label" className="space-y-1.5">
                 <div className="flex items-center justify-between">
-                    <Label className={FIELD_LABEL}>
+                    <Label id="contribute-qty-category-label" className={FIELD_LABEL}>
                         Category
                     </Label>
                     {selectedCategory && (
@@ -241,7 +244,7 @@ export function ContributeQuantityForm({ item, periodStart, onSuccess }: Contrib
                 <Label className={FIELD_LABEL}>
                     Date
                 </Label>
-                <DateQuickPicker
+                <DateQuickPicker label="Date"
                     date={date}
                     periodStart={periodStart}
                     maxDate={today}
@@ -255,7 +258,7 @@ export function ContributeQuantityForm({ item, periodStart, onSuccess }: Contrib
                 disabled={loading}
                 className="w-full h-12 rounded-[14px] text-[13px] font-semibold text-on-action bg-action hover:bg-action/90 transition-colors disabled:opacity-50 disabled:pointer-events-none"
             >
-                {loading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : 'Record payment'}
+                <BusyLabel busy={loading} className="mx-auto">Record payment</BusyLabel>
             </button>
         </form>
     )

@@ -2,10 +2,10 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { Label } from '@/components/ui/label'
-import { Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { FIELD_LABEL, SUBMIT_BUTTON } from './auth-styles'
 import { PasswordInput } from './password-input'
+import { BusyLabel } from '@/components/busy-label'
 
 const MIN_LENGTH = 6
 
@@ -79,7 +79,7 @@ export function ResetPasswordForm() {
             </div>
 
             <button type="submit" className={SUBMIT_BUTTON} disabled={loading}>
-                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save and sign in'}
+                <BusyLabel busy={loading}>Save and sign in</BusyLabel>
             </button>
         </form>
     )

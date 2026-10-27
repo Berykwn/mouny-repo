@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
-import { Loader2 } from 'lucide-react'
 import { BottomDrawer } from '@/components/bottom-drawer'
 import { CategoryGrid } from '@/components/category-grid'
 import { useCategories } from '@/queries'
 import type { Category, TransactionType } from '@/types'
+import { BusyLabel } from '@/components/busy-label'
 
 const NO_CATEGORIES: Category[] = []
 
@@ -38,7 +38,7 @@ export function BulkCategoryDrawer({ open, onClose, type, loading, onConfirm }: 
                 onClick={() => onConfirm(selectedCategoryId)}
                 className="mt-4 w-full h-12 rounded-[14px] text-[13px] font-semibold text-on-action bg-action hover:bg-action/90 transition-colors disabled:opacity-50 disabled:pointer-events-none"
             >
-                {loading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : 'Apply'}
+                <BusyLabel busy={loading} className="mx-auto">Apply</BusyLabel>
             </button>
         </BottomDrawer>
     )

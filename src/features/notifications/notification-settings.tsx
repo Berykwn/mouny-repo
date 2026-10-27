@@ -103,7 +103,7 @@ export function RemindersSection() {
                         <span className="block text-[15px] text-ink">On this device</span>
                         <span className="block text-[13px] text-subtle-ink">{deviceSub}</span>
                     </span>
-                    {busy === 'device' && <Loader2 className="w-4 h-4 animate-spin text-muted-ink" />}
+                    {busy === 'device' && <Loader2 aria-hidden="true" className="w-4 h-4 animate-spin text-muted-ink" />}
                     <Switch
                         checked={!!enabled}
                         disabled={support !== 'supported' || enabled === null || busy !== null}
@@ -158,7 +158,7 @@ export function RemindersSection() {
                     disabled={busy !== null}
                     className="mt-2 text-[13.5px] font-semibold text-brand-ink hover:text-brand transition-colors disabled:opacity-50 flex items-center gap-1.5"
                 >
-                    {busy === 'test' && <Loader2 className="w-3.5 h-3.5 animate-spin" />} Send a test
+                    {busy === 'test' && <Loader2 aria-hidden="true" className="w-3.5 h-3.5 animate-spin" />} Send a test
                 </button>
             )}
         </section>

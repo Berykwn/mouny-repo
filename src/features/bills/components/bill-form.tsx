@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ChevronRight, Loader2 } from 'lucide-react'
+import { ChevronRight } from 'lucide-react'
 import { toast } from 'sonner'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -14,6 +14,7 @@ import { formatCurrency, formatCurrencyInput, parseCurrencyInput, toISODate } fr
 import { cn } from '@/lib/utils'
 import type { Account, BillFrequency, BillKind, Category, RecurringBill } from '@/types'
 import { MONTH_NAMES } from '../lib/bill-labels'
+import { BusyLabel } from '@/components/busy-label'
 
 const FIELD_LABEL = 'text-[11px] font-medium uppercase tracking-[.14em] text-muted-ink'
 const FIELD = 'h-12 rounded-[14px] border-line text-[16px] lg:text-[13px]'
@@ -172,8 +173,8 @@ export function BillForm({ initial, preset, onSuccess }: BillFormProps) {
                 </div>
             </div>
 
-            <div className="space-y-1.5">
-                <Label className={FIELD_LABEL}>Repeats</Label>
+            <div role="group" aria-labelledby="bill-repeats-label" className="space-y-1.5">
+                <Label id="bill-repeats-label" className={FIELD_LABEL}>Repeats</Label>
                 <Segmented
                     value={frequency}
                     options={[{ value: 'monthly', label: 'Monthly' }, { value: 'yearly', label: 'Yearly' }]}
@@ -210,14 +211,16 @@ export function BillForm({ initial, preset, onSuccess }: BillFormProps) {
                 </div>
             </div>
 
-            <div className="space-y-1.5">
-                <Label className={FIELD_LABEL}>Category</Label>
+            <div role="group" aria-labelledby="bill-category-label" className="space-y-1.5">
+                <Label id="bill-category-label" className={FIELD_LABEL}>Category</Label>
                 <CategoryTileRail categories={categories} selectedId={categoryId || null} onSelect={setCategoryId} disabled={loading} />
             </div>
 
             <div className="space-y-1.5">
-                <Label className={FIELD_LABEL}>Usually paid from</Label>
+                <Label id="bill-usually-paid-from-label" className={FIELD_LABEL}>Usually paid from</Label>
                 <button
+                    id="bill-usually-paid-from"
+                    aria-labelledby="bill-usually-paid-from-label bill-usually-paid-from"
                     type="button"
                     disabled={loading}
                     onClick={() => setPickerOpen(true)}
@@ -262,7 +265,7 @@ export function BillForm({ initial, preset, onSuccess }: BillFormProps) {
             </div>
 
             <button type="submit" disabled={loading} className={SUBMIT_BUTTON}>
-                {loading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : initial ? 'Save changes' : 'Add bill'}
+                <BusyLabel busy={loading} className="mx-auto">{initial ? 'Save changes' : 'Add bill'}</BusyLabel>
             </button>
         </form>
     )

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
-import { Loader2, ArrowRight, Check } from 'lucide-react'
+import { ArrowRight, Check } from 'lucide-react'
 import { AccountTypeIcon, AccountTypeTile } from '@/components/account-type-icon'
 import { ACCOUNT_TILE_CLASS } from '@/lib/account-tiles'
 import { accountsService } from '@/services/accounts-categories.service'
@@ -10,6 +10,7 @@ import { formatCurrency, formatCurrencyInput, parseCurrencyInput, parseCurrencyW
 import { cn } from '@/lib/utils'
 import type { Account, AccountType } from '@/types'
 import { toast } from 'sonner'
+import { BusyLabel } from '@/components/busy-label'
 
 interface AccountFormProps {
     onSuccess: () => void
@@ -132,10 +133,10 @@ export function AccountForm({ onSuccess, initial, allAccounts = [], initialTab =
             {tab === 'edit' && (
                 <form onSubmit={handleEditSubmit} className="flex flex-col gap-5">
                     <div className="flex flex-col gap-2">
-                        <Label className={FIELD_LABEL}>
+                        <Label id="account-account-type-label" className={FIELD_LABEL}>
                             Account type
                         </Label>
-                        <div className="grid grid-cols-2 gap-2">
+                        <div role="group" aria-labelledby="account-account-type-label" className="grid grid-cols-2 gap-2">
                             <button
                                 type="button"
                                 onClick={() => setType('bank')}
@@ -299,10 +300,7 @@ export function AccountForm({ onSuccess, initial, allAccounts = [], initialTab =
                     )}
 
                     <button type="submit" disabled={loading} className={SUBMIT_BUTTON}>
-                        {loading
-                            ? <Loader2 className="w-4 h-4 animate-spin mx-auto" />
-                            : isEdit ? 'Save changes' : 'Add account'
-                        }
+                        <BusyLabel busy={loading} className="mx-auto">{isEdit ? 'Save changes' : 'Add account'}</BusyLabel>
                     </button>
                 </form>
             )}
@@ -335,8 +333,8 @@ export function AccountForm({ onSuccess, initial, allAccounts = [], initialTab =
                         </div>
                     </div>
 
-                    <div className="flex flex-col gap-2">
-                        <Label className={FIELD_LABEL}>
+                    <div role="group" aria-labelledby="account-destination-label" className="flex flex-col gap-2">
+                        <Label id="account-destination-label" className={FIELD_LABEL}>
                             Destination account
                         </Label>
                         {transferTargets.length === 0
@@ -426,10 +424,7 @@ export function AccountForm({ onSuccess, initial, allAccounts = [], initialTab =
                         disabled={loading || transferTargets.length === 0}
                         className={cn(SUBMIT_BUTTON, 'flex items-center justify-center gap-2')}
                     >
-                        {loading
-                            ? <Loader2 className="w-4 h-4 animate-spin" />
-                            : <>Transfer <ArrowRight className="w-4 h-4" /></>
-                        }
+                        <BusyLabel busy={loading}>Transfer <ArrowRight aria-hidden="true" className="w-4 h-4" /></BusyLabel>
                     </button>
                 </form>
             )}

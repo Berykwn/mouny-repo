@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ChevronRight, Loader2 } from 'lucide-react'
+import { ChevronRight } from 'lucide-react'
 import { toast } from 'sonner'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -13,6 +13,7 @@ import { formatCurrency, toISODate } from '@/lib/helpers'
 import type { Account, PayPeriod, QuickTransactionWithCategory } from '@/types'
 import { shortDate } from '@/features/bills/lib/bill-labels'
 import { quickName } from '../lib/quick-name'
+import { BusyLabel } from '@/components/busy-label'
 
 const FIELD_LABEL = 'text-[11px] font-medium uppercase tracking-[.14em] text-muted-ink'
 const NO_ACCOUNTS: Account[] = []
@@ -69,8 +70,10 @@ export function QuickConfirm({ quick, period, onDone, onBack }: QuickConfirmProp
             </div>
 
             <div className="space-y-1.5">
-                <Label className={FIELD_LABEL}>{isIncome ? 'Into' : 'Pay with'}</Label>
+                <Label id="quick-pick-label" className={FIELD_LABEL}>{isIncome ? 'Into' : 'Pay with'}</Label>
                 <button
+                    id="quick-pick"
+                    aria-labelledby="quick-pick-label quick-pick"
                     type="button"
                     disabled={loading}
                     onClick={() => setPickerOpen(true)}
@@ -127,7 +130,7 @@ export function QuickConfirm({ quick, period, onDone, onBack }: QuickConfirmProp
                     disabled={loading}
                     className="flex-[2] h-12 rounded-[14px] text-[13px] font-semibold text-on-action bg-action hover:bg-action/90 transition-colors disabled:opacity-50"
                 >
-                    {loading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : 'Save'}
+                    <BusyLabel busy={loading} className="mx-auto">Save</BusyLabel>
                 </button>
             </div>
         </div>

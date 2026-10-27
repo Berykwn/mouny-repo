@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { Loader2, Plus, Tag } from 'lucide-react'
+import { Plus, Tag } from 'lucide-react'
 import { useBudgets, useCategories, usePeriods, usePeriodTransactions } from '@/queries'
 import { useTopBarSlotNode } from '@/contexts/TopBarSlotContext'
 import { BottomDrawer } from '@/components/bottom-drawer'
@@ -18,6 +18,7 @@ import { cn } from '@/lib/utils'
 import { LoadingContent } from '@/components/loading-content'
 import { PageHeader } from '@/components/page-header'
 import { periodProgress } from '@/features/periods/lib/period-progress'
+import { BusyLabel } from '@/components/busy-label'
 
 const NO_CATEGORIES: Category[] = []
 const NO_TXS: TransactionWithDetails[] = []
@@ -134,7 +135,7 @@ export function CategoriesPage() {
                         title="No categories yet"
                         action={
                             <button type="button" onClick={handleSeed} disabled={seeding} className={EMPTY_STATE_BUTTON}>
-                                {seeding ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Add the usual ones'}
+                                <BusyLabel busy={seeding}>Add the usual ones</BusyLabel>
                             </button>
                         }
                     >

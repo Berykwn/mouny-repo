@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Loader2, ChevronRight } from 'lucide-react'
+import { ChevronRight } from 'lucide-react'
 import { debtsService } from '@/services/debts.service'
 import { useAccounts } from '@/queries'
 import { useSeedOnce } from '@/hooks/use-seed-once'
@@ -14,6 +14,7 @@ import { AccountPickerDrawer } from '@/components/account-picker-drawer'
 import { DateQuickPicker } from '@/components/date-quick-picker'
 import { ProgressBar } from '@/components/progress-bar'
 import { AmountChips } from './amount-chips'
+import { BusyLabel } from '@/components/busy-label'
 
 const FIELD_LABEL = 'text-[11px] font-medium uppercase tracking-[.14em] text-muted-ink'
 const SUBMIT_BUTTON = 'w-full h-12 rounded-[14px] text-[13px] font-semibold text-on-action bg-action hover:bg-action/90 transition-colors disabled:opacity-50 disabled:pointer-events-none'
@@ -160,8 +161,10 @@ export function PayDebtForm({ debt, payPeriodId, periodStartDate, plannedAmount,
             </div>
 
             <div className="space-y-1.5">
-                <Label className={FIELD_LABEL}>Pay from</Label>
+                <Label id="pay-debt-pay-from-label" className={FIELD_LABEL}>Pay from</Label>
                 <button
+                    id="pay-debt-pay-from"
+                    aria-labelledby="pay-debt-pay-from-label pay-debt-pay-from"
                     type="button"
                     disabled={loading}
                     onClick={() => setAccountPickerOpen(true)}
@@ -191,7 +194,7 @@ export function PayDebtForm({ debt, payPeriodId, periodStartDate, plannedAmount,
 
             <div className="space-y-1.5">
                 <Label className={FIELD_LABEL}>Payment date</Label>
-                <DateQuickPicker
+                <DateQuickPicker label="Payment date"
                     date={date}
                     periodStart={periodStartDate}
                     maxDate={today}
@@ -201,7 +204,7 @@ export function PayDebtForm({ debt, payPeriodId, periodStartDate, plannedAmount,
             </div>
 
             <button type="submit" disabled={loading} className={SUBMIT_BUTTON}>
-                {loading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : 'Record Payment'}
+                <BusyLabel busy={loading} className="mx-auto">Record Payment</BusyLabel>
             </button>
         </form>
     )

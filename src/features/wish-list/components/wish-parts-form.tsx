@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { Input } from '@/components/ui/input'
-import { Loader2, Plus, X, Check } from 'lucide-react'
+import { Plus, X, Check } from 'lucide-react'
 import { wishListService } from '@/services/wish-list.service'
 import { formatCurrency, formatCurrencyInput, parseCurrencyInput } from '@/lib/helpers'
 import { toast } from 'sonner'
 import type { WishListItem } from '@/types'
+import { BusyLabel } from '@/components/busy-label'
 
 interface WishPartsFormProps {
     item: WishListItem
@@ -177,7 +178,7 @@ export function WishPartsForm({ item, onSuccess }: WishPartsFormProps) {
                 disabled={loading}
                 className="w-full h-12 rounded-[14px] text-[13px] font-semibold text-on-action bg-action hover:bg-action/90 transition-colors disabled:opacity-50 disabled:pointer-events-none"
             >
-                {loading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : finishes ? 'Save & Finish Wish' : 'Save Parts'}
+                <BusyLabel busy={loading} className="mx-auto">{finishes ? 'Save & Finish Wish' : 'Save Parts'}</BusyLabel>
             </button>
         </form>
     )

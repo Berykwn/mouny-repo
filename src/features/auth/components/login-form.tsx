@@ -4,10 +4,10 @@ import { supabase } from '@/lib/supabase'
 import { returnTo } from '@/lib/return-to'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { ACCENT_LINK, FIELD_INPUT, FIELD_LABEL, SUBMIT_BUTTON } from './auth-styles'
 import { PasswordInput } from './password-input'
+import { BusyLabel } from '@/components/busy-label'
 
 export function LoginForm() {
     const navigate = useNavigate()
@@ -78,7 +78,7 @@ export function LoginForm() {
             </div>
 
             <button type="submit" className={SUBMIT_BUTTON} disabled={loading}>
-                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Sign in'}
+                <BusyLabel busy={loading}>Sign in</BusyLabel>
             </button>
         </form>
     )

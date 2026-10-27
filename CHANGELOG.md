@@ -53,7 +53,7 @@ A new look and a new layout. Mouny is calmer: white pages, ink and cobalt instea
 - Wishlist cards no longer make the page wider than a phone.
 - Leftover money isn't promised to both a debt and a wish.
 - Plan, Bills and *Can I afford it?* wait for the period's entries before answering.
-- **Screen readers:** form fields are tied to their labels, segmented choices say which one is picked, the bottom bar says which tab you're under (Bills counts as Plan), and the category donut reads out its split.
+- **Screen readers:** form fields are tied to their labels, segmented choices say which one is picked, the bottom bar says which tab you're under (Bills counts as Plan), and the category donut reads out its split. Date buttons say what the date is for (*Due date, 12 Oct 2026*), pickers like *Pay from* and rows of choices like *Category* are named by their label, and a button keeps its name while it's saving.
 - The installed app's title bar and launch screen are white, matching the pages (they were off-white).
 
 ---

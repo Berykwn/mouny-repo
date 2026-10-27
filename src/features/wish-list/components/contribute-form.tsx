@@ -1,13 +1,13 @@
 import { useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Loader2 } from 'lucide-react'
 import { wishListService } from '@/services/wish-list.service'
 import { formatCurrency, formatCurrencyInput, parseCurrencyInput } from '@/lib/helpers'
 import { ProgressBar } from '@/components/progress-bar'
 import { toast } from 'sonner'
 import type { WishListItem } from '@/types'
 import { partsBreakdown } from '../lib/wish-analytics'
+import { BusyLabel } from '@/components/busy-label'
 
 interface ContributeFormProps {
     item: WishListItem
@@ -96,7 +96,7 @@ export function ContributeForm({ item, onSuccess }: ContributeFormProps) {
             </div>
 
             <button type="submit" disabled={loading} className={SUBMIT_BUTTON}>
-                {loading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : 'Add Funds'}
+                <BusyLabel busy={loading} className="mx-auto">Add Funds</BusyLabel>
             </button>
         </form>
     )

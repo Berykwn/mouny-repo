@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Calendar as CalendarIcon, Check, ChevronDown, Loader2 } from 'lucide-react'
+import { Calendar as CalendarIcon, Check, ChevronDown } from 'lucide-react'
 import { AccountTypeIcon } from '@/components/account-type-icon'
 import { toast } from 'sonner'
 import { Label } from '@/components/ui/label'
@@ -22,6 +22,7 @@ import { cn } from '@/lib/utils'
 import { useAccounts, useCategories, usePeriods, usePeriodTransactions, useQuickTransactions } from '@/queries'
 import type { Account, Category, QuickTransactionWithCategory, TransactionWithDetails } from '@/types'
 import { linkedTo, recentNotes, unpaidBillsFor } from '../lib/ledger'
+import { BusyLabel } from '@/components/busy-label'
 
 type TxType = 'income' | 'expense' | 'transfer'
 
@@ -382,7 +383,7 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
                 <CalendarIcon aria-hidden="true" className="w-4 h-4 text-muted-ink shrink-0" strokeWidth={2} />
                 <span className="text-[13px] text-muted-ink">Date</span>
             </div>
-            <DateQuickPicker
+            <DateQuickPicker label="Date"
                 date={date}
                 periodStart={periodStart}
                 maxDate={maxDate}
@@ -399,8 +400,8 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
             onSubmit={(e) => { e.preventDefault(); if (!loading) void handleSubmit('save') }}
         >
             {!initial && quicks && quicks.length > 0 && (
-                <div className="space-y-1.5">
-                    <Label className="text-[12px] font-medium text-muted-ink">Quick amounts</Label>
+                <div role="group" aria-labelledby="tx-quick-amounts-label" className="space-y-1.5">
+                    <Label id="tx-quick-amounts-label" className="text-[12px] font-medium text-muted-ink">Quick amounts</Label>
                     <QuickPills quicks={quicks} onPick={setQuick} disabled={loading} />
                 </div>
             )}
@@ -446,8 +447,8 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
 
                     {noteField}
 
-                    <div className="space-y-1.5">
-                        <Label className={FIELD_LABEL}>Category</Label>
+                    <div role="group" aria-labelledby="tx-category-label" className="space-y-1.5">
+                        <Label id="tx-category-label" className={FIELD_LABEL}>Category</Label>
                         <CategoryTileRail
                             categories={categories}
                             selectedId={categoryId || null}
@@ -608,11 +609,7 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
                     disabled={loading}
                     className={FILLED_BUTTON}
                 >
-                    {loading
-                        ? <Loader2 className="w-4 h-4 animate-spin mx-auto" />
-                        : type === 'transfer' ? 'Transfer'
-                            : billDue ? 'Save & mark paid'
-                                : initial ? 'Save changes' : 'Save'}
+                    <BusyLabel busy={loading} className="mx-auto">{type === 'transfer' ? 'Transfer' : billDue ? 'Save & mark paid' : initial ? 'Save changes' : 'Save'}</BusyLabel>
                 </button>
             </div>
 

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { format } from 'date-fns'
-import { ChevronDown, Loader2 } from 'lucide-react'
+import { ChevronDown } from 'lucide-react'
 
 import { Calendar } from '@/components/ui/calendar'
 import { Switch } from '@/components/ui/switch'
@@ -20,6 +20,7 @@ import { formatCurrency, formatShortCurrency, toISODate } from '@/lib/helpers'
 import { toast } from 'sonner'
 import type { PayPeriod } from '@/types'
 import { periodRecap, RECAP_PERIODS } from '../lib/period-recap'
+import { BusyLabel } from '@/components/busy-label'
 
 interface ClosePeriodFormProps {
     period: PayPeriod
@@ -173,10 +174,10 @@ export function ClosePeriodForm({ period, onSuccess, onClosed }: ClosePeriodForm
                     </div>
                 )}
                 <div className={LINE}>
-                    <span className="text-muted-ink">Closing date</span>
+                    <span id="close-date-label" className="text-muted-ink">Closing date</span>
                     <Popover open={dateOpen} onOpenChange={setDateOpen}>
                         <PopoverTrigger asChild>
-                            <button type="button" className="flex items-center gap-1 text-ink hover:text-brand-ink transition-colors">
+                            <button id="close-date" aria-labelledby="close-date-label close-date" type="button" className="flex items-center gap-1 text-ink hover:text-brand-ink transition-colors">
                                 {endDate && toISODate(endDate) !== toISODate() ? format(endDate, 'EEE d MMM') : 'Today'}
                                 <ChevronDown className="w-4 h-4 text-subtle-ink" />
                             </button>
@@ -214,9 +215,7 @@ export function ClosePeriodForm({ period, onSuccess, onClosed }: ClosePeriodForm
                         !online && 'opacity-50',
                     )}
                 >
-                    {loading
-                        ? <Loader2 className="w-4 h-4 animate-spin mx-auto" />
-                        : openNext ? 'Close & open the next one' : 'Close period'}
+                    <BusyLabel busy={loading} className="mx-auto">{openNext ? 'Close & open the next one' : 'Close period'}</BusyLabel>
                 </button>
                 <p className="text-center text-[12.5px] text-subtle-ink">
                     {online ? 'A closed period can’t be reopened.' : OFFLINE_REASON}

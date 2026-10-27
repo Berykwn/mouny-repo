@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Loader2 } from 'lucide-react'
 import { categoriesService } from '@/services/accounts-categories.service'
 import { categoryBudgetsService } from '@/services/budgets.service'
 import { usePeriods, useTransactionsOfPeriods } from '@/queries'
@@ -19,6 +18,7 @@ import { QuickAmountsEditor } from '@/features/quick-transactions/components/qui
 import { CategoryIcon, CategoryTile } from './category-icon'
 import { categoryTypeConfig } from '../lib/category-types'
 import { BUDGET_HISTORY_PERIODS, budgetSuggestion, categoryTotals } from '../lib/budget-history'
+import { BusyLabel } from '@/components/busy-label'
 
 interface CategoryFormProps {
     onSuccess: () => void
@@ -356,10 +356,7 @@ export function CategoryForm({ onSuccess, initial, initialBudget, onDelete }: Ca
                         !online && 'opacity-50',
                     )}
                 >
-                    {loading
-                        ? <Loader2 className="w-4 h-4 animate-spin mx-auto" />
-                        : isEdit ? 'Save' : 'Add category'
-                    }
+                    <BusyLabel busy={loading} className="mx-auto">{isEdit ? 'Save' : 'Add category'}</BusyLabel>
                 </button>
             </div>
         </form>

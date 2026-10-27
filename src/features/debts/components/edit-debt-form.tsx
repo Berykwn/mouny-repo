@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { format } from 'date-fns'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Loader2, CalendarIcon, X } from 'lucide-react'
+import { CalendarIcon, X } from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Calendar } from '@/components/ui/calendar'
 import { debtsService } from '@/services/debts.service'
@@ -10,6 +10,7 @@ import { formatCurrency, formatCurrencyInput, parseCurrencyInput } from '@/lib/h
 import type { DebtWithAccount } from '@/types'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import { BusyLabel } from '@/components/busy-label'
 
 const FIELD_LABEL = 'text-[11px] font-medium uppercase tracking-[.14em] text-muted-ink'
 const SUBMIT_BUTTON = 'w-full h-12 rounded-[14px] text-[13px] font-semibold text-on-action bg-action hover:bg-action/90 transition-colors disabled:opacity-50 disabled:pointer-events-none'
@@ -95,11 +96,13 @@ export function EditDebtForm({ debt, onSuccess }: EditDebtFormProps) {
             </div>
 
             <div className="space-y-1.5">
-                <Label className={FIELD_LABEL}>Due date <span className="normal-case tracking-normal font-normal">(optional)</span></Label>
+                <Label id="edit-debt-due-date-label" className={FIELD_LABEL}>Due date <span className="normal-case tracking-normal font-normal">(optional)</span></Label>
                 <div className="flex gap-2">
                     <Popover open={dueDateOpen} onOpenChange={setDueDateOpen}>
                         <PopoverTrigger asChild>
                             <button
+                                id="edit-debt-due-date"
+                                aria-labelledby="edit-debt-due-date-label edit-debt-due-date"
                                 type="button"
                                 disabled={loading}
                                 className={cn(
@@ -107,7 +110,7 @@ export function EditDebtForm({ debt, onSuccess }: EditDebtFormProps) {
                                     !dueDate && 'text-muted-ink'
                                 )}
                             >
-                                <CalendarIcon className="mr-2 h-4 w-4 text-muted-ink" />
+                                <CalendarIcon aria-hidden="true" className="mr-2 h-4 w-4 text-muted-ink" />
                                 {dueDate ? format(new Date(dueDate + 'T00:00:00'), 'dd MMM yyyy') : 'Pick a date'}
                             </button>
                         </PopoverTrigger>
@@ -150,7 +153,7 @@ export function EditDebtForm({ debt, onSuccess }: EditDebtFormProps) {
             </div>
 
             <button type="submit" disabled={loading} className={SUBMIT_BUTTON}>
-                {loading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : 'Save changes'}
+                <BusyLabel busy={loading} className="mx-auto">Save changes</BusyLabel>
             </button>
         </form>
     )

@@ -33,8 +33,8 @@ export function ArchivedAccounts({ accounts, onRestore }: ArchivedAccountsProps)
                             className="flex items-center gap-1.5 text-[13px] font-semibold text-muted-ink hover:text-ink py-1.5 disabled:opacity-50"
                         >
                             {restoringId === acc.id
-                                ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                : <RotateCcw className="w-3.5 h-3.5" />}
+                                ? <Loader2 aria-hidden="true" className="w-3.5 h-3.5 animate-spin" />
+                                : <RotateCcw aria-hidden="true" className="w-3.5 h-3.5" />}
                             Restore
                         </button>
                     </li>
