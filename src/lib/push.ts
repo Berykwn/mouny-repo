@@ -28,6 +28,21 @@ async function registration(): Promise<ServiceWorkerRegistration | null> {
     return (await navigator.serviceWorker.getRegistration()) ?? null
 }
 
+/** How long turning reminders on waits for a worker that's still installing on a first visit. */
+const READY_TIMEOUT_MS = 10_000
+
+/**
+ * The service worker once it's running, waiting a little for one that's still installing.
+ * Null in dev, where the build registers none, or when it never comes up.
+ */
+async function readyRegistration(): Promise<ServiceWorkerRegistration | null> {
+    if (!('serviceWorker' in navigator)) return null
+    const existing = await registration()
+    if (existing?.active) return existing
+    const timeout = new Promise<null>(resolve => setTimeout(() => resolve(null), READY_TIMEOUT_MS))
+    return Promise.race([navigator.serviceWorker.ready, timeout])
+}
+
 export async function currentSubscription(): Promise<PushSubscription | null> {
     const reg = await registration()
     return reg ? reg.pushManager.getSubscription() : null
@@ -42,8 +57,13 @@ export async function subscribe(): Promise<PushSubscription> {
             ? 'Notifications are blocked. Allow them for Mouny in your browser’s site settings.'
             : 'Notifications weren’t allowed.')
     }
-    const reg = await registration()
-    if (!reg) throw new Error('The app is still getting ready offline. Reload and try again.')
+    const reg = await readyRegistration()
+    if (!reg) {
+        // Dev builds run without a service worker (vite.config.ts), so pushes can't arrive there.
+        throw new Error(import.meta.env.DEV
+            ? 'Reminders need the built app: the dev server runs without a service worker.'
+            : 'Mouny is still setting up on this device. Reload the page, then try again.')
+    }
     return (await reg.pushManager.getSubscription()) ?? reg.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: base64UrlToBytes(VAPID_PUBLIC_KEY),
