@@ -29,10 +29,11 @@ export default function DashboardPage() {
                 topBarSlotNode
             )}
 
-            {/* A hello, the period, and the avatar that opens Settings. Accounts open from the balances row. */}
+            {/* Brand, the period, and the avatar that opens Settings. Accounts open from the balances row. */}
             <header className="flex items-center justify-between gap-3 px-5 pt-[22px] lg:hidden">
-                <div className="min-w-0">
-                    <HomeGreeting />
+                <div className="flex items-center gap-2">
+                    <img src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" className="w-6 h-6" />
+                    <span className="text-[16px] font-semibold tracking-[-0.02em] text-ink">Mouny.</span>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                     {selectedPeriod && (
@@ -44,10 +45,9 @@ export default function DashboardPage() {
                 </div>
             </header>
 
-            <section className="px-4 pb-4 pt-2.5 lg:pt-0 lg:px-0 space-y-4">
-                <div className="hidden lg:block">
-                    <HomeGreeting />
-                </div>
+            <section className="px-4 pb-4 pt-5 lg:pt-0 lg:px-0 space-y-4">
+                {/* The hello sits above the numbers, where it has room; the header keeps the brand. */}
+                <HomeGreeting />
                 {periodLoading ? <OverviewSkeleton /> : (
                     <>
                         {!selectedPeriod && (

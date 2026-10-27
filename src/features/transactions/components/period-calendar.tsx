@@ -141,6 +141,19 @@ export function PeriodCalendar({
     const isOverDay = (date: string) => isOverAllowance(everydayByDay.get(date) ?? 0, allowance)
     const overDays = [...everydayByDay.keys()].filter(isOverDay).length
 
+    // How heavy a day was, 0–1: against the daily allowance when there is one, else the busiest day.
+    const busiest = Math.max(0, ...dailyExpense.values())
+    const weight = (date: string) => {
+        const spent = dailyExpense.get(date) ?? 0
+        if (spent <= 0) return 0
+        const base = allowance && allowance.amount > 0 ? allowance.amount : busiest
+        return base > 0 ? Math.min(1, spent / base) : 0
+    }
+    // One cobalt hue, deeper for heavier days; days over the allowance turn the soft red instead.
+    const cellTint = (date: string) => isOverDay(date)
+        ? 'var(--negative-soft)'
+        : `color-mix(in srgb, var(--brand) ${Math.round(6 + weight(date) * 26)}%, var(--surface))`
+
     const dayLabel = (date: string) => {
         const spent = dailyExpense.get(date) ?? 0
         return [
@@ -213,35 +226,61 @@ export function PeriodCalendar({
                             aria-label={dayLabel(date)}
                             aria-pressed={isSelected}
                             aria-current={isToday ? 'date' : undefined}
+                            style={isSelected || isFuture ? undefined : { backgroundColor: cellTint(date) }}
                             className={cn(
                                 'relative h-[54px] lg:h-[60px] rounded-[12px] border flex flex-col items-center justify-between py-1.5 transition-colors',
                                 isSelected
-                                    ? 'bg-ink border-ink'
+                                    ? 'bg-brand border-brand dark:bg-action dark:border-action shadow-[0_6px_14px_-8px_var(--brand)]'
                                     : isFuture
                                         ? 'bg-transparent border-dashed border-line'
                                         : isToday
-                                            ? 'bg-surface-hover border-brand'
-                                            : 'bg-surface-hover border-transparent hover:border-line',
+                                            ? 'border-brand border-[1.5px]'
+                                            : over
+                                                ? 'border-negative-line hover:border-negative'
+                                                : 'border-transparent hover:border-brand-line',
                             )}
                         >
                             <span className={cn(
                                 'text-[13px] font-semibold tabular-nums',
-                                isSelected ? 'text-on-ink' : isFuture ? 'text-faint-ink' : 'text-ink',
+                                isSelected ? 'text-white' : isFuture ? 'text-faint-ink' : isToday ? 'text-brand-ink' : 'text-ink',
                             )}>
                                 {dayNum}
                             </span>
                             <span className={cn(
                                 'text-[10.5px] font-medium tabular-nums leading-none',
-                                isSelected ? 'text-on-ink/85' : over ? 'text-negative' : 'text-muted-ink',
+                                isSelected ? 'text-white/85' : over ? 'text-negative-ink' : 'text-ink/60',
                             )}>
                                 {expense > 0 ? formatShortCurrency(expense) : ''}
                             </span>
                             {over && (
-                                <span aria-hidden="true" className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-negative" />
+                                <span aria-hidden="true" className={cn('absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full', isSelected ? 'bg-white' : 'bg-negative')} />
                             )}
                         </button>
                     )
                 })}
+            </div>
+
+            {/* What the colours mean, once, small */}
+            <div aria-hidden="true" className="mt-2.5 flex items-center gap-3 text-[11px] text-muted-ink">
+                <span className="flex items-center gap-1.5">
+                    Less
+                    <span className="flex gap-0.5">
+                        {[0, 0.35, 0.7, 1].map(w => (
+                            <span
+                                key={w}
+                                className="w-3 h-3 rounded-[4px]"
+                                style={{ backgroundColor: `color-mix(in srgb, var(--brand) ${Math.round(6 + w * 26)}%, var(--surface))` }}
+                            />
+                        ))}
+                    </span>
+                    More
+                </span>
+                {allowance && (
+                    <span className="flex items-center gap-1.5">
+                        <span className="w-3 h-3 rounded-[4px] border border-negative-line" style={{ backgroundColor: 'var(--negative-soft)' }} />
+                        Over the day’s {allowance.kind === 'safe' ? 'safe amount' : 'share'}
+                    </span>
+                )}
             </div>
 
             <div className="mt-2">
