@@ -98,7 +98,7 @@ export function ClosePeriodForm({ period, onSuccess, onClosed }: ClosePeriodForm
             return
         }
 
-        toast.success('Period closed.')
+        toast.success('Period closed. Nicely done.')
         onSuccess()
         onClosed?.(openNext)
     }

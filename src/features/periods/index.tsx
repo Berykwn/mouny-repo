@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { CalendarDays, ChartLine, House, StickyNote } from 'lucide-react'
+import { ChartLine, House, StickyNote } from 'lucide-react'
 import { BottomDrawer } from '@/components/bottom-drawer'
 import { EmptyState, EMPTY_STATE_BUTTON } from '@/components/empty-state'
 import { RetryInline } from '@/components/retry-inline'
@@ -72,7 +72,6 @@ export function PeriodHistoryPage() {
                     <RetryInline what="Your periods" onRetry={() => void refetch()} retrying={isRefetching} />
                 ) : allPeriods.length === 0 ? (
                     <EmptyState
-                        icon={CalendarDays}
                         title="Start your first pay period"
                         action={<button type="button" onClick={() => setDrawer('open')} className={EMPTY_STATE_BUTTON}>Open a period</button>}
                     >

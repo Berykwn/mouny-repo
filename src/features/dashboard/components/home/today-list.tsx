@@ -55,7 +55,7 @@ export function TodayList({ transactions, today }: { transactions: TransactionWi
                 : <Link to="/transactions" className="text-[13px] font-medium text-brand-ink">Ledger</Link>}
         >
             {todays.length === 0 ? (
-                <p className="py-2 text-[13px] text-muted-ink">Nothing logged yet today.</p>
+                <p className="py-2 text-[13px] text-muted-ink">Nothing logged yet today. A quiet wallet.</p>
             ) : (
                 <div>
                     {todays.map(tx => <HomeTxRow key={tx.id} tx={tx} />)}

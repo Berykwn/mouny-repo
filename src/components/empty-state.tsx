@@ -1,9 +1,11 @@
 import type { ReactNode } from 'react'
 import type { LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { Mascot } from './mascot'
 
 interface EmptyStateProps {
-    icon: LucideIcon
+    /** A tile with this icon; leave it out and the Mouny mascot says hello instead. */
+    icon?: LucideIcon
     title: string
     children?: ReactNode
     /** The one thing to do about it, e.g. an "Open a period" button. */
@@ -15,9 +17,13 @@ interface EmptyStateProps {
 export function EmptyState({ icon: Icon, title, children, action, className }: EmptyStateProps) {
     return (
         <div className={cn('flex flex-col items-center text-center px-4 py-12', className)}>
-            <span className="w-12 h-12 rounded-[14px] bg-line-soft flex items-center justify-center text-muted-ink">
-                <Icon className="w-6 h-6" strokeWidth={1.7} />
-            </span>
+            {Icon ? (
+                <span className="w-12 h-12 rounded-[14px] bg-line-soft flex items-center justify-center text-muted-ink">
+                    <Icon className="w-6 h-6" strokeWidth={1.7} />
+                </span>
+            ) : (
+                <Mascot className="w-14 h-14 -rotate-6" />
+            )}
             <h2 className="mt-3.5 text-[18px] font-semibold tracking-[-0.01em] text-ink">{title}</h2>
             {children && <p className="mt-1.5 max-w-[300px] text-[13.5px] leading-relaxed text-muted-ink">{children}</p>}
             {action && <div className="mt-5 w-full max-w-[300px]">{action}</div>}

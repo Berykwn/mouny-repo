@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Tag, History, LogOut, Download, ChevronRight, Loader2 } from 'lucide-react'
+import { Tag, History, LogOut, Download, ChevronRight, Loader2, Pencil } from 'lucide-react'
 import { toast } from 'sonner'
 import { useTheme, type Theme } from '@/contexts/ThemeContext'
 import { supabase } from '@/lib/supabase'
@@ -13,6 +13,8 @@ import { transactionsService } from '@/services/transactions.service'
 import { notificationsService } from '@/services/notifications.service'
 import { useAuth } from '@/hooks/use-auth'
 import { getInitials } from '@/lib/helpers'
+import { displayName } from '@/lib/greeting'
+import { EditNameDrawer } from './edit-name-drawer'
 import type { PayPeriod } from '@/types'
 import { cn } from '@/lib/utils'
 import { PageHeader } from '@/components/page-header'
@@ -23,6 +25,7 @@ export default function MenuPage() {
     const navigate = useNavigate()
     const { user } = useAuth()
     const [logoutConfirm, setLogoutConfirm] = useState(false)
+    const [editingName, setEditingName] = useState(false)
     const { periods, activePeriod, isSuccess: periodsLoaded } = usePeriods()
     const { data: categories } = useCategories()
     const { data: budgets } = useBudgets()
@@ -36,7 +39,7 @@ export default function MenuPage() {
         navigate('/login', { replace: true })
     }
 
-    const name = user?.user_metadata?.full_name as string | undefined
+    const name = displayName(user)
     const memberSince = user?.created_at
         ? new Date(user.created_at).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })
         : null
@@ -45,18 +48,28 @@ export default function MenuPage() {
         <>
             <PageHeader title="Settings" back="/" />
             <section className="px-4 pb-6 lg:px-0 lg:max-w-[600px]">
-                {/* Who's signed in */}
-                <div className="flex items-center gap-3.5 py-3 border-b border-line-soft">
+                {/* Who's signed in; tap to set the name Mouny greets you with */}
+                <button
+                    type="button"
+                    onClick={() => setEditingName(true)}
+                    className="w-full flex items-center gap-3.5 py-3 border-b border-line-soft text-left rounded-[12px] hover:bg-surface-soft transition-colors"
+                >
                     <div className="w-11 h-11 rounded-full bg-ink flex items-center justify-center shrink-0">
                         <span className="text-[15px] font-semibold text-on-ink">{getInitials(user)}</span>
                     </div>
-                    <div className="min-w-0">
-                        <p className="text-[16px] font-medium text-ink truncate">{name || 'Your account'}</p>
+                    <div className="min-w-0 flex-1">
+                        {name
+                            ? <p className="text-[16px] font-medium text-ink truncate">{name}</p>
+                            : <p className="text-[16px] font-medium text-brand-ink truncate">Add your name</p>}
                         <p className="text-[13px] text-subtle-ink truncate">
                             {user?.email}{memberSince && ` · since ${memberSince}`}
                         </p>
                     </div>
-                </div>
+                    <span className="flex items-center gap-1 text-[13px] font-medium text-muted-ink shrink-0">
+                        <Pencil className="w-3.5 h-3.5" strokeWidth={2} /> Edit
+                    </span>
+                </button>
+                <EditNameDrawer open={editingName} onClose={() => setEditingName(false)} currentName={name} />
 
                 {/* The sidebar has these on desktop */}
                 <div className="lg:hidden mt-6">

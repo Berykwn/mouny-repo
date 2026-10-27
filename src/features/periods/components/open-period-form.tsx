@@ -82,7 +82,7 @@ export function OpenPeriodForm({ onSuccess }: OpenPeriodFormProps) {
 
         // Overview and Ledger move to the new period rather than staying on an old pick.
         usePeriodStore.getState().setSelectedPeriodId(null)
-        toast.success('Pay period opened successfully.')
+        toast.success('New period, fresh start.')
         onSuccess()
     }
 

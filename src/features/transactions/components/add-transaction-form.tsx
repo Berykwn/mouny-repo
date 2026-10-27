@@ -317,7 +317,7 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
             return
         }
 
-        toast.success(billDue ? `Saved, ${billDue.bill.name} marked paid.` : 'Transaction saved successfully.')
+        toast.success(billDue ? `Saved, ${billDue.bill.name} marked paid.` : 'Saved. Noted in your ledger.')
 
         if (mode === 'save') {
             onSuccess()

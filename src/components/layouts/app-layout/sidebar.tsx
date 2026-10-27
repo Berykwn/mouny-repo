@@ -3,6 +3,7 @@ import { House, List, Wallet, CreditCard, Receipt, ShoppingBag, Tag, History, Ch
 import type { User } from '@supabase/supabase-js'
 import { cn } from '@/lib/utils'
 import { getInitials } from '@/lib/helpers'
+import { displayName } from '@/lib/greeting'
 import { useMoneyGlance, type MoneyGlance } from '@/hooks/use-money-glance'
 import { usePeriods } from '@/queries'
 import { periodProgress, periodRange } from '@/features/periods/lib/period-progress'
@@ -73,7 +74,7 @@ interface SidebarProps {
 export function Sidebar({ activePeriod, user }: SidebarProps) {
     const glance = useMoneyGlance(activePeriod)
     const badges = badgesFrom(glance)
-    const name = user?.user_metadata?.full_name as string | undefined
+    const name = displayName(user)
 
     return (
         <aside className="hidden lg:flex lg:flex-col fixed inset-y-0 left-0 z-30 w-64 bg-surface border-r border-line px-3 pt-4 pb-3">
@@ -105,7 +106,9 @@ export function Sidebar({ activePeriod, user }: SidebarProps) {
                     <span className="text-[12px] font-semibold text-on-ink">{getInitials(user)}</span>
                 </div>
                 <div className="min-w-0 flex-1">
-                    <p className="text-[13.5px] font-semibold text-ink truncate">{name || 'Your account'}</p>
+                    {name
+                        ? <p className="text-[13.5px] font-semibold text-ink truncate">{name}</p>
+                        : <p className="text-[13.5px] font-semibold text-brand-ink truncate">Add your name</p>}
                     <p className="text-[12px] text-subtle-ink truncate">{user?.email ?? 'Settings'}</p>
                 </div>
             </NavLink>

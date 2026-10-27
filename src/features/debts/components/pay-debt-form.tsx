@@ -110,7 +110,7 @@ export function PayDebtForm({ debt, payPeriodId, periodStartDate, plannedAmount,
 
         setLoading(false)
 
-        toast.success('Debt payment recorded.')
+        toast.success('Payment recorded. One step lighter.')
         onSuccess()
     }
 

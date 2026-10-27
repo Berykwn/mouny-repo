@@ -71,7 +71,7 @@ export function BuyItemForm({ item, part, periodStart, onSuccess }: BuyItemFormP
             const { error } = await wishListService.buyPart(item, part, { record: false, amount: parsed, date: boughtOn })
             setLoading(false)
             if (error) { toast.error(error); return }
-            toast.success(`${part.name} marked as bought`)
+            toast.success(`${part.name} ticked off.`)
             onSuccess()
             return
         }
@@ -116,7 +116,7 @@ export function BuyItemForm({ item, part, periodStart, onSuccess }: BuyItemFormP
             return
         }
 
-        toast.success('Purchase recorded successfully')
+        toast.success('Bought. Enjoy it.')
         onSuccess()
     }
 

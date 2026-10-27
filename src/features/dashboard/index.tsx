@@ -12,6 +12,7 @@ import { OverviewSkeleton } from './components/overview/overview-skeleton'
 import { useTopBarSlotNode } from '@/contexts/TopBarSlotContext'
 import { OverviewTransaction } from './components/overview/overview-tab'
 import { TodayEmptyState } from './components/overview/today-empty-state'
+import { HomeGreeting } from './components/home/home-greeting'
 
 export default function DashboardPage() {
     const { periods: allPeriods, activePeriod, selectedPeriod, isActivePeriod, isPending: periodLoading, selectPeriod } = useSelectedPeriod()
@@ -28,13 +29,12 @@ export default function DashboardPage() {
                 topBarSlotNode
             )}
 
-            {/* Brand, the period, and the avatar that opens Settings. Accounts open from the balances row. */}
+            {/* A hello, the period, and the avatar that opens Settings. Accounts open from the balances row. */}
             <header className="flex items-center justify-between gap-3 px-5 pt-[22px] lg:hidden">
-                <div className="flex items-center gap-2">
-                    <img src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" className="w-6 h-6" />
-                    <span className="text-[16px] font-semibold tracking-[-0.02em] text-ink">Mouny.</span>
+                <div className="min-w-0">
+                    <HomeGreeting />
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 shrink-0">
                     {selectedPeriod && (
                         <PeriodChip period={selectedPeriod} onClick={() => setPeriodDrawerOpen(true)} />
                     )}
@@ -44,7 +44,10 @@ export default function DashboardPage() {
                 </div>
             </header>
 
-            <section className="px-4 pb-4 pt-2.5 lg:px-0 space-y-4">
+            <section className="px-4 pb-4 pt-2.5 lg:pt-0 lg:px-0 space-y-4">
+                <div className="hidden lg:block">
+                    <HomeGreeting />
+                </div>
                 {periodLoading ? <OverviewSkeleton /> : (
                     <>
                         {!selectedPeriod && (

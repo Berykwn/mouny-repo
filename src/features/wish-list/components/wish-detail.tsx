@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import SparkleIcon from '~icons/ph/sparkle-duotone'
 import { Pencil, Trash2, Check, ListPlus } from 'lucide-react'
 import PiggyIcon from '~icons/ph/piggy-bank-duotone'
 import FlagIcon from '~icons/ph/flag-banner-duotone'
@@ -100,7 +101,8 @@ export function WishDetail({ item, stop, pace, onContribute, onBuy, onEdit, onDe
             <div>
                 <p className="text-[12.5px] text-muted-ink tabular-nums">{label}</p>
                 {ready ? (
-                    <p className="mt-1 text-[26px] font-semibold tracking-[-0.02em] text-brand-ink">
+                    <p className="mt-1 flex items-center gap-2 text-[26px] font-semibold tracking-[-0.02em] text-brand-ink">
+                        <SparkleIcon aria-hidden="true" className="w-6 h-6 shrink-0" />
                         {isUOM ? 'Target reached' : parts ? 'Ready to buy the rest' : 'Ready to buy'}
                     </p>
                 ) : remaining !== null ? (

@@ -1,58 +1,37 @@
-import { CalendarDays } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import { EmptyState, EMPTY_STATE_BUTTON } from '@/components/empty-state'
 
 interface TodayEmptyStateProps {
     closedPeriodsCount: number
     onOpenPeriod: () => void
 }
 
+/** No period running: one message and one button, never a believable Rp 0. */
 export function TodayEmptyState({ closedPeriodsCount, onOpenPeriod }: TodayEmptyStateProps) {
     const navigate = useNavigate()
 
     return (
-        <div className="flex min-h-[65vh] flex-col items-center justify-center gap-[22px] px-7 pb-[60px] text-center">
-            <div className="flex h-[52px] w-[52px] items-center justify-center rounded-[14px] border border-brand/20 bg-brand/10">
-                <CalendarDays className="h-5 w-5 text-brand" />
-            </div>
-
-            <div className="space-y-2">
-                <h2 className="text-[24px] font-semibold tracking-[-.02em] text-ink">
-                    Open a period to start tracking
-                </h2>
-                <p className="text-[14px] leading-[1.6] text-muted-ink">
-                    A pay period runs from the day you get paid until your next payday. Open one
-                    with your expected income to start logging transactions.
-                </p>
-            </div>
-
-            <div className="card w-full px-5 py-[18px]">
-                <p className="text-[11px] font-normal uppercase tracking-[.14em] text-muted-ink">
-                    Expected income
-                </p>
-                <p className="mt-1.5 text-[28px] font-medium leading-none tracking-[-.02em] text-subtle-ink">
-                    Rp 0
-                </p>
-            </div>
-
-            <div className="w-full space-y-3">
-                <button
-                    type="button"
-                    onClick={onOpenPeriod}
-                    className="h-[52px] w-full rounded-[14px] bg-action text-[14px] font-semibold text-on-action transition-colors hover:bg-action/90"
-                >
-                    Open period →
-                </button>
-
-                {closedPeriodsCount > 0 && (
-                    <button
-                        type="button"
-                        onClick={() => navigate('/period-history')}
-                        className="w-full text-center text-[12.5px] text-muted-ink underline underline-offset-2"
-                    >
-                        or review {closedPeriodsCount} closed period{closedPeriodsCount > 1 ? 's' : ''}
+        <EmptyState
+            className="min-h-[60vh] justify-center"
+            title={closedPeriodsCount > 0 ? 'Payday again?' : 'Let’s start your first period'}
+            action={
+                <div className="space-y-3">
+                    <button type="button" onClick={onOpenPeriod} className={EMPTY_STATE_BUTTON}>
+                        Open a period
                     </button>
-                )}
-            </div>
-        </div>
+                    {closedPeriodsCount > 0 && (
+                        <button
+                            type="button"
+                            onClick={() => navigate('/period-history')}
+                            className="w-full text-center text-[13px] text-muted-ink hover:text-ink transition-colors"
+                        >
+                            Or look back at {closedPeriodsCount} closed period{closedPeriodsCount > 1 ? 's' : ''}
+                        </button>
+                    )}
+                </div>
+            }
+        >
+            A period runs from one payday to the next. Open one with the pay you expect, and Mouny works out what you can spend each day.
+        </EmptyState>
     )
 }

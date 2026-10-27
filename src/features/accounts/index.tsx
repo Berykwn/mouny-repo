@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { ArrowLeftRight, Plus, Wallet } from 'lucide-react'
+import { ArrowLeftRight, Plus } from 'lucide-react'
 import { BottomDrawer } from '@/components/bottom-drawer'
 import { ConfirmDrawer } from '@/components/confirmation-drawer'
 import { EmptyState, EMPTY_STATE_BUTTON } from '@/components/empty-state'
@@ -201,7 +201,6 @@ export function AccountPage() {
                     <RetryInline what="Your accounts" onRetry={() => void accountsQuery.refetch()} retrying={accountsQuery.isRefetching} />
                 ) : accounts.length === 0 ? (
                     <EmptyState
-                        icon={Wallet}
                         title="Where does your money sit?"
                         action={<button type="button" onClick={() => setAddAccountDrawer(true)} className={EMPTY_STATE_BUTTON}>Add an account</button>}
                     >
