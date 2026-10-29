@@ -158,8 +158,17 @@ export function usePeriodTransactions(periodId: string | null | undefined) {
 }
 
 /**
+ * Null while any is still loading. One that failed (offline, say) counts as empty rather
+ * than loading forever: comparisons go ahead with the periods that did load.
+ * Outside the hook so it stays the same function and the combined result is kept.
+ */
+function settledLists(results: { data?: TransactionWithDetails[]; isError: boolean }[]): TransactionWithDetails[][] | null {
+    return results.every(r => r.data || r.isError) ? results.map(r => r.data ?? []) : null
+}
+
+/**
  * Several periods' transactions, each under its own cache entry (shared with
- * usePeriodTransactions). Null until every one has loaded.
+ * usePeriodTransactions). Null until every one has loaded or failed.
  */
 export function useTransactionsOfPeriods(periodIds: string[]): TransactionWithDetails[][] | null {
     return useQueries({
@@ -167,7 +176,7 @@ export function useTransactionsOfPeriods(periodIds: string[]): TransactionWithDe
             queryKey: queryKeys.transactions(id),
             queryFn: () => unwrap(transactionsService.getByPeriod(id)),
         })),
-        combine: results => results.every(r => r.data) ? results.map(r => r.data!) : null,
+        combine: settledLists,
     })
 }
 

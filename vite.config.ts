@@ -9,6 +9,33 @@ import { FileSystemIconLoader } from 'unplugin-icons/loaders'
 
 const CHART_LIBS = /[\\/]node_modules[\\/](recharts|d3-[^\\/]+|victory-vendor|internmap|decimal\.js-light|@reduxjs|redux|redux-thunk|react-redux|reselect|immer|es-toolkit|eventemitter3|tiny-invariant)[\\/]/
 
+// `radix-ui` re-exports every Radix primitive. Startup code takes one from it (Label), and
+// following it would count all the rest as needed at startup too. (lucide-react's index is
+// followed on purpose: its icons are small, and in vendor they don't each become a file.)
+const BARRELS = /[\\/]node_modules[\\/]radix-ui[\\/]/
+
+type ModuleInfo = { isEntry: boolean; importedIds: readonly string[] } | null
+
+/**
+ * The modules the page runs at startup: the entry and what it imports, and so on, but not
+ * what's behind an `import()`, which loads later. Barrels are left out; what startup code
+ * uses through one ends up in the entry chunk instead.
+ */
+function startupModules(ids: Iterable<string>, getModuleInfo: (id: string) => ModuleInfo): Set<string> {
+  const queue = [...ids].filter(id => getModuleInfo(id)?.isEntry)
+  const found = new Set(queue)
+  for (let id = queue.pop(); id !== undefined; id = queue.pop()) {
+    for (const dep of getModuleInfo(id)?.importedIds ?? []) {
+      if (found.has(dep) || BARRELS.test(dep)) continue
+      found.add(dep)
+      queue.push(dep)
+    }
+  }
+  return found
+}
+
+let startup: Set<string> | null = null
+
 const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf-8'))
 
 export default defineConfig(({ mode }) => {
@@ -20,7 +47,20 @@ export default defineConfig(({ mode }) => {
     define: {
       __APP_VERSION__: JSON.stringify(pkg.version),
     },
-    plugins: [react(), tailwindcss(), Icons({
+    plugins: [react(), tailwindcss(), {
+      // Each build (or rebuild in watch mode) works out its own startup modules.
+      name: 'reset-startup-modules',
+      buildStart() { startup = null },
+      // The vendor chunk must import nothing (see manualChunks below): a chunk it imports
+      // that imports it back is a cycle, and a cycle is a blank page.
+      generateBundle(_options, bundle) {
+        for (const chunk of Object.values(bundle)) {
+          if (chunk.type === 'chunk' && chunk.name === 'vendor' && chunk.imports.length > 0) {
+            this.error(`The vendor chunk imports ${chunk.imports.join(', ')}; it must import nothing.`)
+          }
+        }
+      },
+    }, Icons({
       compiler: 'jsx',
       jsx: 'react',
       customCollections: { app: FileSystemIconLoader('./src/assets/icons') },
@@ -71,9 +111,9 @@ export default defineConfig(({ mode }) => {
     })],
     resolve: { alias: { '@': path.resolve(__dirname, './src') } },
     build: {
-      // The single vendor chunk below is ~720 kB (~215 kB gzip) on purpose; warn only if it
-      // grows well past that.
-      chunkSizeWarningLimit: 900,
+      // The vendor chunk below is one piece on purpose; warn only if it grows well past its
+      // ~500 kB (~160 kB gzip).
+      chunkSizeWarningLimit: 700,
       rollupOptions: {
         output: {
           // Libraries change far less often than app code; in their own chunk they stay
@@ -83,12 +123,15 @@ export default defineConfig(({ mode }) => {
           // react, and rollup puts shared helpers in whichever chunk it likes), and a cycle
           // between chunks leaves a module uninitialised at startup, which is a blank page.
           //
-          // The charts library and its dependencies stay out, so they ship only with the
-          // pages that draw charts.
-          manualChunks(id) {
+          // Only the libraries the app needs at startup go in it; ones only lazy code uses
+          // (the date picker, the charts library, the dialogs and menus of the signed-in
+          // pages) ship with the pages that use them. Nothing at startup imports those, so
+          // the vendor chunk never imports back from them and no cycle can form.
+          manualChunks(id, { getModuleIds, getModuleInfo }) {
             if (!id.includes('node_modules')) return
             if (CHART_LIBS.test(id)) return
-            return 'vendor'
+            startup ??= startupModules(getModuleIds(), getModuleInfo)
+            return startup.has(id) ? 'vendor' : undefined
           },
         },
       },

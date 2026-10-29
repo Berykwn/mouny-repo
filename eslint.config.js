@@ -5,7 +5,7 @@ import reactRefresh from 'eslint-plugin-react-refresh'
 import tseslint from 'typescript-eslint'
 
 export default tseslint.config(
-  { ignores: ['dist', 'dev-dist'] },
+  { ignores: ['dist', 'dist-e2e', 'dev-dist', 'playwright-report', 'test-results'] },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ['**/*.{ts,tsx}'],
@@ -30,5 +30,11 @@ export default tseslint.config(
     // exports its provider with its hook; both are the libraries' own conventions.
     files: ['src/components/ui/**/*.tsx', 'src/contexts/**/*.tsx'],
     rules: { 'react-refresh/only-export-components': 'off' },
+  },
+  {
+    // The Playwright suite runs in Node; its fixtures' `use` isn't React's.
+    files: ['e2e/**/*.ts', 'playwright.config.ts'],
+    languageOptions: { globals: globals.node },
+    rules: { 'react-hooks/rules-of-hooks': 'off' },
   },
 )

@@ -35,6 +35,7 @@ A new look and a new layout. Mouny is calmer: white pages, ink and cobalt instea
 - **Desktop:** a command palette (Ctrl/Cmd+K), with N for a new entry, / to search, G L and G I to jump to the Ledger and Insights; a bulk bar and a side panel for entries.
 - Accounts split into spendable and savings, with how long the spendable money lasts. Categories group by kind and suggest a budget from your median.
 - Closing a period shows a short recap.
+- **Getting set up.** A new account's Home walks through three steps: add where your money is, choose categories (the usual set, or your own), open the first period. Each step ticks itself off when it's done; nothing to dismiss.
 
 ### Changed
 - **Ink & Cobalt.** Brand green is gone. Main buttons are ink on light and cobalt on dark, so dark mode never shows white buttons. Category kinds: Everyday orange, Bills violet, Lifestyle amber, Savings teal.
@@ -44,6 +45,7 @@ A new look and a new layout. Mouny is calmer: white pages, ink and cobalt instea
 - Short amounts use a decimal comma (*1,5jt*). Periods are named by the month they start in. All app text is in English.
 - One main button per screen. Inputs are 16px on phones so iOS doesn't zoom.
 - Settings only holds settings. Sign-in pages, empty states, offline and error screens are calmer.
+- **Faster first load.** The sign-in page downloads about a third less, and Home on a phone about 30% less: the charts, the date picker, the command palette and forms load when they're first opened.
 
 ### Fixed
 - **Turning reminders on** waited no time for the app to finish setting up on a first visit, then said you were offline. It now waits up to 10 seconds and says what's actually wrong.
@@ -53,6 +55,9 @@ A new look and a new layout. Mouny is calmer: white pages, ink and cobalt instea
 - Wishlist cards no longer make the page wider than a phone.
 - Leftover money isn't promised to both a debt and a wish.
 - Plan, Bills and *Can I afford it?* wait for the period's entries before answering.
+- The ledger calendar's daily share leaves room for bills still due, so paying the rent no longer turns earlier days red after the fact.
+- *Unusual for you* counts a big one-off (a new phone) once, instead of stretching it over the period into a 2900% rise.
+- If an older period fails to load, Insights, the close-period recap and bill history go ahead with the rest instead of loading forever.
 - **Screen readers:** form fields are tied to their labels, segmented choices say which one is picked, the bottom bar says which tab you're under (Bills counts as Plan), and the category donut reads out its split. Date buttons say what the date is for (*Due date, 12 Oct 2026*), pickers like *Pay from* and rows of choices like *Category* are named by their label, and a button keeps its name while it's saving.
 - The installed app's title bar and launch screen are white, matching the pages (they were off-white).
 

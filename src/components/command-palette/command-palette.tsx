@@ -12,6 +12,7 @@ import { CATEGORY_KIND_META, resolveCategoryKind } from '@/lib/category-kind'
 import { formatCurrency } from '@/lib/helpers'
 import { cn } from '@/lib/utils'
 import { searchPalette, type PaletteItem } from './palette-search'
+import { Kbd } from './kbd'
 
 interface CommandItem extends PaletteItem {
     icon: ReactNode
@@ -212,13 +213,5 @@ function PaletteBody({ onDone, onNewTransaction }: { onDone: () => void; onNewTr
                 <span className="flex items-center gap-1.5"><Kbd>G</Kbd> then <Kbd>L</Kbd> Ledger</span>
             </div>
         </>
-    )
-}
-
-export function Kbd({ children }: { children: ReactNode }) {
-    return (
-        <kbd className="inline-grid place-items-center min-w-[22px] h-[22px] px-1.5 rounded-[6px] border border-line bg-line-soft font-sans text-[11.5px] font-semibold text-muted-ink">
-            {children}
-        </kbd>
     )
 }

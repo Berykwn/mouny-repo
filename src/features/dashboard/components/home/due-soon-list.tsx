@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { lazy, Suspense, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { CalendarClock } from 'lucide-react'
 import { BottomDrawer } from '@/components/bottom-drawer'
@@ -6,11 +6,13 @@ import { useCategories } from '@/queries'
 import { daysUntil, formatShortCurrency } from '@/lib/helpers'
 import { cn } from '@/lib/utils'
 import { CategoryTile } from '@/features/categories/components/category-icon'
-import { PayBillForm } from '@/features/bills/components/pay-bill-form'
 import { dayDate, relativeDays } from '@/features/bills/lib/bill-labels'
 import type { BillDue } from '@/features/bills/lib/bills'
 import type { PayPeriod } from '@/types'
 import { HomeSection } from './home-section'
+
+// Loads when a bill is first paid from Home, with its date picker.
+const PayBillForm = lazy(() => import('@/features/bills/components/pay-bill-form').then(m => ({ default: m.PayBillForm })))
 
 /** A few rows keep Home calm; the rest are a tap away on Bills. */
 const MAX_ROWS = 4
@@ -69,14 +71,16 @@ export function DueSoonList({ dues, period }: DueSoonListProps) {
 
             <BottomDrawer open={!!paying} onClose={() => setPaying(null)} title={paying ? `Pay ${paying.bill.name}` : ''}>
                 {paying && (
-                    <PayBillForm
-                        key={paying.bill.id}
-                        bill={paying.bill}
-                        nextDue={paying.nextDue}
-                        payPeriodId={period.id}
-                        periodStart={period.start_date}
-                        onSuccess={() => setPaying(null)}
-                    />
+                    <Suspense fallback={null}>
+                        <PayBillForm
+                            key={paying.bill.id}
+                            bill={paying.bill}
+                            nextDue={paying.nextDue}
+                            payPeriodId={period.id}
+                            periodStart={period.start_date}
+                            onSuccess={() => setPaying(null)}
+                        />
+                    </Suspense>
                 )}
             </BottomDrawer>
         </HomeSection>

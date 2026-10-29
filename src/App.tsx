@@ -6,7 +6,6 @@ import { AppRouter } from '@/routes/index'
 import { OfflineBanner } from '@/components/offline-banner'
 import { clearQueryCache, persistOptions, queryClient } from '@/lib/query-client'
 import { supabase } from '@/lib/supabase'
-import { usePeriodStore } from '@/stores/period-store'
 
 export default function App() {
     // Signing out (or in as someone else) must not show the previous user's cached data,
@@ -15,7 +14,8 @@ export default function App() {
         const { data: { subscription } } = supabase.auth.onAuthStateChange(event => {
             if (event === 'SIGNED_OUT') {
                 void clearQueryCache()
-                usePeriodStore.getState().setSelectedPeriodId(null)
+                // Loaded here, not imported: it brings the data layer, which the sign-in page doesn't need.
+                void import('@/stores/period-store').then(m => m.usePeriodStore.getState().setSelectedPeriodId(null))
             }
         })
         return () => subscription.unsubscribe()

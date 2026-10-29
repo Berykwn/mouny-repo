@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react'
 import { Link } from 'react-router-dom'
 import { OverviewSkeleton } from './overview-skeleton'
 import { useOverviewData } from '../../hooks/use-overview-data'
@@ -13,8 +14,11 @@ import { SmartLineSlot } from '../home/smart-line'
 import { DueSoonList } from '../home/due-soon-list'
 import { LatestList, TodayList } from '../home/today-list'
 import { HomeSection } from '../home/home-section'
-import { CashOutlookChart } from '../cash-outlook-chart'
 import { heroNumbers } from '../../lib/home'
+import { useIsDesktop } from '@/features/transactions/lib/use-is-desktop'
+
+// The charts library is heavy and the chart only shows on desktop: it loads when drawn.
+const CashOutlookChart = lazy(() => import('../cash-outlook-chart').then(m => ({ default: m.CashOutlookChart })))
 
 /**
  * Home answers "what can I spend today?": the hero, at most one line worth acting on,
@@ -37,6 +41,8 @@ export function OverviewTransaction({
         reservedBills: reserve.reserved,
     })
     const outlook = useCashOutlook(data?.period, data?.accounts, stats, reserve)
+    // The side column is hidden on a phone, but still rendered: only a desktop draws the chart.
+    const isDesktop = useIsDesktop()
 
     if (loading) return <OverviewSkeleton />
     if (!data) return (
@@ -100,7 +106,7 @@ export function OverviewTransaction({
                 <aside className="hidden lg:block space-y-8">
                     <DueSoonList dues={reserve.dues} period={data.period} />
                     <BalancesList accounts={accounts} />
-                    {outlook && (
+                    {outlook && isDesktop && (
                         <HomeSection
                             title="Next 6 weeks"
                             aside={<Link to="/insights?tab=cash-flow" className="text-[13px] font-medium text-brand-ink">Insights</Link>}
@@ -112,7 +118,9 @@ export function OverviewTransaction({
                                 </span>
                                 {' '}on {shortDate(outlook.lowest.date)}.
                             </p>
-                            <CashOutlookChart outlook={outlook} height={150} />
+                            <Suspense fallback={<div style={{ height: 150 }} />}>
+                                <CashOutlookChart outlook={outlook} height={150} />
+                            </Suspense>
                         </HomeSection>
                     )}
                 </aside>

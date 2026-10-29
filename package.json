@@ -10,6 +10,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "smoke": "node ci/smoke-test.mjs",
+    "e2e": "playwright test",
     "build:gh": "tsc -b && cross-env VITE_BASE_URL=/mouny/ VITE_USE_HASH_ROUTE=true vite build"
   },
   "dependencies": {
@@ -50,6 +51,7 @@
   "devDependencies": {
     "@eslint/js": "^9.21.0",
     "@iconify-json/ph": "^1.2.2",
+    "@playwright/test": "^1.64.1",
     "@svgr/core": "^8.1.0",
     "@svgr/plugin-jsx": "^8.1.0",
     "@types/node": "^22.13.10",

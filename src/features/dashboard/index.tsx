@@ -1,11 +1,10 @@
-import { useState } from 'react'
+import { lazy, Suspense, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
 import { useAuth } from '@/hooks/use-auth'
 import { getInitials } from '@/lib/helpers'
 import { BottomDrawer } from '@/components/bottom-drawer'
 import { PeriodPickerDrawer } from '@/components/period-picker-drawer'
-import { OpenPeriodForm } from '@/features/periods/components/open-period-form'
 import { PeriodChip } from '@/features/transactions/components/period-chip'
 import { useSelectedPeriod } from '@/stores/period-store'
 import { OverviewSkeleton } from './components/overview/overview-skeleton'
@@ -13,6 +12,10 @@ import { useTopBarSlotNode } from '@/contexts/TopBarSlotContext'
 import { OverviewTransaction } from './components/overview/overview-tab'
 import { TodayEmptyState } from './components/overview/today-empty-state'
 import { HomeGreeting } from './components/home/home-greeting'
+import { FirstSteps } from '@/features/onboarding/first-steps'
+
+// Only needed once the drawer opens; its date picker and form code load then.
+const OpenPeriodForm = lazy(() => import('@/features/periods/components/open-period-form').then(m => ({ default: m.OpenPeriodForm })))
 
 export default function DashboardPage() {
     const { periods: allPeriods, activePeriod, selectedPeriod, isActivePeriod, isPending: periodLoading, selectPeriod } = useSelectedPeriod()
@@ -50,7 +53,12 @@ export default function DashboardPage() {
                 <HomeGreeting />
                 {periodLoading ? <OverviewSkeleton /> : (
                     <>
-                        {!selectedPeriod && (
+                        {/* Someone who has never had a period sets up first; after that it's payday again. */}
+                        {!selectedPeriod && allPeriods.length === 0 && (
+                            <FirstSteps onOpenPeriod={() => setOpenPeriodDrawer(true)} />
+                        )}
+
+                        {!selectedPeriod && allPeriods.length > 0 && (
                             <TodayEmptyState
                                 closedPeriodsCount={closedPeriodsCount}
                                 onOpenPeriod={() => setOpenPeriodDrawer(true)}
@@ -79,7 +87,9 @@ export default function DashboardPage() {
                 />
 
                 <BottomDrawer open={openPeriodDrawer} onClose={() => setOpenPeriodDrawer(false)} title="Open New Period">
-                    <OpenPeriodForm onSuccess={() => { setOpenPeriodDrawer(false) }} />
+                    <Suspense fallback={null}>
+                        <OpenPeriodForm onSuccess={() => { setOpenPeriodDrawer(false) }} />
+                    </Suspense>
                 </BottomDrawer>
             </section>
         </>

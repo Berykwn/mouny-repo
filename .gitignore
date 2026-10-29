@@ -30,3 +30,8 @@ dist-ssr
 dev-dist
 # Supabase CLI's local state
 supabase/.temp
+# Playwright (npm run e2e): its build, the saved login, results and the HTML report
+/dist-e2e
+/playwright/.auth
+/test-results
+/playwright-report

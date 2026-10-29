@@ -3,21 +3,21 @@ import { handleError, invalidatesOnWrite, isMissingFunction, sessionUser, type S
 import type { Account } from '@/types/'
 import type { Category } from '@/types/'
 import { COLORS } from '@/lib/static-colors'
-import { ICON_MAP } from '@/lib/icon-map'
 import { toISODate } from '@/lib/helpers'
 import type { CategoryKind } from '@/lib/category-kind'
 
 type CategoryInput = Omit<Category, 'id' | 'user_id' | 'created_at' | 'bg_color' | 'is_savings' | 'kind'> & { bg_color?: string | null; is_savings?: boolean; kind?: CategoryKind | null }
 
-function needsIconRepair(c: Category): boolean {
-    return !c.icon || !(c.icon in ICON_MAP)
-}
-
 // Categories created before icon selection existed (or edited outside the app) can carry a
 // null/stale icon value. Backfill a sensible default and persist it so every other read path
 // (transaction joins, category grids, etc.) sees a real icon from then on.
+//
+// The icon set is loaded here rather than imported, so the services (and so the sign-in
+// page) don't carry every icon. If it can't load, the categories show as they are.
 async function repairMissingIcons(categories: Category[]): Promise<Category[]> {
-    const broken = categories.filter(needsIconRepair)
+    const ICON_MAP = await import('@/lib/icon-map').then(m => m.ICON_MAP, () => null)
+    if (!ICON_MAP) return categories
+    const broken = categories.filter(c => !c.icon || !(c.icon in ICON_MAP))
     if (broken.length === 0) return categories
 
     const fixed = await Promise.all(broken.map(async (c) => {

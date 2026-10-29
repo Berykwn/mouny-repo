@@ -129,10 +129,15 @@ describe('unpaidBillsFor', () => {
 })
 
 describe('dailyAllowance', () => {
-    const stats = { totalIncome: 10_000_000, totalSavings: 1_000_000, oneOffSpending: 3_000_000, totalDays: 30 }
+    const stats = { totalIncome: 10_000_000, totalSavings: 1_000_000, oneOffSpending: 3_000_000, reservedBills: 0, totalDays: 30 }
 
     it('spreads the period’s everyday money evenly, open or closed', () => {
         expect(dailyAllowance(stats)).toEqual({ amount: 200_000 })
+    })
+
+    it('stays the same when a bill due is paid', () => {
+        const due = { ...stats, oneOffSpending: 0, reservedBills: 3_000_000 }
+        expect(dailyAllowance(due)).toEqual(dailyAllowance(stats))
     })
 
     it('is null with no income to share', () => {

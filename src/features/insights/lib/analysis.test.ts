@@ -94,6 +94,19 @@ describe('categoryVariance', () => {
     it('needs history', () => {
         expect(categoryVariance(stats(), [tx({ amount: 1, category: coffee })], [])).toEqual([])
     })
+
+    it('counts a big one-off once instead of stretching it over the period', () => {
+        const shopping = { id: 'shopping', name: 'Shopping', kind: 'lifestyle' }
+        const history = [
+            period('2026-09-01', [tx({ amount: 1_000_000, category: shopping })]),
+            period('2026-08-01', [tx({ amount: 1_000_000, category: shopping })]),
+        ]
+        // Day 5 of 30: a 5jt phone (half the income) plus 100rb of everyday shopping.
+        const now = [tx({ amount: 5_000_000, category: shopping }), tx({ amount: 100_000, category: shopping })]
+        const [result] = categoryVariance(stats({ daysElapsed: 5 }), now, history)
+        expect(result.current).toBe(5_000_000 + 100_000 * 6)
+        expect(result.pct).toBe(460)
+    })
 })
 
 describe('standOuts', () => {

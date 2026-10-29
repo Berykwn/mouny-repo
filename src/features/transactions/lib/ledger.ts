@@ -137,19 +137,23 @@ export function dailyEverydaySpending(txs: TransactionWithDetails[], periodIncom
 
 export interface DailyAllowance {
     /**
-     * The period's everyday money (income less savings and one-offs), spread evenly over
+     * The period's everyday money (income less savings, one-offs and bills), spread evenly over
      * its days. Fixed for the whole period, so a past day is judged by what it had then,
      * not by today's shrinking safe amount.
      */
     amount: number
 }
 
-/** What a day's everyday spending is held against, or null when there's no income to share. */
+/**
+ * What a day's everyday spending is held against, or null when there's no income to share.
+ * Bills come off whether paid (in one-offs) or still due (reserved), so paying the rent
+ * moves money between the two and leaves the share, and every past day's mark, as it was.
+ */
 export function dailyAllowance(
-    stats: Pick<PeriodStats, 'totalIncome' | 'totalSavings' | 'oneOffSpending' | 'totalDays'>
+    stats: Pick<PeriodStats, 'totalIncome' | 'totalSavings' | 'oneOffSpending' | 'reservedBills' | 'totalDays'>
 ): DailyAllowance | null {
     if (stats.totalIncome <= 0 || !stats.totalDays) return null
-    return { amount: (stats.totalIncome - stats.totalSavings - stats.oneOffSpending) / stats.totalDays }
+    return { amount: (stats.totalIncome - stats.totalSavings - stats.oneOffSpending - stats.reservedBills) / stats.totalDays }
 }
 
 /**

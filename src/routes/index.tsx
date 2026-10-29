@@ -2,7 +2,6 @@ import type { ComponentType } from 'react'
 import { createBrowserRouter, createHashRouter, RouterProvider, type RouteObject } from 'react-router-dom'
 import { ProtectedRoute } from './protected-route'
 import { PublicRoute } from './public-route'
-import AppLayout from '@/components/layouts/app-layout'
 import { RouteError } from '@/components/route-error'
 
 // Auth
@@ -14,7 +13,8 @@ import ResetPasswordPage from '@/features/auth/reset-password'
 import NotFoundPage from '@/features/static/not-found'
 
 // Feature pages load on first visit, so the first screen doesn't wait for every page
-// (and the charts library) to download.
+// (and the charts library) to download. The app's frame (nav, sidebar) too, so the sign-in
+// page doesn't carry it; on a signed-in visit it loads alongside the page.
 const page = (load: () => Promise<{ default: ComponentType }>): RouteObject['lazy'] =>
     () => load().then(m => ({ Component: m.default }))
 
@@ -34,7 +34,7 @@ const appRoutes: RouteObject[] = [
         element: <ProtectedRoute />,
         children: [
             {
-                element: <AppLayout />,
+                lazy: page(() => import('@/components/layouts/app-layout')),
                 children: [
                     { path: '/', lazy: page(() => import('@/features/dashboard')) },
                     { path: '/transactions', lazy: page(() => import('@/features/transactions')) },

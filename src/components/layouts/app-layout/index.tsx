@@ -1,8 +1,7 @@
 import { Outlet, Link, ScrollRestoration, useLocation, useNavigate, matchPath } from 'react-router-dom'
 import { House, List, ChartLine, CalendarRange, Plus, Search } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { useState, useEffect, useCallback, useRef } from 'react'
-import { AddTransactionFlow } from '@/features/transactions/components/add-transaction-flow'
+import { lazy, Suspense, useState, useEffect, useCallback, useRef } from 'react'
 import { toISODate } from '@/lib/helpers'
 import { queryClient } from '@/lib/query-client'
 import { accountsQuery, categoriesQuery, usePeriods } from '@/queries'
@@ -10,10 +9,16 @@ import { useAuth } from '@/hooks/use-auth'
 import { useOnlineStatus } from '@/hooks/use-online-status'
 import { TopBarSlotContext } from '@/contexts/TopBarSlotContext'
 import { OFFLINE_REASON } from '@/components/offline-banner'
-import { CommandPalette, Kbd } from '@/components/command-palette/command-palette'
+import { Kbd } from '@/components/command-palette/kbd'
 import { CHORD_TIMEOUT_MS, isTypingTarget, resolveShortcut } from '@/components/command-palette/shortcuts'
 import { Sidebar } from './sidebar'
 import { toast } from 'sonner'
+
+// Both open on demand, so they load then rather than with every page: the form brings the
+// date picker and category icons along, the palette its own search.
+const loadAddTransactionFlow = () => import('@/features/transactions/components/add-transaction-flow')
+const AddTransactionFlow = lazy(() => loadAddTransactionFlow().then(m => ({ default: m.AddTransactionFlow })))
+const CommandPalette = lazy(() => import('@/components/command-palette/command-palette').then(m => ({ default: m.CommandPalette })))
 
 interface NavItemDef {
     to: string
@@ -64,13 +69,19 @@ export default function AppLayout() {
     const { activePeriod } = usePeriods()
     const [addDrawerOpen, setAddDrawerOpen] = useState(false)
     const [paletteOpen, setPaletteOpen] = useState(false)
+    // Mounted from its first opening on, so it only loads for those who use it.
+    const [paletteLoaded, setPaletteLoaded] = useState(false)
+    if (paletteOpen && !paletteLoaded) setPaletteLoaded(true)
     const [topBarSlotNode, setTopBarSlotNode] = useState<HTMLDivElement | null>(null)
     const currentLabel = ROUTE_LABELS[location.pathname] ?? 'Home'
 
     // What the add-transaction and other forms need, fetched up front so they open filled in.
+    // The form's code too, once the page is up, so the Add button opens it without a wait.
     useEffect(() => {
         void queryClient.prefetchQuery(accountsQuery)
         void queryClient.prefetchQuery(categoriesQuery)
+        const timer = setTimeout(() => void loadAddTransactionFlow(), 2000)
+        return () => clearTimeout(timer)
     }, [])
 
     const handleAddClick = useCallback(() => {
@@ -137,18 +148,24 @@ export default function AppLayout() {
                 </div>
 
                 {activePeriod && addDrawerOpen && (
-                    <AddTransactionFlow
-                        payPeriodId={activePeriod.id}
-                        periodStart={activePeriod.start_date}
-                        periodEnd={activePeriod.end_date ?? undefined}
-                        defaultDate={toISODate()}
-                        onClose={() => setAddDrawerOpen(false)}
-                        onSuccess={() => setAddDrawerOpen(false)}
-                    />
+                    <Suspense fallback={null}>
+                        <AddTransactionFlow
+                            payPeriodId={activePeriod.id}
+                            periodStart={activePeriod.start_date}
+                            periodEnd={activePeriod.end_date ?? undefined}
+                            defaultDate={toISODate()}
+                            onClose={() => setAddDrawerOpen(false)}
+                            onSuccess={() => setAddDrawerOpen(false)}
+                        />
+                    </Suspense>
                 )}
             </main>
 
-            <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} onNewTransaction={handleAddClick} />
+            {paletteLoaded && (
+                <Suspense fallback={null}>
+                    <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} onNewTransaction={handleAddClick} />
+                </Suspense>
+            )}
 
             {/* A 76px row of tabs; the home-indicator inset is added below it, not taken out of it. */}
             <nav className={cn(

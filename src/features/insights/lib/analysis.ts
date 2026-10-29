@@ -133,12 +133,17 @@ export interface CategoryVariance {
 /** Changes within this much of the usual are noise, and left out. */
 const VARIANCE_MIN_PCT = 5
 
-function byCategory(transactions: TransactionWithDetails[]) {
-    const map = new Map<string, { name: string; amount: number }>()
+/**
+ * Each category's total, and how much of it is everyday spending that keeps a pace. A big
+ * one-off (a phone) is counted once, never stretched over the rest of the period.
+ */
+function byCategory(transactions: TransactionWithDetails[], periodIncome = 0) {
+    const map = new Map<string, { name: string; amount: number; everyday: number }>()
     for (const t of transactions) {
         if (!isVariable(t) || !t.category_id) continue
-        const entry = map.get(t.category_id) ?? { name: t.category?.name ?? 'Uncategorized', amount: 0 }
+        const entry = map.get(t.category_id) ?? { name: t.category?.name ?? 'Uncategorized', amount: 0, everyday: 0 }
         entry.amount += t.amount
+        if (isEverydaySpending(t, periodIncome)) entry.everyday += t.amount
         map.set(t.category_id, entry)
     }
     return map
@@ -153,14 +158,16 @@ export function categoryVariance(stats: PeriodStats, transactions: TransactionWi
     if (history.length === 0) return []
     const scale = stats.isClosed ? 1 : stats.totalDays ? stats.totalDays / stats.daysElapsed : null
     if (scale === null) return []
-    const now = byCategory(transactions)
+    const now = byCategory(transactions, stats.totalIncome)
     const past = history.map(p => byCategory(p.transactions))
     const ids = new Set([...now.keys(), ...past.flatMap(m => [...m.keys()])])
     const out: CategoryVariance[] = []
     for (const id of ids) {
         const usual = median(past.map(m => m.get(id)?.amount ?? 0)) ?? 0
         if (usual <= 0) continue
-        const current = (now.get(id)?.amount ?? 0) * scale
+        const entry = now.get(id)
+        // Only the everyday part keeps its pace; one-offs already paid stay as they are.
+        const current = entry ? entry.everyday * scale + (entry.amount - entry.everyday) : 0
         const pct = Math.round(((current - usual) / usual) * 100)
         if (Math.abs(pct) < VARIANCE_MIN_PCT) continue
         const name = now.get(id)?.name ?? past.find(m => m.has(id))!.get(id)!.name
