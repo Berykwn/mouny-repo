@@ -13,8 +13,11 @@
  *
  * Order: `auth` (login, logout, login) → `setup` (signs in once, saves the session) →
  * `desktop` and `mobile`, which reuse that session. One worker: they share one account.
+ *
+ * Safari: `npm run e2e:iphone` runs the phone tests in WebKit (Safari's engine) on an
+ * iPhone-sized screen. It needs WebKit once: npx playwright install webkit.
  */
-import { defineConfig } from '@playwright/test'
+import { defineConfig, devices } from '@playwright/test'
 import { AUTH_FILE, hasCredentials as hasCreds } from './e2e/support/env'
 
 const PORT = 4320
@@ -24,6 +27,8 @@ if (!hasCreds) console.warn('e2e: no demo account (E2E_EMAIL / E2E_PASSWORD in .
 
 const DESKTOP = { width: 1280, height: 800 }
 const PHONE = { width: 390, height: 844 }
+// The installed Chrome, so there's no browser download; the iphone project uses WebKit.
+const CHROME = { channel: 'chrome' }
 
 export default defineConfig({
     testDir: 'e2e',
@@ -36,7 +41,6 @@ export default defineConfig({
     reporter: [['list'], ['html', { open: 'never' }]],
     use: {
         baseURL: `http://localhost:${PORT}`,
-        channel: 'chrome',
         // The service worker would serve the previous build's cached files.
         serviceWorkers: 'block',
         locale: 'en-GB',
@@ -46,20 +50,27 @@ export default defineConfig({
         screenshot: 'only-on-failure',
     },
     projects: [
-        { name: 'auth', testMatch: /auth\.spec\.ts/, use: { viewport: DESKTOP } },
-        { name: 'setup', testMatch: /auth\.setup\.ts/, dependencies: ['auth'] },
+        { name: 'auth', testMatch: /auth\.spec\.ts/, use: { ...CHROME, viewport: DESKTOP } },
+        { name: 'setup', testMatch: /auth\.setup\.ts/, dependencies: ['auth'], use: CHROME },
         {
             name: 'desktop',
             testIgnore: [/auth\.(spec|setup)\.ts/, /\.mobile\.spec\.ts/],
             dependencies: ['setup'],
-            use: { viewport: DESKTOP, storageState: hasCreds ? AUTH_FILE : undefined },
+            use: { ...CHROME, viewport: DESKTOP, storageState: hasCreds ? AUTH_FILE : undefined },
         },
         {
             name: 'mobile',
             testMatch: /\.mobile\.spec\.ts/,
             dependencies: ['setup'],
-            use: { viewport: PHONE, storageState: hasCreds ? AUTH_FILE : undefined },
+            use: { ...CHROME, viewport: PHONE, storageState: hasCreds ? AUTH_FILE : undefined },
         },
+        // Only when asked for (e2e:iphone), so a plain run doesn't need WebKit installed.
+        ...(process.env.E2E_WEBKIT ? [{
+            name: 'iphone',
+            testMatch: /\.mobile\.spec\.ts/,
+            dependencies: ['setup'],
+            use: { ...devices['iPhone 13'], storageState: hasCreds ? AUTH_FILE : undefined },
+        }] : []),
     ],
     webServer: {
         // Its own output folder, so another `vite build` into dist/ mid-run can't swap the
