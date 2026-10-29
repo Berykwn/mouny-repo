@@ -7,7 +7,7 @@ import { DebtForm } from './components/debt-form'
 import { DebtDetail } from './components/debt-detail'
 import { DebtEmpty } from './components/debt-empty'
 import { DebtSettled } from './components/debt-settled'
-import { OweCard, OwedCard } from './components/debt-cards'
+import { OweRow, OwedRow } from './components/debt-cards'
 import { EditDebtForm } from './components/edit-debt-form'
 import { PayDebtForm } from './components/pay-debt-form'
 import { PayReceivableForm } from './components/pay-receivable-form'
@@ -17,12 +17,11 @@ import { usePaidThisPeriod } from './hooks/use-paid-this-period'
 import { debtsService } from '@/services/debts.service'
 import { useDebts, usePeriods, useSavingsPace } from '@/queries'
 import { formatCurrency, formatShortCurrency } from '@/lib/helpers'
-import { cn } from '@/lib/utils'
 import type { DebtType, DebtWithAccount } from '@/types'
 import { toast } from 'sonner'
 import { LoadingContent } from '@/components/loading-content'
 import { monthYear } from '@/features/bills/lib/bill-labels'
-import { Kpis, PlanHeader } from '@/features/plan/components/layout'
+import { Kpis, PlanHeader, PlanSection } from '@/features/plan/components/layout'
 import { SmartLine } from '@/features/plan/components/smart-line'
 
 const NO_DEBTS: DebtWithAccount[] = []
@@ -38,7 +37,6 @@ export default function DebtsPage() {
     const periodStartDate = activePeriod?.start_date ?? null
     // The payoff pace is an extra — the same leftover-per-period the wish list plans with.
     const pace = useSavingsPace()
-    const [side, setSide] = useState<DebtType>('debt')
     const [addType, setAddType] = useState<DebtType | null>(null)
     const [openDebt, setOpenDebt] = useState<DebtWithAccount | null>(null)
     const [editingDebt, setEditingDebt] = useState<DebtWithAccount | null>(null)
@@ -54,10 +52,7 @@ export default function DebtsPage() {
         const debtId = (location.state as { debtId?: string } | null)?.debtId
         if (!debtId || !debtsQuery.data) return
         const debt = debtsQuery.data.find(d => d.id === debtId)
-        if (debt) {
-            setSide(debt.type === 'receivable' ? 'receivable' : 'debt')
-            setOpenDebt(debt)
-        }
+        if (debt) setOpenDebt(debt)
         navigate(location.pathname, { replace: true, state: null })
     }, [location.state, location.pathname, navigate, debtsQuery.data])
 
@@ -103,29 +98,7 @@ export default function DebtsPage() {
     const firstStop = plan.stops[0]
     const debtFree = plan.debtFreeDate ? monthYear(plan.debtFreeDate) : null
 
-    const oweList = (
-        <div className="space-y-3">
-            {myDebts.length === 0
-                ? <p className="px-1 text-[13px] text-muted-ink">You owe nobody.</p>
-                : myDebts.map(d => <OweCard key={d.id} debt={d} stop={stopFor(d)} onOpen={() => setOpenDebt(d)} />)}
-        </div>
-    )
-    const owedList = (
-        <div className="space-y-3">
-            {receivables.length === 0
-                ? <p className="px-1 text-[13px] text-muted-ink">Nobody owes you anything.</p>
-                : receivables.map(d => (
-                    <OwedCard
-                        key={d.id}
-                        debt={d}
-                        canCollect={canAdd}
-                        onOpen={() => setOpenDebt(d)}
-                        onRemind={() => sendReminder(d)}
-                        onCollect={() => setCollectingDebt(d)}
-                    />
-                ))}
-        </div>
-    )
+    const empty = (text: string) => <p className="px-1 py-2.5 text-[13px] text-muted-ink">{text}</p>
 
     // The one smart line: what a period sooner takes, from the usual leftover; never a guess.
     const smart = faster && firstStop && pace ? (
@@ -136,67 +109,65 @@ export default function DebtsPage() {
             Debt-free by <b>{monthYear(faster.current)}</b> if your usual {formatShortCurrency(Math.round(pace.perPeriod))} left over goes to debts.
             {' '}Put <b>{formatCurrency(faster.extraPerPeriod)}</b> more toward them each period and it’s <b>{monthYear(faster.sooner)}</b>.
         </SmartLine>
-    ) : summary.owed > 0 && debtFree ? (
-        <p className="px-1 text-[12.5px] text-muted-ink lg:hidden">
-            Debt-free by <span className="font-medium text-ink">{debtFree}</span> at your usual leftover.
-        </p>
     ) : null
 
     return (
         <>
-            <PlanHeader title="Debts" add={{ label: 'Add debt', onClick: () => setAddType(side), disabled: !canAdd }} />
-            <section className="px-4 pb-4 lg:px-0 space-y-5">
+            <PlanHeader title="Debts" add={{ label: 'Add debt', onClick: () => setAddType('debt'), disabled: !canAdd }} />
+            <section className="px-4 pb-4 lg:px-0 space-y-6 lg:max-w-3xl">
                 {loading ? <LoadingContent /> : active.length === 0 ? (
-                    <div className="space-y-4 lg:max-w-xl">
+                    <>
                         <DebtEmpty onAdd={setAddType} disabled={!canAdd} />
                         <DebtSettled debts={settled} onOpen={setOpenDebt} />
-                    </div>
+                    </>
                 ) : (
                     <>
-                        {/* Phone: one side at a time */}
-                        <div className="lg:hidden grid grid-cols-2 rounded-[14px] bg-surface-hover p-1 gap-1" role="tablist">
-                            {([['debt', 'You owe', summary.owed], ['receivable', 'Owed to you', summary.receivable]] as const).map(([value, label, total]) => (
-                                <button
-                                    key={value}
-                                    type="button"
-                                    role="tab"
-                                    aria-selected={side === value}
-                                    onClick={() => setSide(value)}
-                                    className={cn(
-                                        'h-10 rounded-[10px] text-[13.5px] transition-colors tabular-nums truncate px-2',
-                                        side === value ? 'bg-raised shadow-sm text-ink font-semibold' : 'text-muted-ink font-medium'
-                                    )}
-                                >
-                                    {label} · {formatShortCurrency(total)}
-                                </button>
+                        <div>
+                            <Kpis className="lg:hidden" items={[
+                                { label: 'You owe', value: plain(summary.owed) },
+                                { label: 'Owed to you', value: plain(summary.receivable), valueClassName: 'text-brand-ink' },
+                            ]} />
+                            <Kpis className="hidden lg:grid" items={[
+                                { label: 'You owe', value: plain(summary.owed) },
+                                { label: 'Owed to you', value: plain(summary.receivable), valueClassName: 'text-brand-ink' },
+                                {
+                                    label: 'Debt-free by',
+                                    value: summary.owed === 0 ? 'Now' : debtFree ?? '—',
+                                    sub: summary.owed > 0 && !debtFree ? 'estimated after a closed period' : undefined,
+                                },
+                            ]} />
+                        </div>
+
+                        {smart}
+
+                        {/* The two sides one after the other, like Bills' due and paid. */}
+                        <PlanSection title="You owe" meta={myDebts.length > 0 ? formatShortCurrency(summary.owed) : undefined}>
+                            {myDebts.length === 0 ? empty('You owe nobody.') : myDebts.map(d => (
+                                <OweRow
+                                    key={d.id}
+                                    debt={d}
+                                    stop={stopFor(d)}
+                                    canPay={canAdd}
+                                    onOpen={() => setOpenDebt(d)}
+                                    onPay={() => setPayingDebt(d)}
+                                />
                             ))}
-                        </div>
+                        </PlanSection>
 
-                        <Kpis className="hidden lg:grid" items={[
-                            { label: 'You owe', value: plain(summary.owed) },
-                            { label: 'Owed to you', value: plain(summary.receivable), valueClassName: 'text-brand-ink' },
-                            {
-                                label: 'Debt-free by',
-                                value: summary.owed === 0 ? 'Now' : debtFree ?? '—',
-                                sub: summary.owed > 0 && !debtFree ? 'estimated after a closed period' : undefined,
-                            },
-                        ]} />
+                        <PlanSection title="Owed to you" meta={receivables.length > 0 ? formatShortCurrency(summary.receivable) : undefined}>
+                            {receivables.length === 0 ? empty('Nobody owes you anything.') : receivables.map(d => (
+                                <OwedRow
+                                    key={d.id}
+                                    debt={d}
+                                    canCollect={canAdd}
+                                    onOpen={() => setOpenDebt(d)}
+                                    onRemind={() => sendReminder(d)}
+                                    onCollect={() => setCollectingDebt(d)}
+                                />
+                            ))}
+                        </PlanSection>
 
-                        {smart && <div className={side === 'debt' ? 'block' : 'hidden lg:block'}>{smart}</div>}
-
-                        <div className="lg:hidden">{side === 'debt' ? oweList : owedList}</div>
-                        <div className="hidden lg:grid grid-cols-2 gap-6 items-start">
-                            <div>
-                                <h2 className="px-1 mb-2 text-[15px] font-semibold tracking-[-0.01em] text-ink">You owe</h2>
-                                {oweList}
-                            </div>
-                            <div>
-                                <h2 className="px-1 mb-2 text-[15px] font-semibold tracking-[-0.01em] text-ink">Owed to you</h2>
-                                {owedList}
-                            </div>
-                        </div>
-
-                        <div className="lg:max-w-xl"><DebtSettled debts={settled} onOpen={setOpenDebt} /></div>
+                        <DebtSettled debts={settled} onOpen={setOpenDebt} />
                     </>
                 )}
 

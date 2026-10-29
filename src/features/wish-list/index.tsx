@@ -5,7 +5,7 @@ import { WishListForm } from './components/wish-list-form'
 import { BuyItemForm } from './components/buy-item-form'
 import { ContributeForm } from './components/contribute-form'
 import { ContributeQuantityForm } from './components/contribute-quantity-form'
-import { WishCard } from './components/wish-card'
+import { WishRow } from './components/wish-card'
 import { AffordSheet } from './components/afford-sheet'
 import { WishAchieved } from './components/wish-achieved'
 import { WishEmpty } from './components/wish-empty'
@@ -19,7 +19,7 @@ import { formatCurrency, formatShortCurrency, toISODate } from '@/lib/helpers'
 import type { DebtWithAccount, WishListItem, WishPart } from '@/types'
 import { toast } from 'sonner'
 import { LoadingContent } from '@/components/loading-content'
-import { Kpis, OutlineButton, PlanHeader } from '@/features/plan/components/layout'
+import { Kpis, OutlineButton, PlanHeader, PlanSection } from '@/features/plan/components/layout'
 
 const plain = (n: number) => new Intl.NumberFormat('id-ID').format(Math.round(n))
 
@@ -107,6 +107,21 @@ export default function WishListPage() {
     const sorted = useMemo(() => sortWishes(items), [items])
     const stopById = useMemo(() => new Map(roadmap.map(s => [s.item.id, s])), [roadmap])
     const affordButton = <OutlineButton onClick={() => setAffordOpen(true)}>Can I afford it?</OutlineButton>
+    // Saved in full first, like Bills' due before paid; each keeps the urgent-first order.
+    const ready = useMemo(() => sorted.filter(item => wishProgress(item).ready), [sorted])
+    const saving = useMemo(() => sorted.filter(item => !wishProgress(item).ready), [sorted])
+    const row = (item: WishListItem) => (
+        <WishRow
+            key={item.id}
+            item={item}
+            stop={stopById.get(item.id)}
+            pace={pace}
+            today={today}
+            onOpen={() => setOpenItem(item)}
+            onBuy={() => setBuyingItem(item)}
+            owedFirst={owedFirst}
+        />
+    )
 
     // How the months are worked out, said once, plainly.
     const etaNote = pace && pace.perDay > 0
@@ -118,7 +133,7 @@ export default function WishListPage() {
     return (
         <>
             <PlanHeader title="Wishlist" add={{ label: 'Add wish', onClick: () => openAdd(), disabled: !periodId }} extra={affordButton} />
-            <section className="px-4 pb-4 lg:px-0 space-y-4">
+            <section className="px-4 pb-4 lg:px-0 space-y-6 lg:max-w-3xl">
                 {loading ? (
                     <LoadingContent />
                 ) : periodId ? (
@@ -133,36 +148,30 @@ export default function WishListPage() {
                             { label: 'Usual leftover', value: pace ? `~${plain(Math.max(0, pace.perPeriod))}` : '—', sub: 'per period' },
                         ]} />
 
-                        <button
-                            type="button"
-                            onClick={() => setAffordOpen(true)}
-                            className="lg:hidden w-full h-11 rounded-[14px] bg-surface-hover text-ink text-[13px] font-semibold hover:bg-line-soft transition-colors"
-                        >
-                            Can I afford it?
-                        </button>
-
                         {items.length === 0 ? (
                             <WishEmpty onAdd={openAdd} />
                         ) : (
                             <>
-                                <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 lg:items-start">
-                                    {sorted.map(item => (
-                                        <WishCard
-                                            key={item.id}
-                                            item={item}
-                                            stop={stopById.get(item.id)}
-                                            pace={pace}
-                                            today={today}
-                                            onOpen={() => setOpenItem(item)}
-                                            onBuy={() => setBuyingItem(item)}
-                                            owedFirst={owedFirst}
-                                        />
-                                    ))}
-                                </div>
-                                <p className="px-1 text-[11.5px] text-subtle-ink leading-relaxed">{etaNote}</p>
+                                {ready.length > 0 && (
+                                    <PlanSection title="Ready to buy" meta={ready.length}>{ready.map(row)}</PlanSection>
+                                )}
+                                {saving.length > 0 && (
+                                    <PlanSection
+                                        title="Saving up"
+                                        // On the phone the top bar has no room for it, so it sits by the list.
+                                        action={(
+                                            <button type="button" onClick={() => setAffordOpen(true)} className="lg:hidden text-[13px] font-medium text-brand-ink">
+                                                Can I afford it?
+                                            </button>
+                                        )}
+                                    >
+                                        {saving.map(row)}
+                                    </PlanSection>
+                                )}
+                                <p className="-mt-3 px-1 text-[11.5px] text-subtle-ink leading-relaxed">{etaNote}</p>
                             </>
                         )}
-                        <div className="lg:max-w-xl"><WishAchieved items={purchased} /></div>
+                        <WishAchieved items={purchased} />
                     </>
                 ) : (
                     <p className="text-[13px] text-muted-ink px-1">Open a pay period to start adding wishes.</p>

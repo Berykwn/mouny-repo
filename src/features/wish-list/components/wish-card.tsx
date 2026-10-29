@@ -2,6 +2,7 @@ import { formatShortCurrency } from '@/lib/helpers'
 import { cn } from '@/lib/utils'
 import type { WishListItem } from '@/types'
 import { etaPhrase, nextPart, partsBreakdown, wishProgress, type RoadmapStop, type SavingsPace } from '../lib/wish-analytics'
+import { PillButton, PlanRow, RowAmount } from '@/features/plan/components/layout'
 import { WishTile } from './wish-tile'
 
 const plain = (n: number) => new Intl.NumberFormat('id-ID').format(Math.round(n))
@@ -19,7 +20,7 @@ export function PartDots({ item, className }: { item: WishListItem; className?: 
     )
 }
 
-interface WishCardProps {
+interface WishRowProps {
     item: WishListItem
     stop: RoadmapStop | undefined
     pace: SavingsPace | null
@@ -31,9 +32,12 @@ interface WishCardProps {
     owedFirst?: number
 }
 
-/** A wish at a glance: how far along, and the month it's expected, from the usual leftover. */
-export function WishCard({ item, stop, pace, today, onOpen, onBuy, owedFirst = 0 }: WishCardProps) {
-    const { target, saved, remaining, percent, ready } = wishProgress(item)
+/**
+ * A wish as a Bills row: how far along on the right ("3,8jt of 13jt"), and the next step
+ * or the month it's expected under the name. A plain wish saved in full offers Buy.
+ */
+export function WishRow({ item, stop, pace, today, onOpen, onBuy, owedFirst = 0 }: WishRowProps) {
+    const { target, saved, remaining, ready } = wishProgress(item)
     const parts = partsBreakdown(item)
     const isUOM = !!item.quantity
     const unit = item.unit ?? ''
@@ -62,37 +66,15 @@ export function WishCard({ item, stop, pace, today, onOpen, onBuy, owedFirst = 0
             : { main: formatShortCurrency(saved), of: target !== null ? `of ${formatShortCurrency(target)}` : null }
 
     return (
-        <div className="card p-4">
-            <button type="button" onClick={onOpen} className="w-full text-left">
-                <div className="flex items-center gap-3">
-                    <WishTile name={item.name} icon={item.icon} />
-                    <div className="flex-1 min-w-0">
-                        <p className="text-[15px] font-medium text-ink truncate">{item.name}</p>
-                        <p className={cn('text-[12px] truncate', ready ? 'text-brand-ink' : 'text-muted-ink')}>{sub}</p>
-                    </div>
-                    <div className="text-right shrink-0">
-                        <p className="text-[15px] font-semibold tabular-nums text-ink">{amount.main}</p>
-                        {amount.of && <p className="text-[11.5px] text-subtle-ink tabular-nums">{amount.of}</p>}
-                    </div>
-                </div>
-                {parts ? (
-                    <PartDots item={item} className="mt-3.5" />
-                ) : (target !== null || isUOM) && !(ready && !isUOM) ? (
-                    <div aria-hidden="true" className="mt-3.5 h-1.5 rounded-full bg-line-soft overflow-hidden">
-                        <div className="h-full rounded-full bg-info transition-all" style={{ width: `${percent}%` }} />
-                    </div>
-                ) : null}
-            </button>
-            {ready && !parts && !isUOM && (
-                // Quiet on the card: the detail sheet carries the one primary button.
-                <button
-                    type="button"
-                    onClick={onBuy}
-                    className="mt-3 h-9 px-3.5 rounded-full border border-line bg-surface text-ink text-[13px] font-semibold hover:bg-surface-hover transition-colors"
-                >
-                    Record purchase
-                </button>
-            )}
-        </div>
+        <PlanRow
+            lead={<WishTile name={item.name} icon={item.icon} />}
+            title={item.name}
+            sub={sub}
+            subClassName={ready ? 'text-brand-ink' : undefined}
+            onOpen={onOpen}
+            end={ready && !parts && !isUOM
+                ? <PillButton onClick={onBuy}>Buy {formatShortCurrency(target ?? saved)}</PillButton>
+                : <RowAmount sub={amount.of}>{amount.main}</RowAmount>}
+        />
     )
 }

@@ -124,7 +124,7 @@ export function CategoriesPage() {
                 }
             />
             {addButton}
-            <section className="px-4 pb-6 lg:px-0 lg:max-w-[640px]">
+            <section className="px-4 pb-6 lg:px-0 lg:max-w-3xl">
                 {loading ? (
                     <LoadingContent />
                 ) : categoriesQuery.error && categories.length === 0 ? (
@@ -143,7 +143,8 @@ export function CategoriesPage() {
                     </EmptyState>
                 ) : (
                     <>
-                        <div role="tablist" aria-label="Category type" className="flex gap-2 pt-1">
+                        {/* The same pills as Plan's tabs. */}
+                        <div role="tablist" aria-label="Category type" className="flex gap-2 pb-5">
                             {(['expense', 'income'] as const).map(t => (
                                 <button
                                     key={t}
@@ -152,8 +153,8 @@ export function CategoriesPage() {
                                     aria-selected={tab === t}
                                     onClick={() => setTab(t)}
                                     className={cn(
-                                        'h-10 px-4 rounded-full text-[14.5px] font-medium border transition-colors',
-                                        tab === t ? 'bg-ink text-on-ink border-ink' : 'border-line text-muted-ink hover:text-ink'
+                                        'h-10 px-4 rounded-full border border-line text-[14px] flex items-center transition-colors',
+                                        tab === t ? 'bg-surface-hover text-ink font-semibold' : 'bg-surface text-muted-ink font-medium hover:text-ink'
                                     )}
                                 >
                                     {t === 'expense' ? 'Expenses' : 'Income'}

@@ -1,12 +1,11 @@
-import { MessageCircle } from 'lucide-react'
 import { formatShortCurrency } from '@/lib/helpers'
 import type { DebtWithAccount } from '@/types'
 import { dayDate, monthYear, relativeDays, shortDate } from '@/features/bills/lib/bill-labels'
-import { debtProgress, dueStatus, type PayoffStop } from '../lib/debt-insights'
+import { PillButton, PlanRow, RowAmount } from '@/features/plan/components/layout'
+import { dueStatus, type PayoffStop } from '../lib/debt-insights'
 import { DebtAvatar } from './debt-avatar'
 
 const plain = (n: number) => new Intl.NumberFormat('id-ID').format(Math.round(n))
-const QUIET_BTN = 'flex-1 h-10 rounded-[12px] bg-surface-hover text-ink text-[13px] font-semibold flex items-center justify-center gap-1.5 hover:bg-line-soft transition-colors disabled:opacity-50'
 
 /** "Due Thu 31 Dec" → "due Thu 31 Dec" mid-sentence; day and month names keep their capitals. */
 const lowerFirst = (text: string) => text.charAt(0).toLowerCase() + text.slice(1)
@@ -18,52 +17,44 @@ function dueLine(debt: DebtWithAccount): { text: string; late: boolean } {
     return { text: `Due ${dayDate(debt.due_date!)}`, late: false }
 }
 
-interface OweCardProps {
+interface OweRowProps {
     debt: DebtWithAccount
     stop: PayoffStop | undefined
+    canPay: boolean
     onOpen: () => void
+    onPay: () => void
 }
 
-/** A debt you owe: what's left, a thin ink bar of what's paid, and how many periods remain. */
-export function OweCard({ debt, stop, onOpen }: OweCardProps) {
-    const { percent } = debtProgress(debt)
+/**
+ * A debt you owe, as a Bills row: this period's share to pay on the right while there is
+ * one, otherwise what's left. How far along it is reads in the line under the name.
+ */
+export function OweRow({ debt, stop, canPay, onOpen, onPay }: OweRowProps) {
     const due = dueLine(debt)
-    // The schedule's first step, so the card and the pay sheet's "This period's plan" agree.
+    // The schedule's first step, so the row and the pay sheet's "This period's plan" agree.
     const planned = stop && stop.status !== 'overdue' ? stop : null
-    const sub = planned?.doneThisPeriod
-        ? `Done for this period · ${lowerFirst(due.text)}`
-        : planned?.thisPeriodDue
-            ? `${formatShortCurrency(planned.thisPeriodDue)} this period · ${lowerFirst(due.text)}`
-            : due.text
-    const foot = stop?.periodsLeft
-        ? `${stop.periodsLeft} period${stop.periodsLeft === 1 ? '' : 's'} left`
-        : stop?.date ? `~${monthYear(stop.date)} at your pace` : null
+    const toPay = planned && !planned.doneThisPeriod ? planned.thisPeriodDue ?? 0 : 0
+    const left = `${formatShortCurrency(debt.remaining_amount)} of ${formatShortCurrency(debt.total_amount)} left`
+    const when = planned?.doneThisPeriod
+        ? 'done for this period'
+        : stop?.periodsLeft ? `${stop.periodsLeft} period${stop.periodsLeft === 1 ? '' : 's'} left`
+            : stop?.date ? `~${monthYear(stop.date)}` : lowerFirst(due.text)
 
     return (
-        <button type="button" onClick={onOpen} className="card w-full p-4 text-left hover:bg-surface-soft transition-colors">
-            <div className="flex items-center gap-3">
-                <DebtAvatar name={debt.counterparty} late={due.late} />
-                <div className="flex-1 min-w-0">
-                    <p className="text-[15px] font-medium text-ink truncate">{debt.counterparty}</p>
-                    <p className={due.late ? 'text-[12px] text-negative truncate' : 'text-[12px] text-muted-ink truncate'}>{sub}</p>
-                </div>
-                <div className="text-right shrink-0">
-                    <p className="text-[15px] font-semibold tabular-nums text-ink">{plain(debt.remaining_amount)}</p>
-                    <p className="text-[11.5px] text-subtle-ink tabular-nums">of {plain(debt.total_amount)}</p>
-                </div>
-            </div>
-            <div aria-hidden="true" className="mt-3 h-1.5 rounded-full bg-line-soft overflow-hidden">
-                <div className="h-full rounded-full bg-ink transition-all" style={{ width: `${percent}%` }} />
-            </div>
-            <div className="mt-2 flex justify-between gap-3 text-[12px] text-muted-ink">
-                <span className="tabular-nums">{percent}% paid</span>
-                {foot && <span className="truncate">{foot}</span>}
-            </div>
-        </button>
+        <PlanRow
+            lead={<DebtAvatar name={debt.counterparty} late={due.late} />}
+            title={debt.counterparty}
+            sub={due.late ? `${due.text} · ${left}` : `${left} · ${when}`}
+            subClassName={due.late ? 'text-negative' : undefined}
+            onOpen={onOpen}
+            end={toPay > 0 && canPay
+                ? <PillButton onClick={onPay}>Pay {formatShortCurrency(toPay)}</PillButton>
+                : <RowAmount sub={`of ${plain(debt.total_amount)}`}>{plain(debt.remaining_amount)}</RowAmount>}
+        />
     )
 }
 
-interface OwedCardProps {
+interface OwedRowProps {
     debt: DebtWithAccount
     canCollect: boolean
     onOpen: () => void
@@ -71,34 +62,23 @@ interface OwedCardProps {
     onCollect: () => void
 }
 
-/** Money owed to you: who, how late, and the two things to do about it. */
-export function OwedCard({ debt, canCollect, onOpen, onRemind, onCollect }: OwedCardProps) {
+/** Money owed to you: who, when, and the one next step — a nudge once they're late, else collecting it. */
+export function OwedRow({ debt, canCollect, onOpen, onRemind, onCollect }: OwedRowProps) {
     const due = dueLine(debt)
-    const lent = debt.created_at ? `lent ${shortDate(debt.created_at.slice(0, 10))}` : null
     const status = dueStatus(debt)
     const when = status.kind === 'soon' || status.kind === 'today' ? `${due.text} · ${relativeDays(status.kind === 'today' ? 0 : status.days)}` : due.text
+    const lent = debt.created_at ? `lent ${shortDate(debt.created_at.slice(0, 10))}` : null
 
     return (
-        <div className="card p-4">
-            <button type="button" onClick={onOpen} className="w-full flex items-center gap-3 text-left">
-                <DebtAvatar name={debt.counterparty} late={due.late} />
-                <div className="flex-1 min-w-0">
-                    <p className="text-[15px] font-medium text-ink truncate">{debt.counterparty}</p>
-                    <p className={due.late ? 'text-[12px] text-negative truncate' : 'text-[12px] text-muted-ink truncate'}>
-                        {[when, lent].filter(Boolean).join(' · ')}
-                    </p>
-                </div>
-                <p className="text-[15px] font-semibold tabular-nums text-ink shrink-0">{plain(debt.remaining_amount)}</p>
-            </button>
-            <div className="mt-3 flex gap-2">
-                <button type="button" onClick={onRemind} className={QUIET_BTN}>
-                    <MessageCircle className="w-4 h-4" /> Remind
-                </button>
-                <button type="button" onClick={onCollect} disabled={!canCollect} className={QUIET_BTN}>
-                    Collect
-                </button>
-            </div>
-            {debt.notes && <p className="mt-2 text-[11.5px] text-subtle-ink truncate">{debt.notes}</p>}
-        </div>
+        <PlanRow
+            lead={<DebtAvatar name={debt.counterparty} late={due.late} />}
+            title={debt.counterparty}
+            sub={[`${formatShortCurrency(debt.remaining_amount)} · ${lowerFirst(when)}`, lent].filter(Boolean).join(' · ')}
+            subClassName={due.late ? 'text-negative' : undefined}
+            onOpen={onOpen}
+            end={due.late
+                ? <PillButton onClick={onRemind}>Remind</PillButton>
+                : <PillButton onClick={onCollect} disabled={!canCollect}>Collect</PillButton>}
+        />
     )
 }

@@ -16,12 +16,12 @@ interface DebtAvatarProps {
     className?: string
 }
 
-/** The counterparty's initials on a quiet disc, red only when they're late. */
+/** The counterparty's initials on a quiet tile, the same shape as a bill's; red only when they're late. */
 export function DebtAvatar({ name, late, settled, className }: DebtAvatarProps) {
     return (
         <div
             className={cn(
-                'w-10 h-10 rounded-full flex items-center justify-center shrink-0 text-[13px] font-semibold tracking-[.02em]',
+                'w-10 h-10 rounded-[12px] flex items-center justify-center shrink-0 text-[13px] font-semibold tracking-[.02em]',
                 settled ? 'bg-surface-hover text-subtle-ink'
                     : late ? 'bg-negative-soft text-negative-ink'
                         : 'bg-surface-hover text-muted-ink',

@@ -41,6 +41,7 @@ A new look and a new layout. Mouny is calmer: white pages, ink and cobalt instea
 - **Ink & Cobalt.** Brand green is gone. Main buttons are ink on light and cobalt on dark, so dark mode never shows white buttons. Category kinds: Everyday orange, Bills violet, Lifestyle amber, Savings teal.
 - **Home** leads with what's safe to spend today, one status word and a bar showing how much of the period is used, then one suggestion, your balances, bills due and today's entries.
 - **Ledger rows** use the note as the title. Day totals are quieter.
+- **Debts, Wishlist and Categories read like Bills:** open rows under plain headings, each with one pill for its next step (*Pay 334rb*, *Collect*, *Buy 1,5jt*) or its amount on the right, instead of a stack of boxed cards. Debts shows *You owe* and *Owed to you* one after the other instead of a switch; Wishlist splits into *Ready to buy* and *Saving up*; a category's budget reads as what's left (*397rb left · ahead of pace*).
 - **Nothing is guessed.** Pay-from account, category kind and the expected payday are always chosen by you. Past an expected payday, Home says so and offers to close the period.
 - Short amounts use a decimal comma (*1,5jt*). Periods are named by the month they start in. All app text is in English.
 - One main button per screen. Inputs are 16px on phones so iOS doesn't zoom.
