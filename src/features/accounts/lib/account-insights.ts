@@ -115,19 +115,17 @@ export function accountLine(account: Account, insight: AccountInsight | undefine
     const role = roleOf(account)
     if (isOverdrawn(account)) return { text: role === 'credit' ? 'Over its limit' : 'Overdrawn', negative: true }
     if (role === 'credit') return { text: creditLine(account), negative: false }
-    if (role === 'asset') return { text: 'Not spent from', negative: false }
     if (role === 'savings') return { text: 'Not counted as spendable', negative: false }
     if (insight?.runwayDays != null) return { text: `Lasts ~${insight.runwayDays} day${insight.runwayDays === 1 ? '' : 's'}`, negative: false }
     return { text: TYPE_LABEL[account.type] ?? 'Account', negative: false }
 }
 
-/** Where moved money comes from, first choice first: never an asset (it isn't spent from), nor a card. */
+/** Where moved money comes from, first choice first: never a card. */
 const SOURCE_RANK: Record<string, number> = { everyday: 0, savings: 1 }
 
 /**
  * The account money is best moved from: the fullest everyday account, else the fullest
- * savings one. Assets are held, not spent from, and moving money off a credit card
- * would be borrowing, so neither is offered.
+ * savings one. Moving money off a credit card would be borrowing, so it isn't offered.
  */
 export function fullestSource(accounts: Account[], exceptId?: string): Account | null {
     return accounts
@@ -152,7 +150,7 @@ export interface RunOutWarning {
 /**
  * The everyday account that runs out first at its own pace, when that's before payday (or
  * within LOW_RUNWAY_DAYS when payday isn't known). Only everyday accounts are warned
- * about: savings and assets aren't spent from, and a card nearing its limit shows that on
+ * about: savings aren't spent from, and a card nearing its limit shows that on
  * its own row (its runway) rather than as a top-up suggestion, which would mean paying
  * the card off.
  */

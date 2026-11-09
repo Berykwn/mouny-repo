@@ -45,7 +45,7 @@ export type WishListUpdate = Database['public']['Tables']['wish_list']['Update']
 /** Where the money sits; only the icon and wording follow it. */
 export type AccountType = 'bank' | 'cash' | 'ewallet'
 /** What the money is for; the logic follows it (see lib/account-roles). */
-export type AccountRole = 'everyday' | 'savings' | 'asset' | 'credit'
+export type AccountRole = 'everyday' | 'savings' | 'credit'
 /** How a cash count records a difference (see features/accounts/lib/cash-count). */
 export type CountAs = 'spending' | 'income' | 'correction'
 export type CategoryType = 'income' | 'expense'

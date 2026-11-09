@@ -137,14 +137,13 @@ export function AccountPage() {
         toast.success(`${account.name} restored.`)
     }
 
-    // Savings and assets are set aside and what's owed on a card comes off: they all count
+    // Savings are set aside and what's owed on a card comes off: they all count
     // in the total, which the line under it breaks down.
     const breakdown = balanceBreakdown(accounts)
     const totalBalance = breakdown.total
     const breakdownParts = [
         breakdown.spendable !== 0 && { key: 'spendable', node: <><b className="font-semibold text-ink">{short(breakdown.spendable)}</b> spendable</> },
         breakdown.saved !== 0 && { key: 'saved', node: <>{short(breakdown.saved)} saved</> },
-        breakdown.assets !== 0 && { key: 'assets', node: <>{short(breakdown.assets)} in assets</> },
         breakdown.owed !== 0 && { key: 'owed', node: <>{short(breakdown.owed)} owed</> },
     ].filter(Boolean) as { key: string; node: ReactNode }[]
     // Worth breaking down only when the total is more than what can be spent.
@@ -192,7 +191,7 @@ export function AccountPage() {
     // Below zero, or for a card past its limit: a card below zero is just owing.
     const overdrawn = accounts.find(isOverdrawn) ?? null
     // Where a transfer starts when nothing more specific is known: the fullest everyday
-    // account, else savings, else whatever has money in it (an asset being sold, say).
+    // account, else savings, else whatever has money in it.
     const fullest = fullestSource(accounts)
         ?? [...accounts].filter(a => a.balance > 0).sort((a, b) => b.balance - a.balance)[0] ?? null
 
@@ -397,7 +396,7 @@ export function AccountPage() {
                         />
                     )}
                 </BottomDrawer>
-                <BottomDrawer open={!!edit} onClose={() => setEdit(null)} title={edit?.tab === 'transfer' ? 'Transfer' : edit?.adjust ? (edit.account.role === 'asset' ? 'Update value' : 'Adjust balance') : 'Edit account'}>
+                <BottomDrawer open={!!edit} onClose={() => setEdit(null)} title={edit?.tab === 'transfer' ? 'Transfer' : edit?.adjust ? 'Adjust balance' :'Edit account'}>
                     {edit &&
                         <AccountForm
                             key={`${edit.account.id}-${edit.tab}-${edit.adjust ? 'adjust' : ''}-${edit.toAccountId ?? ''}`}

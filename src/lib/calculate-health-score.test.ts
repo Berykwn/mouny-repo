@@ -61,10 +61,10 @@ describe('calculateHealthScore', () => {
 })
 
 describe('debtPosition', () => {
-    const acc = (role: AccountRole, balance: number) => ({ role, balance, is_savings: role === 'savings' || role === 'asset' })
+    const acc = (role: AccountRole, balance: number) => ({ role, balance, is_savings: role === 'savings' })
 
     it('counts what is owed on cards as debt, once', () => {
-        const accounts = [acc('everyday', 8_000_000), acc('credit', -2_000_000), acc('asset', 5_000_000)]
+        const accounts = [acc('everyday', 8_000_000), acc('credit', -2_000_000), acc('savings', 5_000_000)]
         // The net total is 11M; the card's 2M moves from it to the debt.
         expect(debtPosition(accounts, 1_000_000)).toEqual({ totalBalance: 13_000_000, totalDebt: 3_000_000 })
     })

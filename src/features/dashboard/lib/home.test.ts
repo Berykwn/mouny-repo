@@ -63,7 +63,7 @@ function account(overrides: Partial<AccountRow> = {}): AccountRow {
         name: 'BCA',
         balance: 0,
         role,
-        is_savings: role === 'savings' || role === 'asset',
+        is_savings: role === 'savings',
         credit_limit: null,
         ...overrides,
     }
@@ -251,11 +251,10 @@ describe('pickSmartLine', () => {
         expect(at(-50_000)).toBe(at(-80_000))
     })
 
-    it('leaves savings and asset accounts alone', () => {
+    it('leaves savings accounts alone', () => {
         const line = pickSmartLine(input({
             accounts: [
                 account({ id: 's', name: 'Tabungan', balance: -5, role: 'savings' }),
-                account({ id: 'g', name: 'Gold', balance: -5, role: 'asset' }),
             ],
         }))
         expect(line).toBeNull()
@@ -273,12 +272,11 @@ describe('overdrawnBy', () => {
 })
 
 describe('outlookStartBalance', () => {
-    it('starts from everyday money less what is owed on cards, without savings or assets', () => {
+    it('starts from everyday money less what is owed on cards, without savings', () => {
         expect(outlookStartBalance([
             account({ balance: 3_000_000 }),
             account({ role: 'credit', balance: -1_000_000, credit_limit: 5_000_000 }),
             account({ role: 'savings', balance: 10_000_000 }),
-            account({ role: 'asset', balance: 20_000_000 }),
         ])).toBe(2_000_000)
     })
 })

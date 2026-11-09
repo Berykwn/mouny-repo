@@ -2,13 +2,11 @@ import type { Account, AccountRole } from '@/types'
 
 /**
  * What an account's money is for. The database keeps `role` and mirrors it into
- * `is_savings` (savings and asset accounts are set aside), so every savings calculation
- * that reads is_savings keeps working; this file is what the app reads instead.
+ * `is_savings` (savings accounts are set aside), so every savings calculation that reads
+ * is_savings keeps working; this file is what the app reads instead.
  *
  *   everyday  spent from: bank, cash, e-wallet. Counts as spendable; has a runway.
  *   savings   set aside. Money moved in counts as saved.
- *   asset     held, not spent: gold, funds, deposits. Its value is updated by hand
- *             (a balance adjustment, never income).
  *   credit    a credit card or pay-later line. Spent from like everyday, may go below
  *             zero down to its limit; what's below zero is owed.
  */
@@ -16,26 +14,24 @@ import type { Account, AccountRole } from '@/types'
 type RoleSource = Pick<Account, 'role'> | { role?: string | null }
 
 /** The order pickers and lists group by. */
-export const ROLE_ORDER: AccountRole[] = ['everyday', 'credit', 'savings', 'asset']
+export const ROLE_ORDER: AccountRole[] = ['everyday', 'credit', 'savings']
 
 export const ROLE_LABEL: Record<AccountRole, string> = {
     everyday: 'Everyday',
     credit: 'Credit',
     savings: 'Savings',
-    asset: 'Assets',
 }
 
 export const ROLE_HINT: Record<AccountRole, string> = {
     everyday: 'Bank, cash or e-wallet you spend from.',
     credit: 'Credit card or pay-later. Can go below zero, down to its limit.',
     savings: 'Set aside. Money moved in counts as saved, not spendable.',
-    asset: 'Gold, funds, deposits. Not spent from; update its value by hand.',
 }
 
 /** The account's role, for rows written before roles existed too. */
 export function roleOf(account: RoleSource & { is_savings?: boolean | null }): AccountRole {
     const r = account.role
-    if (r === 'everyday' || r === 'savings' || r === 'asset' || r === 'credit') return r
+    if (r === 'everyday' || r === 'savings' || r === 'credit') return r
     return account.is_savings ? 'savings' : 'everyday'
 }
 
@@ -46,7 +42,6 @@ export const isSpendable = (account: RoleSource & { is_savings?: boolean | null 
 }
 
 export const isCredit = (account: RoleSource) => account.role === 'credit'
-export const isAsset = (account: RoleSource) => account.role === 'asset'
 
 /**
  * How much can still leave the account: the balance, or for a credit account the
@@ -102,13 +97,12 @@ export interface BalanceBreakdown {
     /** Everyday balances less what's owed on credit: what spending can use. */
     spendable: number
     saved: number
-    assets: number
     /** Owed on credit accounts. */
     owed: number
 }
 
 export function balanceBreakdown(accounts: Pick<Account, 'balance' | 'role' | 'is_savings'>[]): BalanceBreakdown {
-    const out: BalanceBreakdown = { total: 0, spendable: 0, saved: 0, assets: 0, owed: 0 }
+    const out: BalanceBreakdown = { total: 0, spendable: 0, saved: 0, owed: 0 }
     for (const a of accounts) {
         out.total += a.balance
         switch (roleOf(a)) {
@@ -119,7 +113,6 @@ export function balanceBreakdown(accounts: Pick<Account, 'balance' | 'role' | 'i
                 out.owed += Math.max(0, -a.balance)
                 break
             case 'savings': out.saved += a.balance; break
-            case 'asset': out.assets += a.balance; break
         }
     }
     return out

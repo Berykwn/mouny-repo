@@ -19,7 +19,7 @@ const acc = (over: Partial<Account> & { name: string }): Account => ({
 
 describe('roleOf', () => {
     it('reads the role, and falls back on is_savings for rows without one', () => {
-        expect(roleOf(acc({ name: 'Gold', role: 'asset', is_savings: true }))).toBe('asset')
+        expect(roleOf(acc({ name: 'Visa', role: 'credit' }))).toBe('credit')
         expect(roleOf({ role: null, is_savings: true })).toBe('savings')
         expect(roleOf({ role: undefined, is_savings: false })).toBe('everyday')
     })
@@ -29,7 +29,6 @@ describe('order and default', () => {
     const accounts = [
         acc({ name: 'Jago', role: 'savings', position: 0 }),
         acc({ name: 'BCA', position: 3 }),
-        acc({ name: 'Gold', role: 'asset', position: 1 }),
         acc({ name: 'Cash', type: 'cash', position: 2 }),
         acc({ name: 'Visa', role: 'credit', position: 4 }),
     ]
@@ -39,7 +38,6 @@ describe('order and default', () => {
             ['everyday', ['Cash', 'BCA']],
             ['credit', ['Visa']],
             ['savings', ['Jago']],
-            ['asset', ['Gold']],
         ])
         expect(pickerOrder(accounts)).toHaveLength(accounts.length)
     })
@@ -73,7 +71,6 @@ describe('balanceBreakdown', () => {
             acc({ name: 'Cash', balance: 500_000 }),
             acc({ name: 'Visa', role: 'credit', balance: -1_200_000 }),
             acc({ name: 'Jago', role: 'savings', balance: 3_000_000 }),
-            acc({ name: 'Gold', role: 'asset', balance: 5_000_000 }),
-        ])).toEqual({ total: 11_300_000, spendable: 3_300_000, saved: 3_000_000, assets: 5_000_000, owed: 1_200_000 })
+        ])).toEqual({ total: 6_300_000, spendable: 3_300_000, saved: 3_000_000, owed: 1_200_000 })
     })
 })

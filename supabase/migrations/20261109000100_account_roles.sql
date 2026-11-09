@@ -3,12 +3,10 @@
 -- 1. An account's role says what its money is for, separately from where it sits (type):
 --      everyday  spent from day to day (bank, cash, e-wallet)
 --      savings   set aside (a separate pocket like Bank Jago)
---      asset     held, not spent: gold, mutual funds, deposits. Its value is updated by
---                hand, through adjust_balance (a transfer, never income)
 --      credit    a credit card or pay-later line: spent from, and may go below zero down
 --                to its limit; what's below zero is owed
---    `is_savings` stays and now mirrors role: savings and asset accounts are set aside
---    (not spendable), which is what every savings calculation already reads. A client
+--    `is_savings` stays and now mirrors role: savings accounts are set aside (not
+--    spendable), which is what every savings calculation already reads. A client
 --    that still writes only is_savings keeps working: the role follows it.
 -- 2. Type gains 'ewallet' (GoPay, OVO, ShopeePay…). Type is only where the money sits.
 -- 3. `position` is the user's own order. The first everyday account is the default in
@@ -28,7 +26,7 @@ alter table public.accounts
 
 alter table public.accounts drop constraint if exists accounts_role_check;
 alter table public.accounts add constraint accounts_role_check
-  check (role in ('everyday', 'savings', 'asset', 'credit'));
+  check (role in ('everyday', 'savings', 'credit'));
 
 alter table public.accounts drop constraint if exists accounts_credit_limit_check;
 alter table public.accounts add constraint accounts_credit_limit_check
@@ -89,7 +87,7 @@ begin
   if new.role <> 'credit' then
     new.credit_limit := null;
   end if;
-  new.is_savings := new.role in ('savings', 'asset');
+  new.is_savings := new.role = 'savings';
   return new;
 end;
 $$;

@@ -6,7 +6,7 @@ import { accountInsights, accountLine, fullestSource, isOverdrawn, runOutFirst }
 let position = 0
 const account = (id: string, balance: number, role: AccountRole = 'everyday', credit_limit: number | null = null): Account => ({
     id, name: id, balance, role, credit_limit, position: position++,
-    is_savings: role === 'savings' || role === 'asset',
+    is_savings: role === 'savings',
     type: 'bank', archived_at: null, created_at: null, initial_balance: 0, user_id: 'user-1',
 })
 
@@ -43,12 +43,11 @@ describe('runOutFirst', () => {
 })
 
 describe('roles', () => {
-    const gold = account('Gold', 50_000_000, 'asset')
     const card = account('Card', -1_200_000, 'credit', 10_000_000)
     const paylater = account('PayLater', -300_000, 'credit')
     // 10 days in: Card spends 900rb a day, GoPay 78rb.
-    const txs = [spend('Card', 9_000_000), spend('GoPay', 780_000), spend('Gold', 1_000_000), spend('PayLater', 500_000)]
-    const all = [bca, gopay, jago, gold, card, paylater]
+    const txs = [spend('Card', 9_000_000), spend('GoPay', 780_000), spend('Jago', 1_000_000), spend('PayLater', 500_000)]
+    const all = [bca, gopay, jago, card, paylater]
     const insights = accountInsights(all, txs, 10)
 
     it('gives a card with a limit a runway from what’s left of it, and none without a limit', () => {
@@ -57,8 +56,7 @@ describe('roles', () => {
         expect(insights.get('PayLater')?.runwayDays).toBeNull()
     })
 
-    it('gives assets and savings no runway', () => {
-        expect(insights.get('Gold')?.runwayDays).toBeNull()
+    it('gives savings no runway', () => {
         expect(insights.get('Jago')?.runwayDays).toBeNull()
     })
 
@@ -73,21 +71,20 @@ describe('roles', () => {
     it('words each role’s second line', () => {
         expect(accountLine(card, insights.get('Card')).text).toBe('Rp1,2jt owed · Rp8,8jt available')
         expect(accountLine(paylater, undefined).text).toBe('Rp300rb owed · No limit')
-        expect(accountLine(gold, undefined).text).toBe('Not spent from')
         expect(accountLine(jago, undefined).text).toBe('Not counted as spendable')
     })
 
-    it('warns about everyday accounts only, with a top-up never taken from an asset or a card', () => {
+    it('warns about everyday accounts only, with a top-up never taken from a card', () => {
         // The card runs out of limit in 9 days, GoPay in 4: only GoPay is named.
-        const w = runOutFirst([gold, card, gopay, jago], insights, 10, 20)
+        const w = runOutFirst([card, gopay, jago], insights, 10, 20)
         expect(w?.account.id).toBe('GoPay')
-        // No everyday account to take from: savings, not the fuller gold.
+        // No other everyday account to take from: savings.
         expect(w?.source?.id).toBe('Jago')
     })
 
-    it('moves money from everyday first, then savings, never an asset', () => {
+    it('moves money from everyday first, then savings, never a card', () => {
         expect(fullestSource(all)?.id).toBe('BCA')
-        expect(fullestSource([gold, jago, card])?.id).toBe('Jago')
-        expect(fullestSource([gold, card])).toBeNull()
+        expect(fullestSource([jago, card])?.id).toBe('Jago')
+        expect(fullestSource([card])).toBeNull()
     })
 })

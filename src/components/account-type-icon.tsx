@@ -3,27 +3,21 @@ import CashIcon from '~icons/app/cash'
 import CreditCardIcon from '~icons/app/credit-card'
 import SavingsIcon from '~icons/app/piggy-bank-alt'
 import WalletIcon from '~icons/app/wallet'
-import CoinsIcon from '~icons/ph/coins-duotone'
 import type { ComponentType, SVGProps } from 'react'
 import { cn } from '@/lib/utils'
-import { ACCOUNT_TILE_CLASS, ASSET_TILE_CLASS, CREDIT_TILE_CLASS, SAVINGS_TILE_CLASS } from '@/lib/account-tiles'
+import { ACCOUNT_TILE_CLASS, CREDIT_TILE_CLASS, SAVINGS_TILE_CLASS } from '@/lib/account-tiles'
 
 export { BankIcon, CashIcon, CreditCardIcon, SavingsIcon, WalletIcon }
 
-/** The single-color coins icon takes the asset tile's gold; the app icons carry their own colors. */
-function AssetIcon({ className, ...props }: SVGProps<SVGSVGElement>) {
-    return <CoinsIcon {...props} className={cn('text-[#C98E12]', className)} />
-}
-
-type Look = 'bank' | 'cash' | 'ewallet' | 'savings' | 'credit' | 'asset'
+type Look = 'bank' | 'cash' | 'ewallet' | 'savings' | 'credit'
 
 /**
- * What an account looks like. The role wins when it's given (a credit card, an asset, a
- * savings pocket each look like what they're for); without it, the older `savings` flag
- * shows the piggy bank, and otherwise the type decides.
+ * What an account looks like. The role wins when it's given (a credit card, a savings
+ * pocket each look like what they're for); without it, the older `savings` flag shows the
+ * piggy bank, and otherwise the type decides.
  */
 function lookOf(type: string, savings?: boolean | null, role?: string | null): Look {
-    if (role === 'credit' || role === 'asset' || role === 'savings') return role
+    if (role === 'credit' || role === 'savings') return role
     if (!role && savings) return 'savings'
     return type === 'bank' || type === 'ewallet' ? type : 'cash'
 }
@@ -34,7 +28,6 @@ const ICON: Record<Look, ComponentType<SVGProps<SVGSVGElement>>> = {
     ewallet: WalletIcon,
     savings: SavingsIcon,
     credit: CreditCardIcon,
-    asset: AssetIcon,
 }
 
 const TILE: Record<Look, string> = {
@@ -43,7 +36,6 @@ const TILE: Record<Look, string> = {
     ewallet: ACCOUNT_TILE_CLASS.ewallet,
     savings: SAVINGS_TILE_CLASS,
     credit: CREDIT_TILE_CLASS,
-    asset: ASSET_TILE_CLASS,
 }
 
 // `role` here is the account's, not the ARIA attribute.

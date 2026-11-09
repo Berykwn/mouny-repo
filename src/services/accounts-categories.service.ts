@@ -89,7 +89,7 @@ export const accountsService = invalidatesOnWrite({
 
     /**
      * A new account goes to the end of the user's order. The role sets is_savings in the
-     * database (savings and asset accounts are set aside). A credit account may open below
+     * database (savings accounts are set aside). A credit account may open below
      * zero: what's owed on it.
      */
     async create(input: { name: string; type: AccountType; role: AccountRole; initial_balance: number; credit_limit?: number | null }): Promise<ServiceResult<Account>> {

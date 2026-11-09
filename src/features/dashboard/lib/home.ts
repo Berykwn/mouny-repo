@@ -195,7 +195,7 @@ export { overdrawnBy }
 
 /**
  * A spendable account past what it can hold, or with less left than the bills set to be
- * paid from it. Savings and assets aren't spent from, so they're left alone.
+ * paid from it. Savings aren't spent from, so they're left alone.
  */
 function accountShort({ accounts, dues }: SmartLineInput): SmartLine | null {
     const action = { label: 'Open accounts', to: '/accounts' }

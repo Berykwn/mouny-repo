@@ -53,7 +53,7 @@ export const OUTLOOK_DAYS = 42
 /**
  * Where the line starts: the everyday accounts less what's owed on cards (spending on a
  * card is spending all the same, and paying it off is only a move between the two).
- * Savings and assets aren't spent from, so they stay out.
+ * Savings aren't spent from, so they stay out.
  */
 export const outlookStartBalance = (accounts: Pick<Account, 'balance' | 'role' | 'is_savings'>[]) =>
     balanceBreakdown(accounts).spendable

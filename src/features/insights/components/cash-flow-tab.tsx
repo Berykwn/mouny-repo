@@ -37,8 +37,8 @@ export function CashFlowTab({ transactions, stats, outlook, isActivePeriod, onOp
                             : <>Your everyday money <Em tone="negative">dips below zero</Em> around {shortDate(outlook.points.find(p => p.balance < 0)!.date)}.</>}
                 sub={outlook ? 'Every bill, debt and payday on the calendar, plus your usual daily pace.' : undefined}
                 how={<>
-                    Starts from what your everyday accounts hold today, less what’s owed on credit cards; savings and assets aren’t in it. Takes off each bill still unpaid this period and every bill after it on its schedule, debts on their due date (a late one today), and your everyday pace so far ({formatShortCurrency(stats.dailyAvg)}/day) from tomorrow.
-                    {' '}Adds each payday with the income this period was opened with, repeating at this period’s length, and receivables on their due date (a late one isn’t counted). Money you move to savings or assets isn’t planned, so it isn’t in here.
+                    Starts from what your everyday accounts hold today, less what’s owed on credit cards; savings aren’t in it. Takes off each bill still unpaid this period and every bill after it on its schedule, debts on their due date (a late one today), and your everyday pace so far ({formatShortCurrency(stats.dailyAvg)}/day) from tomorrow.
+                    {' '}Adds each payday with the income this period was opened with, repeating at this period’s length, and receivables on their due date (a late one isn’t counted). Money you move to savings isn’t planned, so it isn’t in here.
                 </>}
             >
                 {outlook && <CashOutlookChart outlook={outlook} height={220} />}

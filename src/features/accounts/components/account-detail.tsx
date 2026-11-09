@@ -21,7 +21,7 @@ interface AccountDetailProps {
     canTransfer: boolean
     hasActivePeriod: boolean
     onTransfer: () => void
-    /** Opens the edit form on its balance adjustment (an asset's "Update value"). */
+    /** Opens the edit form on its balance adjustment. */
     onAdjust: () => void
     /** A credit account with something owed: pay it off from an everyday account. Null when nothing can pay it. */
     onPayOff: (() => void) | null
@@ -31,12 +31,12 @@ interface AccountDetailProps {
     onLedger: () => void
 }
 
-const ROLE_WORD = { everyday: 'everyday', credit: 'credit', savings: 'savings', asset: 'asset' } as const
+const ROLE_WORD = { everyday: 'everyday', credit: 'credit', savings: 'savings' } as const
 
 /**
  * One account: its balance and how long it lasts, the three things to do with it, and its
- * recent activity. The first action follows the role: a card is paid off, an asset's
- * value is updated, anything else is transferred from.
+ * recent activity. The first action follows the role: a card is paid off, anything else
+ * is transferred from.
  */
 export function AccountDetail({ account, insight, canTransfer, hasActivePeriod, onTransfer, onAdjust, onPayOff, onEdit, onDelete, onLedger }: AccountDetailProps) {
     const role = roleOf(account)
@@ -69,7 +69,6 @@ export function AccountDetail({ account, insight, canTransfer, hasActivePeriod, 
                             {isOverdrawn(account) ? `Over its limit · ${creditLine(account)}` : creditLine(account)}
                         </p>
                     )}
-                    {role === 'asset' && <p className="text-[13px] text-muted-ink">Not spent from</p>}
                 </div>
             </div>
 
@@ -79,15 +78,6 @@ export function AccountDetail({ account, insight, canTransfer, hasActivePeriod, 
                     <>
                         <button type="button" onClick={onPayOff ?? undefined} disabled={!onPayOff || owed === 0} className={primary}>
                             Pay off
-                        </button>
-                        <button type="button" onClick={onTransfer} disabled={!canTransfer} className={secondary}>
-                            Transfer
-                        </button>
-                    </>
-                ) : role === 'asset' ? (
-                    <>
-                        <button type="button" onClick={onAdjust} className={primary}>
-                            Update value
                         </button>
                         <button type="button" onClick={onTransfer} disabled={!canTransfer} className={secondary}>
                             Transfer

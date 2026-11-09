@@ -19,7 +19,7 @@ const amount = (n: number) => n.toLocaleString('id-ID')
 const MOVE_BUTTON = 'w-9 h-9 rounded-[10px] border border-line flex items-center justify-center text-ink hover:bg-surface-hover transition-colors disabled:opacity-30 disabled:pointer-events-none'
 
 /**
- * Accounts grouped by role (everyday, credit, savings, assets), each with its total, in the
+ * Accounts grouped by role (everyday, credit, savings), each with its total, in the
  * user's own order inside a group. Rows on a phone, cards on desktop.
  */
 export function AccountList({ accounts, insights, onOpen, onMove }: AccountListProps) {

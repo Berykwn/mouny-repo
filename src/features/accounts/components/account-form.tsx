@@ -56,7 +56,7 @@ export function AccountForm({ onSuccess, initial, allAccounts = [], initialTab =
     const [role, setRole] = useState<AccountRole>(initial ? roleOf(initial) : 'everyday')
     const [creditLimit, setCreditLimit] = useState(initial?.credit_limit != null ? String(initial.credit_limit) : '')
     const [initialBalance, setInitialBalance] = useState('')
-    // A signed change to the balance; for an asset, its new value instead (see isValueUpdate).
+    // A signed change to the balance.
     const [adjustment, setAdjustment] = useState('')
     const [toAccountId, setToAccountId] = useState(initialToAccountId)
     const [transferAmount, setTransferAmount] = useState(initialAmount ? String(initialAmount) : '')
@@ -66,14 +66,9 @@ export function AccountForm({ onSuccess, initial, allAccounts = [], initialTab =
     const toAccount = transferTargets.find(a => a.id === toAccountId)
 
     const isCreditRole = role === 'credit'
-    // An asset's value is updated by typing what it's worth now: the form works out the
-    // change, which is still a balance adjustment (a transfer, never income).
-    const isValueUpdate = !!initial && roleOf(initial) === 'asset'
     const parsedInitial = parseCurrencyInput(initialBalance)
     const parsedLimit = creditLimit === '' ? null : parseCurrencyInput(creditLimit)
-    const parsedAdj = isValueUpdate
-        ? (adjustment === '' ? 0 : parseCurrencyInput(adjustment) - initial.balance)
-        : parseCurrencyWithSign(adjustment)
+    const parsedAdj = parseCurrencyWithSign(adjustment)
     const parsedTransfer = parseCurrencyInput(transferAmount)
 
     const previewBalance = initial && adjustment !== '' ? initial.balance + parsedAdj : null
@@ -224,7 +219,7 @@ export function AccountForm({ onSuccess, initial, allAccounts = [], initialTab =
                         </Label>
                         <Input
                             id="account-name"
-                            placeholder={isCreditRole ? 'e.g. BCA Card, SPayLater…' : role === 'asset' ? 'e.g. Gold, Mutual fund…' : TYPES.find(t => t.type === type)?.placeholder}
+                            placeholder={isCreditRole ? 'e.g. BCA Card, SPayLater…' : TYPES.find(t => t.type === type)?.placeholder}
                             value={name}
                             onChange={e => setName(e.target.value)}
                             required
@@ -237,7 +232,7 @@ export function AccountForm({ onSuccess, initial, allAccounts = [], initialTab =
                         <Label id="account-role-label" className={FIELD_LABEL}>
                             What it’s for
                         </Label>
-                        <div role="group" aria-labelledby="account-role-label" className="grid grid-cols-4 gap-1 rounded-[14px] bg-surface-hover p-1">
+                        <div role="group" aria-labelledby="account-role-label" className="grid grid-cols-3 gap-1 rounded-[14px] bg-surface-hover p-1">
                             {ROLE_ORDER.map(r => (
                                 <button
                                     key={r}
@@ -281,7 +276,7 @@ export function AccountForm({ onSuccess, initial, allAccounts = [], initialTab =
                     {!isEdit && (
                         <div className="flex flex-col gap-2">
                             <Label htmlFor="account-balance" className={FIELD_LABEL}>
-                                {isCreditRole ? 'Currently owed' : role === 'asset' ? 'Current value' : 'Current balance'}
+                                {isCreditRole ? 'Currently owed' : 'Current balance'}
                             </Label>
                             <div className="relative">
                                 <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[13px] text-muted-ink font-medium">Rp</span>
@@ -302,24 +297,8 @@ export function AccountForm({ onSuccess, initial, allAccounts = [], initialTab =
                     {isEdit && (
                         <div className="flex flex-col gap-2">
                             <Label htmlFor="account-adjustment" className={FIELD_LABEL}>
-                                {isValueUpdate ? 'Update value' : 'Balance adjustment'}
+                                Balance adjustment
                             </Label>
-                            {isValueUpdate ? (
-                                <div className="relative">
-                                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[13px] text-muted-ink font-medium">Rp</span>
-                                    <Input
-                                        id="account-adjustment"
-                                        ref={adjustmentRef}
-                                        type="text"
-                                        inputMode="numeric"
-                                        placeholder="What it’s worth now"
-                                        className="pl-10 h-12 rounded-[14px] border-line text-[16px] lg:text-[13px] font-mono"
-                                        value={formatCurrencyInput(adjustment)}
-                                        onChange={e => setAdjustment(e.target.value.replace(/\D/g, ''))}
-                                        disabled={loading}
-                                    />
-                                </div>
-                            ) : (
                             <div className="relative">
                                 <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[13px] text-muted-ink font-medium">Rp</span>
                                 <Input
@@ -344,10 +323,9 @@ export function AccountForm({ onSuccess, initial, allAccounts = [], initialTab =
                                     +/−
                                 </button>
                             </div>
-                            )}
 
                             <div className="flex items-center gap-2 px-3 py-2 rounded-[10px] bg-surface-hover">
-                                <span className="text-[11.5px] text-muted-ink">{isValueUpdate ? 'Value' : 'Balance'}</span>
+                                <span className="text-[11.5px] text-muted-ink">Balance</span>
                                 <span className="text-[12px] font-semibold text-ink font-mono ml-auto">
                                     {formatCurrency(initial.balance)}
                                 </span>

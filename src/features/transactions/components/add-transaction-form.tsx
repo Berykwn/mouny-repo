@@ -28,9 +28,6 @@ import { BusyLabel } from '@/components/busy-label'
 
 type TxType = 'income' | 'expense' | 'transfer'
 
-// Savings and asset accounts are both set aside (is_savings); the note names which.
-const setAsideKind = (account: Account) => roleOf(account) === 'asset' ? 'an asset account' : 'a savings account'
-
 const NO_ACCOUNTS: Account[] = []
 const NO_CATEGORIES: Category[] = []
 
@@ -162,7 +159,7 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
 
     // A savings expense from an everyday account, while a savings account exists: the money
     // probably went there, which is a transfer — it stays in the balance and still counts
-    // as saved. Only a savings account: an asset (gold, funds) is bought, not saved into.
+    // as saved.
     const selectedCategory = categories.find((c) => c.id === categoryId)
     const savingsTarget = pickerOrder(accounts).find((a) => roleOf(a) === 'savings' && a.id !== accountId)
     const suggestSavingsTransfer = !initial && type === 'expense' && !!selectedCategory?.is_savings
@@ -588,8 +585,8 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
                     {(transferSaves || transferUnsaves) && (
                         <p className="rounded-[14px] bg-line-soft px-3.5 py-3 text-[12px] text-muted-ink leading-relaxed">
                             {transferSaves
-                                ? `${transferTo!.name} is ${setAsideKind(transferTo!)}, so this counts as saved this period.`
-                                : `${transferFrom!.name} is ${setAsideKind(transferFrom!)}, so this takes it off what you’ve saved this period.`}
+                                ? `${transferTo!.name} is a savings account, so this counts as saved this period.`
+                                : `${transferFrom!.name} is a savings account, so this takes it off what you’ve saved this period.`}
                         </p>
                     )}
                 </>
