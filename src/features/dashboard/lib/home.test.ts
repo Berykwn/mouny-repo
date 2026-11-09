@@ -3,8 +3,8 @@ import { tx } from '@/test/fixtures'
 import type { PeriodStats } from '@/hooks/use-period-stats'
 import type { BillDue } from '@/features/bills/lib/bills'
 import type { RecurringBill } from '@/types'
-import { heroNumbers, pickSmartLine, type SmartLineInput } from './home'
-import { buildCashOutlook } from './cash-outlook'
+import { heroNumbers, overdrawnBy, pickSmartLine, type SmartLineInput } from './home'
+import { buildCashOutlook, outlookStartBalance } from './cash-outlook'
 
 function stats(overrides: Partial<PeriodStats> = {}): PeriodStats {
     return {
@@ -52,6 +52,21 @@ function bill(overrides: Partial<RecurringBill> = {}): RecurringBill {
 
 function due(b: RecurringBill, overrides: Partial<BillDue> = {}): BillDue {
     return { bill: b, dueDates: ['2026-10-23'], payments: [], paidAmount: 0, outstanding: 1, reserved: b.amount, nextDue: '2026-10-23', status: 'soon', ...overrides }
+}
+
+type AccountRow = SmartLineInput['accounts'][number]
+
+function account(overrides: Partial<AccountRow> = {}): AccountRow {
+    const role = overrides.role ?? 'everyday'
+    return {
+        id: 'bca',
+        name: 'BCA',
+        balance: 0,
+        role,
+        is_savings: role === 'savings' || role === 'asset',
+        credit_limit: null,
+        ...overrides,
+    }
 }
 
 function input(overrides: Partial<SmartLineInput> = {}): SmartLineInput {
@@ -192,11 +207,33 @@ describe('pickSmartLine', () => {
     it('flags an account that cannot cover the bills due from it', () => {
         const internet = bill({ id: 'net', name: 'Internet', amount: 350_000, account_id: 'bca' })
         const line = pickSmartLine(input({
-            accounts: [{ id: 'bca', name: 'BCA', balance: 120_000, is_savings: false }],
+            accounts: [account({ balance: 120_000 })],
             dues: [due(internet)],
         }))
         expect(line?.kind).toBe('account-short')
         expect(line?.action.to).toBe('/accounts')
+    })
+
+    it('takes a card below zero as what is owed, not a problem', () => {
+        const card = account({ id: 'cc', name: 'Visa', role: 'credit', balance: -2_000_000, credit_limit: 10_000_000 })
+        expect(pickSmartLine(input({ accounts: [card] }))).toBeNull()
+        expect(pickSmartLine(input({ accounts: [{ ...card, credit_limit: null, balance: -50_000_000 }] }))).toBeNull()
+    })
+
+    it('flags a card past its limit', () => {
+        const line = pickSmartLine(input({
+            accounts: [account({ id: 'cc', name: 'Visa', role: 'credit', balance: -10_300_000, credit_limit: 10_000_000 })],
+        }))
+        expect(line?.kind).toBe('account-short')
+        expect(line?.parts.map(p => p.text).join('')).toMatch(/^Visa is Rp\s300\.000 over its limit\.$/)
+    })
+
+    it('checks a card’s bills against what is left of its limit', () => {
+        const internet = bill({ id: 'net', name: 'Internet', amount: 350_000, account_id: 'cc' })
+        const card = account({ id: 'cc', name: 'Visa', role: 'credit', balance: -800_000, credit_limit: 1_000_000 })
+        const line = pickSmartLine(input({ accounts: [card], dues: [due(internet)] }))
+        expect(line?.parts.map(p => p.text).join('')).toMatch(/^Visa has Rp\s200\.000 left of its limit, but/)
+        expect(pickSmartLine(input({ accounts: [{ ...card, credit_limit: null }], dues: [due(internet)] }))).toBeNull()
     })
 
     it('keeps a budget line’s key while spending goes on, until it tips over', () => {
@@ -210,13 +247,39 @@ describe('pickSmartLine', () => {
     })
 
     it('keeps an account line’s key as its balance moves', () => {
-        const at = (balance: number) => pickSmartLine(input({ accounts: [{ id: 'bca', name: 'BCA', balance, is_savings: false }] }))?.key
+        const at = (balance: number) => pickSmartLine(input({ accounts: [account({ balance })] }))?.key
         expect(at(-50_000)).toBe(at(-80_000))
     })
 
-    it('leaves savings accounts alone', () => {
-        const line = pickSmartLine(input({ accounts: [{ id: 's', name: 'Tabungan', balance: -5, is_savings: true }] }))
+    it('leaves savings and asset accounts alone', () => {
+        const line = pickSmartLine(input({
+            accounts: [
+                account({ id: 's', name: 'Tabungan', balance: -5, role: 'savings' }),
+                account({ id: 'g', name: 'Gold', balance: -5, role: 'asset' }),
+            ],
+        }))
         expect(line).toBeNull()
+    })
+})
+
+describe('overdrawnBy', () => {
+    it('is how far below zero, or for a card how far past its limit', () => {
+        expect(overdrawnBy(account({ balance: -50_000 }))).toBe(50_000)
+        expect(overdrawnBy(account({ balance: 50_000 }))).toBe(0)
+        expect(overdrawnBy(account({ role: 'credit', balance: -900_000, credit_limit: 1_000_000 }))).toBe(0)
+        expect(overdrawnBy(account({ role: 'credit', balance: -1_200_000, credit_limit: 1_000_000 }))).toBe(200_000)
+        expect(overdrawnBy(account({ role: 'credit', balance: -9_000_000, credit_limit: null }))).toBe(0)
+    })
+})
+
+describe('outlookStartBalance', () => {
+    it('starts from everyday money less what is owed on cards, without savings or assets', () => {
+        expect(outlookStartBalance([
+            account({ balance: 3_000_000 }),
+            account({ role: 'credit', balance: -1_000_000, credit_limit: 5_000_000 }),
+            account({ role: 'savings', balance: 10_000_000 }),
+            account({ role: 'asset', balance: 20_000_000 }),
+        ])).toBe(2_000_000)
     })
 })
 

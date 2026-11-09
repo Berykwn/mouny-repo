@@ -1,10 +1,12 @@
 import { Link } from 'react-router-dom'
 import { ChevronRight, Wallet } from 'lucide-react'
 import { AccountTypeTile } from '@/components/account-type-icon'
+import { availableToSpend, balanceBreakdown, pickerOrder, ROLE_LABEL, roleOf } from '@/lib/account-roles'
 import { formatCurrency } from '@/lib/helpers'
 import { cn } from '@/lib/utils'
 import type { Account } from '@/types'
 import { HomeSection } from '../home/home-section'
+import { overdrawnBy } from '../../lib/home'
 
 interface BalancesCardProps {
     accounts: Account[]
@@ -12,9 +14,23 @@ interface BalancesCardProps {
     closingBalance: number | null
 }
 
+const TYPE_LABEL: Record<string, string> = { bank: 'Bank', cash: 'Cash', ewallet: 'E-wallet' }
+
+/** The line under an account's name: its role, or for an everyday one where it sits. */
+function accountLabel(account: Account): string {
+    const role = roleOf(account)
+    if (role === 'everyday') return TYPE_LABEL[account.type] ?? 'Bank'
+    // A card's balance is mostly what's owed; what's left to spend on it says more.
+    if (role === 'credit' && account.credit_limit != null) {
+        return `Credit · ${formatCurrency(Math.max(0, availableToSpend(account)))} available`
+    }
+    return ROLE_LABEL[role]
+}
+
 /** One quiet row with the total; it opens Accounts, which has no tab of its own. */
 export function BalancesRow({ accounts, isActivePeriod, closingBalance }: BalancesCardProps) {
-    const accountsTotal = accounts.reduce((s, a) => s + a.balance, 0)
+    // Net of what's owed on cards, the same sum a period stores as its closing balance.
+    const accountsTotal = balanceBreakdown(accounts).total
     const total = isActivePeriod ? accountsTotal : (closingBalance ?? accountsTotal)
 
     return (
@@ -41,14 +57,16 @@ export function BalancesList({ accounts }: { accounts: Account[] }) {
             aside={<Link to="/accounts" className="text-[13px] font-medium text-brand-ink">Accounts</Link>}
         >
             <div>
-                {accounts.map(a => (
+                {/* Grouped by role like the pickers, the user's order inside each. */}
+                {pickerOrder(accounts).map(a => (
                     <div key={a.id} className="flex items-center gap-3 py-2.5 border-b border-line-soft last:border-b-0">
-                        <AccountTypeTile type={a.type} savings={a.is_savings} className="w-10 h-10" />
+                        <AccountTypeTile type={a.type} savings={a.is_savings} role={a.role} className="w-10 h-10" />
                         <div className="min-w-0 flex-1">
                             <p className="truncate text-[14px] text-ink">{a.name}</p>
-                            <p className="truncate text-[12px] text-muted-ink">{a.is_savings ? 'Savings' : a.type === 'cash' ? 'Cash' : 'Bank'}</p>
+                            <p className="truncate text-[12px] text-muted-ink">{accountLabel(a)}</p>
                         </div>
-                        <p className={cn('shrink-0 text-[14px] font-medium tabular-nums', a.balance < 0 ? 'text-negative' : 'text-ink')}>
+                        {/* A card below zero is what's owed on it, not a problem: red only past its limit. */}
+                        <p className={cn('shrink-0 text-[14px] font-medium tabular-nums', overdrawnBy(a) > 0 ? 'text-negative' : 'text-ink')}>
                             {formatCurrency(a.balance)}
                         </p>
                     </div>

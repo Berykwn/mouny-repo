@@ -25,6 +25,10 @@ interface BottomDrawerProps {
  */
 const openDrawers: symbol[] = []
 
+/** Drawers that sit under another one, told apart so they can step back (see `covered`). */
+const coveredListeners = new Set<() => void>()
+const notifyCovered = () => coveredListeners.forEach(fn => fn())
+
 const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
 
 export function BottomDrawer({
@@ -64,12 +68,29 @@ export function BottomDrawer({
     if (open && !wasOpen.current && typeof document !== 'undefined') {
         openerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
     }
+    // How many drawers were already open when this one opened: each one nested inside
+    // another (an account picker over a form) gets its own layer above it, backdrop
+    // included, so the one underneath is dimmed rather than drawn over the new one.
+    const depthRef = React.useRef(0)
+    if (open && !wasOpen.current) depthRef.current = openDrawers.length
     wasOpen.current = open
+    const depth = depthRef.current
+
+    // Whether another drawer is open on top of this one.
+    const selfRef = React.useRef<symbol | null>(null)
+    const [covered, setCovered] = React.useState(false)
+    React.useEffect(() => {
+        const check = () => setCovered(!!selfRef.current && openDrawers[openDrawers.length - 1] !== selfRef.current)
+        coveredListeners.add(check)
+        return () => { coveredListeners.delete(check) }
+    }, [])
 
     React.useEffect(() => {
         if (!open) return
         const self = Symbol('drawer')
+        selfRef.current = self
         openDrawers.push(self)
+        notifyCovered()
         document.body.style.overflow = 'hidden'
 
         // Focus moves into the drawer and comes back to what opened it. The panel itself
@@ -102,6 +123,9 @@ export function BottomDrawer({
         return () => {
             document.removeEventListener('keydown', onKeyDown)
             openDrawers.splice(openDrawers.indexOf(self), 1)
+            selfRef.current = null
+            setCovered(false)
+            notifyCovered()
             // Only the last one to close may unlock the page, or it scrolls behind the one still open.
             if (openDrawers.length === 0) document.body.style.overflow = ''
             if (opener?.isConnected) opener.focus({ preventScroll: true })
@@ -116,7 +140,9 @@ export function BottomDrawer({
         <>
             <div
                 aria-hidden="true"
-                className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
+                // A nested drawer's backdrop is lighter: the page is already dimmed once.
+                className={cn('fixed inset-0', depth === 0 ? 'bg-black/40 backdrop-blur-sm' : 'bg-black/30')}
+                style={{ zIndex: 40 + depth * 2 }}
                 onClick={requestClose}
             />
 
@@ -126,10 +152,16 @@ export function BottomDrawer({
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby={titleId}
+                aria-hidden={covered || undefined}
                 tabIndex={-1}
+                style={{ zIndex: 41 + depth * 2 }}
                 className={cn(
-                    'fixed inset-x-0 bottom-0 z-50 bg-surface rounded-t-[20px] border-t border-line shadow-xl outline-none',
+                    'fixed inset-x-0 bottom-0 bg-surface rounded-t-[20px] border-t border-line shadow-xl outline-none',
                     'flex flex-col pb-[env(safe-area-inset-bottom)] lg:pb-0',
+                    // Under another drawer it steps back, so the one on top reads as the one in use.
+                    // (`scale` is its own property in Tailwind v4, so the desktop centring translate is untouched.)
+                    'transition-[scale,opacity] duration-200 ease-out origin-bottom lg:origin-center',
+                    covered && 'scale-[0.96] opacity-80 lg:opacity-70',
                     maxHeightClassName,
                     // Desktop: center as modal
                     'lg:inset-auto lg:left-1/2 lg:-translate-x-1/2 lg:bottom-auto lg:top-1/2 lg:-translate-y-1/2',

@@ -1,14 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Switch } from '@/components/ui/switch'
 import { ArrowRight, Check } from 'lucide-react'
 import { AccountTypeIcon, AccountTypeTile } from '@/components/account-type-icon'
 import { ACCOUNT_TILE_CLASS } from '@/lib/account-tiles'
+import { availableToSpend, pickerOrder, roleOf, ROLE_HINT, ROLE_LABEL, ROLE_ORDER } from '@/lib/account-roles'
 import { accountsService } from '@/services/accounts-categories.service'
 import { formatCurrency, formatCurrencyInput, parseCurrencyInput, parseCurrencyWithSign, toSignedDigits } from '@/lib/helpers'
 import { cn } from '@/lib/utils'
-import type { Account, AccountType } from '@/types'
+import type { Account, AccountRole, AccountType } from '@/types'
 import { toast } from 'sonner'
 import { BusyLabel } from '@/components/busy-label'
 
@@ -28,6 +28,12 @@ interface AccountFormProps {
 type Tab = 'edit' | 'transfer'
 
 const FIELD_LABEL = 'text-[11px] font-medium uppercase tracking-[.14em] text-muted-ink'
+const TYPES: { type: AccountType; label: string; hint: string; placeholder: string }[] = [
+    { type: 'bank', label: 'Bank', hint: 'BCA, Mandiri…', placeholder: 'e.g. BCA, Mandiri…' },
+    { type: 'ewallet', label: 'E-wallet', hint: 'GoPay, OVO…', placeholder: 'e.g. GoPay, ShopeePay…' },
+    { type: 'cash', label: 'Cash', hint: 'Physical cash', placeholder: 'e.g. Wallet, Petty cash…' },
+]
+
 const SUBMIT_BUTTON = 'w-full h-12 rounded-[14px] text-[13px] font-semibold text-on-action bg-action hover:bg-action/90 transition-colors disabled:opacity-50 disabled:pointer-events-none'
 
 export function AccountForm({ onSuccess, initial, allAccounts = [], initialTab = 'edit', initialToAccountId = '', initialAmount, focusAdjustment = false }: AccountFormProps) {
@@ -47,30 +53,53 @@ export function AccountForm({ onSuccess, initial, allAccounts = [], initialTab =
     const [tab, setTab] = useState<Tab>(initialTab)
     const [name, setName] = useState(initial?.name ?? '')
     const [type, setType] = useState<AccountType>((initial?.type as AccountType) ?? 'bank')
-    const [isSavings, setIsSavings] = useState(initial?.is_savings ?? false)
+    const [role, setRole] = useState<AccountRole>(initial ? roleOf(initial) : 'everyday')
+    const [creditLimit, setCreditLimit] = useState(initial?.credit_limit != null ? String(initial.credit_limit) : '')
     const [initialBalance, setInitialBalance] = useState('')
+    // A signed change to the balance; for an asset, its new value instead (see isValueUpdate).
     const [adjustment, setAdjustment] = useState('')
     const [toAccountId, setToAccountId] = useState(initialToAccountId)
     const [transferAmount, setTransferAmount] = useState(initialAmount ? String(initialAmount) : '')
     const [loading, setLoading] = useState(false)
 
-    const transferTargets = allAccounts.filter(a => a.id !== initial?.id)
+    const transferTargets = pickerOrder(allAccounts.filter(a => a.id !== initial?.id))
     const toAccount = transferTargets.find(a => a.id === toAccountId)
 
+    const isCreditRole = role === 'credit'
+    // An asset's value is updated by typing what it's worth now: the form works out the
+    // change, which is still a balance adjustment (a transfer, never income).
+    const isValueUpdate = !!initial && roleOf(initial) === 'asset'
     const parsedInitial = parseCurrencyInput(initialBalance)
-    const parsedAdj = parseCurrencyWithSign(adjustment)
+    const parsedLimit = creditLimit === '' ? null : parseCurrencyInput(creditLimit)
+    const parsedAdj = isValueUpdate
+        ? (adjustment === '' ? 0 : parseCurrencyInput(adjustment) - initial.balance)
+        : parseCurrencyWithSign(adjustment)
     const parsedTransfer = parseCurrencyInput(transferAmount)
 
     const previewBalance = initial && adjustment !== '' ? initial.balance + parsedAdj : null
     const previewFrom = initial && transferAmount !== '' ? initial.balance - parsedTransfer : null
     const previewTo = toAccount && transferAmount !== '' ? toAccount.balance + parsedTransfer : null
+    // The lowest an account may go: zero, or minus a card's limit.
+    const floor = (account: Account) =>
+        account.role !== 'credit' ? 0 : account.credit_limit == null ? -Infinity : -account.credit_limit
 
     const handleEditSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
+        if (isCreditRole && parsedLimit === 0) { toast.error('Leave the credit limit empty for no limit, or enter an amount.'); return }
         if (isEdit) {
             if (adjustment !== '' && isNaN(parsedAdj)) { toast.error('Invalid adjustment value.'); return }
+            // What's owed on a card is paid off before it can be anything else: no other
+            // role may sit below zero.
+            if (!isCreditRole && initial.balance < 0 && roleOf(initial) === 'credit') {
+                toast.error(`${initial.name} still has ${formatCurrency(-initial.balance)} owed. Pay it off before changing what it’s for.`)
+                return
+            }
+            if (isCreditRole && parsedLimit !== null && initial.balance < -parsedLimit) {
+                toast.error(`The limit can’t be below what’s owed (${formatCurrency(-initial.balance)}).`)
+                return
+            }
             setLoading(true)
-            const { error } = await accountsService.update(initial.id, { name, type, is_savings: isSavings })
+            const { error } = await accountsService.update(initial.id, { name, type, role, credit_limit: isCreditRole ? parsedLimit : null })
             const { error: adjError } = !error && adjustment !== '' && parsedAdj !== 0
                 ? await accountsService.adjustBalance(initial.id, parsedAdj)
                 : { error: null }
@@ -79,8 +108,17 @@ export function AccountForm({ onSuccess, initial, allAccounts = [], initialTab =
             toast.success('Account updated.')
         } else {
             if (isNaN(parsedInitial) || parsedInitial < 0) { toast.error('Invalid balance.'); return }
+            if (isCreditRole && parsedLimit !== null && parsedInitial > parsedLimit) {
+                toast.error('What’s owed can’t be more than the credit limit.')
+                return
+            }
             setLoading(true)
-            const { error } = await accountsService.create({ name, type, initial_balance: parsedInitial, is_savings: isSavings })
+            // A card opens with what's owed on it: below zero.
+            const { error } = await accountsService.create({
+                name, type, role,
+                initial_balance: isCreditRole ? -parsedInitial : parsedInitial,
+                credit_limit: isCreditRole ? parsedLimit : null,
+            })
             setLoading(false)
             if (error) { toast.error(error); return }
             toast.success('Account created.')
@@ -92,7 +130,10 @@ export function AccountForm({ onSuccess, initial, allAccounts = [], initialTab =
         e.preventDefault()
         if (!toAccountId) { toast.error('Select a destination account.'); return }
         if (isNaN(parsedTransfer) || parsedTransfer <= 0) { toast.error('Enter a valid amount.'); return }
-        if (initial && parsedTransfer > initial.balance) { toast.error('Insufficient balance.'); return }
+        if (initial && parsedTransfer > availableToSpend(initial)) {
+            toast.error(initial.role === 'credit' ? 'That goes over the credit limit.' : 'Insufficient balance.')
+            return
+        }
         setLoading(true)
         const { error } = await accountsService.transfer(initial!.id, toAccountId, parsedTransfer)
         setLoading(false)
@@ -136,70 +177,44 @@ export function AccountForm({ onSuccess, initial, allAccounts = [], initialTab =
                         <Label id="account-account-type-label" className={FIELD_LABEL}>
                             Account type
                         </Label>
-                        <div role="group" aria-labelledby="account-account-type-label" className="grid grid-cols-2 gap-2">
-                            <button
-                                type="button"
-                                onClick={() => setType('bank')}
-                                aria-pressed={type === 'bank'}
-                                className={cn(
-                                    'relative flex items-center gap-3 px-3 py-3 rounded-[14px] border-[1.5px] text-left transition-all duration-150',
-                                    type === 'bank'
-                                        ? 'border-brand bg-brand-tint'
-                                        : 'border-line bg-surface hover:border-line-strong'
-                                )}
-                            >
-                                <div className={cn(
-                                    'w-8 h-8 rounded-[10px] flex items-center justify-center shrink-0',
-                                    type === 'bank' ? ACCOUNT_TILE_CLASS.bank : 'bg-surface-hover'
-                                )}>
-                                    <AccountTypeIcon type="bank" className={cn('w-6 h-6 transition-all', type !== 'bank' && 'opacity-60 grayscale')} />
-                                </div>
-                                <div>
-                                    <p className="text-[13px] font-semibold leading-none mb-0.5 text-ink">
-                                        Bank
-                                    </p>
-                                    <p className={cn('text-[11px]', type === 'bank' ? 'text-brand-ink' : 'text-muted-ink')}>
-                                        BCA, Mandiri, BNI…
-                                    </p>
-                                </div>
-                                {type === 'bank' && (
-                                    <div className="absolute top-2 right-2 w-4 h-4 rounded-full bg-brand flex items-center justify-center">
-                                        <Check className="w-2.5 h-2.5 text-on-brand" strokeWidth={3} />
-                                    </div>
-                                )}
-                            </button>
-
-                            <button
-                                type="button"
-                                onClick={() => setType('cash')}
-                                aria-pressed={type === 'cash'}
-                                className={cn(
-                                    'relative flex items-center gap-3 px-3 py-3 rounded-[14px] border-[1.5px] text-left transition-all duration-150',
-                                    type === 'cash'
-                                        ? 'border-brand bg-brand-tint'
-                                        : 'border-line bg-surface hover:border-line-strong'
-                                )}
-                            >
-                                <div className={cn(
-                                    'w-8 h-8 rounded-[10px] flex items-center justify-center shrink-0',
-                                    type === 'cash' ? ACCOUNT_TILE_CLASS.cash : 'bg-surface-hover'
-                                )}>
-                                    <AccountTypeIcon type="cash" className={cn('w-6 h-6 transition-all', type !== 'cash' && 'opacity-60 grayscale')} />
-                                </div>
-                                <div>
-                                    <p className="text-[13px] font-semibold leading-none mb-0.5 text-ink">
-                                        Cash
-                                    </p>
-                                    <p className={cn('text-[11px]', type === 'cash' ? 'text-brand-ink' : 'text-muted-ink')}>
-                                        Physical cash
-                                    </p>
-                                </div>
-                                {type === 'cash' && (
-                                    <div className="absolute top-2 right-2 w-4 h-4 rounded-full bg-brand flex items-center justify-center">
-                                        <Check className="w-2.5 h-2.5 text-on-brand" strokeWidth={3} />
-                                    </div>
-                                )}
-                            </button>
+                        <div role="group" aria-labelledby="account-account-type-label" className="grid grid-cols-3 gap-2">
+                            {TYPES.map(opt => {
+                                const selected = type === opt.type
+                                return (
+                                    <button
+                                        key={opt.type}
+                                        type="button"
+                                        onClick={() => setType(opt.type)}
+                                        aria-pressed={selected}
+                                        className={cn(
+                                            'relative flex flex-col items-start gap-2 px-3 py-3 rounded-[14px] border-[1.5px] text-left transition-all duration-150',
+                                            selected
+                                                ? 'border-brand bg-brand-tint'
+                                                : 'border-line bg-surface hover:border-line-strong'
+                                        )}
+                                    >
+                                        <div className={cn(
+                                            'w-8 h-8 rounded-[10px] flex items-center justify-center shrink-0',
+                                            selected ? ACCOUNT_TILE_CLASS[opt.type] : 'bg-surface-hover'
+                                        )}>
+                                            <AccountTypeIcon type={opt.type} className={cn('w-6 h-6 transition-all', !selected && 'opacity-60 grayscale')} />
+                                        </div>
+                                        <div className="min-w-0 w-full">
+                                            <p className="text-[13px] font-semibold leading-none mb-0.5 text-ink">
+                                                {opt.label}
+                                            </p>
+                                            <p className={cn('text-[11px] truncate', selected ? 'text-brand-ink' : 'text-muted-ink')}>
+                                                {opt.hint}
+                                            </p>
+                                        </div>
+                                        {selected && (
+                                            <div className="absolute top-2 right-2 w-4 h-4 rounded-full bg-brand flex items-center justify-center">
+                                                <Check className="w-2.5 h-2.5 text-on-brand" strokeWidth={3} />
+                                            </div>
+                                        )}
+                                    </button>
+                                )
+                            })}
                         </div>
                     </div>
 
@@ -209,7 +224,7 @@ export function AccountForm({ onSuccess, initial, allAccounts = [], initialTab =
                         </Label>
                         <Input
                             id="account-name"
-                            placeholder={type === 'bank' ? 'e.g. BCA, Mandiri…' : 'e.g. Wallet, Petty cash…'}
+                            placeholder={isCreditRole ? 'e.g. BCA Card, SPayLater…' : role === 'asset' ? 'e.g. Gold, Mutual fund…' : TYPES.find(t => t.type === type)?.placeholder}
                             value={name}
                             onChange={e => setName(e.target.value)}
                             required
@@ -218,20 +233,55 @@ export function AccountForm({ onSuccess, initial, allAccounts = [], initialTab =
                         />
                     </div>
 
-                    <label className="flex items-center gap-3 px-3 py-3 rounded-[14px] border border-line cursor-pointer">
-                        <div className="flex-1 min-w-0">
-                            <p className="text-[13px] font-medium text-ink">Savings account</p>
-                            <p className="text-[11px] text-muted-ink leading-snug mt-0.5">
-                                Money moved in counts as saved, not spendable.
-                            </p>
+                    <div className="flex flex-col gap-2">
+                        <Label id="account-role-label" className={FIELD_LABEL}>
+                            What it’s for
+                        </Label>
+                        <div role="group" aria-labelledby="account-role-label" className="grid grid-cols-4 gap-1 rounded-[14px] bg-surface-hover p-1">
+                            {ROLE_ORDER.map(r => (
+                                <button
+                                    key={r}
+                                    type="button"
+                                    onClick={() => setRole(r)}
+                                    aria-pressed={role === r}
+                                    disabled={loading}
+                                    className={cn(
+                                        'py-2 text-[13px] rounded-[10px] transition-colors duration-150',
+                                        role === r ? 'bg-raised shadow-sm text-ink font-semibold' : 'text-muted-ink font-medium hover:text-ink'
+                                    )}
+                                >
+                                    {ROLE_LABEL[r]}
+                                </button>
+                            ))}
                         </div>
-                        <Switch checked={isSavings} onCheckedChange={setIsSavings} disabled={loading} />
-                    </label>
+                        <p className="text-[11px] text-muted-ink leading-snug px-1">{ROLE_HINT[role]}</p>
+                    </div>
+
+                    {isCreditRole && (
+                        <div className="flex flex-col gap-2">
+                            <Label htmlFor="account-credit-limit" className={FIELD_LABEL}>
+                                Credit limit
+                            </Label>
+                            <div className="relative">
+                                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[13px] text-muted-ink font-medium">Rp</span>
+                                <Input
+                                    id="account-credit-limit"
+                                    type="text"
+                                    inputMode="numeric"
+                                    className="pl-10 h-12 rounded-[14px] border-line text-[16px] lg:text-[13px] font-mono"
+                                    placeholder="Optional: no limit"
+                                    value={formatCurrencyInput(creditLimit)}
+                                    onChange={e => setCreditLimit(e.target.value.replace(/\D/g, ''))}
+                                    disabled={loading}
+                                />
+                            </div>
+                        </div>
+                    )}
 
                     {!isEdit && (
                         <div className="flex flex-col gap-2">
                             <Label htmlFor="account-balance" className={FIELD_LABEL}>
-                                Current balance
+                                {isCreditRole ? 'Currently owed' : role === 'asset' ? 'Current value' : 'Current balance'}
                             </Label>
                             <div className="relative">
                                 <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[13px] text-muted-ink font-medium">Rp</span>
@@ -252,8 +302,24 @@ export function AccountForm({ onSuccess, initial, allAccounts = [], initialTab =
                     {isEdit && (
                         <div className="flex flex-col gap-2">
                             <Label htmlFor="account-adjustment" className={FIELD_LABEL}>
-                                Balance adjustment
+                                {isValueUpdate ? 'Update value' : 'Balance adjustment'}
                             </Label>
+                            {isValueUpdate ? (
+                                <div className="relative">
+                                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[13px] text-muted-ink font-medium">Rp</span>
+                                    <Input
+                                        id="account-adjustment"
+                                        ref={adjustmentRef}
+                                        type="text"
+                                        inputMode="numeric"
+                                        placeholder="What it’s worth now"
+                                        className="pl-10 h-12 rounded-[14px] border-line text-[16px] lg:text-[13px] font-mono"
+                                        value={formatCurrencyInput(adjustment)}
+                                        onChange={e => setAdjustment(e.target.value.replace(/\D/g, ''))}
+                                        disabled={loading}
+                                    />
+                                </div>
+                            ) : (
                             <div className="relative">
                                 <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[13px] text-muted-ink font-medium">Rp</span>
                                 <Input
@@ -278,9 +344,10 @@ export function AccountForm({ onSuccess, initial, allAccounts = [], initialTab =
                                     +/−
                                 </button>
                             </div>
+                            )}
 
                             <div className="flex items-center gap-2 px-3 py-2 rounded-[10px] bg-surface-hover">
-                                <span className="text-[11.5px] text-muted-ink">Balance</span>
+                                <span className="text-[11.5px] text-muted-ink">{isValueUpdate ? 'Value' : 'Balance'}</span>
                                 <span className="text-[12px] font-semibold text-ink font-mono ml-auto">
                                     {formatCurrency(initial.balance)}
                                 </span>
@@ -289,7 +356,7 @@ export function AccountForm({ onSuccess, initial, allAccounts = [], initialTab =
                                         <ArrowRight className="w-3 h-3 text-muted-ink shrink-0" />
                                         <span className={cn(
                                             'text-[12px] font-semibold font-mono',
-                                            previewBalance < 0 ? 'text-negative' : 'text-positive'
+                                            previewBalance < floor(initial) ? 'text-negative' : 'text-positive'
                                         )}>
                                             {formatCurrency(previewBalance)}
                                         </span>
@@ -356,7 +423,7 @@ export function AccountForm({ onSuccess, initial, allAccounts = [], initialTab =
                                                         : 'border-line bg-surface hover:border-line-strong'
                                                 )}
                                             >
-                                                <AccountTypeTile type={acc.type} savings={acc.is_savings} className="w-8 h-8" />
+                                                <AccountTypeTile type={acc.type} savings={acc.is_savings} role={acc.role} className="w-8 h-8" />
                                                 <div className="flex-1 min-w-0">
                                                     <p className={cn('text-[13px] font-semibold truncate', selected ? 'text-ink' : 'text-ink')}>
                                                         {acc.name}
@@ -402,7 +469,7 @@ export function AccountForm({ onSuccess, initial, allAccounts = [], initialTab =
                                 {previewFrom !== null && (
                                     <div className="flex items-center justify-between">
                                         <span className="text-[11.5px] text-muted-ink truncate max-w-[120px]">{initial.name}</span>
-                                        <span className={cn('text-[11.5px] font-semibold font-mono', previewFrom < 0 ? 'text-negative' : 'text-ink')}>
+                                        <span className={cn('text-[11.5px] font-semibold font-mono', previewFrom < floor(initial) ? 'text-negative' : 'text-ink')}>
                                             {formatCurrency(previewFrom)}
                                         </span>
                                     </div>

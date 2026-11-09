@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { ArrowLeftRight, Plus } from 'lucide-react'
+import { ArrowLeftRight, ArrowUpDown, ClipboardCheck, Plus } from 'lucide-react'
 import { BottomDrawer } from '@/components/bottom-drawer'
 import { ConfirmDrawer } from '@/components/confirmation-drawer'
 import { EmptyState, EMPTY_STATE_BUTTON } from '@/components/empty-state'
@@ -11,7 +11,9 @@ import { AccountForm } from './components/account-form'
 import { AccountList } from './components/account-list'
 import { BalanceTrend } from './components/balance-trend'
 import { AccountDetail } from './components/account-detail'
-import { accountInsights, balanceTrend, daysIntoPeriod, runOutFirst } from './lib/account-insights'
+import { CashCountForm } from './components/cash-count-form'
+import { accountInsights, balanceTrend, daysIntoPeriod, fullestSource, isOverdrawn, runOutFirst } from './lib/account-insights'
+import { balanceBreakdown, owedOn, pickerOrder, roleOf } from '@/lib/account-roles'
 import { accountsService } from '@/services/accounts-categories.service'
 import { IN_USE_MESSAGE } from '@/services/_base'
 import { useAccounts, useArchivedAccounts, usePeriods, usePeriodTransactions } from '@/queries'
@@ -22,6 +24,7 @@ import { LoadingContent } from '@/components/loading-content'
 import { addDaysISO, periodProgress } from '@/features/periods/lib/period-progress'
 import { formatCurrency, formatShortCurrency, toISODate } from '@/lib/helpers'
 import { cn } from '@/lib/utils'
+import { BusyLabel } from '@/components/busy-label'
 import { ArchivedAccounts } from './components/archived-accounts'
 import { PageHeader } from '@/components/page-header'
 
@@ -47,6 +50,8 @@ function readDismissed(): string | null {
 function saveDismissed(key: string) {
     try { sessionStorage.setItem(DISMISSED_KEY, key) } catch { /* private mode: it just comes back */ }
 }
+
+const short = (n: number) => `Rp${formatShortCurrency(n)}`
 
 /** When an account runs dry, in words: "today", "tomorrow", then "around Thursday". */
 function runsOutWhen(days: number): ReactNode {
@@ -79,6 +84,10 @@ export function AccountPage() {
     const [archivingAccount, setArchivingAccount] = useState<Account | null>(null)
     const [archiveLoading, setArchiveLoading] = useState(false)
     const [warningDismissed, setWarningDismissed] = useState<string | null>(readDismissed)
+    // Reorder mode: the ids in their new order (grouped by role), saved together on Done.
+    const [draftOrder, setDraftOrder] = useState<string[] | null>(null)
+    const [savingOrder, setSavingOrder] = useState(false)
+    const [counting, setCounting] = useState(false)
     const { data: archived = NO_ACCOUNTS } = useArchivedAccounts()
     const location = useLocation()
     const navigate = useNavigate()
@@ -128,22 +137,76 @@ export function AccountPage() {
         toast.success(`${account.name} restored.`)
     }
 
-    const totalBalance = accounts.reduce((s, a) => s + a.balance, 0)
-    // Savings accounts are set aside: they count in the total, not in what spending can use.
-    const savingsBalance = accounts.filter(a => a.is_savings).reduce((s, a) => s + a.balance, 0)
+    // Savings and assets are set aside and what's owed on a card comes off: they all count
+    // in the total, which the line under it breaks down.
+    const breakdown = balanceBreakdown(accounts)
+    const totalBalance = breakdown.total
+    const breakdownParts = [
+        breakdown.spendable !== 0 && { key: 'spendable', node: <><b className="font-semibold text-ink">{short(breakdown.spendable)}</b> spendable</> },
+        breakdown.saved !== 0 && { key: 'saved', node: <>{short(breakdown.saved)} saved</> },
+        breakdown.assets !== 0 && { key: 'assets', node: <>{short(breakdown.assets)} in assets</> },
+        breakdown.owed !== 0 && { key: 'owed', node: <>{short(breakdown.owed)} owed</> },
+    ].filter(Boolean) as { key: string; node: ReactNode }[]
+    // Worth breaking down only when the total is more than what can be spent.
+    const showBreakdown = breakdownParts.some(p => p.key !== 'spendable')
+
+    const startReorder = () => setDraftOrder(pickerOrder(accounts).map(a => a.id))
+    // The list as it's being reordered: each account's place in the draft is its position.
+    const listAccounts = useMemo(() => {
+        if (!draftOrder) return accounts
+        const at = new Map(draftOrder.map((id, i) => [id, i]))
+        return accounts.map(a => ({ ...a, position: at.get(a.id) ?? draftOrder.length }))
+    }, [accounts, draftOrder])
+
+    // Swap with the neighbour in the draft, only within the same role: the list shows
+    // roles as groups, so a move never crosses one.
+    const moveAccount = (account: Account, step: -1 | 1) => {
+        setDraftOrder(ids => {
+            if (!ids) return ids
+            const i = ids.indexOf(account.id)
+            const j = i + step
+            const neighbour = accounts.find(a => a.id === ids[j])
+            if (i < 0 || !neighbour || roleOf(neighbour) !== roleOf(account)) return ids
+            const next = ids.slice()
+            ;[next[i], next[j]] = [next[j], next[i]]
+            return next
+        })
+    }
+
+    const saveOrder = async () => {
+        if (!draftOrder) return
+        setSavingOrder(true)
+        // Accounts added meanwhile aren't in the draft; the database keeps them after these.
+        const { error } = await accountsService.reorder(draftOrder.filter(id => accounts.some(a => a.id === id)))
+        setSavingOrder(false)
+        if (error) { toast.error(error); return }
+        setDraftOrder(null)
+        toast.success('Order saved.')
+    }
 
     const daysElapsed = daysIntoPeriod(activePeriod)
     const insights = useMemo(() => accountInsights(accounts, periodTxs, daysElapsed), [accounts, periodTxs, daysElapsed])
     const trend = useMemo(() => balanceTrend(periods, totalBalance), [periods, totalBalance])
     const daysToPayday = activePeriod ? periodProgress(activePeriod, periods).daysToPayday : null
     const warning = activePeriod ? runOutFirst(accounts, insights, daysElapsed, daysToPayday) : null
-    const overdrawn = accounts.find(a => a.balance < 0 && !a.is_savings) ?? null
-    // The fullest spendable account, where a transfer starts when nothing more specific is known.
-    const fullest = [...accounts].filter(a => a.balance > 0).sort((a, b) => Number(a.is_savings) - Number(b.is_savings) || b.balance - a.balance)[0] ?? null
+    // Below zero, or for a card past its limit: a card below zero is just owing.
+    const overdrawn = accounts.find(isOverdrawn) ?? null
+    // Where a transfer starts when nothing more specific is known: the fullest everyday
+    // account, else savings, else whatever has money in it (an asset being sold, say).
+    const fullest = fullestSource(accounts)
+        ?? [...accounts].filter(a => a.balance > 0).sort((a, b) => b.balance - a.balance)[0] ?? null
 
     const openTransfer = (from: Account | null, to?: Account, amount?: number) => {
         if (!from) return
         setEdit({ account: from, tab: 'transfer', toAccountId: to?.id, amount })
+    }
+
+    /** Pay a card off: from the fullest everyday account into the card, what's owed filled in (as much as the source holds). */
+    const payOffFor = (card: Account): (() => void) | null => {
+        const source = fullestSource(accounts, card.id)
+        const owed = owedOn(card)
+        if (!source || owed === 0) return null
+        return () => openTransfer(source, card, Math.min(owed, source.balance))
     }
 
     const dismiss = (key: string) => {
@@ -156,13 +219,16 @@ export function AccountPage() {
     const overdrawnKey = overdrawn ? `overdrawn:${overdrawn.id}` : null
     const warningKey = warning ? `runway:${warning.account.id}` : null
     if (overdrawn && overdrawnKey !== warningDismissed) {
-        const source = accounts.filter(a => a.id !== overdrawn.id && a.balance > 0).sort((a, b) => b.balance - a.balance)[0] ?? null
+        const source = fullestSource(accounts, overdrawn.id)
+        const below = roleOf(overdrawn) === 'credit'
+            ? <> is {formatCurrency(-(overdrawn.balance + (overdrawn.credit_limit ?? 0)))} over its limit.</>
+            : <> is {formatCurrency(-overdrawn.balance)} below zero.</>
         smart = (
             <SmartLine actions={[
                 ...(source ? [{ label: `Move money from ${source.name}`, onClick: () => openTransfer(source, overdrawn) }] : []),
                 { label: 'Not now', onClick: () => dismiss(overdrawnKey!) },
             ]}>
-                <b>{overdrawn.name}</b> is {formatCurrency(-overdrawn.balance)} below zero.
+                <b>{overdrawn.name}</b>{below}
             </SmartLine>
         )
     } else if (warning && warningKey !== warningDismissed) {
@@ -243,15 +309,57 @@ export function AccountPage() {
                                 {formatCurrency(totalBalance)}
                             </p>
                             <p className="mt-1.5 text-[15px] text-muted-ink">
-                                {savingsBalance !== 0 ? (
-                                    <><b className="font-semibold text-ink">{formatCurrency(totalBalance - savingsBalance)}</b> spendable · {formatCurrency(savingsBalance)} in savings</>
-                                ) : `Across ${accounts.length} account${accounts.length === 1 ? '' : 's'}`}
+                                {showBreakdown
+                                    ? breakdownParts.map((p, i) => <span key={p.key}>{i > 0 && ' · '}{p.node}</span>)
+                                    : `Across ${accounts.length} account${accounts.length === 1 ? '' : 's'}`}
                             </p>
                         </header>
 
-                        {smart}
+                        {!draftOrder && (
+                            // The way back after days of not writing things down: count, don't reconstruct.
+                            <button
+                                type="button"
+                                onClick={() => setCounting(true)}
+                                className="w-full flex items-center gap-3 rounded-[14px] border border-line bg-surface px-3.5 py-3 text-left hover:bg-surface-soft transition-colors"
+                            >
+                                <span className="w-9 h-9 rounded-[10px] bg-brand-tint text-brand-ink flex items-center justify-center shrink-0">
+                                    <ClipboardCheck aria-hidden="true" className="w-[18px] h-[18px]" />
+                                </span>
+                                <span className="flex-1 min-w-0">
+                                    <span className="block text-[13.5px] font-semibold text-ink">Count balances</span>
+                                    <span className="block text-[12px] text-muted-ink leading-snug">Missed a few entries? Type what’s really there; the difference is noted for you.</span>
+                                </span>
+                            </button>
+                        )}
 
-                        <AccountList accounts={accounts} insights={insights} onOpen={setOpenAccount} />
+                        {!draftOrder && smart}
+
+                        {accounts.length > 1 && (
+                            draftOrder ? (
+                                <div className="flex items-center gap-2 rounded-[14px] bg-surface-hover px-3 py-2.5">
+                                    <p className="flex-1 min-w-0 text-[13px] text-muted-ink leading-snug">Move accounts up or down. Forms list them in this order.</p>
+                                    <button type="button" onClick={() => setDraftOrder(null)} disabled={savingOrder} className="h-9 px-3 rounded-[10px] text-[13px] font-semibold text-muted-ink hover:text-ink disabled:opacity-50">
+                                        Cancel
+                                    </button>
+                                    <button type="button" onClick={saveOrder} disabled={savingOrder} className="h-9 px-3.5 rounded-[10px] bg-action text-on-action text-[13px] font-semibold hover:bg-action/90 disabled:opacity-50">
+                                        <BusyLabel busy={savingOrder}>Done</BusyLabel>
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="flex justify-end -mb-4">
+                                    <button type="button" onClick={startReorder} className="flex items-center gap-1.5 text-[13px] font-semibold text-muted-ink hover:text-ink py-1">
+                                        <ArrowUpDown aria-hidden="true" className="w-3.5 h-3.5" /> Reorder
+                                    </button>
+                                </div>
+                            )
+                        )}
+
+                        <AccountList
+                            accounts={listAccounts}
+                            insights={insights}
+                            onOpen={setOpenAccount}
+                            onMove={draftOrder ? moveAccount : undefined}
+                        />
 
                         {trend.length >= 2 && <div className="lg:max-w-[440px]"><BalanceTrend points={trend} /></div>}
                     </>
@@ -261,6 +369,11 @@ export function AccountPage() {
                 )}
 
                 {/* Drawers */}
+                <BottomDrawer open={counting} onClose={() => setCounting(false)} title="Count balances">
+                    {counting && (
+                        <CashCountForm accounts={accounts} hasActivePeriod={!!activePeriod} onSuccess={() => setCounting(false)} />
+                    )}
+                </BottomDrawer>
                 <BottomDrawer open={addAccountDrawer} onClose={() => setAddAccountDrawer(false)} title="Add account">
                     <AccountForm onSuccess={() => setAddAccountDrawer(false)} />
                 </BottomDrawer>
@@ -274,13 +387,17 @@ export function AccountPage() {
                             hasActivePeriod={!!activePeriod}
                             onTransfer={() => { openTransfer(openAccount); setOpenAccount(null) }}
                             onAdjust={() => { setEdit({ account: openAccount, tab: 'edit', adjust: true }); setOpenAccount(null) }}
+                            onPayOff={(() => {
+                                const pay = payOffFor(openAccount)
+                                return pay && (() => { pay(); setOpenAccount(null) })
+                            })()}
                             onEdit={() => { setEdit({ account: openAccount, tab: 'edit' }); setOpenAccount(null) }}
                             onDelete={() => { setDeletingAccountId(openAccount.id); setOpenAccount(null) }}
                             onLedger={() => { navigate('/transactions', { state: { accountId: openAccount.id } }); setOpenAccount(null) }}
                         />
                     )}
                 </BottomDrawer>
-                <BottomDrawer open={!!edit} onClose={() => setEdit(null)} title={edit?.tab === 'transfer' ? 'Transfer' : edit?.adjust ? 'Adjust balance' : 'Edit account'}>
+                <BottomDrawer open={!!edit} onClose={() => setEdit(null)} title={edit?.tab === 'transfer' ? 'Transfer' : edit?.adjust ? (edit.account.role === 'asset' ? 'Update value' : 'Adjust balance') : 'Edit account'}>
                     {edit &&
                         <AccountForm
                             key={`${edit.account.id}-${edit.tab}-${edit.adjust ? 'adjust' : ''}-${edit.toAccountId ?? ''}`}

@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { useAccounts, useDebts, usePeriods, usePeriodSummary, usePeriodTransactions } from '@/queries'
 import { getDaysBetween } from '@/lib/helpers'
+import { balanceBreakdown } from '@/lib/account-roles'
 import type { OverviewData } from '@/types/overview.types'
 
 /**
@@ -44,7 +45,8 @@ export function useOverviewData(
             fallbackTotalDays,
             allPeriods: allList,
             previousSummary: previousQuery.data ?? null,
-            totalBalance: accountsList.reduce((s, a) => s + a.balance, 0),
+            // Net of what's owed on credit cards, like the closing balance a period stores.
+            totalBalance: balanceBreakdown(accountsList).total,
             // Receivables are money owed to the user, not debt. Unknown until debts load:
             // counting it as 0 would show a "No debt" health score.
             totalDebt: debtsQuery.data

@@ -6,6 +6,7 @@ export interface AccountSpending {
     name: string
     type: string
     is_savings: boolean
+    role?: string
     amount: number
 }
 
@@ -14,7 +15,7 @@ export function spendingByAccount(transactions: TransactionWithDetails[]): { byA
     const spending = withSavingsMoves(transactions).filter(t => t.type === 'expense' && !t.category?.is_savings)
     const map = new Map<string, AccountSpending>()
     for (const tx of spending) {
-        const entry = map.get(tx.account.id) ?? { id: tx.account.id, name: tx.account.name, type: tx.account.type, is_savings: tx.account.is_savings, amount: 0 }
+        const entry = map.get(tx.account.id) ?? { id: tx.account.id, name: tx.account.name, type: tx.account.type, is_savings: tx.account.is_savings, role: tx.account.role, amount: 0 }
         entry.amount += tx.amount
         map.set(tx.account.id, entry)
     }

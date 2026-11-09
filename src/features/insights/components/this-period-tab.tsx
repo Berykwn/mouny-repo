@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { formatCurrency, formatShortCurrency } from '@/lib/helpers'
 import { cn } from '@/lib/utils'
-import { calculateHealthScore } from '@/lib/calculate-health-score'
+import { calculateHealthScore, debtPosition } from '@/lib/calculate-health-score'
 import { diffPct, type ComparableSpending } from '@/lib/comparable-spending'
 import { summarizeTransactions } from '@/lib/period-summary'
 import { withSavingsMoves } from '@/lib/savings-moves'
@@ -65,12 +65,12 @@ export function ThisPeriodTab({ data, stats, comparable, history }: ThisPeriodTa
         return calculateHealthScore({
             totalIncome: stats.totalIncome,
             totalSpending: comparable.spending,
-            totalBalance: data.totalBalance,
-            totalDebt: data.totalDebt,
+            // Credit card balances count as debt alongside the user's loans.
+            ...debtPosition(data.accounts, data.totalDebt),
             expenseDiffPct,
             projected: comparable.projected,
         })
-    }, [data.totalDebt, data.totalBalance, data.previousSummary, comparable, stats.totalIncome])
+    }, [data.totalDebt, data.accounts, data.previousSummary, comparable, stats.totalIncome])
 
     const variance = useMemo(
         () => history && (closed || stats.daysElapsed >= MIN_PROJECTION_DAYS) ? categoryVariance(stats, transactions, history) : null,

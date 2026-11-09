@@ -21,6 +21,11 @@ export function isMissingFunction(error: { code?: string } | null): boolean {
     return error?.code === 'PGRST202'
 }
 
+/** A column the query names doesn't exist: the database is behind the app's migrations. */
+export function isMissingColumn(error: { code?: string } | null): boolean {
+    return error?.code === '42703'
+}
+
 /**
  * What the user is told when something fails. Our own messages (`new Error(...)` in a
  * service, `raise exception` in a database function) are written for them and pass through;
@@ -52,6 +57,7 @@ function messageForCode(code: string, message: string): string {
                 : 'Something this refers to no longer exists. Refresh and try again.'
         case '23505': return 'That already exists.'
         case '23514':
+            if (/credit limit/i.test(message)) return message
             return /balance/i.test(message)
                 ? 'Insufficient balance.'
                 : 'One of the values isn’t allowed. Check the form and try again.'

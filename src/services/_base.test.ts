@@ -74,6 +74,7 @@ describe('handleError', () => {
         expect(handleError(pg('23503', 'update or delete on table "categories" violates foreign key constraint'))).toBe(IN_USE_MESSAGE)
         expect(handleError(pg('23503', 'insert or update on table "transactions" violates foreign key constraint'))).not.toBe(IN_USE_MESSAGE)
         expect(handleError(pg('23514', 'violates check constraint "accounts_balance_check"'))).toBe('Insufficient balance.')
+        expect(handleError(pg('23514', 'That goes over the credit limit of Visa.'))).toBe('That goes over the credit limit of Visa.')
         expect(handleError(pg('PGRST303'))).toBe(SIGNED_OUT_MESSAGE)
         expect(handleError(pg('23505'))).not.toMatch(/technical|duplicate/)
     })

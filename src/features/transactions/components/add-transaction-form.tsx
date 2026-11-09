@@ -19,12 +19,17 @@ import type { BillDue } from '@/features/bills/lib/bills'
 import { summarizeTransactions } from '@/lib/period-summary'
 import { useBillReserve } from '@/hooks/use-bill-reserve'
 import { cn } from '@/lib/utils'
+import { defaultAccount, pickerOrder, roleOf } from '@/lib/account-roles'
+import { accountSubline, overspendMessage, spendErrorMessage } from '@/lib/account-spend'
 import { useAccounts, useCategories, usePeriods, usePeriodTransactions, useQuickTransactions } from '@/queries'
 import type { Account, Category, QuickTransactionWithCategory, TransactionWithDetails } from '@/types'
 import { linkedTo, recentNotes, unpaidBillsFor } from '../lib/ledger'
 import { BusyLabel } from '@/components/busy-label'
 
 type TxType = 'income' | 'expense' | 'transfer'
+
+// Savings and asset accounts are both set aside (is_savings); the note names which.
+const setAsideKind = (account: Account) => roleOf(account) === 'asset' ? 'an asset account' : 'a savings account'
 
 const NO_ACCOUNTS: Account[] = []
 const NO_CATEGORIES: Category[] = []
@@ -112,9 +117,13 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
     useEffect(() => {
         if (!accountsData || accountsSeeded.current) return
         accountsSeeded.current = true
-        if (!initial) setAccountId(accountsData[0]?.id ?? '')
-        setFromAccountId(accountsData[0]?.id ?? '')
-        setToAccountId(accountsData[1]?.id ?? accountsData[0]?.id ?? '')
+        // The user's first everyday account, for money in and out alike. A transfer goes
+        // from there to the next account in the picker's order.
+        const ordered = pickerOrder(accountsData)
+        const first = defaultAccount(accountsData)
+        if (!initial) setAccountId(first?.id ?? '')
+        setFromAccountId(first?.id ?? '')
+        setToAccountId(ordered[1]?.id ?? first?.id ?? '')
         // The form is keyed per transaction, so `initial` never changes under it.
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [accountsData])
@@ -153,9 +162,9 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
 
     // A savings expense from an everyday account, while a savings account exists: the money
     // probably went there, which is a transfer — it stays in the balance and still counts
-    // as saved.
+    // as saved. Only a savings account: an asset (gold, funds) is bought, not saved into.
     const selectedCategory = categories.find((c) => c.id === categoryId)
-    const savingsTarget = accounts.find((a) => a.is_savings && a.id !== accountId)
+    const savingsTarget = pickerOrder(accounts).find((a) => roleOf(a) === 'savings' && a.id !== accountId)
     const suggestSavingsTransfer = !initial && type === 'expense' && !!selectedCategory?.is_savings
         && !!savingsTarget && !selectedAccount?.is_savings
     const switchToSavingsTransfer = () => {
@@ -216,14 +225,15 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
             if (!transferAmount || parsedTransfer <= 0) { toast.error('Enter a valid amount.'); return }
 
             const fromAccount = accounts.find((a) => a.id === fromAccountId)
-            if (fromAccount && parsedTransfer > fromAccount.balance) { toast.error('Insufficient balance.'); return }
+            const overspent = fromAccount && overspendMessage(fromAccount, parsedTransfer)
+            if (overspent) { toast.error(overspent); return }
             if (date < periodStart || date > maxDate) { toast.error('Pick a date in this period.'); return }
 
             setLoading(true)
             const { error } = await accountsService.transfer(fromAccountId, toAccountId, parsedTransfer, date, note)
             setLoading(false)
 
-            if (error) { toast.error(error); return }
+            if (error) { toast.error(spendErrorMessage(error, fromAccount)); return }
 
             const toAccount = accounts.find((a) => a.id === toAccountId)
             toast.success(`Transferred ${formatCurrency(parsedTransfer)} to ${toAccount?.name}.`)
@@ -290,7 +300,7 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
                 })
             if (error) {
                 setLoading(false)
-                toast.error(/insufficient|balance/i.test(error) ? `Insufficient balance in ${selectedAccount?.name ?? 'that account'}.` : error)
+                toast.error(spendErrorMessage(error, selectedAccount))
                 return
             }
             // Replacing moves the money only; the bill link is a second write. If that one
@@ -520,7 +530,7 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
                             onClick={() => setAccountPickerOpen(true)}
                             className="flex items-center gap-2.5 py-3 border-t border-line-soft text-left w-full disabled:opacity-50 disabled:pointer-events-none"
                         >
-                            <AccountTypeIcon type={selectedAccount?.type ?? 'cash'} savings={selectedAccount?.is_savings} className="w-[18px] h-[18px] shrink-0" />
+                            <AccountTypeIcon type={selectedAccount?.type ?? 'cash'} savings={selectedAccount?.is_savings} role={selectedAccount?.role} className="w-[18px] h-[18px] shrink-0" />
                             <span className="text-[13px] text-muted-ink shrink-0">{type === 'income' ? 'Into' : 'Paid from'}</span>
                             <span className="ml-auto flex items-center gap-1.5 min-w-0">
                                 <span className="flex flex-col items-end min-w-0">
@@ -528,7 +538,7 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
                                         {selectedAccount?.name ?? 'Select'}
                                     </span>
                                     {selectedAccount && (
-                                        <span className="text-[11.5px] text-muted-ink tabular-nums">{formatCurrency(selectedAccount.balance)}</span>
+                                        <span className="text-[11.5px] text-muted-ink tabular-nums">{accountSubline(selectedAccount)}</span>
                                     )}
                                 </span>
                                 <ChevronDown className="w-3.5 h-3.5 text-subtle-ink shrink-0" />
@@ -578,8 +588,8 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
                     {(transferSaves || transferUnsaves) && (
                         <p className="rounded-[14px] bg-line-soft px-3.5 py-3 text-[12px] text-muted-ink leading-relaxed">
                             {transferSaves
-                                ? `${transferTo!.name} is a savings account, so this counts as saved this period.`
-                                : `${transferFrom!.name} is a savings account, so this takes it off what you’ve saved this period.`}
+                                ? `${transferTo!.name} is ${setAsideKind(transferTo!)}, so this counts as saved this period.`
+                                : `${transferFrom!.name} is ${setAsideKind(transferFrom!)}, so this takes it off what you’ve saved this period.`}
                         </p>
                     )}
                 </>

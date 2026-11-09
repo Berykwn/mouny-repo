@@ -19,10 +19,13 @@ export type Database = {
           archived_at: string | null
           balance: number
           created_at: string | null
+          credit_limit: number | null
           id: string
           initial_balance: number
           is_savings: boolean
           name: string
+          position: number
+          role: string
           type: string
           user_id: string
         }
@@ -30,10 +33,13 @@ export type Database = {
           archived_at?: string | null
           balance?: number
           created_at?: string | null
+          credit_limit?: number | null
           id?: string
           initial_balance?: number
           is_savings?: boolean
           name: string
+          position?: number
+          role?: string
           type: string
           user_id: string
         }
@@ -41,10 +47,13 @@ export type Database = {
           archived_at?: string | null
           balance?: number
           created_at?: string | null
+          credit_limit?: number | null
           id?: string
           initial_balance?: number
           is_savings?: boolean
           name?: string
+          position?: number
+          role?: string
           type?: string
           user_id?: string
         }
@@ -718,10 +727,13 @@ export type Database = {
           archived_at: string | null
           balance: number
           created_at: string | null
+          credit_limit: number | null
           id: string
           initial_balance: number
           is_savings: boolean
           name: string
+          position: number
+          role: string
           type: string
           user_id: string
         }
@@ -1006,6 +1018,11 @@ export type Database = {
           pay_period_id: string
           savings: number
         }[]
+      }
+      reorder_accounts: { Args: { p_ids: string[] }; Returns: undefined }
+      count_account: {
+        Args: { p_account_id: string; p_actual: number; p_as: string; p_date?: string }
+        Returns: Database["public"]["Tables"]["accounts"]["Row"]
       }
       replace_transaction: {
         Args: {

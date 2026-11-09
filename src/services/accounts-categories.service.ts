@@ -1,10 +1,11 @@
 import { supabase } from '@/lib/supabase'
-import { handleError, invalidatesOnWrite, isMissingFunction, sessionUser, type ServiceResult, SIGNED_OUT_MESSAGE } from './_base'
-import type { Account } from '@/types/'
+import { handleError, invalidatesOnWrite, isMissingColumn, isMissingFunction, sessionUser, type ServiceResult, SIGNED_OUT_MESSAGE } from './_base'
+import type { Account, AccountRole, AccountType, CountAs } from '@/types/'
 import type { Category } from '@/types/'
 import { COLORS } from '@/lib/static-colors'
 import { toISODate } from '@/lib/helpers'
 import type { CategoryKind } from '@/lib/category-kind'
+import { availableToSpend } from '@/lib/account-roles'
 
 type CategoryInput = Omit<Category, 'id' | 'user_id' | 'created_at' | 'bg_color' | 'is_savings' | 'kind'> & { bg_color?: string | null; is_savings?: boolean; kind?: CategoryKind | null }
 
@@ -34,11 +35,11 @@ export const accountsService = invalidatesOnWrite({
     /** Accounts in use. Archived ones are always empty, so leaving them out hides no money. */
     async getAll(): Promise<ServiceResult<Account[]>> {
         try {
-            const { data, error } = await supabase
-                .from('accounts')
-                .select('*')
-                .is('archived_at', null)
-                .order('name')
+            const query = () => supabase.from('accounts').select('*').is('archived_at', null)
+            let { data, error } = await query().order('position').order('name')
+            // A database without 20261109000100_account_roles: the accounts still load, in
+            // name order, rather than not at all. (roleOf reads is_savings for them.)
+            if (isMissingColumn(error)) ({ data, error } = await query().order('name'))
 
             if (error) throw error
             return { data, error: null }
@@ -86,14 +87,27 @@ export const accountsService = invalidatesOnWrite({
         }
     },
 
-    async create(input: { name: string; type: Account['type']; initial_balance: number; is_savings: boolean }): Promise<ServiceResult<Account>> {
+    /**
+     * A new account goes to the end of the user's order. The role sets is_savings in the
+     * database (savings and asset accounts are set aside). A credit account may open below
+     * zero: what's owed on it.
+     */
+    async create(input: { name: string; type: AccountType; role: AccountRole; initial_balance: number; credit_limit?: number | null }): Promise<ServiceResult<Account>> {
         try {
             const user = await sessionUser()
             if (!user) throw new Error(SIGNED_OUT_MESSAGE)
 
             const { data, error } = await supabase
                 .from('accounts')
-                .insert({ ...input, user_id: user.id, balance: input.initial_balance })
+                .insert({
+                    name: input.name,
+                    type: input.type,
+                    role: input.role,
+                    initial_balance: input.initial_balance,
+                    credit_limit: input.role === 'credit' ? input.credit_limit ?? null : null,
+                    user_id: user.id,
+                    balance: input.initial_balance,
+                })
                 .select()
                 .single()
 
@@ -104,12 +118,17 @@ export const accountsService = invalidatesOnWrite({
         }
     },
 
-    /** Name, type and the savings flag: a balance changes through transactions (see adjustBalance). */
-    async update(id: string, input: { name: string; type: Account['type']; is_savings: boolean }): Promise<ServiceResult<Account>> {
+    /** Name, type, role and credit limit: a balance changes through transactions (see adjustBalance). */
+    async update(id: string, input: { name: string; type: AccountType; role: AccountRole; credit_limit?: number | null }): Promise<ServiceResult<Account>> {
         try {
             const { data, error } = await supabase
                 .from('accounts')
-                .update({ name: input.name, type: input.type, is_savings: input.is_savings })
+                .update({
+                    name: input.name,
+                    type: input.type,
+                    role: input.role,
+                    credit_limit: input.role === 'credit' ? input.credit_limit ?? null : null,
+                })
                 .eq('id', id)
                 .select()
                 .single()
@@ -140,6 +159,38 @@ export const accountsService = invalidatesOnWrite({
         }
     },
 
+    /**
+     * A cash count: what's actually in the account, and how to record the difference
+     * (see 20261109000200_cash_count.sql). The database works the difference out from the
+     * balance at that moment.
+     */
+    async count(id: string, actual: number, as: CountAs): Promise<ServiceResult<Account>> {
+        try {
+            const { data, error } = await supabase.rpc('count_account', {
+                p_account_id: id,
+                p_actual: actual,
+                p_as: as,
+                p_date: toISODate(),
+            })
+            if (isMissingFunction(error)) throw new Error('Cash count needs a database update first.')
+            if (error) throw error
+            return { data, error: null }
+        } catch (err) {
+            return { data: null, error: handleError(err) }
+        }
+    },
+
+    /** The user's own order: the ids first to last. Accounts left out keep their place after them. */
+    async reorder(ids: string[]): Promise<ServiceResult<null>> {
+        try {
+            const { error } = await supabase.rpc('reorder_accounts', { p_ids: ids })
+            if (error) throw error
+            return { data: null, error: null }
+        } catch (err) {
+            return { data: null, error: handleError(err) }
+        }
+    },
+
     async remove(id: string): Promise<ServiceResult<null>> {
         try {
             const { error } = await supabase.from('accounts').delete().eq('id', id)
@@ -158,7 +209,7 @@ export const accountsService = invalidatesOnWrite({
         try {
             const { data: accounts, error: fetchError } = await supabase
                 .from('accounts')
-                .select('id, balance')
+                .select('id, balance, role, credit_limit')
                 .in('id', [fromId, toId])
 
             if (fetchError) throw fetchError
@@ -167,7 +218,9 @@ export const accountsService = invalidatesOnWrite({
             const to = accounts.find(a => a.id === toId)
 
             if (!from || !to) throw new Error('Account not found')
-            if (from.balance < amount) throw new Error('Insufficient balance')
+            if (availableToSpend(from) < amount) {
+                throw new Error(from.role === 'credit' ? 'That goes over the credit limit.' : 'Insufficient balance')
+            }
 
             // Dated in the user's own time zone; the database's "today" is UTC.
             const args = { p_from_id: fromId, p_to_id: toId, p_amount: amount, p_date: date ?? toISODate() }

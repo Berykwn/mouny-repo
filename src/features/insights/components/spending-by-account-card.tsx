@@ -11,7 +11,7 @@ export function SpendingByAccountList({ byAccount, totalSpending }: { byAccount:
                 const pct = totalSpending > 0 ? Math.round((a.amount / totalSpending) * 100) : 0
                 return (
                     <div key={a.id} className="flex items-center gap-3 py-[9px] border-b border-line-soft last:border-b-0">
-                        <AccountTypeTile type={a.type} savings={a.is_savings} className="w-8 h-8" />
+                        <AccountTypeTile type={a.type} savings={a.is_savings} role={a.role} className="w-8 h-8" />
                         <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between mb-1">
                                 <p className="text-[13px] text-ink truncate">{a.name}</p>

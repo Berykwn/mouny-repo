@@ -1,4 +1,5 @@
-import { getDaysBetween } from '@/lib/helpers'
+import { availableToSpend, overdrawnBy, owedOn, roleOf } from '@/lib/account-roles'
+import { formatShortCurrency, getDaysBetween } from '@/lib/helpers'
 import { isEverydaySpending } from '@/lib/spending-pace'
 import { isInflow } from '@/lib/transaction-type'
 import type { Account, PayPeriod, TransactionWithDetails } from '@/types'
@@ -26,7 +27,11 @@ export interface AccountActivity {
 export type AccountHealth = 'ok' | 'low' | 'overdrawn'
 
 export interface AccountInsight extends AccountActivity {
-    /** Days this account's balance lasts at its own outflow pace, or null without a pace. */
+    /**
+     * Days this account lasts at its own outflow pace, or null without a pace. Only
+     * accounts spent from have one: everyday ones from their balance, credit ones from
+     * what's left of their limit (none without a limit: there's nothing to run out of).
+     */
     runwayDays: number | null
     health: AccountHealth
 }
@@ -65,8 +70,9 @@ export function accountInsights(
         const act = byAccount.get(a.id)!
         // Rent leaving on day 2 mustn't make the account look like it's draining daily.
         const dailyOut = canPace ? act.everydayOut / daysElapsed : 0
-        const runwayDays = dailyOut > 0 && a.balance > 0 ? Math.floor(a.balance / dailyOut) : null
-        const health: AccountHealth = a.balance < 0
+        const left = runwayBase(a)
+        const runwayDays = dailyOut > 0 && left !== null && left > 0 ? Math.floor(left / dailyOut) : null
+        const health: AccountHealth = isOverdrawn(a)
             ? 'overdrawn'
             : runwayDays !== null && runwayDays < LOW_RUNWAY_DAYS ? 'low' : 'ok'
         result.set(a.id, { ...act, runwayDays, health })
@@ -74,14 +80,59 @@ export function accountInsights(
     return result
 }
 
-const TYPE_LABEL: Record<string, string> = { bank: 'Bank', cash: 'Cash' }
+/** What a runway is measured against, or null when the account has none (see AccountInsight.runwayDays). */
+function runwayBase(account: Account): number | null {
+    switch (roleOf(account)) {
+        case 'everyday': return account.balance
+        case 'credit': return account.credit_limit == null ? null : availableToSpend(account)
+        default: return null
+    }
+}
+
+/**
+ * Below where the account may go: under zero, or for a credit account under minus its
+ * limit. A credit account below zero is just owing, not overdrawn.
+ */
+export const isOverdrawn = (account: Pick<Account, 'balance' | 'role' | 'credit_limit'>): boolean =>
+    overdrawnBy(account) > 0
+
+const TYPE_LABEL: Record<string, string> = { bank: 'Bank', cash: 'Cash', ewallet: 'E-wallet' }
+
+const short = (n: number) => `Rp${formatShortCurrency(n)}`
+
+/** A credit account's owing in a few words: "Rp1,2jt owed · Rp8,8jt available", or "No limit". */
+export function creditLine(account: Account): string {
+    const owed = owedOn(account)
+    const available = availableToSpend(account)
+    return [
+        owed > 0 ? `${short(owed)} owed` : 'Nothing owed',
+        available === Infinity ? 'No limit' : `${short(Math.max(0, available))} available`,
+    ].join(' · ')
+}
 
 /** One account's second line: how long it lasts at its own pace, or why that isn't shown. */
 export function accountLine(account: Account, insight: AccountInsight | undefined): { text: string; negative: boolean } {
-    if (account.balance < 0) return { text: 'Overdrawn', negative: true }
-    if (account.is_savings) return { text: 'Not counted as spendable', negative: false }
+    const role = roleOf(account)
+    if (isOverdrawn(account)) return { text: role === 'credit' ? 'Over its limit' : 'Overdrawn', negative: true }
+    if (role === 'credit') return { text: creditLine(account), negative: false }
+    if (role === 'asset') return { text: 'Not spent from', negative: false }
+    if (role === 'savings') return { text: 'Not counted as spendable', negative: false }
     if (insight?.runwayDays != null) return { text: `Lasts ~${insight.runwayDays} day${insight.runwayDays === 1 ? '' : 's'}`, negative: false }
     return { text: TYPE_LABEL[account.type] ?? 'Account', negative: false }
+}
+
+/** Where moved money comes from, first choice first: never an asset (it isn't spent from), nor a card. */
+const SOURCE_RANK: Record<string, number> = { everyday: 0, savings: 1 }
+
+/**
+ * The account money is best moved from: the fullest everyday account, else the fullest
+ * savings one. Assets are held, not spent from, and moving money off a credit card
+ * would be borrowing, so neither is offered.
+ */
+export function fullestSource(accounts: Account[], exceptId?: string): Account | null {
+    return accounts
+        .filter(a => a.id !== exceptId && a.balance > 0 && roleOf(a) in SOURCE_RANK)
+        .sort((a, b) => SOURCE_RANK[roleOf(a)] - SOURCE_RANK[roleOf(b)] || b.balance - a.balance)[0] ?? null
 }
 
 /** Top-ups are suggested in round steps of this much. */
@@ -92,7 +143,7 @@ export interface RunOutWarning {
     runwayDays: number
     /** Its everyday spending per day so far this period. */
     dailyOut: number
-    /** Where a top-up would come from: the spendable account with the most money, else any other. */
+    /** Where a top-up would come from (see fullestSource). */
     source: Account | null
     /** Enough to reach payday at its pace, in round steps, never more than the source holds; null without a payday. */
     topUp: number | null
@@ -100,8 +151,10 @@ export interface RunOutWarning {
 
 /**
  * The everyday account that runs out first at its own pace, when that's before payday (or
- * within LOW_RUNWAY_DAYS when payday isn't known). Savings accounts are left out: they
- * aren't spent from.
+ * within LOW_RUNWAY_DAYS when payday isn't known). Only everyday accounts are warned
+ * about: savings and assets aren't spent from, and a card nearing its limit shows that on
+ * its own row (its runway) rather than as a top-up suggestion, which would mean paying
+ * the card off.
  */
 export function runOutFirst(
     accounts: Account[],
@@ -113,13 +166,12 @@ export function runOutFirst(
     let first: { account: Account; runwayDays: number } | null = null
     for (const a of accounts) {
         const runway = insights.get(a.id)?.runwayDays ?? null
-        if (a.is_savings || runway === null || runway >= limit) continue
+        if (roleOf(a) !== 'everyday' || runway === null || runway >= limit) continue
         if (!first || runway < first.runwayDays) first = { account: a, runwayDays: runway }
     }
     if (!first) return null
 
-    const others = accounts.filter(a => a.id !== first.account.id && a.balance > 0).sort((a, b) => b.balance - a.balance)
-    const source = others.find(a => !a.is_savings) ?? others[0] ?? null
+    const source = fullestSource(accounts, first.account.id)
     const dailyOut = (insights.get(first.account.id)?.everydayOut ?? 0) / Math.max(1, daysElapsed)
 
     let topUp: number | null = null

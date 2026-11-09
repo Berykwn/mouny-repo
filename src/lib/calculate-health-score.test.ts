@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { calculateHealthScore } from './calculate-health-score'
+import { calculateHealthScore, debtPosition } from './calculate-health-score'
+import type { AccountRole } from '@/types'
 
 const base = { totalIncome: 10_000_000, totalSpending: 5_000_000, totalBalance: 20_000_000, totalDebt: 0, expenseDiffPct: null }
 
@@ -56,5 +57,20 @@ describe('calculateHealthScore', () => {
         const r = calculateHealthScore({ totalIncome: 1, totalSpending: 100, totalBalance: 0, totalDebt: 1, expenseDiffPct: 100 })
         expect(r.score).toBe(0)
         expect(r.label).toBe('Poor')
+    })
+})
+
+describe('debtPosition', () => {
+    const acc = (role: AccountRole, balance: number) => ({ role, balance, is_savings: role === 'savings' || role === 'asset' })
+
+    it('counts what is owed on cards as debt, once', () => {
+        const accounts = [acc('everyday', 8_000_000), acc('credit', -2_000_000), acc('asset', 5_000_000)]
+        // The net total is 11M; the card's 2M moves from it to the debt.
+        expect(debtPosition(accounts, 1_000_000)).toEqual({ totalBalance: 13_000_000, totalDebt: 3_000_000 })
+    })
+
+    it('leaves a card paid off, or in credit, out of the debt', () => {
+        expect(debtPosition([acc('everyday', 1_000_000), acc('credit', 50_000)], 0))
+            .toEqual({ totalBalance: 1_050_000, totalDebt: 0 })
     })
 })

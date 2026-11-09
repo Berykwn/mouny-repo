@@ -11,6 +11,8 @@ import { useSeedOnce } from '@/hooks/use-seed-once'
 import { recurringBillsService } from '@/services/recurring-bills.service'
 import { formatCurrency, formatCurrencyInput, parseCurrencyInput, toISODate } from '@/lib/helpers'
 import type { Account, RecurringBill } from '@/types'
+import { defaultAccount } from '@/lib/account-roles'
+import { accountSubline, overspendMessage, spendErrorMessage } from '@/lib/account-spend'
 import LightbulbIcon from '~icons/ph/lightbulb-duotone'
 import { SmartLine } from '@/features/plan/components/smart-line'
 import type { BillPayment } from '../lib/bill-history'
@@ -47,7 +49,7 @@ export function PayBillForm({ bill, nextDue, payPeriodId, periodStart, lastPaid,
     const { data: accountsData } = useAccounts()
     const accounts = accountsData ?? NO_ACCOUNTS
     useSeedOnce(accountsData, data => {
-        if (!bill.account_id || !data.some(a => a.id === bill.account_id)) setAccountId(data[0]?.id ?? '')
+        if (!bill.account_id || !data.some(a => a.id === bill.account_id)) setAccountId(defaultAccount(data)?.id ?? '')
     })
     const account = accounts.find(a => a.id === accountId)
 
@@ -56,13 +58,14 @@ export function PayBillForm({ bill, nextDue, payPeriodId, periodStart, lastPaid,
         const parsed = parseCurrencyInput(amount)
         if (parsed <= 0) { toast.error('Enter a valid amount.'); return }
         if (!account) { toast.error('Please select an account.'); return }
-        if (parsed > account.balance) { toast.error(`Insufficient balance in ${account.name}.`); return }
+        const overspent = overspendMessage(account, parsed)
+        if (overspent) { toast.error(overspent); return }
 
         setLoading(true)
         const { error } = await recurringBillsService.pay({ bill, amount: parsed, account_id: account.id, date, pay_period_id: payPeriodId })
         setLoading(false)
         if (error) {
-            toast.error(/insufficient|balance/i.test(error) ? `Insufficient balance in ${account.name}.` : error)
+            toast.error(spendErrorMessage(error, account))
             return
         }
         if (updateBill && Math.round(parsed) !== Math.round(bill.amount)) {
@@ -129,10 +132,10 @@ export function PayBillForm({ bill, nextDue, payPeriodId, periodStart, lastPaid,
                 >
                     {account ? (
                         <div className="flex items-center gap-3 min-w-0">
-                            <AccountTypeTile type={account.type} savings={account.is_savings} />
+                            <AccountTypeTile type={account.type} savings={account.is_savings} role={account.role} />
                             <div className="min-w-0">
                                 <p className="text-[13px] font-medium text-ink truncate">{account.name}</p>
-                                <p className="text-[11.5px] text-muted-ink">{formatCurrency(account.balance)}</p>
+                                <p className="text-[11.5px] text-muted-ink">{accountSubline(account)}</p>
                             </div>
                         </div>
                     ) : (

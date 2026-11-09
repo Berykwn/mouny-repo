@@ -4,6 +4,8 @@ import { AccountTypeIcon } from '@/components/account-type-icon'
 import { AccountPickerDrawer } from '@/components/account-picker-drawer'
 import { formatCurrency, parseCurrencyInput } from '@/lib/helpers'
 import { cn } from '@/lib/utils'
+import { availableToSpend } from '@/lib/account-roles'
+import { accountSubline } from '@/lib/account-spend'
 import type { Account } from '@/types'
 
 interface TransferFieldsProps {
@@ -18,10 +20,12 @@ interface TransferFieldsProps {
 }
 
 /** One side of a transfer: the account, its balance, and where the balance ends up. */
-function AccountCard({ label, account, after, onClick, disabled }: {
+function AccountCard({ label, account, after, over, onClick, disabled }: {
     label: string
     account: Account | undefined
     after: number | null
+    /** More is leaving than the account allows (its balance, or a card's limit). */
+    over?: boolean
     onClick: () => void
     disabled?: boolean
 }) {
@@ -34,12 +38,12 @@ function AccountCard({ label, account, after, onClick, disabled }: {
             className="flex-1 min-w-0 rounded-[16px] border border-line bg-surface p-3.5 text-left transition-colors hover:bg-surface-soft disabled:opacity-50 disabled:pointer-events-none"
         >
             <span className="block text-[11.5px] text-muted-ink">{label}</span>
-            <AccountTypeIcon aria-hidden="true" type={account?.type ?? 'cash'} savings={account?.is_savings} className="mt-2 w-6 h-6" />
+            <AccountTypeIcon aria-hidden="true" type={account?.type ?? 'cash'} savings={account?.is_savings} role={account?.role} className="mt-2 w-6 h-6" />
             <span className="mt-2 block text-[14px] font-semibold text-ink truncate">{account?.name ?? 'Select'}</span>
             {account && (
                 <span className="block text-[11.5px] text-muted-ink tabular-nums truncate">
-                    {after === null ? formatCurrency(account.balance) : (
-                        <>→ <span className={cn(after < 0 ? 'text-negative' : 'text-ink')}>{formatCurrency(after)}</span></>
+                    {after === null ? accountSubline(account) : (
+                        <>→ <span className={cn(over ? 'text-negative' : 'text-ink')}>{formatCurrency(after)}</span></>
                     )}
                 </span>
             )}
@@ -65,11 +69,24 @@ export function TransferFields({
     // Each side's balance once the money has moved, as soon as there's an amount.
     const afterFrom = fromAccount && parsedAmount > 0 ? fromAccount.balance - parsedAmount : null
     const afterTo = toAccount && parsedAmount > 0 ? toAccount.balance + parsedAmount : null
+    // A card may go below zero, so only going past what it allows is flagged.
+    const overFrom = !!fromAccount && parsedAmount > availableToSpend(fromAccount)
+
+    // Every account is offered on both sides; picking the other side's account swaps
+    // the two rather than hiding it from the list.
+    const pickFrom = (id: string) => {
+        if (id === toAccountId) onToChange(fromAccountId)
+        onFromChange(id)
+    }
+    const pickTo = (id: string) => {
+        if (id === fromAccountId) onFromChange(toAccountId)
+        onToChange(id)
+    }
 
     return (
         <div>
             <div className="flex items-stretch gap-2">
-                <AccountCard label="From" account={fromAccount} after={afterFrom} onClick={() => setPickerOpen('from')} disabled={disabled} />
+                <AccountCard label="From" account={fromAccount} after={afterFrom} over={overFrom} onClick={() => setPickerOpen('from')} disabled={disabled} />
                 <ArrowRight aria-hidden="true" className="self-center w-4 h-4 text-muted-ink shrink-0" />
                 <AccountCard label="To" account={toAccount} after={afterTo} onClick={() => setPickerOpen('to')} disabled={disabled} />
             </div>
@@ -77,16 +94,16 @@ export function TransferFields({
             <AccountPickerDrawer
                 open={pickerOpen === 'from'}
                 onClose={() => setPickerOpen(null)}
-                accounts={accounts.filter((a) => a.id !== toAccountId)}
+                accounts={accounts}
                 selectedId={fromAccountId}
-                onSelect={(a) => { onFromChange(a.id); setPickerOpen(null) }}
+                onSelect={(a) => { pickFrom(a.id); setPickerOpen(null) }}
             />
             <AccountPickerDrawer
                 open={pickerOpen === 'to'}
                 onClose={() => setPickerOpen(null)}
-                accounts={accounts.filter((a) => a.id !== fromAccountId)}
+                accounts={accounts}
                 selectedId={toAccountId}
-                onSelect={(a) => { onToChange(a.id); setPickerOpen(null) }}
+                onSelect={(a) => { pickTo(a.id); setPickerOpen(null) }}
             />
         </div>
     )

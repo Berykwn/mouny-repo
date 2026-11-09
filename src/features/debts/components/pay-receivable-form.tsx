@@ -7,6 +7,8 @@ import { useAccounts } from '@/queries'
 import { useSeedOnce } from '@/hooks/use-seed-once'
 import { formatCurrency, formatCurrencyInput, parseCurrencyInput, toISODate } from '@/lib/helpers'
 import type { Account, DebtWithAccount } from '@/types'
+import { defaultAccount } from '@/lib/account-roles'
+import { accountSubline } from '@/lib/account-spend'
 import { toast } from 'sonner'
 import { AccountTypeTile } from '@/components/account-type-icon'
 import { AccountPickerDrawer } from '@/components/account-picker-drawer'
@@ -44,7 +46,8 @@ export function PayReceivableForm({ debt, periodStartDate, plannedAmount, onSucc
     )
 
     useSeedOnce(accountsData, data => {
-        if (!debt.pay_from_account_id) setSelectedAccountId(data[0]?.id ?? '')
+        // The receivable's own account wins; otherwise the user's default.
+        if (!debt.pay_from_account_id) setSelectedAccountId(defaultAccount(data)?.id ?? '')
     })
 
     const selectedAccount = accounts.find(a => a.id === selectedAccountId)
@@ -156,10 +159,10 @@ export function PayReceivableForm({ debt, periodStartDate, plannedAmount, onSucc
                 >
                     {selectedAccount ? (
                         <div className="flex items-center gap-3 min-w-0">
-                            <AccountTypeTile type={selectedAccount.type} savings={selectedAccount.is_savings} />
+                            <AccountTypeTile type={selectedAccount.type} savings={selectedAccount.is_savings} role={selectedAccount.role} />
                             <div className="min-w-0">
                                 <p className="text-[13px] font-medium text-ink truncate">{selectedAccount.name}</p>
-                                <p className="text-[11.5px] text-muted-ink">{formatCurrency(selectedAccount.balance)}</p>
+                                <p className="text-[11.5px] text-muted-ink">{accountSubline(selectedAccount)}</p>
                             </div>
                         </div>
                     ) : (

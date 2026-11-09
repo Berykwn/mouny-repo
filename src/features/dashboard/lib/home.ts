@@ -2,6 +2,7 @@ import { formatCurrency } from '@/lib/helpers'
 import { MIN_PROJECTION_DAYS, type PeriodStats } from '@/hooks/use-period-stats'
 import { isRunning, type BillDue } from '@/features/bills/lib/bills'
 import { shortDate } from '@/features/bills/lib/bill-labels'
+import { availableToSpend, isCredit, isSpendable, overdrawnBy } from '@/lib/account-roles'
 import type { Account, CategoryBudget, Debt, RecurringBill, TransactionWithDetails } from '@/types'
 
 // ─── Hero ────────────────────────────────────────────────────────────────────
@@ -79,7 +80,7 @@ export interface SmartLineInput {
     transactions: TransactionWithDetails[]
     /** Days left in the period, today included; null when the end isn't known. */
     daysLeft: number | null
-    accounts: Pick<Account, 'id' | 'name' | 'balance' | 'is_savings'>[]
+    accounts: Pick<Account, 'id' | 'name' | 'balance' | 'is_savings' | 'role' | 'credit_limit'>[]
     dues: BillDue[]
 }
 
@@ -189,19 +190,28 @@ function budgetLow({ budgets, transactions, daysLeft }: SmartLineInput): SmartLi
     }
 }
 
-/** An everyday account below zero, or holding less than the bills set to be paid from it. */
+// The one rule for "past what it can hold", shared with the Accounts page.
+export { overdrawnBy }
+
+/**
+ * A spendable account past what it can hold, or with less left than the bills set to be
+ * paid from it. Savings and assets aren't spent from, so they're left alone.
+ */
 function accountShort({ accounts, dues }: SmartLineInput): SmartLine | null {
     const action = { label: 'Open accounts', to: '/accounts' }
-    const spendable = accounts.filter(a => !a.is_savings)
-    const negative = spendable.filter(a => a.balance < 0).sort((a, b) => a.balance - b.balance)[0]
-    if (negative) {
+    const spendable = accounts.filter(isSpendable)
+    const over = spendable
+        .map(account => ({ account, by: overdrawnBy(account) }))
+        .filter(x => x.by > 0)
+        .sort((a, b) => b.by - a.by)[0]
+    if (over) {
         return {
             kind: 'account-short',
-            key: `account-negative:${negative.id}`,
+            key: `account-negative:${over.account.id}`,
             parts: [
-                { text: `${negative.name} is ` },
-                { text: formatCurrency(-negative.balance), strong: true },
-                { text: ' below zero.' },
+                { text: `${over.account.name} is ` },
+                { text: formatCurrency(over.by), strong: true },
+                { text: isCredit(over.account) ? ' over its limit.' : ' below zero.' },
             ],
             action,
         }
@@ -209,16 +219,21 @@ function accountShort({ accounts, dues }: SmartLineInput): SmartLine | null {
     const short = spendable
         .map(a => ({
             account: a,
+            // A card can be charged down to its limit; one without a limit is never short.
+            available: availableToSpend(a),
             due: dues.filter(d => d.bill.account_id === a.id && d.outstanding > 0).reduce((s, d) => s + d.reserved, 0),
         }))
-        .filter(x => x.due > 0 && x.account.balance < x.due)
-        .sort((a, b) => (a.account.balance - a.due) - (b.account.balance - b.due))[0]
+        .filter(x => x.due > 0 && x.available < x.due)
+        .sort((a, b) => (a.available - a.due) - (b.available - b.due))[0]
     if (!short) return null
+    const has = isCredit(short.account)
+        ? `${short.account.name} has ${formatCurrency(short.available)} left of its limit, but `
+        : `${short.account.name} has ${formatCurrency(short.available)}, but `
     return {
         kind: 'account-short',
         key: `account-short:${short.account.id}`,
         parts: [
-            { text: `${short.account.name} has ${formatCurrency(short.account.balance)}, but ` },
+            { text: has },
             { text: formatCurrency(short.due), strong: true },
             { text: ' in bills is due from it before payday.' },
         ],

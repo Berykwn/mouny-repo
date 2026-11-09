@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase'
-import { fetchAllPages, handleError, invalidatesOnWrite, sessionUser, isMissingFunction, NULL_ARG, type ServiceResult, SIGNED_OUT_MESSAGE } from './_base'
+import { fetchAllPages, handleError, invalidatesOnWrite, sessionUser, isMissingColumn, isMissingFunction, NULL_ARG, type ServiceResult, SIGNED_OUT_MESSAGE } from './_base'
 import type { Transaction, TransactionWithDetails, TransactionType } from '@/types/'
 import { EMPTY_PERIOD_SUMMARY, summarizeTransactions, summaryFromTotals, type PeriodSummary } from '@/lib/period-summary'
 
@@ -57,7 +57,20 @@ function withSavingsFlagsAtTheTime(tx: TransactionWithDetails): TransactionWithD
 export const transactionsService = invalidatesOnWrite({
     async getByPeriod(periodId: string): Promise<ServiceResult<TransactionWithDetails[]>> {
         try {
-            const data = await fetchAllPages((from, to) => supabase
+            const withRole = () => fetchAllPages((from, to) => supabase
+                .from('transactions')
+                .select(`
+          *,
+          account:accounts(id, name, type, is_savings, role),
+          category:categories(id, name, color, bg_color, icon, is_savings, kind)
+        `)
+                .eq('pay_period_id', periodId)
+                .order('date', { ascending: false })
+                .order('id')
+                .range(from, to))
+            // A database without 20261109000100_account_roles has no accounts.role: the
+            // ledger still loads, and roleOf falls back on is_savings.
+            const withoutRole = () => fetchAllPages((from, to) => supabase
                 .from('transactions')
                 .select(`
           *,
@@ -68,6 +81,14 @@ export const transactionsService = invalidatesOnWrite({
                 .order('date', { ascending: false })
                 .order('id')
                 .range(from, to))
+
+            let data: TransactionWithDetails[]
+            try {
+                data = await withRole()
+            } catch (err) {
+                if (!isMissingColumn(err as { code?: string })) throw err
+                data = await withoutRole()
+            }
 
             return { data: data.map(withSavingsFlagsAtTheTime), error: null }
         } catch (err) {

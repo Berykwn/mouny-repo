@@ -5,8 +5,11 @@ import { Label } from '@/components/ui/label'
 import { CalendarIcon, ChevronRight } from 'lucide-react'
 import { debtsService } from '@/services/debts.service'
 import { useAccounts } from '@/queries'
+import { useSeedOnce } from '@/hooks/use-seed-once'
+import { defaultAccount } from '@/lib/account-roles'
+import { accountSubline } from '@/lib/account-spend'
 import { Switch } from '@/components/ui/switch'
-import { formatCurrency, formatCurrencyInput, parseCurrencyInput, toISODate } from '@/lib/helpers'
+import { formatCurrencyInput, parseCurrencyInput, toISODate } from '@/lib/helpers'
 import type { Account } from '@/types'
 import { toast } from 'sonner'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -44,13 +47,15 @@ export function DebtForm({ onSuccess, payPeriodId, periodStartDate, initialType 
     const [accountId, setAccountId] = useState('')
     const [accountPickerOpen, setAccountPickerOpen] = useState(false)
     const [notes, setNotes] = useState('')
-    const { data: accounts = NO_ACCOUNTS } = useAccounts()
+    const { data: accountsData } = useAccounts()
+    const accounts = accountsData ?? NO_ACCOUNTS
     const [loading, setLoading] = useState(false)
     // Whether this debt/receivable actually moved money in/out of the account
     const [affectsBalance, setAffectsBalance] = useState(false)
 
     const selectedAccount = accounts.find((a) => a.id === accountId)
-
+    // Ready for when the user says the money moved; the account is only used then.
+    useSeedOnce(accountsData, data => setAccountId(defaultAccount(data)?.id ?? ''))
 
     // Reset affectsBalance when type changes so user consciously opts in
     const handleTypeChange = (val: DebtType) => {
@@ -201,10 +206,10 @@ export function DebtForm({ onSuccess, payPeriodId, periodStartDate, initialType 
                         >
                             {selectedAccount ? (
                                 <div className="flex items-center gap-3 min-w-0">
-                                    <AccountTypeTile type={selectedAccount.type} savings={selectedAccount.is_savings} />
+                                    <AccountTypeTile type={selectedAccount.type} savings={selectedAccount.is_savings} role={selectedAccount.role} />
                                     <div className="min-w-0">
                                         <p className="text-[13px] font-medium text-ink truncate">{selectedAccount.name}</p>
-                                        <p className="text-[11.5px] text-muted-ink">{formatCurrency(selectedAccount.balance)}</p>
+                                        <p className="text-[11.5px] text-muted-ink">{accountSubline(selectedAccount)}</p>
                                     </div>
                                 </div>
                             ) : (

@@ -24,7 +24,7 @@ export function ArchivedAccounts({ accounts, onRestore }: ArchivedAccountsProps)
             <ul>
                 {accounts.map(acc => (
                     <li key={acc.id} className="flex items-center gap-3 py-2.5 border-b border-line-soft last:border-0">
-                        <AccountTypeTile type={acc.type} savings={acc.is_savings} className="w-9 h-9 opacity-60 grayscale" />
+                        <AccountTypeTile type={acc.type} savings={acc.is_savings} role={acc.role} className="w-9 h-9 opacity-60 grayscale" />
                         <p className="flex-1 min-w-0 text-[14.5px] text-muted-ink truncate">{acc.name}</p>
                         <button
                             type="button"

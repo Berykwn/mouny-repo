@@ -1,3 +1,20 @@
+import { balanceBreakdown } from './account-roles'
+import type { Account } from '@/types'
+
+/**
+ * The balance and debt the score weighs. What's owed on credit cards is debt like a loan
+ * is, so it moves from the balance (where the net total already took it off) to the
+ * debt: counting it in both would weigh it twice.
+ */
+export function debtPosition(
+    accounts: Pick<Account, 'balance' | 'role' | 'is_savings'>[],
+    /** Remaining on the user's debts (receivables left out). */
+    debts: number,
+): { totalBalance: number; totalDebt: number } {
+    const { total, owed } = balanceBreakdown(accounts)
+    return { totalBalance: total + owed, totalDebt: debts + owed }
+}
+
 export function calculateHealthScore({
     totalIncome,
     totalSpending,

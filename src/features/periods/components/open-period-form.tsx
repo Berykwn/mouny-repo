@@ -16,9 +16,11 @@ import { payPeriodsService } from '@/services/pay-periods.service'
 import { useAccounts } from '@/queries'
 import { useSeedOnce } from '@/hooks/use-seed-once'
 import { usePeriodStore } from '@/stores/period-store'
-import { formatCurrency, formatCurrencyInput, parseCurrencyInput, toISODate } from '@/lib/helpers'
+import { formatCurrencyInput, parseCurrencyInput, toISODate } from '@/lib/helpers'
 import { toast } from 'sonner'
 import type { Account } from '@/types'
+import { defaultAccount, roleOf } from '@/lib/account-roles'
+import { accountSubline } from '@/lib/account-spend'
 import { AccountTypeTile } from '@/components/account-type-icon'
 import { AccountPickerDrawer } from '@/components/account-picker-drawer'
 import { BusyLabel } from '@/components/busy-label'
@@ -48,10 +50,11 @@ export function OpenPeriodForm({ onSuccess }: OpenPeriodFormProps) {
     const endOfToday = new Date()
     endOfToday.setHours(23, 59, 59, 999)
 
-    // Pay lands in one of the everyday accounts; only when there is just one is that a given.
+    // Pay lands in the user's first everyday account, the default everywhere else too.
+    // Without an everyday account it's left for the user: pay doesn't go onto a card.
     useSeedOnce(accountsData, data => {
-        const everyday = data.filter(a => !a.is_savings)
-        if (everyday.length === 1) setAccountId(everyday[0].id)
+        const first = defaultAccount(data)
+        if (first && roleOf(first) === 'everyday') setAccountId(first.id)
     })
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -177,10 +180,10 @@ export function OpenPeriodForm({ onSuccess }: OpenPeriodFormProps) {
                 >
                     {selectedAccount ? (
                         <div className="flex items-center gap-3 min-w-0">
-                            <AccountTypeTile type={selectedAccount.type} savings={selectedAccount.is_savings} />
+                            <AccountTypeTile type={selectedAccount.type} savings={selectedAccount.is_savings} role={selectedAccount.role} />
                             <div className="min-w-0">
                                 <p className="text-[15px] text-ink truncate">{selectedAccount.name}</p>
-                                <p className="text-[13px] text-subtle-ink tabular-nums">{formatCurrency(selectedAccount.balance)}</p>
+                                <p className="text-[13px] text-subtle-ink tabular-nums">{accountSubline(selectedAccount)}</p>
                             </div>
                         </div>
                     ) : (

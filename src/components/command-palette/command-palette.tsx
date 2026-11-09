@@ -35,7 +35,7 @@ const PAGES: { label: string; to: string; icon: LucideIcon; keywords?: string[] 
     { label: 'Bills', to: '/bills', icon: Receipt, keywords: ['subscriptions'] },
     { label: 'Debts', to: '/debts', icon: CreditCard, keywords: ['receivables', 'loans'] },
     { label: 'Wishlist', to: '/wish-list', icon: ShoppingBag, keywords: ['wishes', 'goals'] },
-    { label: 'Accounts', to: '/accounts', icon: Wallet, keywords: ['balances', 'banks', 'wallets'] },
+    { label: 'Accounts', to: '/accounts', icon: Wallet, keywords: ['balances', 'banks', 'wallets', 'e-wallet', 'savings', 'credit card', 'assets', 'gold'] },
     { label: 'Categories', to: '/category', icon: Tag, keywords: ['budgets'] },
     { label: 'Periods', to: '/period-history', icon: History, keywords: ['pay periods', 'history'] },
     { label: 'Settings', to: '/menu', icon: Settings, keywords: ['appearance', 'notifications', 'export', 'log out'] },
@@ -93,7 +93,7 @@ function PaletteBody({ onDone, onNewTransaction }: { onDone: () => void; onNewTr
             activePeriod
                 ? { id: 'close-period', group: 'Actions', label: 'Close this period', hint: 'Periods', keywords: ['payday', 'end'], icon: icon(CalendarCheck), run: go('/period-history', { close: true }) }
                 : { id: 'open-period', group: 'Actions', label: 'Open a period', hint: 'Periods', keywords: ['payday', 'start', 'salary'], icon: icon(CalendarPlus), run: go('/period-history', { open: true }) },
-            { id: 'add-account', group: 'Actions', label: 'Add an account', hint: 'Accounts', keywords: ['bank', 'wallet', 'cash'], icon: icon(Wallet), run: go('/accounts', { add: true }) },
+            { id: 'add-account', group: 'Actions', label: 'Add an account', hint: 'Accounts', keywords: ['bank', 'wallet', 'cash', 'e-wallet', 'savings', 'credit card', 'asset', 'gold'], icon: icon(Wallet), run: go('/accounts', { add: true }) },
             { id: 'add-category', group: 'Actions', label: 'Add a category', hint: 'Categories', keywords: ['budget'], icon: icon(Tag), run: go('/category', { add: true }) },
             ...THEMES.filter(t => t.value !== theme).map((t): CommandItem => ({
                 id: `theme-${t.value}`, group: 'Actions', label: t.label, hint: 'Appearance', keywords: ['theme', 'appearance', 'mode'], icon: icon(t.icon), run: () => setTheme(t.value),

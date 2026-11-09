@@ -15,6 +15,8 @@ import { AccountPickerDrawer } from '@/components/account-picker-drawer'
 import { CategoryGrid } from '@/components/category-grid'
 import { DateQuickPicker } from '@/components/date-quick-picker'
 import type { WishListItem, Account, Category } from '@/types'
+import { defaultAccount } from '@/lib/account-roles'
+import { accountSubline } from '@/lib/account-spend'
 import { BusyLabel } from '@/components/busy-label'
 
 interface ContributeQuantityFormProps {
@@ -58,7 +60,7 @@ export function ContributeQuantityForm({ item, periodStart, onSuccess }: Contrib
     // What's recorded: whole rupiah (the service rounds the same way).
     const total = Math.round(quantityNum * pricePerUnitNum)
 
-    useSeedOnce(accountsData, accs => setAccountId(accs[0]?.id ?? ''))
+    useSeedOnce(accountsData, accs => setAccountId(defaultAccount(accs)?.id ?? ''))
     useSeedOnce(categoriesData, cats => setCategoryId(cats[0]?.id ?? ''))
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -198,10 +200,10 @@ export function ContributeQuantityForm({ item, periodStart, onSuccess }: Contrib
                 >
                     {selectedAccount ? (
                         <div className="flex items-center gap-3 min-w-0">
-                            <AccountTypeTile type={selectedAccount.type} savings={selectedAccount.is_savings} />
+                            <AccountTypeTile type={selectedAccount.type} savings={selectedAccount.is_savings} role={selectedAccount.role} />
                             <div className="min-w-0">
                                 <p className="text-[13px] font-medium text-ink truncate">{selectedAccount.name}</p>
-                                <p className="text-[11.5px] text-muted-ink">{formatCurrency(selectedAccount.balance)}</p>
+                                <p className="text-[11.5px] text-muted-ink">{accountSubline(selectedAccount)}</p>
                             </div>
                         </div>
                     ) : (

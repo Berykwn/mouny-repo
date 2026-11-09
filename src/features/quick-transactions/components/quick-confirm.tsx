@@ -10,6 +10,8 @@ import { useAccounts } from '@/queries'
 import { useSeedOnce } from '@/hooks/use-seed-once'
 import { quickTransactionsService } from '@/services/quick-transactions.service'
 import { formatCurrency, toISODate } from '@/lib/helpers'
+import { defaultAccount } from '@/lib/account-roles'
+import { accountSubline, overspendMessage, spendErrorMessage } from '@/lib/account-spend'
 import type { Account, PayPeriod, QuickTransactionWithCategory } from '@/types'
 import { shortDate } from '@/features/bills/lib/bill-labels'
 import { quickName } from '../lib/quick-name'
@@ -38,19 +40,21 @@ export function QuickConfirm({ quick, period, onDone, onBack }: QuickConfirmProp
 
     const { data: accountsData } = useAccounts()
     const accounts = accountsData ?? NO_ACCOUNTS
+    // The account this quick amount was last paid with, while it still exists; else the default.
     useSeedOnce(accountsData, data => {
-        if (!data.some(a => a.id === quick.last_account_id)) setAccountId(data[0]?.id ?? '')
+        if (!data.some(a => a.id === quick.last_account_id)) setAccountId(defaultAccount(data)?.id ?? '')
     })
     const account = accounts.find(a => a.id === accountId)
 
     const save = async () => {
         if (!account) { toast.error('Please select an account.'); return }
-        if (!isIncome && quick.amount > account.balance) { toast.error(`Insufficient balance in ${account.name}.`); return }
+        const overspent = isIncome ? null : overspendMessage(account, quick.amount)
+        if (overspent) { toast.error(overspent); return }
         setLoading(true)
         const { error } = await quickTransactionsService.record({ quick, account_id: account.id, note, date, pay_period_id: period.id })
         setLoading(false)
         if (error) {
-            toast.error(/insufficient|balance/i.test(error) ? `Insufficient balance in ${account.name}.` : error)
+            toast.error(spendErrorMessage(error, account))
             return
         }
         toast.success(`${quickName(quick)} ${formatCurrency(quick.amount)} saved.`)
@@ -81,10 +85,10 @@ export function QuickConfirm({ quick, period, onDone, onBack }: QuickConfirmProp
                 >
                     {account ? (
                         <div className="flex items-center gap-3 min-w-0">
-                            <AccountTypeTile type={account.type} savings={account.is_savings} />
+                            <AccountTypeTile type={account.type} savings={account.is_savings} role={account.role} />
                             <div className="min-w-0">
                                 <p className="text-[13px] font-medium text-ink truncate">{account.name}</p>
-                                <p className="text-[11.5px] text-muted-ink">{formatCurrency(account.balance)}</p>
+                                <p className="text-[11.5px] text-muted-ink">{accountSubline(account)}</p>
                             </div>
                         </div>
                     ) : (

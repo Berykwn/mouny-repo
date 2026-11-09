@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils'
 
 import { payPeriodsService } from '@/services/pay-periods.service'
 import { accountsService } from '@/services/accounts-categories.service'
+import { balanceBreakdown } from '@/lib/account-roles'
 import { useAccounts, usePeriods, usePeriodTransactions, useTransactionsOfPeriods } from '@/queries'
 import { useOnlineStatus } from '@/hooks/use-online-status'
 import { OFFLINE_REASON } from '@/components/offline-banner'
@@ -58,7 +59,8 @@ export function ClosePeriodForm({ period, onSuccess, onClosed }: ClosePeriodForm
         () => periodTxs && !historyLoading ? periodRecap(periodTxs, history ?? []) : null,
         [periodTxs, history, historyLoading],
     )
-    const balance = accounts?.reduce((s, a) => s + a.balance, 0) ?? null
+    // Net of what's owed on credit cards, as everywhere a total balance shows.
+    const balance = accounts ? balanceBreakdown(accounts).total : null
 
     // Bare YYYY-MM-DD parses as UTC midnight; compare against local midnight like the calendar does.
     const periodStart = new Date(period.start_date + 'T00:00:00')
@@ -86,7 +88,7 @@ export function ClosePeriodForm({ period, onSuccess, onClosed }: ClosePeriodForm
             toast.error(accountsError)
             return
         }
-        const closingBalance = (fresh ?? []).reduce((s, a) => s + a.balance, 0)
+        const closingBalance = balanceBreakdown(fresh ?? []).total
 
         const { error } = await payPeriodsService.close(
             period.id,

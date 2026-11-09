@@ -42,7 +42,12 @@ export type WishListItem = Database['public']['Tables']['wish_list']['Row'] & { 
 export type WishListInsert = Database['public']['Tables']['wish_list']['Insert']
 export type WishListUpdate = Database['public']['Tables']['wish_list']['Update']
 
-export type AccountType = 'bank' | 'cash'
+/** Where the money sits; only the icon and wording follow it. */
+export type AccountType = 'bank' | 'cash' | 'ewallet'
+/** What the money is for; the logic follows it (see lib/account-roles). */
+export type AccountRole = 'everyday' | 'savings' | 'asset' | 'credit'
+/** How a cash count records a difference (see features/accounts/lib/cash-count). */
+export type CountAs = 'spending' | 'income' | 'correction'
 export type CategoryType = 'income' | 'expense'
 /** transfer_in / transfer_out: money changing hands, not income or spending (see lib/transaction-type). */
 export type TransactionType = 'income' | 'expense' | 'transfer_in' | 'transfer_out'
@@ -54,7 +59,8 @@ export type WishListPriority = 'low' | 'medium' | 'high'
 export const WISH_LIST_UNITS = ['gram', 'kg', 'ons', 'pcs', 'USD'] as const
 
 export type TransactionWithDetails = Transaction & {
-    account: Pick<Account, 'id' | 'name' | 'type' | 'is_savings'>
+    /** `role` is the account's role today (is_savings is as it was at the time). */
+    account: Pick<Account, 'id' | 'name' | 'type' | 'is_savings'> & { role?: string }
     category: Pick<Category, 'id' | 'name' | 'color' | 'bg_color' | 'icon' | 'is_savings' | 'kind'> | null
 }
 

@@ -10,8 +10,10 @@ import { useAccounts, useCategories } from '@/queries'
 import { useSeedOnce } from '@/hooks/use-seed-once'
 import { recurringBillsService, type BillInput } from '@/services/recurring-bills.service'
 import { resolveCategoryKind } from '@/lib/category-kind'
-import { formatCurrency, formatCurrencyInput, parseCurrencyInput, toISODate } from '@/lib/helpers'
+import { formatCurrencyInput, parseCurrencyInput, toISODate } from '@/lib/helpers'
 import { cn } from '@/lib/utils'
+import { defaultAccount } from '@/lib/account-roles'
+import { accountSubline } from '@/lib/account-spend'
 import type { Account, BillFrequency, BillKind, Category, RecurringBill } from '@/types'
 import { MONTH_NAMES } from '../lib/bill-labels'
 import { BusyLabel } from '@/components/busy-label'
@@ -90,7 +92,7 @@ export function BillForm({ initial, preset, onSuccess }: BillFormProps) {
     const { data: categoriesData } = useCategories('expense')
     const categories = categoriesData ?? NO_CATEGORIES
 
-    useSeedOnce(accountsData, data => { if (!initial) setAccountId(data[0]?.id ?? '') })
+    useSeedOnce(accountsData, data => { if (!initial) setAccountId(defaultAccount(data)?.id ?? '') })
     useSeedOnce(categoriesData, data => { if (!initial) setCategoryId(defaultCategory(data, kind)) })
 
     const account = accounts.find(a => a.id === accountId)
@@ -228,10 +230,10 @@ export function BillForm({ initial, preset, onSuccess }: BillFormProps) {
                 >
                     {account ? (
                         <div className="flex items-center gap-3 min-w-0">
-                            <AccountTypeTile type={account.type} savings={account.is_savings} />
+                            <AccountTypeTile type={account.type} savings={account.is_savings} role={account.role} />
                             <div className="min-w-0">
                                 <p className="text-[13px] font-medium text-ink truncate">{account.name}</p>
-                                <p className="text-[11.5px] text-muted-ink">{formatCurrency(account.balance)}</p>
+                                <p className="text-[11.5px] text-muted-ink">{accountSubline(account)}</p>
                             </div>
                         </div>
                     ) : (

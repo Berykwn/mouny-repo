@@ -1,7 +1,8 @@
 import { dueDatesBetween, type BillDue, type PeriodWindow } from '@/features/bills/lib/bills'
 import { getDaysBetween } from '@/lib/helpers'
 import { addDays } from '@/lib/dates'
-import type { Debt, RecurringBill } from '@/types'
+import { balanceBreakdown } from '@/lib/account-roles'
+import type { Account, Debt, RecurringBill } from '@/types'
 
 /**
  * Where the everyday accounts are heading over the next weeks, from what's on the calendar:
@@ -34,7 +35,7 @@ export interface CashOutlookInput {
     today: string
     /** Days after today to look ahead. */
     days: number
-    /** What the everyday (non-savings) accounts hold now. */
+    /** What can be spent now (outlookStartBalance). */
     startBalance: number
     /** Everyday spending per day so far: applied from tomorrow. */
     dailyPace: number
@@ -48,6 +49,14 @@ export interface CashOutlookInput {
 }
 
 export const OUTLOOK_DAYS = 42
+
+/**
+ * Where the line starts: the everyday accounts less what's owed on cards (spending on a
+ * card is spending all the same, and paying it off is only a move between the two).
+ * Savings and assets aren't spent from, so they stay out.
+ */
+export const outlookStartBalance = (accounts: Pick<Account, 'balance' | 'role' | 'is_savings'>[]) =>
+    balanceBreakdown(accounts).spendable
 
 export function buildCashOutlook(input: CashOutlookInput): CashOutlook {
     const { today, days, startBalance, dailyPace, bills, dues, window, expectedIncome, debts } = input
