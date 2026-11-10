@@ -16,6 +16,34 @@ Nothing yet.
 
 ---
 
+## [2.1.0] — 2026-11-10
+
+Recording is lighter and the numbers agree with each other. Accounts say what their money is for, keep your own order, and can be counted instead of reconciled entry by entry.
+
+> **Migrations required, in order:** `20261109000100_account_roles.sql`, `20261109000200_cash_count.sql`. Run them before deploying. Without the first, adding or editing an account and transfers fail.
+
+### Added
+- **Account roles.** Each account is *Everyday*, *Credit* or *Savings*, separately from where it sits (bank, cash or the new *e-wallet*). Savings accounts are what *Saved* used to mark.
+- **Your own order.** Reorder accounts once; the first everyday account is the default in every form, and pickers group by role in that order.
+- **Credit cards and pay-later.** A credit account may go below zero down to its limit; what's below zero shows as owed, with a *Pay off* button.
+- **Count balances.** Enter what's actually in each account and choose how the difference is recorded: as spending or income in *Unrecorded*, or as a correction. Home suggests it after a stretch without entries.
+- **Payday prompt.** On payday Home offers to start the next period and says what closing does first.
+
+### Changed
+- **No dead end when a balance is short.** Instead of *Insufficient balance*, the form offers to top up from another account and save, or to count the account.
+- Categories you use most come first, and the top one is picked. The amount field is focused when the form opens. Quick amounts only show for their own type.
+- **One set of words:** *Left* (to spend this period), *Saved* (put aside this period), *In savings* (savings balances), *Kept* (income minus spending) and *Bills due*.
+- Home says *Runs short* with the reason, instead of *On track*, when the money won't last to payday.
+- Insights' *Kept* forecast matches what closing the period shows. *Where it went* lists spending only. Insights is shorter on a phone.
+- Each period has one name, its start month, and dates are in English throughout.
+- On a phone, Accounts is a tab; Categories, Periods and Settings are under *More*.
+- A drawer opened from another drawer (Ledger → payment) stacks on top of it instead of overlapping.
+
+### Fixed
+- *Pay 500rb* on a debt or in Plan opened the form with the full amount.
+
+---
+
 ## [2.0.0] — 2026-10-27
 
 A new look and a new layout. Mouny is calmer: white pages, ink and cobalt instead of green, notes first in the ledger, and at most one suggestion per screen, always with a button that does it. It never fills anything in on a guess.
