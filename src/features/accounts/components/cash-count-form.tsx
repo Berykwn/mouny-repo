@@ -70,7 +70,9 @@ export function CashCountForm({ accounts, hasActivePeriod, onSuccess }: CashCoun
     return (
         <div className="flex flex-col gap-4 pb-2">
             <p className="text-[13px] text-muted-ink leading-snug">
-                Type what’s actually in each account right now. Leave the ones you didn’t check empty.
+                {ordered.length === 1
+                    ? `Type what’s actually in ${ordered[0].name} right now. The difference is recorded for you.`
+                    : 'Type what’s actually in each account right now. Leave the ones you didn’t check empty.'}
             </p>
 
             <ul className="flex flex-col gap-2">

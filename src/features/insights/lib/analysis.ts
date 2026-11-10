@@ -3,6 +3,8 @@ import { addDays } from '@/lib/dates'
 import { isSpending } from '@/features/transactions/lib/ledger'
 import { resolveCategoryKind } from '@/lib/category-kind'
 import { isEverydaySpending } from '@/lib/spending-pace'
+import { keptForecast } from '@/lib/period-summary'
+import type { ReserveSplit } from '@/features/bills/lib/bills'
 import type { PeriodStats } from '@/hooks/use-period-stats'
 import type { TransactionWithDetails } from '@/types'
 
@@ -39,21 +41,40 @@ const dayIndex = (start: string, date: string) => getDaysBetween(start, date.sli
 // ─── Forecast ────────────────────────────────────────────────────────────────
 
 export interface Forecast {
-    /** Income minus spending by the end, if the everyday pace holds. Savings count as kept. */
+    /**
+     * Kept when the period closes (keptForecast): income minus spending, if the everyday pace
+     * holds and the bills still to come are paid. The same quantity Close reports, so with
+     * no days left the two are equal.
+     */
     kept: number
     low: number
     high: number
     /** kept as a share of income; null without income. */
     rate: number | null
+    /** Bills due today or late, still unpaid: not in kept, since Close only counts what's paid. */
+    dueNow: number
+    /** Spending by the end on the same assumptions: income − kept. */
+    spendByEnd: number
 }
 
 /**
  * Where the open period ends. The range is one standard deviation of daily everyday
  * spending, spread over the days left (it grows with the square root of the days).
  */
-export function forecastKept(stats: PeriodStats, periodStart: string, transactions: TransactionWithDetails[]): Forecast | null {
+export function forecastKept(
+    stats: PeriodStats,
+    periodStart: string,
+    transactions: TransactionWithDetails[],
+    bills: Pick<ReserveSplit, 'toCome' | 'dueNow'> = { toCome: 0, dueNow: 0 },
+): Forecast | null {
     if (stats.isClosed || stats.projectedClose === null || stats.daysRemaining === null) return null
-    const kept = stats.projectedClose + stats.totalSavings
+    const kept = keptForecast({
+        income: stats.totalIncome,
+        spending: stats.totalSpending,
+        dailyPace: stats.dailyAvg,
+        daysRemaining: stats.daysRemaining,
+        billsToCome: bills.toCome,
+    })
     const daily = new Array(stats.daysElapsed).fill(0) as number[]
     for (const t of transactions) {
         if (!isEverydaySpending(t, stats.totalIncome)) continue
@@ -68,6 +89,8 @@ export function forecastKept(stats: PeriodStats, periodStart: string, transactio
         low: kept - spread,
         high: kept + spread,
         rate: stats.totalIncome > 0 ? kept / stats.totalIncome : null,
+        dueNow: bills.dueNow,
+        spendByEnd: stats.totalIncome - kept,
     }
 }
 
@@ -93,8 +116,11 @@ function cumulative(start: string, transactions: TransactionWithDetails[], days:
     return daily.map(v => (sum += v))
 }
 
-/** Spending by day of the period: this one so far, its forecast, and the range of earlier ones. */
-export function paceSeries(stats: PeriodStats, periodStart: string, transactions: TransactionWithDetails[], history: PastPeriod[]): PacePoint[] {
+/**
+ * Spending by day of the period: this one so far, its forecast (a straight line to
+ * `spendByEnd`, the forecast's spending by the end), and the range of earlier ones.
+ */
+export function paceSeries(stats: PeriodStats, periodStart: string, transactions: TransactionWithDetails[], history: PastPeriod[], spendByEnd: number | null = null): PacePoint[] {
     const totalDays = stats.totalDays ?? stats.daysElapsed
     const actual = cumulative(periodStart, transactions, totalDays)
     const past = history.map(p => cumulative(p.start_date, p.transactions, totalDays))
@@ -103,9 +129,9 @@ export function paceSeries(stats: PeriodStats, periodStart: string, transactions
     for (let i = 0; i < totalDays; i++) {
         const point: PacePoint = { day: i + 1, date: addDays(periodStart, i) }
         if (i < stats.daysElapsed) point.actual = actual[i]
-        if (!stats.isClosed && stats.projectedSpend !== null && i >= stats.daysElapsed - 1) {
-            // Straight from today to where the pace ends it (bills still due included).
-            const end = stats.projectedSpend - stats.totalSavings
+        if (!stats.isClosed && spendByEnd !== null && i >= stats.daysElapsed - 1) {
+            // Straight from today to where the forecast ends it.
+            const end = spendByEnd
             const span = totalDays - stats.daysElapsed
             point.forecast = span > 0 ? lastActual + ((end - lastActual) * (i - stats.daysElapsed + 1)) / span : end
         }
@@ -315,10 +341,10 @@ export interface WhatIf {
     perPeriod: number
 }
 
-/** Spending `cutPerDay` less from tomorrow to the end of the period. */
-export function whatIf(stats: PeriodStats, cutPerDay: number): WhatIf | null {
-    if (stats.isClosed || stats.projectedClose === null || stats.daysRemaining === null || stats.totalDays === null) return null
-    const before = stats.projectedClose + stats.totalSavings
+/** Spending `cutPerDay` less from tomorrow to the end of the period, from the same forecast as This period. */
+export function whatIf(stats: PeriodStats, forecast: Pick<Forecast, 'kept'> | null, cutPerDay: number): WhatIf | null {
+    if (!forecast || stats.isClosed || stats.daysRemaining === null || stats.totalDays === null) return null
+    const before = forecast.kept
     return { before, after: before + cutPerDay * stats.daysRemaining, perPeriod: cutPerDay * stats.totalDays }
 }
 

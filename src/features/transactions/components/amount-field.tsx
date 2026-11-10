@@ -9,10 +9,12 @@ interface AmountFieldProps {
     inputRef?: Ref<HTMLInputElement>
     /** Enter on the amount moves on to the note rather than saving half an entry. */
     onNext?: () => void
+    /** Take focus on mount (the drawer leaves a field that did so focused). */
+    autoFocus?: boolean
 }
 
 /** The big "Rp 38.000" at the top of the form. Whole rupiah: digits only. */
-export function AmountField({ id, value, onChange, disabled, inputRef, onNext }: AmountFieldProps) {
+export function AmountField({ id, value, onChange, disabled, inputRef, onNext, autoFocus }: AmountFieldProps) {
     const onKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
         if (e.key !== 'Enter' || !onNext) return
         e.preventDefault()
@@ -36,6 +38,7 @@ export function AmountField({ id, value, onChange, disabled, inputRef, onNext }:
                     onKeyDown={onKeyDown}
                     placeholder="0"
                     disabled={disabled}
+                    autoFocus={autoFocus}
                     className="flex-1 min-w-0 bg-transparent outline-none text-[40px] font-semibold tracking-[-0.03em] leading-tight tabular-nums text-ink placeholder:text-faint-ink disabled:opacity-60"
                 />
             </div>

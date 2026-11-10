@@ -1,4 +1,5 @@
 import { availableToSpend, overdrawnBy, owedOn, roleOf } from '@/lib/account-roles'
+import { periodShortName } from '@/lib/period-name'
 import { formatShortCurrency, getDaysBetween } from '@/lib/helpers'
 import { isEverydaySpending } from '@/lib/spending-pace'
 import { isInflow } from '@/lib/transaction-type'
@@ -193,7 +194,8 @@ export function balanceTrend(periods: PayPeriod[], currentTotal: number): TrendP
         .sort((a, b) => a.start_date.localeCompare(b.start_date))
         .slice(-TREND_PERIODS)
         .map(p => ({
-            label: new Date(p.end_date! + 'T00:00:00').toLocaleDateString('en-GB', { month: 'short' }),
+            // The period's own name, the same as everywhere else (lib/period-name).
+            label: periodShortName(p),
             value: p.closing_balance!,
         }))
     return [...closes, { label: 'Now', value: currentTotal }]

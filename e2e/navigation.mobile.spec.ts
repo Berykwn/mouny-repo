@@ -44,17 +44,28 @@ test('on a 390px phone the tab bar and links reach every page, nothing scrolls s
         await expect(tabBar(page).getByRole('link', { name: 'Plan', exact: true })).toHaveAttribute('aria-current', 'true')
     }
 
-    // Settings from Home's avatar; Accounts, Categories and Periods from Settings.
+    // Accounts is a tab of its own, lit while it's open.
+    await tabBar(page).getByRole('link', { name: 'Accounts', exact: true }).click()
+    await arrived(page, /\/accounts$/, 'Accounts')
+    await expect(tabBar(page).getByRole('link', { name: 'Accounts', exact: true })).toHaveAttribute('aria-current', 'page')
+    await expect(tabBar(page).getByRole('link', { name: 'Home', exact: true })).not.toHaveAttribute('aria-current')
+
+    // Categories, Periods and Settings from the More tab's sheet, which stays lit for them.
+    for (const [link, path, title] of [['Categories', /\/category$/, 'Categories'], ['Periods', /\/period-history$/, 'Periods'], ['Settings', /\/menu$/, 'Settings']] as const) {
+        await tabBar(page).getByRole('button', { name: 'More', exact: true }).click()
+        await page.getByRole('navigation', { name: 'More' }).getByRole('link', { name: new RegExp(`^${link}\\b`) }).click()
+        await arrived(page, path, title)
+        await expect(tabBar(page).getByRole('button', { name: 'More', exact: true })).toHaveAttribute('aria-current', 'true')
+    }
+
+    // Settings from Home's avatar too, and the money pages from its Money list.
     for (const [link, path] of [['Accounts', /\/accounts$/], ['Categories', /\/category$/], ['Periods', /\/period-history$/]] as const) {
         await tabBar(page).getByRole('link', { name: 'Home', exact: true }).click()
         await expect(greetingHeading(page)).toBeVisible()
         await main(page).getByRole('link', { name: 'Settings', exact: true }).click()
         await arrived(page, /\/menu$/, 'Settings')
-        await main(page).getByRole('link', { name: new RegExp(`^${link}\\b`) }).click()
+        await main(page).getByRole('navigation', { name: 'Money' }).getByRole('link', { name: new RegExp(`^${link}\\b`) }).click()
         await arrived(page, path, link)
-        // Back to Settings with the page's own back button.
-        await main(page).getByRole('button', { name: 'Back' }).click()
-        await arrived(page, /\/menu$/, 'Settings')
     }
 
     expect(watched.errors).toEqual([])

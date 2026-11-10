@@ -28,7 +28,7 @@ interface CommandPaletteProps {
 const icon = (Icon: LucideIcon) => <Icon className="w-[18px] h-[18px]" strokeWidth={1.9} />
 
 const PAGES: { label: string; to: string; icon: LucideIcon; keywords?: string[] }[] = [
-    { label: 'Home', to: '/', icon: House, keywords: ['dashboard', 'safe to spend'] },
+    { label: 'Home', to: '/', icon: House, keywords: ['dashboard', 'left to spend', 'safe to spend'] },
     { label: 'Ledger', to: '/transactions', icon: List, keywords: ['transactions', 'history'] },
     { label: 'Insights', to: '/insights', icon: ChartLine, keywords: ['reports', 'analytics'] },
     { label: 'Plan', to: '/plan', icon: CalendarRange, keywords: ['upcoming'] },

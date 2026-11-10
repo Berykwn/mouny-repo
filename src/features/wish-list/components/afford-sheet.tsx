@@ -92,8 +92,8 @@ export function AffordSheet({ onAddToWishlist, onClose }: AffordSheetProps) {
             {view?.alternative && <p className="text-[12.5px] text-muted-ink [&_b]:font-semibold [&_b]:text-ink">{view.alternative}</p>}
 
             <p className="text-[11.5px] text-subtle-ink leading-relaxed">
-                Judged against what’s safe to spend now, with bills still due held back
-                {pace ? `, and what your last ${pace.basedOn} closed period${pace.basedOn === 1 ? '' : 's'} usually left over` : ''}.
+                Judged against what’s left this period (bills still due already held back)
+                {pace ? `, and what your last ${pace.basedOn} closed period${pace.basedOn === 1 ? '' : 's'} usually kept` : ''}.
             </p>
 
             <div className="flex gap-2 pt-1">
@@ -119,7 +119,7 @@ function describe(v: AffordVerdict, today: string, loading: boolean): { title: s
                 title: 'Yes, you can',
                 reason: v.daysLeft
                     ? <>After buying it you’d still have <b>{formatCurrency(Math.floor(v.perDayAfter))} a day</b> until payday.</>
-                    : <>It fits in what’s safe to spend, with <b>{formatCurrency(Math.floor(v.perDayAfter))}</b> left after.</>,
+                    : <>It fits in what’s left, with <b>{formatCurrency(Math.floor(v.perDayAfter))}</b> left after.</>,
                 alternative: null,
                 tone: 'bg-brand-tint',
                 titleTone: 'text-brand-ink',
@@ -136,8 +136,8 @@ function describe(v: AffordVerdict, today: string, loading: boolean): { title: s
             return {
                 title: 'Better after payday',
                 reason: <>
-                    It’s <b>{formatCurrency(v.short)}</b> more than is safe to spend before payday{v.payday ? ` (${dayDate(v.payday)})` : ''}.
-                    {' '}Your periods usually leave about <b>{formatCurrency(Math.round(v.leftover))}</b> over, which covers it.
+                    It’s <b>{formatCurrency(v.short)}</b> more than what’s left before payday{v.payday ? ` (${dayDate(v.payday)})` : ''}.
+                    {' '}You usually keep about <b>{formatCurrency(Math.round(v.leftover))}</b> a period, which covers it.
                 </>,
                 alternative: around(v.readyAround),
                 tone: 'bg-brand-tint',
@@ -146,10 +146,10 @@ function describe(v: AffordVerdict, today: string, loading: boolean): { title: s
         case 'save':
             return {
                 title: 'Save for it first',
-                reason: <>It’s <b>{formatCurrency(v.short)}</b> more than is safe to spend now, and more than a period usually leaves over.</>,
+                reason: <>It’s <b>{formatCurrency(v.short)}</b> more than what’s left now, and more than you usually keep in a period.</>,
                 alternative: v.readyAround
-                    ? <>At your usual leftover it’s ready around <b>{aroundLabel(v.readyAround, today)}</b>.</>
-                    : <>A save-up date appears once you’ve closed a period with money left over.</>,
+                    ? <>At what you usually keep, it’s ready around <b>{aroundLabel(v.readyAround, today)}</b>.</>
+                    : <>A save-up date appears once you’ve closed a period with money kept.</>,
                 tone: 'bg-surface-hover',
                 titleTone: 'text-ink',
             }
@@ -158,7 +158,7 @@ function describe(v: AffordVerdict, today: string, loading: boolean): { title: s
                 title: 'Can’t tell yet',
                 reason: loading
                     ? <>Still loading your bills and this period’s spending. The answer shows once they’re in.</>
-                    : <>Open a pay period, and this checks the amount against what’s safe to spend in it.</>,
+                    : <>Open a pay period, and this checks the amount against what’s left in it.</>,
                 alternative: null,
                 tone: 'bg-surface-hover',
                 titleTone: 'text-ink',

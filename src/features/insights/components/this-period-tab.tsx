@@ -3,20 +3,20 @@ import { formatCurrency, formatShortCurrency } from '@/lib/helpers'
 import { cn } from '@/lib/utils'
 import { calculateHealthScore, debtPosition } from '@/lib/calculate-health-score'
 import { diffPct, type ComparableSpending } from '@/lib/comparable-spending'
-import { summarizeTransactions } from '@/lib/period-summary'
+import { keptOf, summarizeTransactions } from '@/lib/period-summary'
 import { withSavingsMoves } from '@/lib/savings-moves'
 import { MIN_PROJECTION_DAYS, type PeriodStats } from '@/hooks/use-period-stats'
 import { CategoryTile } from '@/features/categories/components/category-icon'
 import { dayDate } from '@/features/bills/lib/bill-labels'
-import { txTitle } from '@/features/transactions/lib/ledger'
+import { isSpending, txTitle } from '@/features/transactions/lib/ledger'
 import { CategoryBreakdown } from './analytics/period-analytics'
 import { KindSplitChart } from './analytics/kind-split-card'
 import { kindSplit } from '../lib/kind-split'
 import { groupExpensesByCategory } from '../lib/group-expenses-by-category'
 import type { OverviewData } from '@/types/overview.types'
 import {
-    categoryVariance, forecastKept, median, paceSeries, standOuts, STAND_OUT_MULTIPLE, USUAL_PERIODS,
-    type PastPeriod,
+    categoryVariance, median, paceSeries, standOuts, STAND_OUT_MULTIPLE, USUAL_PERIODS,
+    type Forecast, type PastPeriod,
 } from '../lib/analysis'
 import { Em, InsightBlock } from './insight-block'
 import { PaceChart, VarianceChart } from './charts'
@@ -24,6 +24,8 @@ import { PaceChart, VarianceChart } from './charts'
 interface ThisPeriodTabProps {
     data: OverviewData
     stats: PeriodStats
+    /** Where kept lands at the close (forecastKept); null for a closed period or too early. */
+    forecast: Forecast | null
     comparable: ComparableSpending | null
     /** Null while the earlier periods load. */
     history: PastPeriod[] | null
@@ -36,11 +38,11 @@ const NUMBER_WORDS = ['No', 'One', 'Two', 'Three']
 const times = (n: number) => `${n >= 10 ? Math.round(n) : n.toFixed(1).replace('.0', '').replace('.', ',')}×`
 
 /** Where this period is going, what's unusual in it, and where its money went. */
-export function ThisPeriodTab({ data, stats, comparable, history }: ThisPeriodTabProps) {
+export function ThisPeriodTab({ data, stats, forecast, comparable, history }: ThisPeriodTabProps) {
     const { period, transactions } = data
     const closed = stats.isClosed
-    const forecast = useMemo(() => forecastKept(stats, period.start_date, transactions), [stats, period.start_date, transactions])
-    const kept = closed ? stats.totalIncome - stats.totalSpending : forecast?.kept ?? null
+    // The same "kept" Close reports: income − spending, savings counting as kept.
+    const kept = closed ? keptOf(stats.totalIncome, stats.totalSpending) : forecast?.kept ?? null
     const keptRate = kept !== null && stats.totalIncome > 0 ? kept / stats.totalIncome : null
 
     // Your usual: the median share of income kept over the earlier closed periods.
@@ -55,8 +57,8 @@ export function ThisPeriodTab({ data, stats, comparable, history }: ThisPeriodTa
     // The grey band compares like with like: the last three closed periods by the same day.
     const bandHistory = useMemo(() => history?.slice(0, 3) ?? [], [history])
     const points = useMemo(
-        () => paceSeries(stats, period.start_date, transactions, bandHistory),
-        [stats, period.start_date, transactions, bandHistory]
+        () => paceSeries(stats, period.start_date, transactions, bandHistory, forecast?.spendByEnd ?? null),
+        [stats, period.start_date, transactions, bandHistory, forecast]
     )
 
     const health = useMemo(() => {
@@ -80,7 +82,9 @@ export function ThisPeriodTab({ data, stats, comparable, history }: ThisPeriodTa
 
     // Money moved into savings accounts counts as saved, like a savings expense.
     const expenses = useMemo(() => withSavingsMoves(transactions).filter(t => t.type === 'expense'), [transactions])
-    const topCategory = useMemo(() => groupExpensesByCategory(expenses)[0] ?? null, [expenses])
+    // Where it went is spending only: what was saved didn't go anywhere, it's set aside.
+    const spending = useMemo(() => expenses.filter(isSpending), [expenses])
+    const topCategory = useMemo(() => groupExpensesByCategory(spending)[0] ?? null, [spending])
     const split = useMemo(() => kindSplit(expenses, stats.totalIncome), [expenses, stats.totalIncome])
 
     const usualText = usualRate !== null && keptRate !== null
@@ -119,13 +123,17 @@ export function ThisPeriodTab({ data, stats, comparable, history }: ThisPeriodTa
                     : !forecast
                         ? <>Too early to forecast: a few days of spending first.</>
                         : forecast.kept >= 0
-                            ? <>You’ll likely end with <Em>{formatShortCurrency(forecast.kept)} kept</Em>{forecast.rate !== null && <>, about {pct(forecast.rate)} of income</>}.</>
-                            : <>At this pace you’ll end <Em tone="negative">{formatShortCurrency(-forecast.kept)} short</Em> of your income.</>}
+                            ? <>You’ll likely close with <Em>{formatShortCurrency(forecast.kept)} kept</Em>{forecast.rate !== null && <>, about {pct(forecast.rate)} of income</>}.</>
+                            : <>At this pace you’ll close <Em tone="negative">{formatShortCurrency(-forecast.kept)} short</Em> of your income.</>}
                 sub={closed
                     ? usualText.trim() || undefined
-                    : forecast ? <>Range {formatShortCurrency(forecast.low)} – {formatShortCurrency(forecast.high)}.{usualText}</> : undefined}
+                    : forecast ? <>
+                        {forecast.high - forecast.low >= 1_000 && <>Range {formatShortCurrency(forecast.low)} – {formatShortCurrency(forecast.high)}.</>}
+                        {usualText}
+                        {forecast.dueNow > 0 && <> {formatShortCurrency(forecast.dueNow)} in bills is due now or late and not in this; paying it leaves {formatShortCurrency(forecast.kept - forecast.dueNow)}.</>}
+                    </> : undefined}
                 how={<>
-                    Spending so far (savings left out). {!closed && <>For the days left, your everyday pace so far ({formatCurrency(stats.dailyAvg)}/day) carries on, bills and one-offs counted once, and bills still due are added. The range is ± one standard deviation of daily everyday spending over the days left. </>}
+                    Kept = income − spending; savings count as kept. It’s the number Close reports, so on a period’s last day the two are the same. {!closed && <>For the days left, your everyday pace so far ({formatCurrency(stats.dailyAvg)}/day) carries on, and bills due after today are taken off as they come. Bills already due (today or late) aren’t, since Close only counts what’s paid; the line under the forecast says what paying them would leave. The range is ± one standard deviation of daily everyday spending over the days left. </>}
                     {bandHistory.length > 0 && <>The grey band runs from the least to the most your last {bandHistory.length} closed period{bandHistory.length === 1 ? '' : 's'} had spent by the same day. </>}
                     “Your usual” is the median over your last {USUAL_PERIODS} closed periods, at most.
                     {stats.isEndDateEstimated && <> This period has no end date yet, so it’s assumed to run {stats.totalDays} days, like the last one.</>}
@@ -141,6 +149,7 @@ export function ThisPeriodTab({ data, stats, comparable, history }: ThisPeriodTa
 
             <InsightBlock
                 className="lg:order-2"
+                fold
                 kicker="Unusual for you"
                 title={variance === null
                     ? history === null ? 'Comparing with your usual…' : history.length === 0 ? 'Your usual appears after your first closed period.' : 'A few more days before comparing.'
@@ -157,6 +166,7 @@ export function ThisPeriodTab({ data, stats, comparable, history }: ThisPeriodTa
 
             <InsightBlock
                 className="lg:order-3"
+                fold
                 kicker="Stand-out transactions"
                 title={outs === null
                     ? 'Looking for stand-outs…'
@@ -190,18 +200,21 @@ export function ThisPeriodTab({ data, stats, comparable, history }: ThisPeriodTa
             <InsightBlock
                 className="lg:order-5"
                 kicker="Where it went"
-                title={topCategory && stats.totalExpense > 0
-                    ? <>{topCategory.name} took the most: <Em>{pct(topCategory.amount / stats.totalExpense)}</Em> of what went out.</>
-                    : 'Nothing has gone out yet this period.'}
-                sub={topCategory ? 'Tap a category for its transactions.' : undefined}
-                how="Every expense this period by category, savings included. Budgets near or over their amount come first."
+                title={topCategory && stats.totalSpending > 0
+                    ? <>{topCategory.name} took the most: <Em>{pct(topCategory.amount / stats.totalSpending)}</Em> of your spending.</>
+                    : 'Nothing spent yet this period.'}
+                sub={topCategory
+                    ? <>Tap a category for its transactions.{stats.totalSavings > 0 && <> The {formatShortCurrency(stats.totalSavings)} you saved isn’t in here: it was set aside, not spent.</>}</>
+                    : undefined}
+                how="This period’s spending by category, as a share of all spending. Savings (savings categories and moves into savings accounts) are left out. Budgets near or over their amount come first."
             >
-                <CategoryBreakdown expenses={expenses} totalExpense={stats.totalExpense} />
+                <CategoryBreakdown expenses={spending} totalExpense={stats.totalSpending} />
             </InsightBlock>
 
             {split.totalExpense > 0 && (
                 <InsightBlock
                     className="lg:order-6"
+                    fold
                     kicker="Needs · Wants · Savings"
                     title={split.hasIncome
                         ? <>Needs took <Em>{split.pctOf(split.needs)}%</Em> of income, wants {split.pctOf(split.byKind.lifestyle)}%, savings {split.pctOf(split.byKind.savings)}%.</>

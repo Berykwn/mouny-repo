@@ -55,7 +55,7 @@ export function ContributeForm({ item, onSuccess }: ContributeFormProps) {
                 <div className="flex items-start justify-between">
                     <div>
                         <p className="text-[11.5px] text-muted-ink">
-                            {parts ? `Set aside for the rest of ${item.name}` : `Saved toward ${item.name}`}
+                            {parts ? `Set aside for the rest of ${item.name}` : `Put toward ${item.name}`}
                         </p>
                         <p className="text-[22px] font-medium tracking-[-0.02em] text-ink mt-0.5 tabular-nums">
                             {formatCurrency(item.saved_amount)}
@@ -69,7 +69,7 @@ export function ContributeForm({ item, onSuccess }: ContributeFormProps) {
                     <div className="space-y-1">
                         <ProgressBar percent={percent} />
                         <p className="text-[11px] text-muted-ink">
-                            {percent >= 100 ? 'Ready to buy' : `${percent}% saved`}
+                            {percent >= 100 ? 'Ready to buy' : `${percent}% funded`}
                         </p>
                     </div>
                 )}

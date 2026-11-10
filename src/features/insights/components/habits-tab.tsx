@@ -44,7 +44,7 @@ export function HabitsTab({ transactions, history, periodEnd }: HabitsTabProps) 
             <InsightBlock
                 kicker="When you spend"
                 title={map.top
-                    ? <>{map.top.weekday} {BAND_PLURAL[map.top.band]} are <Em>{pct(map.top.share)} of your everyday and lifestyle spending</Em>.</>
+                    ? <>Over the last {map.weeks === 1 ? 'week' : `${map.weeks} weeks`}, {map.top.weekday} {BAND_PLURAL[map.top.band]} were <Em>{pct(map.top.share)} of your everyday and lifestyle spending</Em>.</>
                     : 'Log a few entries on the day you spend to see when it happens.'}
                 sub={`Average everyday and lifestyle spending per week, by weekday and the time of the entry, over the last ${map.weeks} week${map.weeks === 1 ? '' : 's'}.`}
                 how={<>
@@ -59,8 +59,9 @@ export function HabitsTab({ transactions, history, periodEnd }: HabitsTabProps) 
             <InsightBlock
                 kicker="By weekday"
                 title={weekdayTotal > 0
-                    ? <>{WEEKDAY_NAMES[topDay.day]}s take <Em>{pct(topDay.total / weekdayTotal)}</Em> of this period’s everyday and lifestyle spending.</>
+                    ? <>This period, {WEEKDAY_NAMES[topDay.day]}s took <Em>{pct(topDay.total / weekdayTotal)}</Em> of your everyday and lifestyle spending.</>
                     : 'No everyday or lifestyle spending yet this period.'}
+                sub={weekdayTotal > 0 ? `This period only; When you spend looks at the last ${map.weeks === 1 ? 'week' : `${map.weeks} weeks`}, so the two can differ.` : undefined}
                 how="Everyday and lifestyle spending this period, summed by the weekday of each transaction’s date. Bills and savings are left out."
             >
                 {weekdayTotal > 0 && <WeekdayChart days={weekdays} />}

@@ -43,8 +43,18 @@ function LedgerLink({ total }: { total?: number }) {
     )
 }
 
-/** Today's entries, latest first, with what went out today beside the way to the Ledger. */
-export function TodayList({ transactions, today }: { transactions: TransactionWithDetails[]; today: string }) {
+/**
+ * Today's entries, latest first, with what went out today beside the way to the Ledger.
+ * After days without an entry the balances have likely drifted from the wallet, so the empty
+ * state asks for a count instead of calling it a quiet day.
+ */
+export function TodayList({ transactions, today, quietDays = null }: {
+    transactions: TransactionWithDetails[]
+    today: string
+    /** daysWithoutEntries: days since the last entry, once it's been a while; null otherwise. */
+    quietDays?: number | null
+}) {
+    const navigate = useNavigate()
     const { rows, otherSide } = useMemo(() => {
         const paired = pairTransfers(transactions.filter(t => t.date.slice(0, 10) === today))
         return { rows: [...paired.rows].sort(latestFirst), otherSide: paired.otherSide }
@@ -53,10 +63,23 @@ export function TodayList({ transactions, today }: { transactions: TransactionWi
 
     return (
         <HomeSection title="Today" aside={<LedgerLink total={spent} />}>
-            {rows.length === 0 ? (
-                <p className="py-2 text-[13px] text-muted-ink">Nothing logged yet today. A quiet wallet.</p>
-            ) : (
+            {rows.length > 0 ? (
                 <Rows rows={rows} otherSide={otherSide} />
+            ) : quietDays !== null ? (
+                <div className="flex items-center justify-between gap-3 rounded-[14px] border border-line px-3.5 py-3">
+                    <p className="min-w-0 text-[13px] leading-snug text-muted-ink">
+                        <span className="font-semibold text-ink">No entries for {quietDays} days.</span> Count your balances to catch up.
+                    </p>
+                    <button
+                        type="button"
+                        onClick={() => navigate('/accounts', { state: { count: true } })}
+                        className="shrink-0 h-9 rounded-full border border-line px-3.5 text-[13px] font-semibold text-ink hover:bg-surface-hover transition-colors"
+                    >
+                        Count balances
+                    </button>
+                </div>
+            ) : (
+                <p className="py-2 text-[13px] text-muted-ink">Nothing logged yet today. A quiet wallet.</p>
             )}
         </HomeSection>
     )

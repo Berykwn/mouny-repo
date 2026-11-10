@@ -18,8 +18,8 @@ test('login shows Home with the greeting and the hero; logout and login again', 
 
     await signIn(page, credentials.email, credentials.password)
 
-    // The hero: "safe to spend" with its amount.
-    const hero = main(page).getByRole('region', { name: 'Safe to spend' })
+    // The hero: what's left to spend, with its amount.
+    const hero = main(page).getByRole('region', { name: 'Left to spend' })
     await expect(hero).toBeVisible()
     await expect(hero).toContainText(/Rp/)
     await expect(greetingHeading(page)).toBeVisible()
@@ -42,7 +42,7 @@ test('login shows Home with the greeting and the hero; logout and login again', 
     await expect(page).toHaveURL(/\/accounts$/)
     await page.goto('/')
     await expect(greetingHeading(page)).toBeVisible()
-    await expect(main(page).getByRole('region', { name: 'Safe to spend' })).toBeVisible()
+    await expect(main(page).getByRole('region', { name: 'Left to spend' })).toBeVisible()
 
     expect(watched.errors).toEqual([])
 })

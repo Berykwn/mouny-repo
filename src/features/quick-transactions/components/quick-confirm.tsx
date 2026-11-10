@@ -9,6 +9,9 @@ import { CategoryTile } from '@/features/categories/components/category-icon'
 import { useAccounts } from '@/queries'
 import { useSeedOnce } from '@/hooks/use-seed-once'
 import { quickTransactionsService } from '@/services/quick-transactions.service'
+import { accountsService } from '@/services/accounts-categories.service'
+import { ShortfallPanel } from '@/features/transactions/components/shortfall-panel'
+import { shortfallFor } from '@/features/transactions/lib/shortfall'
 import { formatCurrency, toISODate } from '@/lib/helpers'
 import { defaultAccount } from '@/lib/account-roles'
 import { accountSubline, overspendMessage, spendErrorMessage } from '@/lib/account-spend'
@@ -37,6 +40,7 @@ export function QuickConfirm({ quick, period, onDone, onBack }: QuickConfirmProp
     const [note, setNote] = useState('')
     const [pickerOpen, setPickerOpen] = useState(false)
     const [loading, setLoading] = useState(false)
+    const [toppingUp, setToppingUp] = useState(false)
 
     const { data: accountsData } = useAccounts()
     const accounts = accountsData ?? NO_ACCOUNTS
@@ -45,10 +49,27 @@ export function QuickConfirm({ quick, period, onDone, onBack }: QuickConfirmProp
         if (!data.some(a => a.id === quick.last_account_id)) setAccountId(defaultAccount(data)?.id ?? '')
     })
     const account = accounts.find(a => a.id === accountId)
+    // More than the account shows: a way on rather than a refusal (see ShortfallPanel).
+    const shortfall = account && !isIncome ? shortfallFor(account, quick.amount, accounts) : null
 
-    const save = async () => {
+    /** Moves the panel's round top-up in, dated with the entry, then saves. */
+    const topUpAndSave = async () => {
+        if (!shortfall?.source || shortfall.topUp === null) return
+        const { source, account: short, topUp } = shortfall
+        setLoading(true)
+        setToppingUp(true)
+        const { error } = await accountsService.transfer(source.id, short.id, topUp, date, 'Top up')
+        setToppingUp(false)
+        setLoading(false)
+        if (error) { toast.error(spendErrorMessage(error, source)); return }
+        toast.success(`Moved ${formatCurrency(topUp)} from ${source.name} to ${short.name}.`)
+        // The cached balance catches up a moment later; the database checks the money itself.
+        await save({ toppedUp: true })
+    }
+
+    const save = async ({ toppedUp = false } = {}) => {
         if (!account) { toast.error('Please select an account.'); return }
-        const overspent = isIncome ? null : overspendMessage(account, quick.amount)
+        const overspent = isIncome || toppedUp ? null : overspendMessage(account, quick.amount)
         if (overspent) { toast.error(overspent); return }
         setLoading(true)
         const { error } = await quickTransactionsService.record({ quick, account_id: account.id, note, date, pay_period_id: period.id })
@@ -105,6 +126,10 @@ export function QuickConfirm({ quick, period, onDone, onBack }: QuickConfirmProp
                 />
             </div>
 
+            {shortfall && (
+                <ShortfallPanel shortfall={shortfall} then="save" onTopUp={() => void topUpAndSave()} busy={loading} toppingUp={toppingUp} />
+            )}
+
             <div className="space-y-1.5">
                 <Label htmlFor="quick-note" className={FIELD_LABEL}>Note <span className="normal-case tracking-normal font-normal">(optional)</span></Label>
                 <Input
@@ -130,7 +155,7 @@ export function QuickConfirm({ quick, period, onDone, onBack }: QuickConfirmProp
                 )}
                 <button
                     type="button"
-                    onClick={save}
+                    onClick={() => void save()}
                     disabled={loading}
                     className="flex-[2] h-12 rounded-[14px] text-[13px] font-semibold text-on-action bg-action hover:bg-action/90 transition-colors disabled:opacity-50"
                 >

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { period } from '@/test/fixtures'
 import { addDaysISO, paydayLabel, periodDayLabel, periodMonth, periodProgress, periodRange } from './period-progress'
 
@@ -51,10 +51,16 @@ describe('period labels', () => {
         expect(addDaysISO('2026-09-25', 29)).toBe('2026-10-24')
     })
 
-    it('names a period by the month it ends in', () => {
-        expect(periodMonth('2026-09-25', '2026-10-24')).toBe('September')
-        expect(periodMonth('2026-08-25', '2026-09-24', true)).toBe('Aug 2026')
-        expect(periodMonth('2026-10-10', null)).toBe('October')
+    it('names a period by the month it starts in, through periodName', () => {
+        vi.useFakeTimers()
+        vi.setSystemTime(new Date('2026-11-09T10:00:00'))
+        expect(periodMonth('2026-09-25')).toBe('September')
+        // One name everywhere: the year only outside this one.
+        expect(periodMonth('2025-12-10')).toBe('December 2025')
+        vi.useRealTimers()
+    })
+
+    it('writes a period’s dates as a range', () => {
         expect(periodRange('2026-09-25', '2026-10-24')).toBe('25 Sep – 24 Oct')
         expect(periodRange('2026-09-25', null)).toBe('From 25 Sep')
         expect(periodRange('2026-09-25', '2026-10-24', true)).toBe('25 Sep – about 24 Oct')

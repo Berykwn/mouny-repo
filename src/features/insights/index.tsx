@@ -122,7 +122,7 @@ function InsightsTabs({ tab, onChange }: { tab: TabId; onChange: (tab: TabId) =>
 }
 
 function InsightsBody({ periodId, isActivePeriod, tab, onOpenWhatIf }: { periodId: string; isActivePeriod: boolean; tab: TabId; onOpenWhatIf: () => void }) {
-    const { data, loading, retry, stats, comparable, history, outlook, trend } = useInsightsData(periodId)
+    const { data, loading, retry, stats, comparable, history, outlook, trend, forecast } = useInsightsData(periodId)
 
     if (loading) return <InsightsSkeleton />
     if (!data) return (
@@ -147,11 +147,11 @@ function InsightsBody({ periodId, isActivePeriod, tab, onOpenWhatIf }: { periodI
         case 'cash-flow':
             return <CashFlowTab transactions={data.transactions} stats={stats} outlook={outlook} isActivePeriod={isActivePeriod} onOpenWhatIf={onOpenWhatIf} />
         case 'trends':
-            return <TrendsTab period={data.period} periods={data.allPeriods} stats={stats} trend={trend} totalBalance={data.totalBalance} />
+            return <TrendsTab period={data.period} periods={data.allPeriods} stats={stats} forecast={forecast} trend={trend} totalBalance={data.totalBalance} />
         case 'what-if':
-            return <WhatIfTab key={periodId} stats={stats} transactions={data.transactions} />
+            return <WhatIfTab key={periodId} stats={stats} forecast={forecast} transactions={data.transactions} />
         default:
-            return <div className="pt-4 lg:pt-0"><ThisPeriodTab data={data} stats={stats} comparable={comparable} history={history} /></div>
+            return <div className="pt-4 lg:pt-0"><ThisPeriodTab data={data} stats={stats} forecast={forecast} comparable={comparable} history={history} /></div>
     }
 }
 

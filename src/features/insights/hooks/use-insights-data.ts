@@ -6,7 +6,9 @@ import { comparableSpending } from '@/lib/comparable-spending'
 import { useOverviewData } from '@/features/dashboard/hooks/use-overview-data'
 import { useCashOutlook } from '@/features/dashboard/hooks/use-cash-outlook'
 import { usePeriodTrend } from './use-period-trend'
-import { USUAL_PERIODS, type PastPeriod } from '../lib/analysis'
+import { toISODate } from '@/lib/helpers'
+import { splitReserve } from '@/features/bills/lib/bills'
+import { forecastKept, USUAL_PERIODS, type PastPeriod } from '../lib/analysis'
 
 /**
  * Everything Insights reads for one period, worked out once so every tab agrees: the
@@ -39,7 +41,13 @@ export function useInsightsData(periodId: string) {
     const outlook = useCashOutlook(data?.period, data?.accounts, stats, reserve)
     const trend = usePeriodTrend(data?.allPeriods ?? [], data?.period ?? null, data?.transactions ?? [])
 
-    return { ...overview, reserve, stats, comparable, history, outlook, trend }
+    // One forecast of "kept" for every tab, on the same footing as what Close reports.
+    const forecast = useMemo(
+        () => data ? forecastKept(stats, data.period.start_date, data.transactions, splitReserve(reserve.dues, toISODate())) : null,
+        [data, stats, reserve.dues]
+    )
+
+    return { ...overview, reserve, stats, comparable, history, outlook, trend, forecast }
 }
 
 export type InsightsData = ReturnType<typeof useInsightsData>

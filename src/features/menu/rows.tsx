@@ -10,11 +10,13 @@ export interface RowProps {
     label: string
     sub: string
     flag?: { text: string; className: string } | null
+    /** Runs as the row is followed, e.g. to close the sheet it sits in. */
+    onClick?: () => void
 }
 
-export function Row({ to, icon: Icon, tint, label, sub, flag }: RowProps) {
+export function Row({ to, icon: Icon, tint, label, sub, flag, onClick }: RowProps) {
     return (
-        <NavLink to={to} className="flex items-center gap-3 px-4 py-3 hover:bg-surface-soft transition-colors">
+        <NavLink to={to} onClick={onClick} className="flex items-center gap-3 px-4 py-3 hover:bg-surface-soft transition-colors">
             <span className={cn('w-9 h-9 rounded-[10px] flex items-center justify-center shrink-0', TINT[tint])}>
                 <Icon className="w-4 h-4" strokeWidth={1.9} />
             </span>

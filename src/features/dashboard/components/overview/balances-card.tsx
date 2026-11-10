@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 import { ChevronRight, Wallet } from 'lucide-react'
 import { AccountTypeTile } from '@/components/account-type-icon'
 import { availableToSpend, balanceBreakdown, pickerOrder, ROLE_LABEL, roleOf } from '@/lib/account-roles'
-import { formatCurrency } from '@/lib/helpers'
+import { formatCurrency, formatShortCurrency } from '@/lib/helpers'
 import { cn } from '@/lib/utils'
 import type { Account } from '@/types'
 import { HomeSection } from '../home/home-section'
@@ -30,8 +30,10 @@ function accountLabel(account: Account): string {
 /** One quiet row with the total; it opens Accounts, which has no tab of its own. */
 export function BalancesRow({ accounts, isActivePeriod, closingBalance }: BalancesCardProps) {
     // Net of what's owed on cards, the same sum a period stores as its closing balance.
-    const accountsTotal = balanceBreakdown(accounts).total
-    const total = isActivePeriod ? accountsTotal : (closingBalance ?? accountsTotal)
+    const breakdown = balanceBreakdown(accounts)
+    const total = isActivePeriod ? breakdown.total : (closingBalance ?? breakdown.total)
+    // A savings balance is "in savings"; "saved" is only what was set aside this period.
+    const inSavings = isActivePeriod && breakdown.saved > 0 ? breakdown.saved : null
 
     return (
         <Link
@@ -39,7 +41,10 @@ export function BalancesRow({ accounts, isActivePeriod, closingBalance }: Balanc
             className="flex items-center gap-3 border-b border-line py-3.5 text-left hover:bg-surface-soft transition-colors"
         >
             <Wallet aria-hidden="true" className="h-[18px] w-[18px] shrink-0 text-muted-ink" strokeWidth={1.8} />
-            <span className="flex-1 text-[14px] text-muted-ink">{isActivePeriod ? 'Balances' : 'Closing balance'}</span>
+            <span className="flex-1 min-w-0 text-[14px] text-muted-ink truncate">
+                {isActivePeriod ? 'Balances' : 'Closing balance'}
+                {inSavings !== null && <span className="text-[12.5px]"> · {formatShortCurrency(inSavings)} in savings</span>}
+            </span>
             <span className={cn('text-[15px] font-semibold tabular-nums', total < 0 ? 'text-negative' : 'text-ink')}>
                 {formatCurrency(total)}
             </span>

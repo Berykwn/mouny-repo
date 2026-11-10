@@ -39,7 +39,7 @@ export function BillDetail({ bill, due, nextDue, payments, busy, onPay, onToggle
 
     let note: { text: string; className: string } | null = null
     if (bill.paused) {
-        note = { text: 'Paused: not held back from safe to spend.', className: 'bg-surface-hover text-muted-ink' }
+        note = { text: 'Paused: not held back from what’s left.', className: 'bg-surface-hover text-muted-ink' }
     } else if (late && due?.nextDue) {
         note = { text: `Due ${shortDate(due.nextDue)} and not paid yet.`, className: 'bg-negative-soft text-negative-ink' }
     } else if (due?.status === 'paid') {

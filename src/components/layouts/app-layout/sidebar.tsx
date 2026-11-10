@@ -7,6 +7,8 @@ import { displayName } from '@/lib/greeting'
 import { useMoneyGlance, type MoneyGlance } from '@/hooks/use-money-glance'
 import { usePeriods } from '@/queries'
 import { paydayLabel, periodDayLabel, periodProgress, periodRange } from '@/features/periods/lib/period-progress'
+import { PaydayPrompt } from '@/features/periods/components/payday-prompt'
+import { periodName } from '@/lib/period-name'
 import type { PayPeriod } from '@/types'
 
 type BadgeKey = 'debts' | 'wishes' | 'bills'
@@ -19,6 +21,8 @@ interface SidebarItem {
     badge?: BadgeKey
 }
 
+// The core jobs; then the money set-up (where it sits, how it's sorted, payday to payday);
+// then planning ahead; and the app's own Settings last, as on the phone's More sheet.
 const GROUPS: { label: string | null; items: SidebarItem[] }[] = [
     {
         label: null,
@@ -26,7 +30,14 @@ const GROUPS: { label: string | null; items: SidebarItem[] }[] = [
             { to: '/', label: 'Home', icon: House, end: true },
             { to: '/transactions', label: 'Ledger', icon: List },
             { to: '/insights', label: 'Insights', icon: ChartLine },
+        ],
+    },
+    {
+        label: 'Money',
+        items: [
             { to: '/accounts', label: 'Accounts', icon: Wallet },
+            { to: '/category', label: 'Categories', icon: Tag },
+            { to: '/period-history', label: 'Periods', icon: History },
         ],
     },
     {
@@ -39,10 +50,8 @@ const GROUPS: { label: string | null; items: SidebarItem[] }[] = [
         ],
     },
     {
-        label: 'Settings',
+        label: 'App',
         items: [
-            { to: '/category', label: 'Categories', icon: Tag },
-            { to: '/period-history', label: 'Periods', icon: History },
             { to: '/menu', label: 'Settings', icon: Settings },
         ],
     },
@@ -84,6 +93,7 @@ export function Sidebar({ activePeriod, user }: SidebarProps) {
             </div>
 
             <PeriodCard period={activePeriod} />
+            <PaydayPrompt variant="compact" className="mx-1 mt-2" />
 
             <nav className="mt-3 flex flex-col flex-1 overflow-y-auto -mx-1 px-1">
                 {GROUPS.map((group, i) => (
@@ -136,8 +146,9 @@ function PeriodCard({ period }: { period: PayPeriod | null }) {
 
     return (
         <NavLink to="/period-history" className="mx-1 block rounded-[12px] bg-line-soft p-3 hover:bg-surface-hover transition-colors">
-            <p className="text-[14px] font-semibold text-ink tabular-nums">{periodRange(period.start_date, end, progress.estimated)}</p>
-            <p className="text-[12px] text-subtle-ink tabular-nums mt-0.5">{days}</p>
+            <p className="text-[14px] font-semibold text-ink">{periodName(period)} period</p>
+            <p className="text-[12px] text-subtle-ink tabular-nums mt-0.5">{periodRange(period.start_date, end, progress.estimated)}</p>
+            <p className="text-[12px] text-subtle-ink tabular-nums">{days}</p>
             {progress.fraction !== null && (
                 <div aria-hidden="true" className="mt-2 h-1 rounded-full bg-line overflow-hidden">
                     <div className="h-full rounded-full bg-ink" style={{ width: `${Math.round(progress.fraction * 100)}%` }} />

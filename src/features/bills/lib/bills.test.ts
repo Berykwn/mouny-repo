@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { tx } from '@/test/fixtures'
 import type { RecurringBill } from '@/types'
-import { billCosts, billsForPeriod, dueDatesBetween, nextDueDate, periodWindow, reservedTotal, yearlyAhead, yearlySetAside } from './bills'
+import {
+    billCosts, billsForPeriod, dueDatesBetween, dueListTitle, isPastPayday, nextDueDate, overdueBills, periodWindow, reservedTotal,
+    splitReserve, yearlyAhead, yearlySetAside,
+} from './bills'
 
 function bill(overrides: Partial<RecurringBill> = {}): RecurringBill {
     return {
@@ -103,6 +106,39 @@ describe('billsForPeriod', () => {
             tx({ recurring_bill_id: 'rent', date: '2026-10-02' }),
         ], window, '2026-10-05')
         expect(dues[0]).toMatchObject({ status: 'paid', reserved: 0, outstanding: 0 })
+    })
+})
+
+describe('splitReserve', () => {
+    const window = { start: '2026-10-01', end: '2026-10-31' }
+
+    it('splits what is still held back into bills to come and bills due now or late', () => {
+        const dues = billsForPeriod([
+            bill({ id: 'late', name: 'Internet', amount: 350_000, due_day: 3 }),
+            bill({ id: 'today', name: 'Phone', amount: 100_000, due_day: 15 }),
+            bill({ id: 'soon', name: 'Rent', amount: 2_000_000, due_day: 28 }),
+        ], [], window, '2026-10-15')
+        const split = splitReserve(dues, '2026-10-15')
+        expect(split.toCome).toBe(2_000_000)
+        expect(split.dueNow).toBe(450_000)
+        expect(split.toCome + split.dueNow).toBe(reservedTotal(dues))
+        expect(split.dueNowBills.map(d => d.bill.id)).toEqual(['late', 'today'])
+        expect(overdueBills(dues, '2026-10-15').map(d => d.bill.id)).toEqual(['late'])
+    })
+
+    it('has nothing to come once payday has passed', () => {
+        const dues = billsForPeriod([bill({ id: 'late', due_day: 3 })], [], window, '2026-11-02')
+        expect(splitReserve(dues, '2026-11-02')).toMatchObject({ toCome: 0, dueNow: 2_000_000 })
+    })
+})
+
+describe('dueListTitle', () => {
+    it('is one name before payday, and Overdue after it', () => {
+        const window = { end: '2026-11-08' }
+        expect(dueListTitle(window, '2026-11-08')).toBe('Due before payday')
+        expect(dueListTitle(window, '2026-11-09')).toBe('Overdue')
+        expect(isPastPayday(window, '2026-11-09')).toBe(true)
+        expect(dueListTitle(null, '2026-11-09')).toBe('Due before payday')
     })
 })
 

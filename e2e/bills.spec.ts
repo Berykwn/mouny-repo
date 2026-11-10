@@ -5,10 +5,15 @@ import { dialog, formatRupiah, main, escapeRegExp, parseRupiah, sidebarLink, toa
 
 requireCredentials()
 
-/** A section of the Bills page by its heading ("Due this period", "Paid this period"). */
-const section = (page: Page, title: string): Locator =>
+/** A section of the Bills page by its heading ("Due before payday" / "Overdue", "Paid this period"). */
+const section = (page: Page, title: string | RegExp): Locator =>
     // The innermost one: the page's own section contains them all.
-    main(page).locator('section').filter({ has: page.getByRole('heading', { level: 2, name: title, exact: true }) }).last()
+    main(page).locator('section').filter({
+        has: page.getByRole('heading', typeof title === 'string' ? { level: 2, name: title, exact: true } : { level: 2, name: title }),
+    }).last()
+
+/** The unpaid bills: "Due before payday", or "Overdue" once payday has passed. */
+const DUE = /^(Due before payday|Overdue)$/
 
 let leftover: { bill: string; amount: number; since: string } | null = null
 
@@ -31,7 +36,7 @@ test('pay a bill, see it paid, delete the payment, see it due again', async ({ p
     // Loaded: the bills' sections are on screen.
     await expect(main(page).getByRole('heading', { level: 2 }).first()).toBeVisible()
 
-    const due = section(page, 'Due this period')
+    const due = section(page, DUE)
     test.skip(await due.count() === 0, 'No bill is due in the demo account’s open period, so there is nothing to pay.')
 
     // A bill with one due date left, so one payment marks it paid.
@@ -85,7 +90,7 @@ test('pay a bill, see it paid, delete the payment, see it due again', async ({ p
 
     // Due again.
     await sidebarLink(page, 'Bills').click()
-    await expect(section(page, 'Due this period').getByRole('button', { name: new RegExp(`^${escapeRegExp(billName)}\\b`) })).toBeVisible()
+    await expect(section(page, DUE).getByRole('button', { name: new RegExp(`^${escapeRegExp(billName)}\\b`) })).toBeVisible()
     await expect(section(page, 'Paid this period').getByRole('button', { name: new RegExp(`^${escapeRegExp(billName)}\\b`) })).toHaveCount(0)
 
     expect(watched.errors).toEqual([])

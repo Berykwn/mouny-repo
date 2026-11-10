@@ -1,5 +1,5 @@
 import { Outlet, Link, ScrollRestoration, useLocation, useNavigate, matchPath } from 'react-router-dom'
-import { House, List, ChartLine, CalendarRange, Plus, Search } from 'lucide-react'
+import { House, List, ChartLine, CalendarRange, Plus, Search, Wallet, Ellipsis } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { lazy, Suspense, useState, useEffect, useCallback, useRef } from 'react'
 import { toISODate } from '@/lib/helpers'
@@ -12,6 +12,7 @@ import { OFFLINE_REASON } from '@/components/offline-banner'
 import { Kbd } from '@/components/command-palette/kbd'
 import { CHORD_TIMEOUT_MS, isTypingTarget, resolveShortcut } from '@/components/command-palette/shortcuts'
 import { Sidebar } from './sidebar'
+import { MoreSheet } from './more-sheet'
 import { toast } from 'sonner'
 
 // Both open on demand, so they load then rather than with every page: the form brings the
@@ -29,16 +30,21 @@ interface NavItemDef {
     also?: string[]
 }
 
-// The four core jobs; Accounts opens from Home's balances row or Settings, and Settings from the avatar.
+// Phone tabs: the core jobs, with Accounts first-class beside them (it's a sidebar item on
+// desktop). Categories, Periods and Settings sit under More; the avatar on Home opens Settings too.
 const NAV_ITEMS: NavItemDef[] = [
-    { to: '/', label: 'Home', icon: House, end: true, also: ['/accounts', '/menu', '/category', '/period-history'] },
+    { to: '/', label: 'Home', icon: House, end: true },
     { to: '/transactions', label: 'Ledger', icon: List, end: false },
+    { to: '/accounts', label: 'Accounts', icon: Wallet, end: false },
 ]
 
 const NAV_ITEMS_RIGHT: NavItemDef[] = [
     { to: '/insights', label: 'Insights', icon: ChartLine, end: false },
     { to: '/plan', label: 'Plan', icon: CalendarRange, end: false, also: ['/bills', '/debts', '/wish-list'] },
 ]
+
+/** The pages in the More sheet (more-sheet.tsx), which light up the More tab. */
+const MORE_PATHS = ['/category', '/period-history', '/menu']
 
 const ROUTE_LABELS: Record<string, string> = {
     '/': 'Home',
@@ -68,6 +74,7 @@ export default function AppLayout() {
     // Add button never writes into a closed period or misses a newly opened one.
     const { activePeriod } = usePeriods()
     const [addDrawerOpen, setAddDrawerOpen] = useState(false)
+    const [moreOpen, setMoreOpen] = useState(false)
     const [paletteOpen, setPaletteOpen] = useState(false)
     // Mounted from its first opening on, so it only loads for those who use it.
     const [paletteLoaded, setPaletteLoaded] = useState(false)
@@ -173,10 +180,10 @@ export default function AppLayout() {
                 'h-[calc(76px+env(safe-area-inset-bottom))] pb-[env(safe-area-inset-bottom)]',
                 'bg-surface border-t border-line',
             )}>
-                <div className="flex items-center h-[76px] px-1">
+                <div className="flex items-center h-[76px] px-0.5">
                     {NAV_ITEMS.map((item) => <NavItem key={item.to} {...item} />)}
 
-                    <div className="w-[72px] flex justify-center shrink-0">
+                    <div className="w-[64px] flex justify-center shrink-0">
                         <button
                             onClick={handleAddClick}
                             aria-label={online ? 'Add transaction' : `Add transaction. ${OFFLINE_REASON}`}
@@ -190,8 +197,10 @@ export default function AppLayout() {
                     </div>
 
                     {NAV_ITEMS_RIGHT.map((item) => <NavItem key={item.to} {...item} />)}
+                    <MoreTab open={moreOpen} onOpen={() => setMoreOpen(true)} />
                 </div>
             </nav>
+            <MoreSheet open={moreOpen} onClose={() => setMoreOpen(false)} />
 
         </div>
     )
@@ -240,7 +249,46 @@ function useShortcuts(handlers: ShortcutHandlers, paletteOpen: boolean) {
     }, [paletteOpen])
 }
 
-function NavItem({ to, label, icon: Icon, end, also }: NavItemDef) {
+/** The tab's look, lit or not; shared by the links and the More button. */
+function TabFace({ icon: Icon, label, isActive }: { icon: typeof House; label: string; isActive: boolean }) {
+    return (
+        <>
+            <Icon
+                aria-hidden="true"
+                className={cn('w-5 h-5', isActive ? 'text-brand' : 'text-faint-ink')}
+                strokeWidth={2}
+            />
+            <span className={cn(
+                'text-[10px] leading-none whitespace-nowrap',
+                isActive ? 'font-semibold text-brand' : 'text-subtle-ink',
+            )}>
+                {label}
+            </span>
+        </>
+    )
+}
+
+const TAB = 'flex flex-1 min-w-0 flex-col items-center justify-center gap-[5px] h-full'
+
+/** More: Categories, Periods and Settings, in a sheet; lit while on one of them. */
+function MoreTab({ open, onOpen }: { open: boolean; onOpen: () => void }) {
+    const { pathname } = useLocation()
+    const isActive = MORE_PATHS.some(p => matchPath({ path: p, end: false }, pathname))
+    return (
+        <button
+            type="button"
+            onClick={onOpen}
+            aria-haspopup="dialog"
+            aria-expanded={open}
+            aria-current={isActive ? 'true' : undefined}
+            className={TAB}
+        >
+            <TabFace icon={Ellipsis} label="More" isActive={isActive} />
+        </button>
+    )
+}
+
+function NavItem({ to, label, icon, end, also }: NavItemDef) {
     const { pathname } = useLocation()
     const own = !!matchPath({ path: to, end }, pathname)
     const alsoActive = !!also?.some(p => matchPath({ path: p, end: false }, pathname))
@@ -251,19 +299,9 @@ function NavItem({ to, label, icon: Icon, end, also }: NavItemDef) {
         <Link
             to={to}
             aria-current={own ? 'page' : alsoActive ? 'true' : undefined}
-            className="flex flex-1 flex-col items-center justify-center gap-[5px] h-full"
+            className={TAB}
         >
-            <Icon
-                aria-hidden="true"
-                className={cn('w-5 h-5', isActive ? 'text-brand' : 'text-faint-ink')}
-                strokeWidth={2}
-            />
-            <span className={cn(
-                'text-[10px] leading-none',
-                isActive ? 'font-semibold text-brand' : 'text-subtle-ink',
-            )}>
-                {label}
-            </span>
+            <TabFace icon={icon} label={label} isActive={isActive} />
         </Link>
     )
 }

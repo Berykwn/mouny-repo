@@ -4,24 +4,26 @@ import { cn } from '@/lib/utils'
 import { CATEGORY_KIND_META } from '@/lib/category-kind'
 import type { PeriodStats } from '@/hooks/use-period-stats'
 import type { TransactionWithDetails } from '@/types'
-import { kindDailyPace, whatIf } from '../lib/analysis'
+import { kindDailyPace, whatIf, type Forecast } from '../lib/analysis'
 import { BlockNote, Em, InsightBlock } from './insight-block'
 
 const STEP = 5_000
 
 interface WhatIfTabProps {
     stats: PeriodStats
+    /** The forecast This period shows: the starting point here. */
+    forecast: Forecast | null
     transactions: TransactionWithDetails[]
 }
 
 /** Spend a little less per day on everyday or lifestyle things, and see what payday looks like. */
-export function WhatIfTab({ stats, transactions }: WhatIfTabProps) {
+export function WhatIfTab({ stats, forecast, transactions }: WhatIfTabProps) {
     const [cuts, setCuts] = useState({ daily: 0, lifestyle: 0 })
     const paces = useMemo(() => ({
         daily: kindDailyPace(stats, transactions, 'daily'),
         lifestyle: kindDailyPace(stats, transactions, 'lifestyle'),
     }), [stats, transactions])
-    const result = whatIf(stats, cuts.daily + cuts.lifestyle)
+    const result = whatIf(stats, forecast, cuts.daily + cuts.lifestyle)
 
     if (!result) {
         return (
@@ -48,7 +50,7 @@ export function WhatIfTab({ stats, transactions }: WhatIfTabProps) {
                     : 'Move a slider to see what a smaller daily habit does by payday.'}
                 sub={`${days} day${days === 1 ? '' : 's'} left in this period.`}
                 how={<>
-                    Your pace per kind is its spending so far ÷ days passed, bills and one-offs left out. The cut applies from tomorrow to the end of the period: kept by payday = today’s forecast + cut per day × days left. “A full period” is the cut over {stats.totalDays} days.
+                    Your pace per kind is its spending so far ÷ days passed, bills and one-offs left out. The cut applies from tomorrow to the end of the period: kept by payday = the forecast on This period + cut per day × days left. “A full period” is the cut over {stats.totalDays} days.
                 </>}
             >
                 <div className="space-y-5">
@@ -97,7 +99,7 @@ export function WhatIfTab({ stats, transactions }: WhatIfTabProps) {
             <div className="lg:pt-0">
                 <div className="rounded-[18px] bg-brand-tint px-5 py-2">
                     <ResultRow label="Kept by payday" before={formatShortCurrency(result.before)} after={formatShortCurrency(result.after)} changed={changed} negative={result.after < 0} />
-                    <ResultRow label="Savings rate" before={rate(result.before)} after={rate(result.after)} changed={changed} />
+                    <ResultRow label="Share of income kept" before={rate(result.before)} after={rate(result.after)} changed={changed} />
                     <ResultRow label="Over a full period" before="—" after={changed ? `+${formatShortCurrency(result.perPeriod)}` : '—'} changed={changed} />
                 </div>
                 <button

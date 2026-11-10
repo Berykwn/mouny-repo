@@ -3,7 +3,8 @@ import { format } from 'date-fns'
 import { CalendarIcon } from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Calendar } from '@/components/ui/calendar'
-import { toISODate } from '@/lib/helpers'
+import { formatDateShort, toISODate } from '@/lib/helpers'
+import { periodName } from '@/lib/period-name'
 import { cn } from '@/lib/utils'
 
 interface DateQuickPickerProps {
@@ -63,7 +64,7 @@ export function DateQuickPicker({ label, date, periodStart, maxDate, onChange, d
                             className={cn(CHIP_BASE, isCustom ? CHIP_ACTIVE : CHIP_INACTIVE)}
                         >
                             <CalendarIcon aria-hidden="true" className="w-3.5 h-3.5" />
-                            {isCustom ? format(new Date(date + 'T00:00:00'), 'dd MMM') : 'Custom'}
+                            {isCustom ? formatDateShort(date) : 'Custom'}
                         </button>
                     </PopoverTrigger>
                     <PopoverContent align="end" className="w-auto p-0 rounded-[14px] border-line">
@@ -83,8 +84,9 @@ export function DateQuickPicker({ label, date, periodStart, maxDate, onChange, d
                     </PopoverContent>
                 </Popover>
             </div>
+            {/* Which period the entry lands in, by its name, and the days it can be dated on. */}
             <p className="text-[11px] text-subtle-ink">
-                {format(new Date(periodStart + 'T00:00:00'), 'dd MMM')} — {format(new Date(maxDate + 'T00:00:00'), 'dd MMM yyyy')}
+                In the {periodName(periodStart)} period · {formatDateShort(periodStart)} – {formatDateShort(maxDate)}
             </p>
         </div>
     )

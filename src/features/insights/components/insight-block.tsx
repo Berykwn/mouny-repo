@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { ChevronDown, Info } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -11,13 +11,20 @@ interface InsightBlockProps {
     how?: ReactNode
     className?: string
     children?: ReactNode
+    /**
+     * A secondary block: on a phone only its sentence shows, with the chart and the rest a
+     * tap away, so the page stays short. A desktop has the room and shows it all.
+     */
+    fold?: boolean
 }
 
 /**
  * Every Insights block reads the same way: a conclusion, the chart behind it, and how it's
  * calculated. Rows divided by a line on a phone; calm cards side by side on a desktop.
  */
-export function InsightBlock({ kicker, title, sub, how, className, children }: InsightBlockProps) {
+export function InsightBlock({ kicker, title, sub, how, className, children, fold = false }: InsightBlockProps) {
+    const [open, setOpen] = useState(false)
+    const foldable = fold && !!(sub || children || how)
     return (
         <section
             aria-label={kicker}
@@ -29,17 +36,30 @@ export function InsightBlock({ kicker, title, sub, how, className, children }: I
         >
             <p className="text-[11px] font-semibold uppercase tracking-[.14em] text-muted-ink">{kicker}</p>
             <h3 className="mt-2 text-[19px] font-semibold leading-snug tracking-[-0.015em] text-ink">{title}</h3>
-            {sub && <p className="mt-1.5 text-[13.5px] leading-relaxed text-muted-ink">{sub}</p>}
-            {children && <div className="mt-4">{children}</div>}
-            {how && (
-                <details className="group mt-4">
-                    <summary className="inline-flex cursor-pointer list-none items-center gap-1.5 text-[13px] font-semibold text-muted-ink hover:text-ink [&::-webkit-details-marker]:hidden">
-                        <Info aria-hidden="true" className="h-4 w-4" strokeWidth={1.8} />
-                        How it’s calculated
-                        <ChevronDown aria-hidden="true" className="h-3.5 w-3.5 transition-transform group-open:rotate-180" />
-                    </summary>
-                    <div className="mt-2 text-[12.5px] leading-relaxed text-muted-ink">{how}</div>
-                </details>
+            <div className={cn(foldable && !open && 'hidden lg:block')}>
+                {sub && <p className="mt-1.5 text-[13.5px] leading-relaxed text-muted-ink">{sub}</p>}
+                {children && <div className="mt-4">{children}</div>}
+                {how && (
+                    <details className="group mt-4">
+                        <summary className="inline-flex cursor-pointer list-none items-center gap-1.5 text-[13px] font-semibold text-muted-ink hover:text-ink [&::-webkit-details-marker]:hidden">
+                            <Info aria-hidden="true" className="h-4 w-4" strokeWidth={1.8} />
+                            How it’s calculated
+                            <ChevronDown aria-hidden="true" className="h-3.5 w-3.5 transition-transform group-open:rotate-180" />
+                        </summary>
+                        <div className="mt-2 text-[12.5px] leading-relaxed text-muted-ink">{how}</div>
+                    </details>
+                )}
+            </div>
+            {foldable && (
+                <button
+                    type="button"
+                    aria-expanded={open}
+                    onClick={() => setOpen(o => !o)}
+                    className="lg:hidden mt-3 inline-flex items-center gap-1.5 text-[13px] font-semibold text-brand-ink hover:text-brand"
+                >
+                    {open ? 'Show less' : 'Show details'}
+                    <ChevronDown aria-hidden="true" className={cn('h-3.5 w-3.5 transition-transform', open && 'rotate-180')} />
+                </button>
             )}
         </section>
     )

@@ -21,8 +21,12 @@ interface AccountDetailProps {
     canTransfer: boolean
     hasActivePeriod: boolean
     onTransfer: () => void
-    /** Opens the edit form on its balance adjustment. */
-    onAdjust: () => void
+    /**
+     * Opens Count for this account: type what's really in it, the difference is recorded
+     * as spending, income or a correction. One way to fix a balance, the same as the
+     * Accounts page's Count balances.
+     */
+    onCount: () => void
     /** A credit account with something owed: pay it off from an everyday account. Null when nothing can pay it. */
     onPayOff: (() => void) | null
     onEdit: () => void
@@ -38,7 +42,7 @@ const ROLE_WORD = { everyday: 'everyday', credit: 'credit', savings: 'savings' }
  * recent activity. The first action follows the role: a card is paid off, anything else
  * is transferred from.
  */
-export function AccountDetail({ account, insight, canTransfer, hasActivePeriod, onTransfer, onAdjust, onPayOff, onEdit, onDelete, onLedger }: AccountDetailProps) {
+export function AccountDetail({ account, insight, canTransfer, hasActivePeriod, onTransfer, onCount, onPayOff, onEdit, onDelete, onLedger }: AccountDetailProps) {
     const role = roleOf(account)
     const recent = insight?.recent.slice(0, RECENT_COUNT) ?? []
     const facts = [
@@ -74,7 +78,7 @@ export function AccountDetail({ account, insight, canTransfer, hasActivePeriod, 
 
             <div className="grid grid-cols-3 gap-2">
                 {role === 'credit' ? (
-                    // Moving money off a card is rare; paying it is the point. Adjust stays in Edit.
+                    // Moving money off a card is rare; paying it is the point. Count is the link below.
                     <>
                         <button type="button" onClick={onPayOff ?? undefined} disabled={!onPayOff || owed === 0} className={primary}>
                             Pay off
@@ -88,8 +92,8 @@ export function AccountDetail({ account, insight, canTransfer, hasActivePeriod, 
                         <button type="button" onClick={onTransfer} disabled={!canTransfer} className={primary}>
                             Transfer
                         </button>
-                        <button type="button" onClick={onAdjust} className={secondary}>
-                            Adjust
+                        <button type="button" onClick={onCount} className={secondary}>
+                            Count
                         </button>
                     </>
                 )}
@@ -102,6 +106,11 @@ export function AccountDetail({ account, insight, canTransfer, hasActivePeriod, 
             ) : role === 'credit' && owed > 0 && !onPayOff ? (
                 <p className="-mt-3 text-[12.5px] text-subtle-ink">Pay off needs an everyday or savings account with money in it.</p>
             ) : null}
+            {role === 'credit' && (
+                <button type="button" onClick={onCount} className="-mt-3 block text-[12.5px] font-medium text-muted-ink hover:text-ink underline-offset-2 hover:underline">
+                    Statement says something else? Count it
+                </button>
+            )}
 
             {hasActivePeriod && (
                 <div>

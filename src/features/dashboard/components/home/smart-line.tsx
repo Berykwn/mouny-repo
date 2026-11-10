@@ -3,6 +3,7 @@ import { SmartLine as SharedSmartLine } from '@/components/smart-line'
 import { useBills, useBudgets, useDebts, usePeriods, usePeriodTransactions } from '@/queries'
 import { toISODate } from '@/lib/helpers'
 import type { BillDue } from '@/features/bills/lib/bills'
+import type { CashOutlook } from '../../lib/cash-outlook'
 import type { Account, PayPeriod, TransactionWithDetails } from '@/types'
 import { pickSmartLine, type SmartLine } from '../../lib/home'
 
@@ -22,13 +23,14 @@ interface SmartLineSlotProps {
     accounts: Account[]
     dues: BillDue[]
     daysLeft: number | null
+    outlook: CashOutlook | null
 }
 
 /**
  * The one line under the hero worth acting on, if there is one. "Not now" hides that line
  * for the session; a different one (or the same one in a new state) still shows.
  */
-export function SmartLineSlot({ period, transactions, accounts, dues, daysLeft }: SmartLineSlotProps) {
+export function SmartLineSlot({ period, transactions, accounts, dues, daysLeft, outlook }: SmartLineSlotProps) {
     const { periods } = usePeriods()
     const { data: bills } = useBills()
     const { data: debts } = useDebts({ activeOnly: true })
@@ -51,8 +53,9 @@ export function SmartLineSlot({ period, transactions, accounts, dues, daysLeft }
             daysLeft,
             accounts,
             dues,
+            outlook,
         })
-    }, [bills, debts, budgets, transactions, previousTxs, daysLeft, accounts, dues])
+    }, [bills, debts, budgets, transactions, previousTxs, daysLeft, accounts, dues, outlook])
 
     if (!line || line.key === dismissed) return null
     return (

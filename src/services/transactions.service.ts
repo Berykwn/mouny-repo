@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase'
 import { fetchAllPages, handleError, invalidatesOnWrite, sessionUser, isMissingColumn, isMissingFunction, NULL_ARG, type ServiceResult, SIGNED_OUT_MESSAGE } from './_base'
 import type { Transaction, TransactionWithDetails, TransactionType } from '@/types/'
+import { countUse, type CategoryUse } from '@/features/transactions/lib/category-order'
 import { EMPTY_PERIOD_SUMMARY, summarizeTransactions, summaryFromTotals, type PeriodSummary } from '@/lib/period-summary'
 
 export interface CreateTransactionInput {
@@ -275,6 +276,25 @@ export const transactionsService = invalidatesOnWrite({
             for (const id of periodIds) summaries[id] = summarizeTransactions(rowsByPeriod[id])
 
             return { data: summaries, error: null }
+        } catch (err) {
+            return { data: null, error: handleError(err) }
+        }
+    },
+
+    /**
+     * How many transactions each category had since `since` (inclusive), by category id:
+     * what the add form orders its categories by. Only the ids are read, a page at a time.
+     */
+    async getCategoryUse(since: string): Promise<ServiceResult<CategoryUse>> {
+        try {
+            const rows = await fetchAllPages((from, to) => supabase
+                .from('transactions')
+                .select('category_id')
+                .gte('date', since)
+                .not('category_id', 'is', null)
+                .order('id')
+                .range(from, to))
+            return { data: countUse(rows), error: null }
         } catch (err) {
             return { data: null, error: handleError(err) }
         }

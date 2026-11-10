@@ -23,7 +23,7 @@ export function WishEmpty({ onAdd, disabled }: WishEmptyProps) {
             </div>
             <p className="mt-4 text-[16px] font-medium tracking-[-0.01em] text-ink">What are you saving toward?</p>
             <p className="mt-1 text-[12px] text-muted-ink leading-relaxed max-w-[300px] mx-auto">
-                Add a wish and its price. Mouny tracks what you’ve put aside and, from what you usually have left over each period, when you can have it.
+                Add a wish and its price. Mouny tracks what you’ve put aside and, from what you usually keep each period, when you can have it.
             </p>
 
             <div className="mt-4 flex flex-wrap justify-center gap-2">

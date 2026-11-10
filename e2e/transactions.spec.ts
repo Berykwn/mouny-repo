@@ -32,7 +32,7 @@ test('add an expense, edit its note, delete it; the balance comes back', async (
     const form = dialog(page, 'New transaction')
     await expect(form).toBeVisible()
     await expect(form.getByRole('button', { name: 'Expense' })).toHaveAttribute('aria-pressed', 'true')
-    await form.getByLabel('Amount').fill(String(AMOUNT))
+    await form.getByLabel('Amount', { exact: true }).fill(String(AMOUNT))
     await form.getByLabel('Note').fill(note)
 
     const categories = form.getByRole('group', { name: 'Category' }).getByRole('button')

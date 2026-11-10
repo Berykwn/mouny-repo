@@ -125,10 +125,10 @@ export default function WishListPage() {
 
     // How the months are worked out, said once, plainly.
     const etaNote = pace && pace.perDay > 0
-        ? `Months are estimates: your usual leftover, averaged over your last ${pace.basedOn} closed period${pace.basedOn === 1 ? '' : 's'}, goes to wishes one at a time, urgent first${owedFirst > 0 ? ', after your debts are paid off' : ''}.`
+        ? `Months are estimates: what you usually keep, averaged over your last ${pace.basedOn} closed period${pace.basedOn === 1 ? '' : 's'}, goes to wishes one at a time, urgent first${owedFirst > 0 ? ', after your debts are paid off' : ''}.`
         : pace
             ? 'Recent periods spent everything that came in, so there are no month estimates yet.'
-            : 'Month estimates start once you’ve closed a period: they come from what you usually have left over.'
+            : 'Month estimates start once you’ve closed a period: they come from what you usually keep.'
 
     return (
         <>
@@ -139,13 +139,13 @@ export default function WishListPage() {
                 ) : periodId ? (
                     <>
                         <Kpis className="lg:hidden" items={[
-                            { label: 'Saved toward wishes', value: formatShortCurrency(totals.saved) },
-                            { label: 'Usual leftover', value: pace ? `~${formatShortCurrency(Math.max(0, Math.round(pace.perPeriod)))}` : '—', sub: 'per period' },
+                            { label: 'Put toward wishes', value: formatShortCurrency(totals.saved) },
+                            { label: 'Usually kept', value: pace ? `~${formatShortCurrency(Math.max(0, Math.round(pace.perPeriod)))}` : '—', sub: 'per period' },
                         ]} />
                         <Kpis className="hidden lg:grid" items={[
                             { label: 'Wishes', value: items.length },
-                            { label: 'Saved toward wishes', value: plain(totals.saved) },
-                            { label: 'Usual leftover', value: pace ? `~${plain(Math.max(0, pace.perPeriod))}` : '—', sub: 'per period' },
+                            { label: 'Put toward wishes', value: plain(totals.saved) },
+                            { label: 'Usually kept', value: pace ? `~${plain(Math.max(0, pace.perPeriod))}` : '—', sub: 'per period' },
                         ]} />
 
                         {items.length === 0 ? (

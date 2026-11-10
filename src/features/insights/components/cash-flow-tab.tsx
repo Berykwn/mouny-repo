@@ -4,7 +4,7 @@ import { shortDate } from '@/features/bills/lib/bill-labels'
 import { CashOutlookChart } from '@/features/dashboard/components/cash-outlook-chart'
 import { SpendingByAccountList } from './spending-by-account-card'
 import { spendingByAccount } from '../lib/spending-by-account'
-import type { CashOutlook } from '@/features/dashboard/lib/cash-outlook'
+import { shortBeforePayday, type CashOutlook } from '@/features/dashboard/lib/cash-outlook'
 import type { PeriodStats } from '@/hooks/use-period-stats'
 import type { TransactionWithDetails } from '@/types'
 import { BlockNote, Em, InsightBlock } from './insight-block'
@@ -34,7 +34,7 @@ export function CashFlowTab({ transactions, stats, outlook, isActivePeriod, onOp
                         ? 'Working out the weeks ahead…'
                         : outlook.lowest.balance >= 0
                             ? <>Your everyday money stays above zero. Lowest point: <Em>{formatShortCurrency(outlook.lowest.balance)}</Em> on {shortDate(outlook.lowest.date)}.</>
-                            : <>Your everyday money <Em tone="negative">dips below zero</Em> around {shortDate(outlook.points.find(p => p.balance < 0)!.date)}.</>}
+                            : <>Your everyday money <Em tone="negative">dips below zero</Em> around {shortDate(outlook.points.find(p => p.balance < 0)!.date)}{shortBeforePayday(outlook) ? ', before payday' : ''}.</>}
                 sub={outlook ? 'Every bill, debt and payday on the calendar, plus your usual daily pace.' : undefined}
                 how={<>
                     Starts from what your everyday accounts hold today, less what’s owed on credit cards; savings aren’t in it. Takes off each bill still unpaid this period and every bill after it on its schedule, debts on their due date (a late one today), and your everyday pace so far ({formatShortCurrency(stats.dailyAvg)}/day) from tomorrow.

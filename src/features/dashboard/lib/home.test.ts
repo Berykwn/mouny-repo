@@ -3,8 +3,9 @@ import { tx } from '@/test/fixtures'
 import type { PeriodStats } from '@/hooks/use-period-stats'
 import type { BillDue } from '@/features/bills/lib/bills'
 import type { RecurringBill } from '@/types'
-import { heroNumbers, overdrawnBy, pickSmartLine, type SmartLineInput } from './home'
-import { buildCashOutlook, outlookStartBalance } from './cash-outlook'
+import { shortDate } from '@/features/bills/lib/bill-labels'
+import { daysWithoutEntries, heroNumbers, overdrawnBy, pickSmartLine, QUIET_DAYS, type SmartLineInput } from './home'
+import { buildCashOutlook, outlookStartBalance, shortBeforePayday } from './cash-outlook'
 
 function stats(overrides: Partial<PeriodStats> = {}): PeriodStats {
     return {
@@ -110,6 +111,18 @@ describe('heroNumbers', () => {
         expect(heroNumbers(stats({ isEndDateEstimated: true, daysRemaining: 0, daysElapsed: 30 })).pastPayday).toBe(true)
         expect(heroNumbers(stats({ isEndDateEstimated: false, daysRemaining: 0, daysElapsed: 30 })).pastPayday).toBe(false)
         expect(heroNumbers(stats({ isEndDateEstimated: true })).pastPayday).toBe(false)
+    })
+
+    it('never says on track while the cash-flow line dips below zero before payday', () => {
+        expect(heroNumbers(stats(), { shortOn: '2026-11-12' }).status).toBe('short')
+        // Even with a calm pace and late bills, running short is what Home leads with.
+        expect(heroNumbers(stats(), { shortOn: '2026-11-12', overdueCount: 2 }).status).toBe('short')
+        expect(heroNumbers(stats({ remaining: -1 }), { shortOn: '2026-11-12' }).status).toBe('over')
+    })
+
+    it('says bills are overdue rather than on track', () => {
+        expect(heroNumbers(stats(), { overdueCount: 1 }).status).toBe('overdue')
+        expect(heroNumbers(stats({ dailyAvg: 500_000 }), { overdueCount: 1 }).status).toBe('overdue')
     })
 
     it('has no pace or today marker for a closed period', () => {
@@ -251,6 +264,50 @@ describe('pickSmartLine', () => {
         expect(at(-50_000)).toBe(at(-80_000))
     })
 
+    it('leads with money running out before payday, the day the cash-flow chart names', () => {
+        const internet = bill({ id: 'net', name: 'IndiHome', amount: 350_000 })
+        const outlook = buildCashOutlook({
+            today: '2026-11-09',
+            days: 42,
+            startBalance: 500_000,
+            dailyPace: 124_000,
+            bills: [],
+            dues: [],
+            window: { start: '2026-10-10', end: '2026-11-08' },
+            expectedIncome: 9_500_000,
+            debts: [],
+        })
+        const line = pickSmartLine(input({
+            today: '2026-11-09',
+            outlook,
+            dues: [due(internet, { dueDates: ['2026-10-15'], nextDue: '2026-10-15', status: 'overdue' })],
+            // A lower-priority line that would otherwise show.
+            debts: [{ id: 'd', type: 'receivable', status: 'active', counterparty: 'Andi', remaining_amount: 500_000, due_date: '2026-10-10' }],
+        }))
+        const short = shortBeforePayday(outlook)!
+        expect(line?.kind).toBe('cash-short')
+        expect(line?.action.to).toBe('/insights?tab=cash-flow')
+        expect(line?.parts.map(p => p.text).join('')).toBe(`Your everyday money dips below zero around ${shortDate(short.date)}, before payday. IndiHome is already overdue.`)
+        // Home's status reads the same line.
+        expect(heroNumbers(stats(), { shortOn: short.date }).status).toBe('short')
+    })
+
+    it('flags overdue bills before a changed bill', () => {
+        const internet = bill({ id: 'net', name: 'IndiHome', amount: 350_000 })
+        const spotify = bill({ id: 'sp', name: 'Spotify', amount: 55_000 })
+        const line = pickSmartLine(input({
+            today: '2026-11-09',
+            bills: [bill()],
+            recentTransactions: [tx({ recurring_bill_id: 'netflix', amount: 65_000, date: '2026-10-23' })],
+            dues: [
+                due(internet, { dueDates: ['2026-10-15'], nextDue: '2026-10-15', status: 'overdue' }),
+                due(spotify, { dueDates: ['2026-11-05'], nextDue: '2026-11-05', status: 'overdue' }),
+            ],
+        }))
+        expect(line?.kind).toBe('bills-overdue')
+        expect(line?.parts.map(p => p.text).join('')).toMatch(/^IndiHome and Spotify are overdue: Rp\s405\.000 in all\.$/)
+    })
+
     it('leaves savings accounts alone', () => {
         const line = pickSmartLine(input({
             accounts: [
@@ -258,6 +315,43 @@ describe('pickSmartLine', () => {
             ],
         }))
         expect(line).toBeNull()
+    })
+})
+
+describe('daysWithoutEntries', () => {
+    it('counts the days since the last entry, from QUIET_DAYS on', () => {
+        const txs = [tx({ date: '2026-10-20' }), tx({ date: '2026-10-27' })]
+        expect(daysWithoutEntries(txs, '2026-10-10', '2026-11-09')).toBe(13)
+        expect(daysWithoutEntries(txs, '2026-10-10', '2026-10-29')).toBeNull()
+        expect(daysWithoutEntries(txs, '2026-10-10', `2026-10-${27 + QUIET_DAYS}`)).toBe(QUIET_DAYS)
+    })
+
+    it('counts from the period start without an entry, and ignores entries dated ahead', () => {
+        expect(daysWithoutEntries([], '2026-11-01', '2026-11-09')).toBe(8)
+        expect(daysWithoutEntries([tx({ date: '2026-11-20' })], '2026-11-01', '2026-11-09')).toBe(8)
+        expect(daysWithoutEntries([tx({ date: '2026-11-09' })], '2026-11-01', '2026-11-09')).toBeNull()
+    })
+})
+
+describe('shortBeforePayday', () => {
+    const base = {
+        today: '2026-10-19',
+        days: 14,
+        startBalance: 100_000,
+        dailyPace: 50_000,
+        bills: [],
+        dues: [],
+        window: { start: '2026-09-25', end: '2026-10-24' },
+        debts: [],
+    }
+
+    it('finds the first day below zero before payday', () => {
+        expect(shortBeforePayday(buildCashOutlook({ ...base, expectedIncome: 5_000_000 }))?.date).toBe('2026-10-22')
+    })
+
+    it('is null when payday comes first', () => {
+        expect(shortBeforePayday(buildCashOutlook({ ...base, startBalance: 400_000, expectedIncome: 5_000_000 }))).toBeNull()
+        expect(shortBeforePayday(null)).toBeNull()
     })
 })
 

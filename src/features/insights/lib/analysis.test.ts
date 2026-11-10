@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { tx } from '@/test/fixtures'
 import type { PeriodStats } from '@/hooks/use-period-stats'
+import { keptForecast, keptOf, summarizeTransactions } from '@/lib/period-summary'
+import { periodRecap } from '@/features/periods/lib/period-recap'
 import {
     categoryVariance, forecastKept, frequentNotes, median, paceSeries, spendingHeatmap, standOuts, timeBand, whatIf,
     type PastPeriod,
@@ -45,13 +47,21 @@ describe('median', () => {
 })
 
 describe('forecastKept', () => {
-    it('is the projected close plus what was saved, with a range from the daily spread', () => {
+    it('is kept so far less the pace over the days left and the bills to come, with a range from the daily spread', () => {
         const txs = [tx({ date: '2026-10-01', amount: 200_000, category: food }), tx({ date: '2026-10-02', amount: 0, category: food })]
-        const f = forecastKept(stats({ totalSavings: 500_000 }), '2026-10-01', txs)!
-        expect(f.kept).toBe(4_500_000)
+        // 10jt − 2jt spent − 200rb × 20 days − 300rb of bills still to come.
+        const f = forecastKept(stats({ totalSavings: 500_000 }), '2026-10-01', txs, { toCome: 300_000, dueNow: 0 })!
+        expect(f.kept).toBe(3_700_000)
+        expect(f.spendByEnd).toBe(6_300_000)
         expect(f.low).toBeLessThan(f.kept)
         expect(f.high - f.kept).toBeCloseTo(f.kept - f.low)
-        expect(f.rate).toBeCloseTo(0.45)
+        expect(f.rate).toBeCloseTo(0.37)
+    })
+
+    it('leaves bills already due out of kept, and says how much they are', () => {
+        const f = forecastKept(stats(), '2026-10-01', [], { toCome: 0, dueNow: 405_000 })!
+        expect(f.kept).toBe(4_000_000)
+        expect(f.dueNow).toBe(405_000)
     })
 
     it('has nothing to forecast for a closed period', () => {
@@ -59,13 +69,50 @@ describe('forecastKept', () => {
     })
 })
 
+describe('forecast kept against what Close reports', () => {
+    // The period from the walkthrough: past its estimated payday, two bills still unpaid.
+    const rows = [
+        tx({ type: 'income', amount: 9_500_000, date: '2026-10-10' }),
+        tx({ amount: 2_000_000, date: '2026-10-12', category: rent }),
+        tx({ amount: 4_488_000, date: '2026-10-20', category: food }),
+        tx({ amount: 1_675_000, date: '2026-10-21', category: { id: 'inv', name: 'Investments', kind: 'savings', is_savings: true } }),
+    ]
+    const summary = summarizeTransactions(rows)
+    const lastDay = stats({
+        totalIncome: summary.income,
+        totalExpense: summary.expense,
+        totalSavings: summary.savings,
+        totalSpending: summary.spending,
+        reservedBills: 405_000,
+        remaining: summary.net - 405_000,
+        daysElapsed: 30,
+        totalDays: 30,
+        daysRemaining: 0,
+        dailyAvg: 124_000,
+        projectedSpend: summary.expense + 405_000,
+        projectedClose: summary.net - 405_000,
+    })
+
+    it('is the same number with no days left', () => {
+        // Everything still unpaid is due by now, so none of it is "to come".
+        const f = forecastKept(lastDay, '2026-10-10', rows, { toCome: 0, dueNow: 405_000 })!
+        expect(f.kept).toBe(periodRecap(rows, []).kept)
+        expect(f.kept).toBe(3_012_000)
+    })
+
+    it('uses the one definition of kept', () => {
+        expect(keptOf(summary.income, summary.spending)).toBe(summary.unspent)
+        expect(keptForecast({ income: summary.income, spending: summary.spending, dailyPace: 124_000, daysRemaining: 0, billsToCome: 0 })).toBe(summary.unspent)
+    })
+})
+
 describe('paceSeries', () => {
     it('runs actual spending to today, then a forecast to the end, inside the earlier range', () => {
-        const s = stats({ daysElapsed: 2, totalDays: 4, daysRemaining: 2, projectedSpend: 400_000 })
+        const s = stats({ daysElapsed: 2, totalDays: 4, daysRemaining: 2 })
         const points = paceSeries(s, '2026-10-01', [tx({ date: '2026-10-01', amount: 100_000 }), tx({ date: '2026-10-02', amount: 100_000 })], [
             period('2026-09-01', [tx({ date: '2026-09-01', amount: 50_000 })]),
             period('2026-08-01', [tx({ date: '2026-08-02', amount: 300_000 })]),
-        ])
+        ], 400_000)
         expect(points.map(p => p.actual)).toEqual([100_000, 200_000, undefined, undefined])
         expect(points.map(p => p.forecast)).toEqual([undefined, 200_000, 300_000, 400_000])
         expect(points[0].band).toEqual([0, 50_000])
@@ -162,10 +209,16 @@ describe('frequentNotes', () => {
 
 describe('whatIf', () => {
     it('adds the daily cut over the days left, and over a whole period', () => {
-        expect(whatIf(stats(), 10_000)).toEqual({ before: 4_000_000, after: 4_200_000, perPeriod: 300_000 })
+        expect(whatIf(stats(), { kept: 4_000_000 }, 10_000)).toEqual({ before: 4_000_000, after: 4_200_000, perPeriod: 300_000 })
     })
 
-    it('has nothing to change in a closed period', () => {
-        expect(whatIf(stats({ isClosed: true }), 10_000)).toBeNull()
+    it('starts from the same forecast This period shows', () => {
+        const forecast = forecastKept(stats(), '2026-10-01', [], { toCome: 250_000, dueNow: 0 })!
+        expect(whatIf(stats(), forecast, 0)?.before).toBe(forecast.kept)
+    })
+
+    it('has nothing to change in a closed period, or without a forecast', () => {
+        expect(whatIf(stats({ isClosed: true }), { kept: 1 }, 10_000)).toBeNull()
+        expect(whatIf(stats(), null, 10_000)).toBeNull()
     })
 })

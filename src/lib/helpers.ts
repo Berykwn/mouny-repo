@@ -1,4 +1,5 @@
 import { MONTHS_SHORT } from './dates'
+import { periodShortName } from './period-name'
 /** A spending bar's colour by its share of the heaviest day, from the theme so dark mode follows. */
 export function heatBarColor(ratio: number): string {
     if (ratio >= 0.7) return 'var(--negative)'
@@ -74,19 +75,33 @@ function parseLocalDate(dateStr: string): Date {
     return /^\d{4}-\d{2}-\d{2}$/.test(dateStr) ? new Date(dateStr + 'T00:00:00') : new Date(dateStr)
 }
 
-export function formatDate(dateStr: string): string {
-    return new Intl.DateTimeFormat('id-ID', {
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric',
-    }).format(parseLocalDate(dateStr))
+// Dates read in English like the rest of the UI ("9 Nov 2026"), whatever the device's
+// language: spelled out rather than Intl, whose en-GB September is "Sept" on some ICU
+// versions and "Sep" on others, and whose id-ID gave "Okt", "Agu" and "Mei". Money stays
+// Indonesian (formatCurrency); only the dates are English.
+function dateParts(dateStr: string): { d: number; m: number; y: number } {
+    const date = parseLocalDate(dateStr)
+    return { d: date.getDate(), m: date.getMonth(), y: date.getFullYear() }
 }
 
+/** "9 Nov 2026". */
+export function formatDate(dateStr: string): string {
+    const { d, m, y } = dateParts(dateStr)
+    return `${d} ${MONTHS_SHORT[m]} ${y}`
+}
+
+/** "9 Nov". */
 export function formatDateShort(dateStr: string): string {
-    return new Intl.DateTimeFormat('id-ID', {
-        day: 'numeric',
-        month: 'short',
-    }).format(parseLocalDate(dateStr))
+    const { d, m } = dateParts(dateStr)
+    return `${d} ${MONTHS_SHORT[m]}`
+}
+
+/**
+ * "9 Nov 2026" with Indonesian month names ("9 Okt 2026"), for text that's written in
+ * Indonesian, such as the WhatsApp reminder a user sends to someone who owes them.
+ */
+export function formatDateIndonesian(dateStr: string): string {
+    return new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }).format(parseLocalDate(dateStr))
 }
 
 export function daysUntil(dateStr: string): number {
@@ -162,9 +177,10 @@ export function getInitials(user: { user_metadata?: { full_name?: string } | nul
     return user?.email ? user.email[0].toUpperCase() : '?'
 }
 
+/**
+ * A period's short name for charts and tiles: "Oct", or "Dec 2025" outside this year.
+ * The same name as everywhere else (lib/period-name); "Period" without a date.
+ */
 export function formatPeriodLabel(startDate: string | null): string {
-    if (!startDate) return 'Period'
-    // English month names like the rest of the UI ("Oct 26"), whatever the device's language.
-    const [y, m] = startDate.slice(0, 10).split('-').map(Number)
-    return `${MONTHS_SHORT[m - 1]} ${String(y).slice(2)}`
+    return startDate ? periodShortName(startDate) : 'Period'
 }

@@ -52,7 +52,7 @@ export function WishRow({ item, stop, pace, today, onOpen, onBuy, owedFirst = 0 
     } else if (isUOM) {
         sub = ready ? 'Target reached' : `Bought ${units(item.saved_quantity ?? 0)} ${unit}${eta ? ` · ${eta}` : ''}`
     } else if (ready) {
-        sub = 'Saved in full · ready to buy'
+        sub = 'Funded in full · ready to buy'
     } else if (remaining !== null) {
         sub = `${formatShortCurrency(remaining)} to go${eta ? ` · ${eta}` : ''}`
     } else {

@@ -13,7 +13,7 @@ import { daysUntil, formatCurrency, formatShortCurrency, toISODate } from '@/lib
 import type { BillKind, RecurringBill } from '@/types'
 import { Kpis, PillButton, PlanHeader, PlanRow, PlanSection, RowAmount } from '@/features/plan/components/layout'
 import { SmartLine, type SmartAction } from '@/features/plan/components/smart-line'
-import { billCosts, isRunning, nextDueDate, yearlyAhead, type BillDue } from './lib/bills'
+import { billCosts, dueListTitle, isRunning, nextDueDate, yearlyAhead, type BillDue } from './lib/bills'
 import { lastPayment, subscriptionAudit } from './lib/bill-history'
 import { dayDate, monthYear, relativeDays, scheduleLabel, setAsideText, shortDate } from './lib/bill-labels'
 import { useBillHistory } from './hooks/use-bill-history'
@@ -160,7 +160,7 @@ export default function BillsPage() {
                         </span>
                         <p className="mt-3 text-[14px] font-medium text-ink">No bills yet</p>
                         <p className="mt-0.5 text-[12px] text-muted-ink leading-relaxed">
-                            Add what you pay every month or year, and safe to spend holds back what’s still due.
+                            Add what you pay every month or year, and what’s left on Home holds back what’s still due.
                         </p>
                         <div className="mt-3 flex flex-wrap gap-1.5">
                             {SUGGESTIONS.map(s => (
@@ -185,7 +185,7 @@ export default function BillsPage() {
                             <Kpis className="hidden lg:grid" items={[
                                 { label: 'Per month', value: plain(costs.perMonth) },
                                 { label: 'Per year', value: plain(costs.perYear) },
-                                { label: 'Due now', value: plain(reserve.reserved) },
+                                { label: 'Still due', value: plain(reserve.reserved) },
                                 { label: 'Paid this period', value: plain(paidTotal) },
                             ]} />
                         </div>
@@ -193,7 +193,7 @@ export default function BillsPage() {
                         {smart && <SmartLine icon={LightbulbIcon} actions={smart.actions}>{smart.text}</SmartLine>}
 
                         {due.length > 0 && (
-                            <PlanSection title="Due this period" meta={due.length}>{due.map(dueRow)}</PlanSection>
+                            <PlanSection title={dueListTitle(reserve.window, today)} meta={due.length}>{due.map(dueRow)}</PlanSection>
                         )}
 
                         {paid.length > 0 && (

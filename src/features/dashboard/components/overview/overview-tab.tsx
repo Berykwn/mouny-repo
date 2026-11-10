@@ -14,7 +14,9 @@ import { SmartLineSlot } from '../home/smart-line'
 import { DueSoonList } from '../home/due-soon-list'
 import { LatestList, TodayList } from '../home/today-list'
 import { HomeSection } from '../home/home-section'
-import { heroNumbers } from '../../lib/home'
+import { daysWithoutEntries, heroNumbers } from '../../lib/home'
+import { shortBeforePayday } from '../../lib/cash-outlook'
+import { dueListTitle, overdueBills } from '@/features/bills/lib/bills'
 import { useIsDesktop } from '@/features/transactions/lib/use-is-desktop'
 
 // The charts library is heavy and the chart only shows on desktop: it loads when drawn.
@@ -63,11 +65,16 @@ export function OverviewTransaction({
 
     const { transactions, accounts, closingBalance } = data
     const today = toISODate()
+    // The status reads the same cash-flow line and late bills Insights and the list below show.
+    const signals = isActivePeriod
+        ? { shortOn: shortBeforePayday(outlook)?.date ?? null, overdueCount: overdueBills(reserve.dues, today).length }
+        : undefined
+    const hero = heroNumbers(stats, signals)
 
     return (
         <div className="mt-1.5 space-y-6 lg:space-y-0 lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-10 lg:items-start">
             <div className="space-y-6">
-                <HomeHero stats={stats} />
+                <HomeHero stats={stats} signals={signals} />
 
                 {isActivePeriod && (
                     <SmartLineSlot
@@ -75,7 +82,8 @@ export function OverviewTransaction({
                         transactions={transactions}
                         accounts={accounts}
                         dues={reserve.dues}
-                        daysLeft={heroNumbers(stats).daysLeft}
+                        daysLeft={hero.daysLeft}
+                        outlook={outlook}
                     />
                 )}
 
@@ -86,12 +94,12 @@ export function OverviewTransaction({
 
                 {isActivePeriod && (
                     <div className="lg:hidden">
-                        <DueSoonList dues={reserve.dues} period={data.period} />
+                        <DueSoonList dues={reserve.dues} period={data.period} title={dueListTitle(reserve.window, today)} />
                     </div>
                 )}
 
                 {isActivePeriod
-                    ? <TodayList transactions={transactions} today={today} />
+                    ? <TodayList transactions={transactions} today={today} quietDays={daysWithoutEntries(transactions, data.period.start_date, today)} />
                     : <LatestList transactions={transactions} />}
 
                 {/* On a phone the bottom nav's + button already adds a transaction. */}
@@ -100,11 +108,13 @@ export function OverviewTransaction({
                         <QuickAddCard period={data.period} />
                     </div>
                 )}
+
+                {/* Starting the next period lives in the payday prompt at the top of Home. */}
             </div>
 
             {isActivePeriod && (
                 <aside className="hidden lg:block space-y-8">
-                    <DueSoonList dues={reserve.dues} period={data.period} />
+                    <DueSoonList dues={reserve.dues} period={data.period} title={dueListTitle(reserve.window, today)} />
                     <BalancesList accounts={accounts} />
                     {outlook && isDesktop && (
                         <HomeSection

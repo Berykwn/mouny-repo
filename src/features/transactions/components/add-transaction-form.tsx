@@ -9,6 +9,7 @@ import { AmountField } from './amount-field'
 import { CategoryTileRail } from './category-tile-rail'
 import { ConsequenceStrip } from './consequence-strip'
 import { TransferFields } from './transfer-fields'
+import { ShortfallPanel } from './shortfall-panel'
 import { QuickPills } from '@/features/quick-transactions/components/quick-pills'
 import { QuickConfirm } from '@/features/quick-transactions/components/quick-confirm'
 import { transactionsService, type CreateTransactionInput } from '@/services/transactions.service'
@@ -21,9 +22,12 @@ import { useBillReserve } from '@/hooks/use-bill-reserve'
 import { cn } from '@/lib/utils'
 import { defaultAccount, pickerOrder, roleOf } from '@/lib/account-roles'
 import { accountSubline, overspendMessage, spendErrorMessage } from '@/lib/account-spend'
-import { useAccounts, useCategories, usePeriods, usePeriodTransactions, useQuickTransactions } from '@/queries'
+import { useAccounts, useCategories, useCategoryUse, usePeriods, usePeriodTransactions, useQuickTransactions } from '@/queries'
+import { useSeedOnce } from '@/hooks/use-seed-once'
 import type { Account, Category, QuickTransactionWithCategory, TransactionWithDetails } from '@/types'
 import { linkedTo, recentNotes, unpaidBillsFor } from '../lib/ledger'
+import { byUse, type CategoryUse } from '../lib/category-order'
+import { shortfallFor, type Shortfall } from '../lib/shortfall'
 import { BusyLabel } from '@/components/busy-label'
 
 type TxType = 'income' | 'expense' | 'transfer'
@@ -78,7 +82,15 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
     const { data: accountsData } = useAccounts()
     const accounts = accountsData ?? NO_ACCOUNTS
     const { data: typeCategories } = useCategories(type === 'transfer' ? null : type)
-    const categories = type === 'transfer' ? NO_CATEGORIES : typeCategories ?? NO_CATEGORIES
+    // Most used first (A–Z among equals). The counts are taken once, when they first
+    // load: a refetch after "Save & add another" mustn't shuffle the tiles under a finger.
+    const { data: categoryUseData } = useCategoryUse()
+    const [categoryUse, setCategoryUse] = useState<CategoryUse | null>(null)
+    useSeedOnce(categoryUseData, setCategoryUse)
+    const categories = useMemo(
+        () => type === 'transfer' ? NO_CATEGORIES : byUse(typeCategories ?? NO_CATEGORIES, categoryUse),
+        [type, typeCategories, categoryUse],
+    )
     const { data: periodTxs } = usePeriodTransactions(payPeriodId)
 
     const { periods } = usePeriods()
@@ -86,6 +98,12 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
     // Quick amounts set up per category; picking one swaps the form for a short confirm.
     const { data: quicks } = useQuickTransactions()
     const [quick, setQuick] = useState<QuickTransactionWithCategory | null>(null)
+    // Only the open tab's: an income amount on the Expense tab is a mis-tap waiting to happen,
+    // and a transfer has no category to be quick about.
+    const tabQuicks = useMemo(
+        () => type === 'transfer' ? [] : (quicks ?? []).filter(q => q.category.type === type),
+        [quicks, type],
+    )
     // Bills still due are held back, as on the dashboard. Worked out from every transaction,
     // so editing a bill's payment doesn't count that bill as due again.
     const billReserve = useBillReserve(periodIndex >= 0 ? periods[periodIndex] : null, periodTxs)
@@ -125,24 +143,38 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [accountsData])
 
-    // Default the category when the type changes (or its categories first arrive), but
-    // not on a refetch of the same type, which would undo the user's pick.
-    const categoriesSeededFor = useRef<TxType | null>(null)
+    // Default the category when the type changes (or its categories first arrive): the
+    // type's most used one, the likeliest pick, so a usual entry needs no tap here. Picking
+    // nothing would cost every entry a tap; picking A–Z's first (Coffee, Bonus) was wrong
+    // more often than right. Not on a refetch of the same type, and never over a tile the
+    // user tapped: when the counts arrive after the categories, an untouched default moves
+    // to the most used, a hand-picked one stays.
+    const categorySeed = useRef<{ type: TxType; withUse: boolean } | null>(null)
+    const categoryPickedByHand = useRef(false)
+    const pickCategory = (id: string) => {
+        categoryPickedByHand.current = true
+        setCategoryId(id)
+    }
     useEffect(() => {
+        const seeded = categorySeed.current
+        if (seeded?.type !== type) categoryPickedByHand.current = false
         if (type === 'transfer') {
-            categoriesSeededFor.current = type
+            categorySeed.current = { type, withUse: true }
             setCategoryId('')
             return
         }
-        if (!typeCategories || categoriesSeededFor.current === type) return
-        categoriesSeededFor.current = type
+        if (!typeCategories) return
+        const withUse = !!categoryUse
+        if (seeded?.type === type && (seeded.withUse || !withUse || categoryPickedByHand.current)) return
+        categorySeed.current = { type, withUse }
         // Editing: keep the transaction's own category while its type is unchanged, none
         // included: an uncategorised entry isn't quietly given the first category on save.
         const keep = initial && type === initial.type
             && (!initial.category_id || typeCategories.some(c => c.id === initial.category_id))
-        setCategoryId(keep ? initial.category_id ?? '' : typeCategories[0]?.id ?? '')
+        setCategoryId(keep ? initial.category_id ?? '' : categories[0]?.id ?? '')
+        // `categories` is typeCategories ordered by categoryUse, both already deps.
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [type, typeCategories])
+    }, [type, typeCategories, categoryUse])
 
     // "Left this period" baseline for the consequence strip, from the period's cached
     // transactions; the strip itself adds the in-progress amount.
@@ -211,29 +243,78 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
     const transferTo = accounts.find((a) => a.id === toAccountId)
     const transferSaves = !!transferTo?.is_savings && !!transferFrom && !transferFrom.is_savings
     const transferUnsaves = !!transferFrom?.is_savings && !!transferTo && !transferTo.is_savings
+    const parsedTransfer = parseCurrencyInput(transferAmount)
 
-    const handleSubmit = async (mode: 'save' | 'save-and-add-another') => {
+    // More than the paying account shows: the form says so and offers a way on (see
+    // ShortfallPanel) instead of only refusing on save. An expense being edited on the same
+    // account gives its old amount back first, so only the difference has to be there.
+    const heldBack = initial && initial.type === 'expense' && initial.account_id === accountId ? initial.amount : 0
+    const shortfall: Shortfall<Account> | null = type === 'expense' && selectedAccount && !moneyLocked
+        ? shortfallFor(selectedAccount, parsedAmount, accounts, { heldBack })
+        : type === 'transfer' && transferFrom
+            // A top-up from the account the transfer goes to would be a round trip.
+            ? shortfallFor(transferFrom, parsedTransfer, accounts, { exclude: [toAccountId] })
+            : null
+    const [toppingUp, setToppingUp] = useState(false)
+
+    /** What stops the entry being saved, money aside (the shortfall is checked on its own). */
+    const problem = (): string | null => {
         if (type === 'transfer') {
-            if (!fromAccountId) { toast.error('Please select an account.'); return }
-            if (!toAccountId) { toast.error('Select a destination account.'); return }
-            if (fromAccountId === toAccountId) { toast.error('Source and destination accounts must be different.'); return }
+            if (!fromAccountId) return 'Please select an account.'
+            if (!toAccountId) return 'Select a destination account.'
+            if (fromAccountId === toAccountId) return 'Source and destination accounts must be different.'
+            if (!transferAmount || parsedTransfer <= 0) return 'Enter a valid amount.'
+            if (date < periodStart || date > maxDate) return 'Pick a date in this period.'
+            return null
+        }
+        if (!amount || parsedAmount <= 0) return 'Invalid amount.'
+        if (!accountId) return 'Please select an account.'
+        // An uncategorised entry being edited may stay that way; a new one needs a category.
+        const staysUncategorised = !!initial && !initial.category_id && type === initial.type
+        if (!categoryId && !staysUncategorised) return 'Please select a category.'
+        if (date < periodStart) return `Date cannot be before period start (${periodStart}).`
+        if (date > maxDate) return `Date cannot be after period end (${maxDate}).`
+        return null
+    }
 
-            const parsedTransfer = parseCurrencyInput(transferAmount)
-            if (!transferAmount || parsedTransfer <= 0) { toast.error('Enter a valid amount.'); return }
+    /**
+     * The panel's "Top up … & save": move the round amount in from the fullest other
+     * everyday account, dated with the entry so it lands first, then save the entry as
+     * typed. Checked up front, so money isn't moved for an entry that then can't be saved.
+     */
+    const topUpAndSave = async () => {
+        if (!shortfall?.source || shortfall.topUp === null) return
+        const blocked = problem()
+        if (blocked) { toast.error(blocked); return }
+        const { source, account, topUp } = shortfall
+        setLoading(true)
+        setToppingUp(true)
+        const { error } = await accountsService.transfer(source.id, account.id, topUp, date, 'Top up')
+        setToppingUp(false)
+        setLoading(false)
+        if (error) { toast.error(spendErrorMessage(error, source)); return }
+        toast.success(`Moved ${formatCurrency(topUp)} from ${source.name} to ${account.name}.`)
+        // The cached balances catch up a moment later; the database checks the money itself.
+        await handleSubmit('save', { toppedUp: true })
+    }
 
-            const fromAccount = accounts.find((a) => a.id === fromAccountId)
-            const overspent = fromAccount && overspendMessage(fromAccount, parsedTransfer)
-            if (overspent) { toast.error(overspent); return }
-            if (date < periodStart || date > maxDate) { toast.error('Pick a date in this period.'); return }
+    const handleSubmit = async (mode: 'save' | 'save-and-add-another', { toppedUp = false } = {}) => {
+        const blocked = problem()
+        if (blocked) { toast.error(blocked); return }
+        if (shortfall && !toppedUp) {
+            // The panel is already on screen with the ways on; the toast names the account.
+            toast.error(overspendMessage(shortfall.account, Infinity) ?? `Not enough in ${shortfall.account.name}.`)
+            return
+        }
 
+        if (type === 'transfer') {
             setLoading(true)
             const { error } = await accountsService.transfer(fromAccountId, toAccountId, parsedTransfer, date, note)
             setLoading(false)
 
-            if (error) { toast.error(spendErrorMessage(error, fromAccount)); return }
+            if (error) { toast.error(spendErrorMessage(error, transferFrom)); return }
 
-            const toAccount = accounts.find((a) => a.id === toAccountId)
-            toast.success(`Transferred ${formatCurrency(parsedTransfer)} to ${toAccount?.name}.`)
+            toast.success(`Transferred ${formatCurrency(parsedTransfer)} to ${transferTo?.name}.`)
 
             if (mode === 'save') {
                 onSuccess()
@@ -243,29 +324,6 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
             setTransferAmount('')
             setNote('')
             amountInputRef.current?.focus()
-            return
-        }
-
-        if (!amount || parsedAmount <= 0) {
-            toast.error('Invalid amount.')
-            return
-        }
-        if (!accountId) {
-            toast.error('Please select an account.')
-            return
-        }
-        // An uncategorised entry being edited may stay that way; a new one needs a category.
-        const staysUncategorised = !!initial && !initial.category_id && type === initial.type
-        if (!categoryId && !staysUncategorised) {
-            toast.error('Please select a category.')
-            return
-        }
-        if (date < periodStart) {
-            toast.error(`Date cannot be before period start (${periodStart}).`)
-            return
-        }
-        if (date > maxDate) {
-            toast.error(`Date cannot be after period end (${maxDate}).`)
             return
         }
 
@@ -321,7 +379,7 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
         setLoading(false)
 
         if (error) {
-            toast.error(error)
+            toast.error(spendErrorMessage(error, selectedAccount))
             return
         }
 
@@ -406,13 +464,6 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
             className="flex flex-col gap-4"
             onSubmit={(e) => { e.preventDefault(); if (!loading) void handleSubmit('save') }}
         >
-            {!initial && quicks && quicks.length > 0 && (
-                <div role="group" aria-labelledby="tx-quick-amounts-label" className="space-y-1.5">
-                    <Label id="tx-quick-amounts-label" className="text-[12px] font-medium text-muted-ink">Quick amounts</Label>
-                    <QuickPills quicks={quicks} onPick={setQuick} disabled={loading} />
-                </div>
-            )}
-
             {/* Type segmented control */}
             <div role="group" aria-label="Transaction type" className="relative flex w-full rounded-[14px] bg-surface-hover p-[3px] gap-1">
                 <div
@@ -440,6 +491,14 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
                 ))}
             </div>
 
+            {/* Under the tabs, since they follow them: a tab's own amounts only. */}
+            {!initial && tabQuicks.length > 0 && (
+                <div role="group" aria-labelledby="tx-quick-amounts-label" className="space-y-1.5">
+                    <Label id="tx-quick-amounts-label" className="text-[12px] font-medium text-muted-ink">Quick amounts</Label>
+                    <QuickPills quicks={tabQuicks} onPick={setQuick} disabled={loading} />
+                </div>
+            )}
+
             {/* Amount, then the note, then the category */}
             {type !== 'transfer' ? (
                 <>
@@ -450,6 +509,9 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
                         onChange={setAmount}
                         onNext={focusNote}
                         disabled={loading || moneyLocked}
+                        // A new entry starts with the amount, so the keypad comes up with the
+                        // drawer. Editing usually fixes something else: no keyboard uninvited.
+                        autoFocus={!initial}
                     />
 
                     {noteField}
@@ -459,7 +521,7 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
                         <CategoryTileRail
                             categories={categories}
                             selectedId={categoryId || null}
-                            onSelect={setCategoryId}
+                            onSelect={pickCategory}
                             disabled={loading}
                         />
                     </div>
@@ -545,6 +607,10 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
                         {dateRow}
                     </div>
 
+                    {shortfall && (
+                        <ShortfallPanel shortfall={shortfall} then="save" onTopUp={() => void topUpAndSave()} busy={loading} toppingUp={toppingUp} />
+                    )}
+
                     {/* Live consequence */}
                     {leftThisPeriod !== null && parsedAmount > 0 && (
                         <ConsequenceStrip
@@ -581,6 +647,10 @@ export function AddTransactionForm({ payPeriodId, periodStart, maxDate, defaultD
 
                     {/* A transfer made yesterday belongs to yesterday, like any other entry. */}
                     {dateRow}
+
+                    {shortfall && (
+                        <ShortfallPanel shortfall={shortfall} then="transfer" onTopUp={() => void topUpAndSave()} busy={loading} toppingUp={toppingUp} />
+                    )}
 
                     {(transferSaves || transferUnsaves) && (
                         <p className="rounded-[14px] bg-line-soft px-3.5 py-3 text-[12px] text-muted-ink leading-relaxed">

@@ -1,9 +1,9 @@
-import { formatCurrency, formatDate } from '@/lib/helpers'
+import { formatCurrency, formatDateIndonesian } from '@/lib/helpers'
 import type { DebtWithAccount } from '@/types'
 
 /** A polite nudge to send the borrower, in the language most counterparties will read. */
 export function reminderText(debt: Pick<DebtWithAccount, 'counterparty' | 'remaining_amount' | 'due_date'>): string {
-    const due = debt.due_date ? ` yang jatuh tempo ${formatDate(debt.due_date)}` : ''
+    const due = debt.due_date ? ` yang jatuh tempo ${formatDateIndonesian(debt.due_date)}` : ''
     return `Halo ${debt.counterparty}, sekadar mengingatkan soal pinjaman ${formatCurrency(debt.remaining_amount)}${due}. Kalau sudah longgar, kabari ya. Terima kasih!`
 }
 

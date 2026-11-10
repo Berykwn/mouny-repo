@@ -1,6 +1,7 @@
 import { ChevronsUpDown } from 'lucide-react'
 import type { PayPeriod } from '@/types'
 import { getDaysBetween } from '@/lib/helpers'
+import { periodShortName } from '@/lib/period-name'
 
 interface PeriodChipProps {
     period: PayPeriod
@@ -8,7 +9,8 @@ interface PeriodChipProps {
 }
 
 export function PeriodChip({ period, onClick }: PeriodChipProps) {
-    const month = new Date(period.start_date + 'T00:00:00').toLocaleDateString('en-GB', { month: 'short' })
+    // The one name a period goes by everywhere (lib/period-name).
+    const month = periodShortName(period)
     // Both ends count: a period's first day is day 1 (matches usePeriodStats).
     const totalDays = period.end_date
         ? getDaysBetween(period.start_date, period.end_date) + 1

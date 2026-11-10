@@ -22,7 +22,8 @@ interface OweRowProps {
     stop: PayoffStop | undefined
     canPay: boolean
     onOpen: () => void
-    onPay: () => void
+    /** Gets the amount on the button, so the pay sheet opens on exactly that. */
+    onPay: (amount: number) => void
 }
 
 /**
@@ -48,7 +49,7 @@ export function OweRow({ debt, stop, canPay, onOpen, onPay }: OweRowProps) {
             subClassName={due.late ? 'text-negative' : undefined}
             onOpen={onOpen}
             end={toPay > 0 && canPay
-                ? <PillButton onClick={onPay}>Pay {formatShortCurrency(toPay)}</PillButton>
+                ? <PillButton onClick={() => onPay(toPay)}>Pay {formatShortCurrency(toPay)}</PillButton>
                 : <RowAmount sub={`of ${plain(debt.total_amount)}`}>{plain(debt.remaining_amount)}</RowAmount>}
         />
     )

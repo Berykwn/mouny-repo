@@ -112,16 +112,20 @@ function budgetColor(ratio: number): string {
 
 // ─── Category breakdown ───────────────────────────────────────────────────────
 
+/** Rows a phone shows before "Show all": the budgets closest to their limit and the biggest. */
+const PHONE_ROWS = 6
+
 interface CategoryBreakdownProps {
-  /** The period's expenses, savings moves included (withSavingsMoves). */
+  /** The expenses to break down: Insights passes spending only, savings left out. */
   expenses: TransactionWithDetails[]
-  /** Every expense, savings included. */
+  /** Their total: the base each row's share is of. */
   totalExpense: number
 }
 
 /** The period's expenses by category, with a donut and each budget's progress; a row opens its transactions. */
 export function CategoryBreakdown({ expenses, totalExpense }: CategoryBreakdownProps) {
   const [expandedCategoryId, setExpandedCategoryId] = useState<string | null>(null)
+  const [showAll, setShowAll] = useState(false)
 
   const { data: budgetRows } = useBudgets()
   const budgets = useMemo(() => {
@@ -165,7 +169,7 @@ export function CategoryBreakdown({ expenses, totalExpense }: CategoryBreakdownP
       </div>
 
       <div className="-mx-1 grid grid-cols-1 sm:grid-cols-2 sm:gap-x-4">
-        {sortedCategories.map(cat => {
+        {sortedCategories.map((cat, index) => {
           const isExpanded = expandedCategoryId === cat.id
           const pct = totalExpense > 0
             ? Math.round((cat.amount / totalExpense) * 100)
@@ -174,7 +178,7 @@ export function CategoryBreakdown({ expenses, totalExpense }: CategoryBreakdownP
           const ratio = target ? cat.amount / target : null
 
           return (
-            <div key={cat.id} className={cn('border-b border-line-soft', isExpanded && 'sm:col-span-2')}>
+            <div key={cat.id} className={cn('border-b border-line-soft', isExpanded && 'sm:col-span-2', !showAll && index >= PHONE_ROWS && 'hidden lg:block')}>
               <button
                 type="button"
                 onClick={() => setExpandedCategoryId(id => id === cat.id ? null : cat.id)}
@@ -219,9 +223,10 @@ export function CategoryBreakdown({ expenses, totalExpense }: CategoryBreakdownP
                       style={{ width: `${pct ?? 0}%`, backgroundColor: categoryChartColor(cat) }}
                     />
                   </span>
+                  {/* One percentage per row (the share); the budget reads as an amount. */}
                   {target !== undefined && (
                     <span className="text-[10.5px] text-muted-ink shrink-0">
-                      {Math.round((ratio ?? 0) * 100)}% of {formatCurrency(target)} budget
+                      of {formatCurrency(target)} budget
                     </span>
                   )}
                 </span>
@@ -232,6 +237,16 @@ export function CategoryBreakdown({ expenses, totalExpense }: CategoryBreakdownP
           )
         })}
       </div>
+      {sortedCategories.length > PHONE_ROWS && (
+        <button
+          type="button"
+          aria-expanded={showAll}
+          onClick={() => setShowAll(s => !s)}
+          className="lg:hidden mt-3 text-[13px] font-semibold text-brand-ink hover:text-brand"
+        >
+          {showAll ? 'Show fewer' : `Show all ${sortedCategories.length} categories`}
+        </button>
+      )}
     </div>
   )
 }

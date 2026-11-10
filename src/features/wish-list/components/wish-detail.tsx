@@ -68,11 +68,11 @@ export function WishDetail({ item, stop, pace, owedFirst = 0, savedThisPeriod = 
             : {
                 icon: PiggyIcon,
                 text: next.remaining === null
-                    ? <><b>{formatCurrency(next.saved)}</b> saved toward the next part. Give the {next.part.name} a price to see when it fits.</>
+                    ? <><b>{formatCurrency(next.saved)}</b> put toward the next part. Give the {next.part.name} a price to see when it fits.</>
                     : <>
-                        <b>{formatCurrency(next.saved)}</b> saved toward the next part.
+                        <b>{formatCurrency(next.saved)}</b> put toward the next part.
                         {next.date
-                            ? <> The {next.part.name} fits around <b>{monthLabel(next.date, today)}</b> if your usual leftover goes here{afterDebts}.</>
+                            ? <> The {next.part.name} fits around <b>{monthLabel(next.date, today)}</b> if what you usually keep goes here{afterDebts}.</>
                             : <> {formatCurrency(next.remaining)} to go for the {next.part.name}.</>}
                     </>,
                 action: { label: 'Add funds', onClick: onContribute },
@@ -88,7 +88,7 @@ export function WishDetail({ item, stop, pace, owedFirst = 0, savedThisPeriod = 
                         : plan.savedThisPeriod
                             ? <>To have it by {formatDate(plan.targetDate)}, add <b>{formatCurrency(Math.round(plan.thisPeriod))}</b> more this period, then {formatCurrency(Math.round(plan.perPeriodNeeded))} each period after.</>
                             : <>To have it by {formatDate(plan.targetDate)}, set aside <b>{formatCurrency(Math.round(plan.perPeriodNeeded))}</b> each period for {plan.periodsLeft} {periodWord(plan.periodsLeft)}.</>}
-                    {plan.status === 'behind' && pace && pace.perPeriod > 0 && <> You usually have {formatShortCurrency(Math.round(pace.perPeriod))} left over, shared across your wishes.</>}
+                    {plan.status === 'behind' && pace && pace.perPeriod > 0 && <> You usually keep {formatShortCurrency(Math.round(pace.perPeriod))} a period, shared across your wishes.</>}
                     {plan.status === 'on-track' && <> You’re on track.</>}
                 </>,
             action: plan.status === 'overdue' ? { label: 'Change the date', onClick: onEdit } : { label: saveLabel, onClick: onContribute },
@@ -96,7 +96,7 @@ export function WishDetail({ item, stop, pace, owedFirst = 0, savedThisPeriod = 
     } else if (!ready && stop?.date && stop.periods) {
         smart = {
             icon: CalendarIcon,
-            text: <>At your usual leftover, urgent wishes first{afterDebts}, it’s ready around <b>{formatMonthYear(stop.date)}</b>, in about {stop.periods} {periodWord(stop.periods)}.</>,
+            text: <>At what you usually keep, urgent wishes first{afterDebts}, it’s ready around <b>{formatMonthYear(stop.date)}</b>, in about {stop.periods} {periodWord(stop.periods)}.</>,
             action: { label: saveLabel, onClick: onContribute },
         }
     }
@@ -115,7 +115,7 @@ export function WishDetail({ item, stop, pace, owedFirst = 0, savedThisPeriod = 
                         {formatCurrency(remaining)}<span className="text-[13px] font-normal text-muted-ink"> to go</span>
                     </p>
                 ) : (
-                    <p className="mt-1 text-[15px] font-medium text-ink">No price yet · {formatCurrency(saved)} saved</p>
+                    <p className="mt-1 text-[15px] font-medium text-ink">No price yet · {formatCurrency(saved)} put toward it</p>
                 )}
                 {parts ? (
                     <PartDots item={item} className="mt-3" />
@@ -136,7 +136,7 @@ export function WishDetail({ item, stop, pace, owedFirst = 0, savedThisPeriod = 
             {smart ? (
                 <SmartLine icon={smart.icon} actions={[smart.action]}>{smart.text}</SmartLine>
             ) : !ready && target !== null && !pace && (
-                <p className="text-[12px] text-muted-ink leading-relaxed">A month estimate appears once you’ve closed a period: it’s based on what you usually have left over.</p>
+                <p className="text-[12px] text-muted-ink leading-relaxed">A month estimate appears once you’ve closed a period: it’s based on what you usually keep.</p>
             )}
 
             {/* Parts: a split wish is bought a piece at a time */}

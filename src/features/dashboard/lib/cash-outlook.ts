@@ -1,4 +1,4 @@
-import { dueDatesBetween, type BillDue, type PeriodWindow } from '@/features/bills/lib/bills'
+import { dueDatesBetween, unpaidDates, type BillDue, type PeriodWindow } from '@/features/bills/lib/bills'
 import { getDaysBetween } from '@/lib/helpers'
 import { addDays } from '@/lib/dates'
 import { balanceBreakdown } from '@/lib/account-roles'
@@ -50,6 +50,8 @@ export interface CashOutlookInput {
 
 export const OUTLOOK_DAYS = 42
 
+const PAYDAY_LABEL = 'Payday'
+
 /**
  * Where the line starts: the everyday accounts less what's owed on cards (spending on a
  * card is spending all the same, and paying it off is only a move between the two).
@@ -71,8 +73,7 @@ export function buildCashOutlook(input: CashOutlookInput): CashOutlook {
 
     // This period: only the due dates no payment has covered yet.
     for (const due of dues) {
-        if (due.outstanding <= 0) continue
-        for (const date of due.dueDates.slice(due.dueDates.length - due.outstanding)) {
+        for (const date of unpaidDates(due)) {
             add(date, { kind: 'bill', label: due.bill.name, amount: -due.bill.amount })
         }
     }
@@ -89,7 +90,7 @@ export function buildCashOutlook(input: CashOutlookInput): CashOutlook {
     const length = getDaysBetween(window.start, window.end) + 1
     if (expectedIncome > 0 && length > 0) {
         for (let payday = afterPeriod; payday <= horizon; payday = addDays(payday, length)) {
-            if (payday > today) add(payday, { kind: 'in', label: 'Payday', amount: expectedIncome })
+            if (payday > today) add(payday, { kind: 'in', label: PAYDAY_LABEL, amount: expectedIncome })
         }
     }
 
@@ -112,4 +113,19 @@ export function buildCashOutlook(input: CashOutlookInput): CashOutlook {
     }
     const lowest = points.reduce((mn, p) => (p.balance < mn.balance ? p : mn), points[0])
     return { points, lowest }
+}
+
+/**
+ * The first day the everyday money is below zero before the next payday comes in (or within
+ * the outlook, when no payday is in it). Null when it holds until then. Home's status and
+ * the Insights chart read this same line, so they can't disagree.
+ */
+export function shortBeforePayday(outlook: Pick<CashOutlook, 'points'> | null | undefined): OutlookPoint | null {
+    if (!outlook) return null
+    for (const p of outlook.points) {
+        // The day's balance already includes the payday, so a payday day ends the search.
+        if (p.events.some(e => e.kind === 'in' && e.label === PAYDAY_LABEL)) return null
+        if (p.balance < 0) return p
+    }
+    return null
 }

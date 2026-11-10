@@ -27,15 +27,24 @@ interface PayDebtFormProps {
     periodStartDate: string
     /** The payoff plan's amount for this period, offered as a quick pick. */
     plannedAmount?: number | null
+    /**
+     * What the field starts on: the amount on the button that opened the form ("Pay 500rb"
+     * opens on 500rb). Without one, the whole remaining.
+     */
+    initialAmount?: number | null
     onSuccess: () => void
 }
 
 const NO_ACCOUNTS: Account[] = []
 
-export function PayDebtForm({ debt, payPeriodId, periodStartDate, plannedAmount, onSuccess }: PayDebtFormProps) {
+export function PayDebtForm({ debt, payPeriodId, periodStartDate, plannedAmount, initialAmount, onSuccess }: PayDebtFormProps) {
     const today = toISODate()
 
-    const [amount, setAmount] = useState(String(Math.round(debt.remaining_amount)))
+    // Rounded up like the plan chip, so the field and "This period's plan" agree.
+    const startAmount = initialAmount && initialAmount > 0
+        ? Math.min(Math.ceil(initialAmount), debt.remaining_amount)
+        : debt.remaining_amount
+    const [amount, setAmount] = useState(String(Math.round(startAmount)))
     const [date, setDate] = useState(today)
     const [loading, setLoading] = useState(false)
     const [accountPickerOpen, setAccountPickerOpen] = useState(false)

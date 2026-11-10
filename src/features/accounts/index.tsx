@@ -34,8 +34,6 @@ const NO_TXS: TransactionWithDetails[] = []
 interface EditTarget {
     account: Account
     tab: 'edit' | 'transfer'
-    /** Opened from Adjust: the edit form starts on its balance adjustment. */
-    adjust?: boolean
     toAccountId?: string
     amount?: number
 }
@@ -87,17 +85,20 @@ export function AccountPage() {
     // Reorder mode: the ids in their new order (grouped by role), saved together on Done.
     const [draftOrder, setDraftOrder] = useState<string[] | null>(null)
     const [savingOrder, setSavingOrder] = useState(false)
-    const [counting, setCounting] = useState(false)
+    // Count balances: every account from the page's card, or one from its detail sheet.
+    const [counting, setCounting] = useState<'all' | Account | null>(null)
     const { data: archived = NO_ACCOUNTS } = useArchivedAccounts()
     const location = useLocation()
     const navigate = useNavigate()
     const topBarSlot = useTopBarSlotNode()
 
-    // The command palette asks for the add sheet through the navigation state.
+    // The command palette asks for the add sheet through the navigation state; Home's
+    // "count your wallets?" card asks for the count sheet the same way.
     useEffect(() => {
-        const state = location.state as { add?: boolean } | null
+        const state = location.state as { add?: boolean; count?: boolean } | null
         if (!state) return
         if (state.add) setAddAccountDrawer(true)
+        if (state.count) setCounting('all')
         navigate(location.pathname, { replace: true, state: null })
     }, [location.state, location.pathname, navigate])
 
@@ -143,7 +144,7 @@ export function AccountPage() {
     const totalBalance = breakdown.total
     const breakdownParts = [
         breakdown.spendable !== 0 && { key: 'spendable', node: <><b className="font-semibold text-ink">{short(breakdown.spendable)}</b> spendable</> },
-        breakdown.saved !== 0 && { key: 'saved', node: <>{short(breakdown.saved)} saved</> },
+        breakdown.saved !== 0 && { key: 'saved', node: <>{short(breakdown.saved)} in savings</> },
         breakdown.owed !== 0 && { key: 'owed', node: <>{short(breakdown.owed)} owed</> },
     ].filter(Boolean) as { key: string; node: ReactNode }[]
     // Worth breaking down only when the total is more than what can be spent.
@@ -318,7 +319,7 @@ export function AccountPage() {
                             // The way back after days of not writing things down: count, don't reconstruct.
                             <button
                                 type="button"
-                                onClick={() => setCounting(true)}
+                                onClick={() => setCounting('all')}
                                 className="w-full flex items-center gap-3 rounded-[14px] border border-line bg-surface px-3.5 py-3 text-left hover:bg-surface-soft transition-colors"
                             >
                                 <span className="w-9 h-9 rounded-[10px] bg-brand-tint text-brand-ink flex items-center justify-center shrink-0">
@@ -333,24 +334,16 @@ export function AccountPage() {
 
                         {!draftOrder && smart}
 
-                        {accounts.length > 1 && (
-                            draftOrder ? (
-                                <div className="flex items-center gap-2 rounded-[14px] bg-surface-hover px-3 py-2.5">
-                                    <p className="flex-1 min-w-0 text-[13px] text-muted-ink leading-snug">Move accounts up or down. Forms list them in this order.</p>
-                                    <button type="button" onClick={() => setDraftOrder(null)} disabled={savingOrder} className="h-9 px-3 rounded-[10px] text-[13px] font-semibold text-muted-ink hover:text-ink disabled:opacity-50">
-                                        Cancel
-                                    </button>
-                                    <button type="button" onClick={saveOrder} disabled={savingOrder} className="h-9 px-3.5 rounded-[10px] bg-action text-on-action text-[13px] font-semibold hover:bg-action/90 disabled:opacity-50">
-                                        <BusyLabel busy={savingOrder}>Done</BusyLabel>
-                                    </button>
-                                </div>
-                            ) : (
-                                <div className="flex justify-end -mb-4">
-                                    <button type="button" onClick={startReorder} className="flex items-center gap-1.5 text-[13px] font-semibold text-muted-ink hover:text-ink py-1">
-                                        <ArrowUpDown aria-hidden="true" className="w-3.5 h-3.5" /> Reorder
-                                    </button>
-                                </div>
-                            )
+                        {accounts.length > 1 && draftOrder && (
+                            <div className="flex items-center gap-2 rounded-[14px] bg-surface-hover px-3 py-2.5">
+                                <p className="flex-1 min-w-0 text-[13px] text-muted-ink leading-snug">Move accounts up or down. Forms list them in this order.</p>
+                                <button type="button" onClick={() => setDraftOrder(null)} disabled={savingOrder} className="h-9 px-3 rounded-[10px] text-[13px] font-semibold text-muted-ink hover:text-ink disabled:opacity-50">
+                                    Cancel
+                                </button>
+                                <button type="button" onClick={saveOrder} disabled={savingOrder} className="h-9 px-3.5 rounded-[10px] bg-action text-on-action text-[13px] font-semibold hover:bg-action/90 disabled:opacity-50">
+                                    <BusyLabel busy={savingOrder}>Done</BusyLabel>
+                                </button>
+                            </div>
                         )}
 
                         <AccountList
@@ -360,6 +353,16 @@ export function AccountPage() {
                             onMove={draftOrder ? moveAccount : undefined}
                         />
 
+                        {/* Under the list, not over it: pulled up beside the first group's
+                            heading it sat on top of that group's subtotal. Reordering is rare. */}
+                        {accounts.length > 1 && !draftOrder && (
+                            <div className="flex justify-end -mt-3">
+                                <button type="button" onClick={startReorder} className="flex items-center gap-1.5 text-[13px] font-semibold text-muted-ink hover:text-ink py-1">
+                                    <ArrowUpDown aria-hidden="true" className="w-3.5 h-3.5" /> Reorder
+                                </button>
+                            </div>
+                        )}
+
                         {trend.length >= 2 && <div className="lg:max-w-[440px]"><BalanceTrend points={trend} /></div>}
                     </>
                 )}
@@ -368,9 +371,18 @@ export function AccountPage() {
                 )}
 
                 {/* Drawers */}
-                <BottomDrawer open={counting} onClose={() => setCounting(false)} title="Count balances">
+                <BottomDrawer
+                    open={!!counting}
+                    onClose={() => setCounting(null)}
+                    title={counting && counting !== 'all' ? `Count ${counting.name}` : 'Count balances'}
+                >
                     {counting && (
-                        <CashCountForm accounts={accounts} hasActivePeriod={!!activePeriod} onSuccess={() => setCounting(false)} />
+                        <CashCountForm
+                            // The sheet's own account from the latest list, so a balance that moved meanwhile is what's compared.
+                            accounts={counting === 'all' ? accounts : accounts.filter(a => a.id === counting.id)}
+                            hasActivePeriod={!!activePeriod}
+                            onSuccess={() => setCounting(null)}
+                        />
                     )}
                 </BottomDrawer>
                 <BottomDrawer open={addAccountDrawer} onClose={() => setAddAccountDrawer(false)} title="Add account">
@@ -385,7 +397,7 @@ export function AccountPage() {
                             canTransfer={accounts.length > 1}
                             hasActivePeriod={!!activePeriod}
                             onTransfer={() => { openTransfer(openAccount); setOpenAccount(null) }}
-                            onAdjust={() => { setEdit({ account: openAccount, tab: 'edit', adjust: true }); setOpenAccount(null) }}
+                            onCount={() => { setCounting(openAccount); setOpenAccount(null) }}
                             onPayOff={(() => {
                                 const pay = payOffFor(openAccount)
                                 return pay && (() => { pay(); setOpenAccount(null) })
@@ -396,13 +408,12 @@ export function AccountPage() {
                         />
                     )}
                 </BottomDrawer>
-                <BottomDrawer open={!!edit} onClose={() => setEdit(null)} title={edit?.tab === 'transfer' ? 'Transfer' : edit?.adjust ? 'Adjust balance' :'Edit account'}>
+                <BottomDrawer open={!!edit} onClose={() => setEdit(null)} title={edit?.tab === 'transfer' ? 'Transfer' : 'Edit account'}>
                     {edit &&
                         <AccountForm
-                            key={`${edit.account.id}-${edit.tab}-${edit.adjust ? 'adjust' : ''}-${edit.toAccountId ?? ''}`}
+                            key={`${edit.account.id}-${edit.tab}-${edit.toAccountId ?? ''}`}
                             initial={edit.account}
                             initialTab={edit.tab}
-                            focusAdjustment={edit.adjust}
                             initialToAccountId={edit.toAccountId}
                             initialAmount={edit.amount}
                             onSuccess={() => setEdit(null)}

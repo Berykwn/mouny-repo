@@ -1,12 +1,13 @@
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ArrowRight, Check } from 'lucide-react'
 import { AccountTypeIcon, AccountTypeTile } from '@/components/account-type-icon'
 import { ACCOUNT_TILE_CLASS } from '@/lib/account-tiles'
-import { availableToSpend, pickerOrder, roleOf, ROLE_HINT, ROLE_LABEL, ROLE_ORDER } from '@/lib/account-roles'
+import { pickerOrder, roleOf, ROLE_HINT, ROLE_LABEL, ROLE_ORDER } from '@/lib/account-roles'
 import { accountsService } from '@/services/accounts-categories.service'
-import { formatCurrency, formatCurrencyInput, parseCurrencyInput, parseCurrencyWithSign, toSignedDigits } from '@/lib/helpers'
+import { overspendMessage, spendErrorMessage } from '@/lib/account-spend'
+import { formatCurrency, formatCurrencyInput, parseCurrencyInput } from '@/lib/helpers'
 import { cn } from '@/lib/utils'
 import type { Account, AccountRole, AccountType } from '@/types'
 import { toast } from 'sonner'
@@ -21,8 +22,6 @@ interface AccountFormProps {
     /** A transfer opened from a suggestion arrives with its destination and amount filled in, to check and confirm. */
     initialToAccountId?: string
     initialAmount?: number
-    /** Opened from Adjust: focus the balance adjustment rather than the whole form. */
-    focusAdjustment?: boolean
 }
 
 type Tab = 'edit' | 'transfer'
@@ -36,19 +35,8 @@ const TYPES: { type: AccountType; label: string; hint: string; placeholder: stri
 
 const SUBMIT_BUTTON = 'w-full h-12 rounded-[14px] text-[13px] font-semibold text-on-action bg-action hover:bg-action/90 transition-colors disabled:opacity-50 disabled:pointer-events-none'
 
-export function AccountForm({ onSuccess, initial, allAccounts = [], initialTab = 'edit', initialToAccountId = '', initialAmount, focusAdjustment = false }: AccountFormProps) {
+export function AccountForm({ onSuccess, initial, allAccounts = [], initialTab = 'edit', initialToAccountId = '', initialAmount }: AccountFormProps) {
     const isEdit = !!initial
-    const adjustmentRef = useRef<HTMLInputElement>(null)
-
-    // After the drawer's open animation has started, so the keyboard doesn't fight it.
-    useEffect(() => {
-        if (!focusAdjustment) return
-        const timer = setTimeout(() => {
-            adjustmentRef.current?.focus()
-            adjustmentRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' })
-        }, 150)
-        return () => clearTimeout(timer)
-    }, [focusAdjustment])
 
     const [tab, setTab] = useState<Tab>(initialTab)
     const [name, setName] = useState(initial?.name ?? '')
@@ -56,8 +44,9 @@ export function AccountForm({ onSuccess, initial, allAccounts = [], initialTab =
     const [role, setRole] = useState<AccountRole>(initial ? roleOf(initial) : 'everyday')
     const [creditLimit, setCreditLimit] = useState(initial?.credit_limit != null ? String(initial.credit_limit) : '')
     const [initialBalance, setInitialBalance] = useState('')
-    // A signed change to the balance.
-    const [adjustment, setAdjustment] = useState('')
+    // No balance field when editing: a balance is fixed by counting what's really there
+    // (the detail sheet's Count), which records the difference as spending, income or a
+    // correction instead of a bare number typed here.
     const [toAccountId, setToAccountId] = useState(initialToAccountId)
     const [transferAmount, setTransferAmount] = useState(initialAmount ? String(initialAmount) : '')
     const [loading, setLoading] = useState(false)
@@ -68,10 +57,8 @@ export function AccountForm({ onSuccess, initial, allAccounts = [], initialTab =
     const isCreditRole = role === 'credit'
     const parsedInitial = parseCurrencyInput(initialBalance)
     const parsedLimit = creditLimit === '' ? null : parseCurrencyInput(creditLimit)
-    const parsedAdj = parseCurrencyWithSign(adjustment)
     const parsedTransfer = parseCurrencyInput(transferAmount)
 
-    const previewBalance = initial && adjustment !== '' ? initial.balance + parsedAdj : null
     const previewFrom = initial && transferAmount !== '' ? initial.balance - parsedTransfer : null
     const previewTo = toAccount && transferAmount !== '' ? toAccount.balance + parsedTransfer : null
     // The lowest an account may go: zero, or minus a card's limit.
@@ -82,7 +69,6 @@ export function AccountForm({ onSuccess, initial, allAccounts = [], initialTab =
         e.preventDefault()
         if (isCreditRole && parsedLimit === 0) { toast.error('Leave the credit limit empty for no limit, or enter an amount.'); return }
         if (isEdit) {
-            if (adjustment !== '' && isNaN(parsedAdj)) { toast.error('Invalid adjustment value.'); return }
             // What's owed on a card is paid off before it can be anything else: no other
             // role may sit below zero.
             if (!isCreditRole && initial.balance < 0 && roleOf(initial) === 'credit') {
@@ -95,11 +81,8 @@ export function AccountForm({ onSuccess, initial, allAccounts = [], initialTab =
             }
             setLoading(true)
             const { error } = await accountsService.update(initial.id, { name, type, role, credit_limit: isCreditRole ? parsedLimit : null })
-            const { error: adjError } = !error && adjustment !== '' && parsedAdj !== 0
-                ? await accountsService.adjustBalance(initial.id, parsedAdj)
-                : { error: null }
             setLoading(false)
-            if (error || adjError) { toast.error((error || adjError)!); return }
+            if (error) { toast.error(error); return }
             toast.success('Account updated.')
         } else {
             if (isNaN(parsedInitial) || parsedInitial < 0) { toast.error('Invalid balance.'); return }
@@ -125,14 +108,12 @@ export function AccountForm({ onSuccess, initial, allAccounts = [], initialTab =
         e.preventDefault()
         if (!toAccountId) { toast.error('Select a destination account.'); return }
         if (isNaN(parsedTransfer) || parsedTransfer <= 0) { toast.error('Enter a valid amount.'); return }
-        if (initial && parsedTransfer > availableToSpend(initial)) {
-            toast.error(initial.role === 'credit' ? 'That goes over the credit limit.' : 'Insufficient balance.')
-            return
-        }
+        const overspent = initial && overspendMessage(initial, parsedTransfer)
+        if (overspent) { toast.error(overspent); return }
         setLoading(true)
         const { error } = await accountsService.transfer(initial!.id, toAccountId, parsedTransfer)
         setLoading(false)
-        if (error) { toast.error(error); return }
+        if (error) { toast.error(spendErrorMessage(error, initial)); return }
         toast.success(`Transferred ${formatCurrency(parsedTransfer)} to ${toAccount?.name}.`)
         onSuccess()
     }
@@ -290,56 +271,6 @@ export function AccountForm({ onSuccess, initial, allAccounts = [], initialTab =
                                     onChange={e => setInitialBalance(e.target.value.replace(/\D/g, ''))}
                                     disabled={loading}
                                 />
-                            </div>
-                        </div>
-                    )}
-
-                    {isEdit && (
-                        <div className="flex flex-col gap-2">
-                            <Label htmlFor="account-adjustment" className={FIELD_LABEL}>
-                                Balance adjustment
-                            </Label>
-                            <div className="relative">
-                                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[13px] text-muted-ink font-medium">Rp</span>
-                                <Input
-                                    id="account-adjustment"
-                                    ref={adjustmentRef}
-                                    type="text"
-                                    inputMode="numeric"
-                                    placeholder="e.g. 50.000 or -20.000"
-                                    className="pl-10 pr-14 h-12 rounded-[14px] border-line text-[16px] lg:text-[13px] font-mono"
-                                    value={formatCurrencyInput(adjustment)}
-                                    onChange={e => setAdjustment(toSignedDigits(e.target.value))}
-                                    disabled={loading}
-                                />
-                                {/* Number keypads on phones often have no minus key. */}
-                                <button
-                                    type="button"
-                                    onClick={() => setAdjustment(a => a.startsWith('-') ? a.slice(1) : '-' + a)}
-                                    disabled={loading}
-                                    aria-label={adjustment.startsWith('-') ? 'Make positive' : 'Make negative'}
-                                    className="absolute right-2 top-1/2 -translate-y-1/2 h-8 min-w-10 px-2 rounded-[10px] bg-surface-hover text-[13px] font-semibold font-mono text-muted-ink hover:bg-surface-hover transition-colors disabled:opacity-50"
-                                >
-                                    +/−
-                                </button>
-                            </div>
-
-                            <div className="flex items-center gap-2 px-3 py-2 rounded-[10px] bg-surface-hover">
-                                <span className="text-[11.5px] text-muted-ink">Balance</span>
-                                <span className="text-[12px] font-semibold text-ink font-mono ml-auto">
-                                    {formatCurrency(initial.balance)}
-                                </span>
-                                {previewBalance !== null && (
-                                    <>
-                                        <ArrowRight className="w-3 h-3 text-muted-ink shrink-0" />
-                                        <span className={cn(
-                                            'text-[12px] font-semibold font-mono',
-                                            previewBalance < floor(initial) ? 'text-negative' : 'text-positive'
-                                        )}>
-                                            {formatCurrency(previewBalance)}
-                                        </span>
-                                    </>
-                                )}
                             </div>
                         </div>
                     )}

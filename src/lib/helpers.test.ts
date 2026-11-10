@@ -2,7 +2,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
     daysUntil,
     formatCompact,
+    formatCurrency,
     formatCurrencyInput,
+    formatDate,
+    formatDateIndonesian,
+    formatDateShort,
     formatShortCurrency,
     getDaysBetween,
     getInitials,
@@ -84,6 +88,18 @@ describe('dates (in WIB)', () => {
         expect(daysUntil('2026-10-01')).toBe(0)
         expect(daysUntil('2026-10-08')).toBe(7)
         expect(daysUntil('2026-09-28')).toBe(-3)
+    })
+
+    it('writes dates in English, whatever the device language', () => {
+        expect(formatDate('2026-11-09')).toBe('9 Nov 2026')
+        expect(formatDateShort('2026-10-01')).toBe('1 Oct')
+        // The months id-ID spells differently: Agu, Mei, Okt, Des.
+        expect(['2026-08-05', '2026-05-05', '2026-10-05', '2026-12-05'].map(formatDateShort)).toEqual(['5 Aug', '5 May', '5 Oct', '5 Dec'])
+        // A timestamp reads as its local (WIB) day: 20:00 UTC on 9 Nov is 10 Nov in Jakarta.
+        expect(formatDate('2026-11-09T20:00:00Z')).toBe('10 Nov 2026')
+        // Indonesian sentences (the WhatsApp reminder) keep Indonesian months; money stays rupiah.
+        expect(formatDateIndonesian('2026-10-05')).toMatch(/Okt/)
+        expect(formatCurrency(1_234_567).replace(/\s/g, ' ')).toBe('Rp 1.234.567')
     })
 
     it('getDaysBetween ignores time and zone, and tolerates bad input', () => {

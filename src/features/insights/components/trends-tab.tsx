@@ -5,7 +5,8 @@ import { PeriodTrendChart } from './analytics/period-trend-chart'
 import { PeriodRange } from './analytics/period-analytics'
 import type { TrendPoint } from '../hooks/use-period-trend'
 import type { PayPeriod } from '@/types'
-import { median, RATE_GUIDE, type RatePoint } from '../lib/analysis'
+import { keptOf } from '@/lib/period-summary'
+import { median, RATE_GUIDE, type Forecast, type RatePoint } from '../lib/analysis'
 import { BlockNote, Em, InsightBlock } from './insight-block'
 import { BalanceTrendChart, RateChart } from './charts'
 
@@ -13,6 +14,8 @@ interface TrendsTabProps {
     period: PayPeriod
     periods: PayPeriod[]
     stats: PeriodStats
+    /** The open period's forecast of kept, the same one This period shows. */
+    forecast: Forecast | null
     trend: { trend: TrendPoint[]; loading: boolean; failed: boolean; retry: () => void }
     /** What the accounts hold now. */
     totalBalance: number
@@ -21,14 +24,12 @@ interface TrendsTabProps {
 const pct = (rate: number) => `${Math.round(rate * 100)}%`
 
 /** How the periods compare: the share kept, the money in and out, and the balances at each close. */
-export function TrendsTab({ period, periods, stats, trend, totalBalance }: TrendsTabProps) {
+export function TrendsTab({ period, periods, stats, forecast, trend, totalBalance }: TrendsTabProps) {
     const points = trend.trend
     const closed = stats.isClosed
-    // An open period's unspent-so-far would beat every full period early on, so it counts
-    // where its pace ends it; until there's a projection, not at all.
-    const current = closed
-        ? stats.totalIncome - stats.totalSpending
-        : stats.projectedClose !== null ? stats.projectedClose + stats.totalSavings : null
+    // An open period's kept-so-far would beat every full period early on, so it counts
+    // where the forecast ends it; until there's a forecast, not at all.
+    const current = closed ? keptOf(stats.totalIncome, stats.totalSpending) : forecast?.kept ?? null
 
     const rates = useMemo((): RatePoint[] => points.map(t => {
         const selected = t.periodId === period.id
@@ -73,7 +74,7 @@ export function TrendsTab({ period, periods, stats, trend, totalBalance }: Trend
     return (
         <div className="lg:grid lg:grid-cols-2 lg:gap-4 lg:items-start">
             <InsightBlock
-                kicker="Savings rate"
+                kicker="Share kept"
                 title={selectedRate === null
                     ? closed ? 'This period had no income to keep a share of.' : 'Too early to tell what share you’ll keep.'
                     : <>
@@ -82,9 +83,9 @@ export function TrendsTab({ period, periods, stats, trend, totalBalance }: Trend
                         {usualRate !== null ? <>, against your usual {pct(usualRate)}.</> : '.'}
                     </>}
                 sub={others.length > 0
-                    ? `Share of income not spent: saved plus left over. ${metGuide} of your other ${others.length} period${others.length === 1 ? '' : 's'} reached the ${pct(RATE_GUIDE)} guide.`
-                    : 'Share of income not spent: saved plus left over.'}
-                how="(Income − spending) ÷ income for each period; savings count as kept. The open period is where its pace ends it (hollow dot). “Your usual” is the median of the other closed periods shown."
+                    ? `Kept is income not spent: what you saved plus what was left. ${metGuide} of your other ${others.length} period${others.length === 1 ? '' : 's'} reached the ${pct(RATE_GUIDE)} guide.`
+                    : 'Kept is income not spent: what you saved plus what was left.'}
+                how="Kept ÷ income for each period, where kept = income − spending (savings count as kept), the same number Close reports. The open period is its forecast on This period (hollow dot). “Your usual” is the median of the other closed periods shown."
             >
                 {trend.loading ? <BlockNote>Loading your periods…</BlockNote>
                     : trend.failed ? <RetryNote onRetry={trend.retry} />
@@ -99,8 +100,8 @@ export function TrendsTab({ period, periods, stats, trend, totalBalance }: Trend
                     : current === null
                         ? 'Too early to compare with your other periods.'
                         : <>{closed ? 'Better than ' : 'On pace to beat '}<Em>{comparison.beaten} of your other {comparison.count}</Em> period{comparison.count === 1 ? '' : 's'}.</>}
-                sub={comparison ? 'Ranked by income left unspent.' : undefined}
-                how="Income, everything that went out (savings included) and the net per period, for your last 6 periods at most. The ranking compares what each period left unspent; the open one by where its pace ends it. The middle tick is the median of the others."
+                sub={comparison ? 'Ranked by what each period kept.' : undefined}
+                how="Income, everything that went out (savings included) and the net per period, for your last 6 periods at most. The ranking compares what each period kept; the open one by its forecast. The middle tick is the median of the others."
             >
                 <PeriodTrendChart trend={points} loading={trend.loading} failed={trend.failed} onRetry={trend.retry} />
                 {comparison && current !== null && (

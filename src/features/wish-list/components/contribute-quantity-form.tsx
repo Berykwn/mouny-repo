@@ -125,7 +125,7 @@ export function ContributeQuantityForm({ item, periodStart, onSuccess }: Contrib
             <div className="rounded-[20px] border border-line bg-surface p-4 space-y-3">
                 <div className="flex items-start justify-between">
                     <div>
-                        <p className="text-[11.5px] text-muted-ink">Saved toward {item.name}</p>
+                        <p className="text-[11.5px] text-muted-ink">Put toward {item.name}</p>
                         <p className="text-[22px] font-medium tracking-[-0.02em] text-ink mt-0.5 tabular-nums">
                             {savedQuantity} {unit}
                         </p>
@@ -138,7 +138,7 @@ export function ContributeQuantityForm({ item, periodStart, onSuccess }: Contrib
                     <div className="space-y-1">
                         <ProgressBar percent={percent} />
                         <p className="text-[11px] text-muted-ink">
-                            {percent >= 100 ? 'Complete' : `${percent}% saved`}
+                            {percent >= 100 ? 'Complete' : `${percent}% funded`}
                         </p>
                     </div>
                 )}

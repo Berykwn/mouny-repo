@@ -98,10 +98,10 @@ export default function MenuPage() {
                 </button>
                 <EditNameDrawer open={editingName} onClose={() => setEditingName(false)} currentName={name} />
 
-                {/* The sidebar has these on desktop */}
-                <div className="lg:hidden mt-6">
+                {/* Your money's set-up first, the app's own preferences after, a rule between */}
+                <div className="mt-6">
                     <h2 className="text-[17px] font-semibold text-ink mb-1">Money</h2>
-                    <nav className="-mx-4 divide-y divide-line-soft">
+                    <nav aria-label="Money" className="-mx-4 divide-y divide-line-soft">
                         <Row
                             to="/accounts" icon={Wallet} tint="neutral" label="Accounts"
                             sub={accounts ? (accounts.length === 0 ? 'Add where your money sits' : `${accounts.length} account${accounts.length === 1 ? '' : 's'}`) : 'Banks, cash and e-wallets'}
@@ -114,21 +114,17 @@ export default function MenuPage() {
                             to="/period-history" icon={History} tint="neutral" label="Periods"
                             sub={periodsLoaded ? (activePeriod ? `1 running · ${closedPeriods} closed` : `${closedPeriods} closed`) : 'Open, close and look back'}
                         />
+                        <ExportRow periods={periods} activePeriodId={activePeriod?.id ?? null} />
                     </nav>
                 </div>
 
-                <div className="mt-6">
+                <div className="mt-7 pt-6 border-t border-line">
                     <h2 className="text-[17px] font-semibold text-ink mb-2">Appearance</h2>
                     <ThemeSegment />
                 </div>
 
                 <div className="mt-7">
                     <RemindersSection />
-                </div>
-
-                <div className="mt-7">
-                    <h2 className="text-[17px] font-semibold text-ink mb-1">Data</h2>
-                    <ExportRow periods={periods} activePeriodId={activePeriod?.id ?? null} />
                 </div>
 
                 <button
@@ -216,7 +212,7 @@ function ExportRow({ periods, activePeriodId }: { periods: PayPeriod[]; activePe
                 type="button"
                 onClick={() => setPicking(true)}
                 disabled={exporting || periods.length === 0}
-                className="w-full flex items-center gap-3 py-3 text-left rounded-[12px] hover:bg-surface-soft transition-colors disabled:opacity-60"
+                className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-surface-soft transition-colors disabled:opacity-60"
             >
                 <span className="w-9 h-9 rounded-[10px] flex items-center justify-center shrink-0 bg-line-soft text-ink/70">
                     {exporting ? <Loader2 aria-hidden="true" className="w-4 h-4 animate-spin" /> : <Download aria-hidden="true" className="w-4 h-4" strokeWidth={1.9} />}

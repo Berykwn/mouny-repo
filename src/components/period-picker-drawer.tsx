@@ -1,12 +1,12 @@
 import { BottomDrawer } from '@/components/bottom-drawer'
-import { formatDate } from '@/lib/helpers'
 import { cn } from '@/lib/utils'
+import { periodName } from '@/lib/period-name'
+import { periodRange } from '@/features/periods/lib/period-progress'
 import type { PayPeriod } from '@/types'
 
+/** "10 Sep – 9 Oct · closed", or "From 10 Oct · running" for the open one. */
 function periodLabel(period: PayPeriod) {
-    const start = formatDate(period.start_date)
-    const end = period.end_date ? formatDate(period.end_date) : 'ongoing'
-    return `${start} — ${end}`
+    return `${periodRange(period.start_date, period.end_date)} · ${period.status === 'closed' ? 'closed' : 'running'}`
 }
 
 interface PeriodPickerDrawerProps {
@@ -27,7 +27,7 @@ export function PeriodPickerDrawer({
     onSelect,
 }: PeriodPickerDrawerProps) {
     return (
-        <BottomDrawer open={open} onClose={onClose} title="Select Period">
+        <BottomDrawer open={open} onClose={onClose} title="Pick a period">
             <section className="space-y-1.5 pb-2">
                 {periods.map(period => {
                     const isActive = period.id === activePeriodId
@@ -50,10 +50,10 @@ export function PeriodPickerDrawer({
                                 )} />
                                 <div>
                                     <p className={cn('text-[13px] font-medium', isSelected ? 'text-brand-ink' : 'text-ink')}>
-                                        {isActive ? 'Current period' : formatDate(period.start_date)}
+                                        {periodName(period)}{isActive && ' · current'}
                                     </p>
                                     <p className={cn('text-[11px]', isSelected ? 'text-brand-ink/80' : 'text-muted-ink')}>
-                                        {periodLabel(period)} · {period.status}
+                                        {periodLabel(period)}
                                     </p>
                                 </div>
                             </div>

@@ -1,19 +1,30 @@
-import { formatCurrency } from '@/lib/helpers'
+import { formatCurrency, getDaysBetween } from '@/lib/helpers'
 import { MIN_PROJECTION_DAYS, type PeriodStats } from '@/hooks/use-period-stats'
-import { isRunning, type BillDue } from '@/features/bills/lib/bills'
+import { isRunning, overdueBills, type BillDue } from '@/features/bills/lib/bills'
+import { shortBeforePayday, type CashOutlook } from './cash-outlook'
 import { shortDate } from '@/features/bills/lib/bill-labels'
 import { availableToSpend, isCredit, isSpendable, overdrawnBy } from '@/lib/account-roles'
 import type { Account, CategoryBudget, Debt, RecurringBill, TransactionWithDetails } from '@/types'
 
 // ─── Hero ────────────────────────────────────────────────────────────────────
 
-export type HeroStatus = 'on-track' | 'tight' | 'over' | 'closed'
+export type HeroStatus = 'on-track' | 'tight' | 'overdue' | 'short' | 'over' | 'closed'
 
 export const HERO_STATUS_LABEL: Record<HeroStatus, string> = {
     'on-track': 'On track',
     tight: 'Tight',
+    overdue: 'Bills overdue',
+    short: 'Runs short',
     over: 'Over',
     closed: 'Closed',
+}
+
+/** What else Home knows that the period's own numbers don't: the cash-flow line and late bills. */
+export interface HeroSignals {
+    /** The first day the everyday money dips below zero before payday (shortBeforePayday); null when it holds. */
+    shortOn?: string | null
+    /** Unpaid bills past their due date. */
+    overdueCount?: number
 }
 
 export interface HeroNumbers {
@@ -34,10 +45,12 @@ export interface HeroNumbers {
 }
 
 /**
- * The calm headline: one number, one word. "Tight" only once there's enough of a pace to
- * judge (a day or two is one purchase, not a habit); "Over" once the money's gone.
+ * The calm headline: one number, one word. "Over" once the money's gone; "Runs short" when
+ * the cash-flow line dips below zero before payday; "Bills overdue" while a bill is late;
+ * "Tight" only once there's enough of a pace to judge (a day or two is one purchase, not a
+ * habit). "On track" only when none of those hold, so Home never contradicts Insights.
  */
-export function heroNumbers(stats: PeriodStats): HeroNumbers {
+export function heroNumbers(stats: PeriodStats, { shortOn = null, overdueCount = 0 }: HeroSignals = {}): HeroNumbers {
     const used = stats.totalIncome > 0
         ? Math.min(1, Math.max(0, (stats.totalIncome - stats.remaining) / stats.totalIncome))
         : stats.remaining < 0 ? 1 : 0
@@ -47,15 +60,17 @@ export function heroNumbers(stats: PeriodStats): HeroNumbers {
     const daysLeft = stats.daysRemaining !== null ? stats.daysRemaining + 1 : null
     const elapsed = stats.totalDays ? Math.min(1, stats.daysElapsed / stats.totalDays) : null
     const status: HeroStatus = stats.remaining < 0 ? 'over'
-        : stats.daysElapsed >= MIN_PROJECTION_DAYS && stats.safeDaily !== null && stats.dailyAvg > stats.safeDaily ? 'tight'
-            : 'on-track'
+        : shortOn ? 'short'
+            : overdueCount > 0 ? 'overdue'
+                : stats.daysElapsed >= MIN_PROJECTION_DAYS && stats.safeDaily !== null && stats.dailyAvg > stats.safeDaily ? 'tight'
+                    : 'on-track'
     const pastPayday = stats.isEndDateEstimated && stats.daysRemaining === 0
     return { status, today: stats.safeDaily ?? stats.remaining, daysLeft, used, elapsed, pastPayday }
 }
 
 // ─── Smart line ──────────────────────────────────────────────────────────────
 
-export type SmartLineKind = 'bill-changed' | 'receivable-overdue' | 'budget-low' | 'account-short'
+export type SmartLineKind = 'cash-short' | 'bills-overdue' | 'bill-changed' | 'receivable-overdue' | 'budget-low' | 'account-short'
 
 export interface SmartLine {
     kind: SmartLineKind
@@ -82,6 +97,46 @@ export interface SmartLineInput {
     daysLeft: number | null
     accounts: Pick<Account, 'id' | 'name' | 'balance' | 'is_savings' | 'role' | 'credit_limit'>[]
     dues: BillDue[]
+    /** The cash-flow line Insights draws; null until bills and debts load. */
+    outlook?: Pick<CashOutlook, 'points'> | null
+}
+
+const names = (list: string[]) =>
+    list.length <= 1 ? list[0] ?? '' : list.length === 2 ? `${list[0]} and ${list[1]}` : `${list[0]} and ${list.length - 1} more`
+
+/** The cash-flow line dips below zero before payday: the same day Insights names. */
+function cashShort({ outlook, dues, today }: SmartLineInput): SmartLine | null {
+    const short = shortBeforePayday(outlook)
+    if (!short) return null
+    const late = overdueBills(dues, today)
+    return {
+        kind: 'cash-short',
+        key: `cash-short:${short.date}`,
+        parts: [
+            { text: 'Your everyday money dips below zero around ' },
+            { text: shortDate(short.date), strong: true },
+            { text: ', before payday.' },
+            ...(late.length > 0 ? [{ text: ` ${names(late.map(d => d.bill.name))} ${late.length === 1 ? 'is' : 'are'} already overdue.` }] : []),
+        ],
+        action: { label: 'See cash flow', to: '/insights?tab=cash-flow' },
+    }
+}
+
+/** Unpaid bills past their due date. */
+function billsOverdue({ dues, today }: SmartLineInput): SmartLine | null {
+    const late = overdueBills(dues, today)
+    if (late.length === 0) return null
+    const total = late.reduce((s, d) => s + d.reserved, 0)
+    return {
+        kind: 'bills-overdue',
+        key: `bills-overdue:${late.map(d => `${d.bill.id}@${d.nextDue}`).join(',')}`,
+        parts: [
+            { text: `${names(late.map(d => d.bill.name))} ${late.length === 1 ? 'is' : 'are'} overdue: ` },
+            { text: formatCurrency(total), strong: true },
+            { text: late.length === 1 ? '.' : ' in all.' },
+        ],
+        action: { label: 'Open bills', to: '/bills' },
+    }
 }
 
 /** A charge this far from the bill's amount is a real change, not rounding. */
@@ -242,10 +297,30 @@ function accountShort({ accounts, dues }: SmartLineInput): SmartLine | null {
 }
 
 /**
- * At most one line worth acting on, first by priority: a bill that charged a different
- * amount, money owed to you that's overdue, a budget running low, an account that can't
- * cover what's due from it. Null when nothing applies — Home says nothing then.
+ * At most one line worth acting on, first by priority: money running out before payday (the
+ * cash-flow forecast), bills already overdue, a bill that charged a different amount, money
+ * owed to you that's overdue, a budget running low, an account that can't cover what's due
+ * from it. Null when nothing applies — Home says nothing then.
  */
 export function pickSmartLine(input: SmartLineInput): SmartLine | null {
-    return billChanged(input) ?? receivableOverdue(input) ?? budgetLow(input) ?? accountShort(input)
+    return cashShort(input) ?? billsOverdue(input) ?? billChanged(input) ?? receivableOverdue(input) ?? budgetLow(input) ?? accountShort(input)
+}
+
+// ─── No entries ──────────────────────────────────────────────────────────────
+
+/** After this many days without an entry, the balances have likely drifted from the wallet. */
+export const QUIET_DAYS = 3
+
+/**
+ * Whole days since the last entry in the period (or since it started, without one), when
+ * that's QUIET_DAYS or more; null otherwise. Entries dated in the future don't count.
+ */
+export function daysWithoutEntries(transactions: Pick<TransactionWithDetails, 'date'>[], periodStart: string, today: string): number | null {
+    let last: string | null = null
+    for (const t of transactions) {
+        const date = t.date.slice(0, 10)
+        if (date <= today && (!last || date > last)) last = date
+    }
+    const days = getDaysBetween(last ?? periodStart, today)
+    return days >= QUIET_DAYS ? days : null
 }

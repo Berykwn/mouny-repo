@@ -1,4 +1,6 @@
 import { getDaysBetween, toISODate } from '@/lib/helpers'
+import { periodName } from '@/lib/period-name'
+import { MONTHS_SHORT } from '@/lib/dates'
 import type { PayPeriod } from '@/types'
 
 export interface PeriodProgress {
@@ -94,8 +96,8 @@ export function periodDayLabel(progress: PeriodProgress): string {
     return `Day ${progress.day} of ${progress.estimated ? 'about ' : ''}${progress.totalDays}`
 }
 
-// Spelled out here: en-GB's short September is "Sept" on some ICU versions and "Sep" on others.
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+// Spelled out (lib/dates): en-GB's short September is "Sept" on some ICU versions and "Sep" on others.
+const MONTHS = MONTHS_SHORT
 
 const parts = (date: string) => date.slice(0, 10).split('-').map(Number)
 
@@ -110,11 +112,9 @@ export function periodRange(start: string, end: string | null, estimated = false
 }
 
 /**
- * A period's name: the month it starts in ("October" for 10 Oct – 9 Nov), the same name
- * the period chip, the sidebar and Home use. `end` is kept for callers; it doesn't change the name.
+ * @deprecated Use `periodName` from '@/lib/period-name', the one name a period goes by.
+ * Kept so older imports still work.
  */
-export function periodMonth(start: string, _end: string | null, withYear = false): string {
-    const [y, m] = parts(start)
-    if (withYear) return `${MONTHS[m - 1]} ${y}`
-    return new Date(y, m - 1, 1).toLocaleDateString('en-GB', { month: 'long' })
+export function periodMonth(start: string): string {
+    return periodName(start)
 }

@@ -17,7 +17,10 @@ import { cn } from '@/lib/utils'
 import type { PayPeriod } from '@/types'
 import { LoadingContent } from '@/components/loading-content'
 import { PageHeader } from '@/components/page-header'
-import { paydayLabel, periodDayLabel, periodMonth, periodProgress, periodRange } from './lib/period-progress'
+import { paydayLabel, periodDayLabel, periodProgress, periodRange } from './lib/period-progress'
+import { periodName } from '@/lib/period-name'
+import { toISODate } from '@/lib/helpers'
+import { PaydayPrompt, WhatHappens } from './components/payday-prompt'
 
 type Drawer = 'open' | 'close' | null
 
@@ -79,6 +82,7 @@ export function PeriodHistoryPage() {
                     </EmptyState>
                 ) : (
                     <>
+                        {activePeriod && <PaydayPrompt className="lg:max-w-[520px]" />}
                         {activePeriod
                             ? <ActiveCard period={activePeriod} periods={allPeriods} summary={summaries[activePeriod.id]} onClose={() => setDrawer('close')} onOpen={() => openIn(activePeriod, '/')} />
                             : (
@@ -105,20 +109,23 @@ export function PeriodHistoryPage() {
                 <BottomDrawer
                     open={drawer === 'close'}
                     onClose={() => setDrawer(null)}
-                    title={activePeriod ? `Close ${periodMonth(activePeriod.start_date, periodProgress(activePeriod, allPeriods).endDate)}` : 'Close period'}
+                    title={activePeriod ? `Close the ${periodName(activePeriod)} period` : 'Close period'}
                 >
                     {activePeriod && drawer === 'close' && (
-                        <ClosePeriodForm
-                            period={activePeriod}
-                            onSuccess={() => setDrawer(null)}
-                            onClosed={openNext => { if (openNext) setDrawer('open') }}
-                        />
+                        <div className="space-y-5">
+                            <WhatHappens current={periodName(activePeriod)} next={periodName(toISODate())} />
+                            <ClosePeriodForm
+                                period={activePeriod}
+                                onSuccess={() => setDrawer(null)}
+                                onClosed={openNext => { if (openNext) setDrawer('open') }}
+                            />
+                        </div>
                     )}
                 </BottomDrawer>
                 <BottomDrawer
                     open={!!viewing}
                     onClose={() => setViewing(null)}
-                    title={viewing ? periodMonth(viewing.start_date, viewing.end_date, true) : ''}
+                    title={viewing ? `The ${periodName(viewing)} period` : ''}
                 >
                     {viewing && (
                         <PastPeriod
@@ -152,7 +159,7 @@ function ActiveCard({ period, periods, summary, onClose, onOpen }: ActiveCardPro
             <button type="button" onClick={onOpen} className="w-full text-left">
                 <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                        <p className="text-[17px] font-semibold text-ink">{periodMonth(period.start_date, progress.endDate)}</p>
+                        <p className="text-[17px] font-semibold text-ink">{periodName(period)}</p>
                         <p className="text-[13.5px] text-subtle-ink tabular-nums">
                             {periodRange(period.start_date, progress.pastUsualLength ? null : progress.endDate, progress.estimated)} · {periodDayLabel(progress).toLowerCase()}
                             {payday && ` · ${payday}`}

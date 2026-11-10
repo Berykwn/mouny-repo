@@ -20,10 +20,12 @@ const MAX_ROWS = 4
 interface DueSoonListProps {
     dues: BillDue[]
     period: Pick<PayPeriod, 'id' | 'start_date'>
+    /** dueListTitle: the list's one name on Home, Plan and Bills. */
+    title: string
 }
 
 /** The open period's unpaid bills, soonest first, each payable from its row. */
-export function DueSoonList({ dues, period }: DueSoonListProps) {
+export function DueSoonList({ dues, period, title }: DueSoonListProps) {
     const [paying, setPaying] = useState<BillDue | null>(null)
     const { data: categories } = useCategories('expense')
     const unpaid = useMemo(() => dues.filter(d => d.outstanding > 0 && d.nextDue), [dues])
@@ -32,7 +34,7 @@ export function DueSoonList({ dues, period }: DueSoonListProps) {
 
     return (
         <HomeSection
-            title="Due before payday"
+            title={title}
             aside={unpaid.length > MAX_ROWS
                 ? <Link to="/bills" className="text-[13px] font-medium text-brand-ink">All {unpaid.length}</Link>
                 : null}

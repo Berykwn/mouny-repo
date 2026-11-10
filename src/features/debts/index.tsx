@@ -41,6 +41,12 @@ export default function DebtsPage() {
     const [openDebt, setOpenDebt] = useState<DebtWithAccount | null>(null)
     const [editingDebt, setEditingDebt] = useState<DebtWithAccount | null>(null)
     const [payingDebt, setPayingDebt] = useState<DebtWithAccount | null>(null)
+    // The amount on the button that opened the pay sheet ("Pay 500rb"); none opens on the whole remaining.
+    const [payAmount, setPayAmount] = useState<number | null>(null)
+    const startPaying = (debt: DebtWithAccount, amount: number | null = null) => {
+        setPayAmount(amount)
+        setPayingDebt(debt)
+    }
     const [collectingDebt, setCollectingDebt] = useState<DebtWithAccount | null>(null)
     const [deletingDebt, setDeletingDebt] = useState<DebtWithAccount | null>(null)
     const [deleteLoading, setDeleteLoading] = useState(false)
@@ -104,7 +110,7 @@ export default function DebtsPage() {
     const smart = faster && firstStop && pace ? (
         <SmartLine
             icon={LightbulbIcon}
-            actions={[{ label: `Pay ${firstStop.debt.counterparty}`, onClick: () => setPayingDebt(firstStop.debt), disabled: !canAdd }]}
+            actions={[{ label: `Pay ${firstStop.debt.counterparty}`, onClick: () => startPaying(firstStop.debt), disabled: !canAdd }]}
         >
             Debt-free by <b>{monthYear(faster.current)}</b> if your usual {formatShortCurrency(Math.round(pace.perPeriod))} left over goes to debts.
             {' '}Put <b>{formatCurrency(faster.extraPerPeriod)}</b> more toward them each period and it’s <b>{monthYear(faster.sooner)}</b>.
@@ -149,7 +155,7 @@ export default function DebtsPage() {
                                     stop={stopFor(d)}
                                     canPay={canAdd}
                                     onOpen={() => setOpenDebt(d)}
-                                    onPay={() => setPayingDebt(d)}
+                                    onPay={amount => startPaying(d, amount)}
                                 />
                             ))}
                         </PlanSection>
@@ -200,7 +206,7 @@ export default function DebtsPage() {
                             stop={stopFor(openDebt)}
                             hasActivePeriod={canAdd}
                             onSettle={() => {
-                                if (openDebt.type === 'debt') setPayingDebt(openDebt)
+                                if (openDebt.type === 'debt') startPaying(openDebt)
                                 else setCollectingDebt(openDebt)
                                 setOpenDebt(null)
                             }}
@@ -233,6 +239,7 @@ export default function DebtsPage() {
                         <PayDebtForm
                             debt={payingDebt}
                             plannedAmount={stopFor(payingDebt)?.thisPeriodDue}
+                            initialAmount={payAmount}
                             payPeriodId={periodId}
                             periodStartDate={periodStartDate}
                             onSuccess={() => setPayingDebt(null)}

@@ -13,6 +13,7 @@ import { OverviewTransaction } from './components/overview/overview-tab'
 import { TodayEmptyState } from './components/overview/today-empty-state'
 import { HomeGreeting } from './components/home/home-greeting'
 import { FirstSteps } from '@/features/onboarding/first-steps'
+import { PaydayPrompt } from '@/features/periods/components/payday-prompt'
 
 // Only needed once the drawer opens; its date picker and form code load then.
 const OpenPeriodForm = lazy(() => import('@/features/periods/components/open-period-form').then(m => ({ default: m.OpenPeriodForm })))
@@ -51,6 +52,8 @@ export default function DashboardPage() {
             <section className="px-4 pb-4 pt-5 lg:pt-0 lg:px-0 space-y-4">
                 {/* The hello sits above the numbers, where it has room; the header keeps the brand. */}
                 <HomeGreeting />
+                {/* Payday has come: start the new period. The desktop sidebar carries its own. */}
+                {isActivePeriod && <PaydayPrompt className="lg:hidden" />}
                 {periodLoading ? <OverviewSkeleton /> : (
                     <>
                         {/* Someone who has never had a period sets up first; after that it's payday again. */}

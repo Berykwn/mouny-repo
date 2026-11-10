@@ -16,6 +16,9 @@ import { payPeriodsService } from '@/services/pay-periods.service'
 import { transactionsService } from '@/services/transactions.service'
 import { wishListService } from '@/services/wish-list.service'
 import type { ServiceResult } from '@/services/_base'
+import { CATEGORY_USE_DAYS } from '@/features/transactions/lib/category-order'
+import { addDaysISO } from '@/features/periods/lib/period-progress'
+import { toISODate } from '@/lib/helpers'
 import { pacePeriods, savingsPace, type SavingsPace } from '@/features/wish-list/lib/wish-analytics'
 import type { Category, PayPeriod, TransactionWithDetails } from '@/types'
 
@@ -34,6 +37,7 @@ export const queryKeys = {
     purchasedWishes: ['wishes', 'purchased'] as const,
     transactions: (periodId: string) => ['transactions', periodId] as const,
     summaries: (periodIds: string[]) => ['summaries', ...[...periodIds].sort()] as const,
+    categoryUse: (since: string) => ['category-use', since] as const,
 }
 
 /** Services report failures as `{ error }`; queries need them thrown. */
@@ -200,4 +204,19 @@ export function useSavingsPace(): SavingsPace | null {
     const recent = pacePeriods(periods)
     const { data: summaries } = usePeriodSummaries(recent.map(p => p.id))
     return recent.length > 0 && summaries ? savingsPace(recent, summaries) : null
+}
+
+/**
+ * Transactions per category over the last CATEGORY_USE_DAYS days, by category id: the add
+ * form's category order. Keyed by the start date, so a new day starts a fresh count;
+ * refreshed after writes like everything else.
+ */
+export function useCategoryUse() {
+    const since = addDaysISO(toISODate(), -CATEGORY_USE_DAYS)
+    return useQuery({
+        queryKey: queryKeys.categoryUse(since),
+        queryFn: () => unwrap(transactionsService.getCategoryUse(since)),
+        // Only an order: a few minutes old is as good as fresh, and it shouldn't refetch on every open.
+        staleTime: 5 * 60_000,
+    })
 }

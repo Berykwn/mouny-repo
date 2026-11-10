@@ -128,6 +128,50 @@ export function reservedTotal(dues: BillDue[]): number {
     return dues.reduce((s, d) => s + d.reserved, 0)
 }
 
+/** The due dates of a bill that no payment has covered yet. */
+export const unpaidDates = (due: Pick<BillDue, 'dueDates' | 'outstanding'>): string[] =>
+    due.outstanding > 0 ? due.dueDates.slice(due.dueDates.length - due.outstanding) : []
+
+export interface ReserveSplit {
+    /** Unpaid due dates after today: still to come before payday. */
+    toCome: number
+    /** Unpaid due dates today or earlier: due now, or late. */
+    dueNow: number
+    /** The bills with something due now or late, soonest first. */
+    dueNowBills: BillDue[]
+}
+
+/** What's still held back for bills, split into what's yet to come and what's due now or late. */
+export function splitReserve(dues: BillDue[], today: string): ReserveSplit {
+    let toCome = 0
+    let dueNow = 0
+    const dueNowBills: BillDue[] = []
+    for (const d of dues) {
+        let now = false
+        for (const date of unpaidDates(d)) {
+            if (date > today) toCome += d.bill.amount
+            else { dueNow += d.bill.amount; now = true }
+        }
+        if (now) dueNowBills.push(d)
+    }
+    return { toCome, dueNow, dueNowBills }
+}
+
+/** Payday has come and gone: today is after the period's (possibly estimated) last day. */
+export const isPastPayday = (window: Pick<PeriodWindow, 'end'> | null | undefined, today: string): boolean =>
+    !!window && today > window.end
+
+/**
+ * The one name for the list of unpaid bills, on Home, Plan and Bills: "Due before payday",
+ * and "Overdue" once payday has passed (everything still on it is late by then).
+ */
+export const dueListTitle = (window: Pick<PeriodWindow, 'end'> | null | undefined, today: string): string =>
+    isPastPayday(window, today) ? 'Overdue' : 'Due before payday'
+
+/** Bills due today or earlier that are still unpaid. */
+export const overdueBills = (dues: BillDue[], today: string): BillDue[] =>
+    dues.filter(d => d.outstanding > 0 && d.nextDue !== null && d.nextDue < today)
+
 /** Whether a bill still comes due: not paused and not past its end. */
 export function isRunning(bill: Pick<RecurringBill, 'paused' | 'ends_on'>, today: string): boolean {
     return !bill.paused && (!bill.ends_on || bill.ends_on >= today)
